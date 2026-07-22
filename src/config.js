@@ -100,7 +100,7 @@ export const CONFIG = {
     heavy: {
       name: 'Armored Hex',
       sides: 6,
-      radius: 28,
+      radius: 25,
       hp: 220,
       speed: 70,
       damage: 28,
@@ -110,7 +110,7 @@ export const CONFIG = {
       stroke: '#780016',
       outerArmor: {            // Smasher's Spinning Bumper Ring
         sides: 6,
-        radiusMultiplier: 1.5,
+        radiusMultiplier: 1.3,
         color: '#2b1e24',
         stroke: '#150a0e',
         spinSpeed: 2.5
