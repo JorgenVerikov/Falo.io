@@ -593,7 +593,7 @@ html, body {
 }
 
 input[type="color"] {
-  -webkit-appearance: none;
+  appearance: none;
   border: 2px solid #00e5ff;
   width: calc(32px * var(--ui-scale));
   height: calc(32px * var(--ui-scale));
