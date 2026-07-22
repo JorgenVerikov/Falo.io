@@ -120,9 +120,13 @@ export class EnemyUnit {
     this.angle = 0;
     this.vx = 0;
     this.vy = 0;
+    this.boostVx = 0;
+    this.boostVy = 0;
+    this.outerArmorAngle = Math.random() * Math.PI * 2;
     this.dead = false;
 
     this.fireTimer = 0;
+    this.boostTimer = 0;
   }
 
   update(dt, player, enemyBullets) {
@@ -132,17 +136,44 @@ export class EnemyUnit {
 
     this.angle = Math.atan2(dy, dx);
 
-    if (this.archetypeKey === 'ranged' && dist < 350) {
-      this.vx = -Math.cos(this.angle) * (this.speed * 0.5);
-      this.vy = -Math.sin(this.angle) * (this.speed * 0.5);
-    } else {
-      this.vx = Math.cos(this.angle) * this.speed;
-      this.vy = Math.sin(this.angle) * this.speed;
+    // Spin Outer Armor if present (Armored Hex)
+    if (this.config.outerArmor) {
+      this.outerArmorAngle += this.config.outerArmor.spinSpeed * dt;
     }
+
+    // Process Kinetic Surge Boost Ability for Armored Hex
+    if (this.config.boostAbility) {
+      this.boostTimer += dt;
+      if (this.boostTimer >= this.config.boostAbility.cooldown) {
+        this.boostTimer = 0;
+        this.boostVx = Math.cos(this.angle) * this.config.boostAbility.force;
+        this.boostVy = Math.sin(this.angle) * this.config.boostAbility.force;
+      }
+    }
+
+    // Move logic
+    let moveVx = 0;
+    let moveVy = 0;
+
+    if (this.archetypeKey === 'ranged' && dist < 350) {
+      moveVx = -Math.cos(this.angle) * (this.speed * 0.5);
+      moveVy = -Math.sin(this.angle) * (this.speed * 0.5);
+    } else {
+      moveVx = Math.cos(this.angle) * this.speed;
+      moveVy = Math.sin(this.angle) * this.speed;
+    }
+
+    // Dampen boost impulse velocity over time
+    this.boostVx *= 0.91;
+    this.boostVy *= 0.91;
+
+    this.vx = moveVx + this.boostVx;
+    this.vy = moveVy + this.boostVy;
 
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
+    // Ranged Enemy Shooting
     if (this.archetypeKey === 'ranged') {
       this.fireTimer += dt;
       if (this.fireTimer >= this.config.fireRate) {
@@ -163,10 +194,25 @@ export class EnemyUnit {
   }
 
   draw(canvasMgr) {
+    // 1. Draw Outer Armor Bumper (Armored Hex)
+    if (this.config.outerArmor) {
+      canvasMgr.drawPolygon(
+        this.x, this.y,
+        this.radius * this.config.outerArmor.radiusMultiplier,
+        this.config.outerArmor.sides,
+        this.outerArmorAngle,
+        this.config.outerArmor.color,
+        this.config.outerArmor.stroke,
+        3
+      );
+    }
+
+    // 2. Draw Turret for Ranged Drone
     if (this.archetypeKey === 'ranged') {
       canvasMgr.drawTurretBarrel(this.x, this.y, 12, 28, this.angle);
     }
 
+    // 3. Draw Base Body Polygon
     canvasMgr.drawPolygon(this.x, this.y, this.radius, this.sides, this.angle, this.color, this.stroke, 3);
 
     if (this.hp < this.maxHp) {
@@ -178,7 +224,7 @@ export class EnemyUnit {
     const width = this.radius * 2.2;
     const height = 5;
     const x = this.x - width / 2;
-    const y = this.y - this.radius - 10;
+    const y = this.y - this.radius - 12;
 
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.6)';

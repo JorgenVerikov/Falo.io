@@ -4,9 +4,9 @@
 
 export const CONFIG = {
   ARENA: {
-    darkBg: '#313338',       // Discord Soft Dark background
+    darkBg: '#313338',
     darkGrid: 'rgba(255, 255, 255, 0.05)',
-    lightBg: '#cdcdcd',      // Diep Light Grey background
+    lightBg: '#cdcdcd',
     lightGrid: 'rgba(0, 0, 0, 0.07)',
     gridSize: 60
   },
@@ -20,8 +20,8 @@ export const CONFIG = {
   PLAYER: {
     maxHp: 60,
     radius: 20,
-    acceleration: 900,  // WASD acceleration
-    drag: 3.8,          // Damping factor for gradual stopping
+    acceleration: 900,
+    drag: 3.8,
     strokeWidth: 4,
     iFrameDuration: 0.3,
     bodyDamage: 40,
@@ -40,7 +40,7 @@ export const CONFIG = {
         radius: 14,
         hp: 25,
         xp: 10,
-        ramDamage: 5,
+        ramDamage: 10,
         minPenetrationCost: 12,
         color: '#ffe869',
         stroke: '#cca800'
@@ -50,7 +50,7 @@ export const CONFIG = {
         radius: 18,
         hp: 50,
         xp: 25,
-        ramDamage: 10,
+        ramDamage: 18,
         minPenetrationCost: 20,
         color: '#ff6961',
         stroke: '#cc3b35'
@@ -60,7 +60,7 @@ export const CONFIG = {
         radius: 28,
         hp: 150,
         xp: 100,
-        ramDamage: 15,
+        ramDamage: 35,
         minPenetrationCost: 45,
         color: '#55aaff',
         stroke: '#2277cc'
@@ -68,6 +68,7 @@ export const CONFIG = {
     }
   },
 
+  // Swarm AI Enemy Archetypes
   ENEMIES: {
     chaser: {
       name: 'Swarmer',
@@ -100,13 +101,24 @@ export const CONFIG = {
       name: 'Armored Hex',
       sides: 6,
       radius: 28,
-      hp: 200,
-      speed: 75,
-      damage: 25,
+      hp: 220,
+      speed: 70,
+      damage: 28,
       xp: 120,
       minPenetrationCost: 55,
-      color: '#33cc88',
-      stroke: '#119955'
+      color: '#d90429',        // Menacing Crimson Red
+      stroke: '#780016',
+      outerArmor: {            // Smasher's Spinning Bumper Ring
+        sides: 6,
+        radiusMultiplier: 1.5,
+        color: '#2b1e24',
+        stroke: '#150a0e',
+        spinSpeed: 2.5
+      },
+      boostAbility: {          // Less frequent, shorter-range Kinetic Surge Boost
+        cooldown: 4.5,
+        force: 270
+      }
     }
   },
 
