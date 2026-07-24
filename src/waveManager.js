@@ -44,9 +44,11 @@ export class WaveManager {
 
       this.enemyQueue.push(archetype);
     }
+
+    console.log(`[WAVE] Wave ${waveNum} Started — ${totalEnemies} hostile units queued`);
   }
 
-  update(dt, player, playerWeapon, activeChassisKey) {
+  update(dt, player, playerWeapon, activeChassisKey, playerMoveSpeedStat = 0) {
     if (this.isPaused) return;
 
     if (!this.isBreak && this.enemyQueue.length > 0) {
@@ -61,6 +63,7 @@ export class WaveManager {
     if (!this.isBreak && this.enemyQueue.length === 0 && this.enemies.length === 0) {
       this.isBreak = true;
       this.breakTimer = CONFIG.WAVE.breakDuration;
+      console.log(`[WAVE] Wave ${this.waveNumber} Cleared! Intermission timer started (${CONFIG.WAVE.breakDuration}s)`);
     } else if (this.isBreak) {
       this.breakTimer -= dt;
       if (this.breakTimer <= 0) {
@@ -71,7 +74,7 @@ export class WaveManager {
     this.maintainShapes(player);
 
     for (const s of this.shapes) s.update(dt);
-    for (const e of this.enemies) e.update(dt, player, this.enemyBullets);
+    for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerMoveSpeedStat);
     for (const b of this.enemyBullets) b.update(dt);
 
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -114,7 +117,9 @@ export class WaveManager {
     const x = player.x + Math.cos(angle) * dist;
     const y = player.y + Math.sin(angle) * dist;
 
-    this.enemies.push(new EnemyUnit(x, y, archetype));
+    const enemy = new EnemyUnit(x, y, archetype);
+    this.enemies.push(enemy);
+    console.log(`[SPAWN] ${enemy.config.name.toUpperCase()} spawned in arena`);
   }
 
   getRemainingEnemyCount() {
@@ -150,56 +155,67 @@ export class WaveManager {
     const chassisConfig = CONFIG.CHASSIS[activeChassisKey];
     const playerRamDamage = CONFIG.PLAYER.bodyDamage * (chassisConfig.bodyDamageMultiplier || 1.0);
 
+    // 1. PLAYER vs RESOURCE SHAPES
     for (const shape of this.shapes) {
       if (shape.dead) continue;
 
-      const hit = this.resolveCircleOverlap(player, shape, 0.35, 0.65);
+      const shapeWeight = shape.config.weight || 1.0;
+      const shapePushRatio = 0.45 / (1.0 + shapeWeight * 0.4);
+      const playerPushRatio = (0.45 - shapePushRatio) * 0.35;
+
+      const hit = this.resolveCircleOverlap(player, shape, playerPushRatio, shapePushRatio);
       if (hit.collided) {
-        shape.takeDamage(playerRamDamage * dt);
+        shape.takeDamage(playerRamDamage * 1.8 * dt);
         this.spawnShatterParticles(shape.x, shape.y, shape.color, 2);
 
         player.takeDamage(shape.ramDamage, activeChassisKey);
 
-        shape.vx += hit.nx * 140;
-        shape.vy += hit.ny * 140;
+        shape.vx += hit.nx * (65 / shapeWeight);
+        shape.vy += hit.ny * (65 / shapeWeight);
 
         if (shape.dead) {
           this.score += shape.xp;
-          this.spawnShatterParticles(shape.x, shape.y, shape.color, 12);
+          console.log(`[DESTROY] ${shape.type.toUpperCase()} shattered (+${shape.xp} XP)`);
+          this.spawnShatterParticles(shape.x, shape.y, shape.color, CONFIG.VFX.shapeShatterCount);
         }
       }
     }
 
+    // 2. PLAYER vs SWARM ENEMIES
     for (const enemy of this.enemies) {
       if (enemy.dead) continue;
 
-      const hit = this.resolveCircleOverlap(player, enemy, 0.4, 0.6);
+      const enemyWeight = enemy.config.weight || 1.5;
+      const hit = this.resolveCircleOverlap(player, enemy, 0.12, 0.28 / enemyWeight);
       if (hit.collided) {
         player.takeDamage(enemy.damage, activeChassisKey);
-        enemy.takeDamage(playerRamDamage * dt);
+        enemy.takeDamage(playerRamDamage * 1.5 * dt);
 
         this.spawnShatterParticles(enemy.x, enemy.y, enemy.color, 3);
 
         if (enemy.dead) {
           this.score += enemy.xp;
-          this.spawnShatterParticles(enemy.x, enemy.y, enemy.color, 16);
+          console.log(`[KILL] Defeated ${enemy.config.name.toUpperCase()} (+${enemy.xp} XP)`);
+          this.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
         }
       }
     }
 
+    // 3. ENEMY vs ENEMY
     for (let i = 0; i < this.enemies.length; i++) {
       for (let j = i + 1; j < this.enemies.length; j++) {
         this.resolveCircleOverlap(this.enemies[i], this.enemies[j], 0.5, 0.5);
       }
     }
 
+    // 4. ENEMY vs SHAPES
     for (const enemy of this.enemies) {
       for (const shape of this.shapes) {
-        this.resolveCircleOverlap(enemy, shape, 0.7, 0.3);
+        this.resolveCircleOverlap(enemy, shape, 0.6, 0.4);
       }
     }
 
-    // Player Projectiles vs Shapes/Enemies
+    // 5. PLAYER PROJECTILES vs SHAPES & ENEMIES
     for (const proj of playerWeapon.projectiles) {
       if (proj.dead) continue;
 
@@ -208,26 +224,26 @@ export class WaveManager {
 
         const dist = Math.hypot(proj.x - shape.x, proj.y - shape.y);
         if (dist < proj.radius + shape.radius) {
-          const nx = (shape.x - proj.x) / (dist || 1);
-          const ny = (shape.y - proj.y) / (dist || 1);
+          const penDrainRate = (shape.config.minPenetrationCost || 12) * CONFIG.WEAPONS.penDrainMultiplier;
+          const damageRate = proj.getEffectiveDamage() * CONFIG.WEAPONS.damageMultiplier;
 
-          const effDamage = proj.getEffectiveDamage();
-          const minPenCost = shape.config.minPenetrationCost || 15;
-          const actualPenLoss = Math.max(minPenCost, Math.min(proj.penetration, shape.hp));
+          shape.takeDamage(damageRate * dt);
+          proj.takePenetrationDamage(penDrainRate * dt);
 
-          shape.takeDamage(effDamage);
-          proj.takePenetrationDamage(actualPenLoss);
+          proj.applyCenterRepulsion(shape.x, shape.y, dt, CONFIG.WEAPONS.repelStrength);
 
-          proj.applyPiercingDeflection(nx, ny, 0.88);
+          if (Math.random() < 0.35) {
+            this.spawnShatterParticles(proj.x, proj.y, shape.color, CONFIG.VFX.impactParticleCount);
+          }
 
-          this.spawnShatterParticles(proj.x, proj.y, shape.color, 3);
-
-          shape.vx += (proj.vx * 0.08);
-          shape.vy += (proj.vy * 0.08);
+          const shapeWeight = shape.config.weight || 1.0;
+          shape.vx += (proj.vx * 0.05 * dt * 60) / shapeWeight;
+          shape.vy += (proj.vy * 0.05 * dt * 60) / shapeWeight;
 
           if (shape.dead) {
             this.score += shape.xp;
-            this.spawnShatterParticles(shape.x, shape.y, shape.color, 12);
+            console.log(`[DESTROY] ${shape.type.toUpperCase()} shattered (+${shape.xp} XP)`);
+            this.spawnShatterParticles(shape.x, shape.y, shape.color, CONFIG.VFX.shapeShatterCount);
           }
         }
       }
@@ -239,29 +255,28 @@ export class WaveManager {
 
         const dist = Math.hypot(proj.x - enemy.x, proj.y - enemy.y);
         if (dist < proj.radius + enemy.radius) {
-          const nx = (enemy.x - proj.x) / (dist || 1);
-          const ny = (enemy.y - proj.y) / (dist || 1);
+          const penDrainRate = (enemy.config.minPenetrationCost || 18) * CONFIG.WEAPONS.penDrainMultiplier;
+          const damageRate = proj.getEffectiveDamage() * CONFIG.WEAPONS.damageMultiplier;
 
-          const effDamage = proj.getEffectiveDamage();
-          const minPenCost = enemy.config.minPenetrationCost || 20;
-          const actualPenLoss = Math.max(minPenCost, Math.min(proj.penetration, enemy.hp));
+          enemy.takeDamage(damageRate * dt);
+          proj.takePenetrationDamage(penDrainRate * dt);
 
-          enemy.takeDamage(effDamage);
-          proj.takePenetrationDamage(actualPenLoss);
+          proj.applyCenterRepulsion(enemy.x, enemy.y, dt, CONFIG.WEAPONS.repelStrength + 10);
 
-          proj.applyPiercingDeflection(nx, ny, 0.85);
-
-          this.spawnShatterParticles(proj.x, proj.y, enemy.color, 4);
+          if (Math.random() < 0.35) {
+            this.spawnShatterParticles(proj.x, proj.y, enemy.color, CONFIG.VFX.impactParticleCount);
+          }
 
           if (enemy.dead) {
             this.score += enemy.xp;
-            this.spawnShatterParticles(enemy.x, enemy.y, enemy.color, 16);
+            console.log(`[KILL] Defeated ${enemy.config.name.toUpperCase()} (+${enemy.xp} XP)`);
+            this.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
           }
         }
       }
     }
 
-    // Player Bullets vs Enemy Bullets
+    // 6. PLAYER BULLETS vs ENEMY BULLETS
     for (const playerProj of playerWeapon.projectiles) {
       if (playerProj.dead) continue;
 
@@ -270,31 +285,27 @@ export class WaveManager {
 
         const dist = Math.hypot(playerProj.x - enemyProj.x, playerProj.y - enemyProj.y);
         if (dist < playerProj.radius + enemyProj.radius) {
-          const nx = (enemyProj.x - playerProj.x) / (dist || 1);
-          const ny = (enemyProj.y - playerProj.y) / (dist || 1);
+          const pPenRate = enemyProj.penetration * CONFIG.WEAPONS.bulletVsBulletDrain;
+          const ePenRate = playerProj.penetration * CONFIG.WEAPONS.bulletVsBulletDrain;
 
-          const pPen = playerProj.penetration;
-          const ePen = enemyProj.penetration;
+          playerProj.takePenetrationDamage(pPenRate * dt);
+          enemyProj.takePenetrationDamage(ePenRate * dt);
 
-          playerProj.takePenetrationDamage(ePen);
-          enemyProj.takePenetrationDamage(pPen);
+          playerProj.applyCenterRepulsion(enemyProj.x, enemyProj.y, dt, 120);
 
-          playerProj.applyPiercingDeflection(nx, ny, 0.80);
-          enemyProj.applyPiercingDeflection(-nx, -ny, 0.80);
-
-          this.spawnShatterParticles(playerProj.x, playerProj.y, '#ffffff', 3);
+          this.spawnShatterParticles(playerProj.x, playerProj.y, '#ffffff', 2);
         }
       }
     }
 
-    // Enemy Projectiles vs Player
+    // 7. ENEMY PROJECTILES vs PLAYER
     for (const bullet of this.enemyBullets) {
       if (bullet.dead) continue;
 
       if (Math.hypot(player.x - bullet.x, player.y - bullet.y) < player.radius + bullet.radius) {
         bullet.dead = true;
         player.takeDamage(bullet.getEffectiveDamage(), activeChassisKey);
-        this.spawnShatterParticles(player.x, player.y, '#f14e54', 8);
+        this.spawnShatterParticles(player.x, player.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
       }
     }
   }

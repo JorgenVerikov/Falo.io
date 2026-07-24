@@ -47,7 +47,6 @@ export class UIManager {
   setupDebugLogTerminal() {
     this.logConsole = document.getElementById('debug-log-console');
     
-    // Intercept console.log and console.error to render on-screen debug terminal logs
     const origLog = console.log;
     const origWarn = console.warn;
     const origErr = console.error;
@@ -60,7 +59,7 @@ export class UIManager {
       this.logConsole.appendChild(line);
       this.logConsole.scrollTop = this.logConsole.scrollHeight;
 
-      while (this.logConsole.children.length > 25) {
+      while (this.logConsole.children.length > 30) {
         this.logConsole.removeChild(this.logConsole.firstChild);
       }
     };
@@ -68,6 +67,8 @@ export class UIManager {
     console.log = (...args) => { origLog(...args); appendLog(args.join(' ')); };
     console.warn = (...args) => { origWarn(...args); appendLog(args.join(' '), '#ffea00'); };
     console.error = (...args) => { origErr(...args); appendLog(args.join(' '), '#ff3344'); };
+
+    console.log('[SYSTEM] Engine initialized cleanly');
   }
 
   bindEvents() {
@@ -144,8 +145,6 @@ export class UIManager {
     const scale = s.uiScale || 1.0;
 
     this.canvasMgr.setTheme(theme);
-
-    // Set CSS Variables for precise UI Scaling without breaking border positions
     document.documentElement.style.setProperty('--ui-scale', scale);
 
     if (theme === 'light') {
@@ -375,6 +374,7 @@ export class UIManager {
         if (!isUnlocked) {
           card.querySelector('.shop-buy-btn').addEventListener('click', () => {
             if (this.storage.unlockChassis(key, chassis.shopCost)) {
+              console.log(`[SHOP] Unlocked ${chassis.name.toUpperCase()} for ${chassis.shopCost} coins`);
               this.renderShopContent();
             }
           });
@@ -395,7 +395,7 @@ export class UIManager {
 
       crewData.forEach(c => {
         const level = this.storage.data.crewLevels[c.key] || 0;
-        const cost = Math.floor(100 * Math.pow(1.5, level));
+        const cost = Math.floor(CONFIG.CREW.baseUpgradeCost * Math.pow(CONFIG.CREW.costMultiplier, level));
 
         const card = document.createElement('div');
         card.className = 'shop-card';
@@ -411,6 +411,7 @@ export class UIManager {
 
         card.querySelector('.shop-buy-btn').addEventListener('click', () => {
           if (this.storage.upgradeCrew(c.key, cost)) {
+            console.log(`[SHOP] Upgraded CREW: ${c.name.toUpperCase()} to Level ${level + 1}`);
             this.renderShopContent();
           }
         });
@@ -440,8 +441,8 @@ export class UIManager {
                  ${isWheelActive ? 'EQUIPPED' : 'EQUIP'}
                </button>
              </div>`
-          : `<button class="shop-buy-btn ${this.storage.data.coins >= 500 ? '' : 'disabled'}" id="buy-wheel-btn">
-              UNLOCK (500 COINS)
+          : `<button class="shop-buy-btn ${this.storage.data.coins >= CONFIG.META.colorWheelCost ? '' : 'disabled'}" id="buy-wheel-btn">
+              UNLOCK (${CONFIG.META.colorWheelCost} COINS)
              </button>`
         }
       `;
@@ -453,11 +454,13 @@ export class UIManager {
 
         wheelCard.querySelector('#equip-wheel-btn').addEventListener('click', () => {
           this.storage.setActiveColor('custom');
+          console.log(`[SHOP] Equipped Custom RGB Paint Job: ${this.storage.data.customColor}`);
           this.renderShopContent();
         });
       } else {
         wheelCard.querySelector('#buy-wheel-btn').addEventListener('click', () => {
-          if (this.storage.unlockColorWheel(500)) {
+          if (this.storage.unlockColorWheel(CONFIG.META.colorWheelCost)) {
+            console.log(`[SHOP] Unlocked Custom RGB Color Wheel!`);
             this.renderShopContent();
           }
         });
@@ -491,11 +494,13 @@ export class UIManager {
         } else if (isUnlocked) {
           card.querySelector('.shop-buy-btn').addEventListener('click', () => {
             this.storage.setActiveColor(cKey);
+            console.log(`[SHOP] Equipped Paint Theme: ${theme.name}`);
             this.renderShopContent();
           });
         } else {
           card.querySelector('.shop-buy-btn').addEventListener('click', () => {
             if (this.storage.unlockColor(cKey, theme.cost)) {
+              console.log(`[SHOP] Unlocked Paint Theme: ${theme.name}`);
               this.renderShopContent();
             }
           });

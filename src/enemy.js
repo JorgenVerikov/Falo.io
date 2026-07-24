@@ -6,12 +6,12 @@ export class Particle {
     this.x = x;
     this.y = y;
     const angle = Math.random() * Math.PI * 2;
-    const speed = 40 + Math.random() * 180;
+    const speed = CONFIG.VFX.particleMinSpeed + Math.random() * (CONFIG.VFX.particleMaxSpeed - CONFIG.VFX.particleMinSpeed);
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;
-    this.radius = 2 + Math.random() * 4;
+    this.radius = CONFIG.VFX.particleMinRadius + Math.random() * (CONFIG.VFX.particleMaxRadius - CONFIG.VFX.particleMinRadius);
     this.color = color;
-    this.lifetime = 0.3 + Math.random() * 0.3;
+    this.lifetime = CONFIG.VFX.particleMinLifetime + Math.random() * (CONFIG.VFX.particleMaxLifetime - CONFIG.VFX.particleMinLifetime);
     this.maxLifetime = this.lifetime;
   }
 
@@ -111,7 +111,6 @@ export class EnemyUnit {
     this.radius = this.config.radius;
     this.hp = this.config.hp;
     this.maxHp = this.config.hp;
-    this.speed = this.config.speed;
     this.damage = this.config.damage;
     this.xp = this.config.xp;
     this.color = this.config.color;
@@ -120,68 +119,92 @@ export class EnemyUnit {
     this.angle = 0;
     this.vx = 0;
     this.vy = 0;
-    this.boostVx = 0;
-    this.boostVy = 0;
     this.outerArmorAngle = Math.random() * Math.PI * 2;
     this.dead = false;
 
     this.fireTimer = 0;
     this.boostTimer = 0;
+
+    // Track visual barrel recoil kickback offsets per enemy turret
+    this.barrelRecoilOffsets = (this.config.turrets || []).map(() => 0);
   }
 
-  update(dt, player, enemyBullets) {
+  update(dt, player, enemyBullets, playerMoveSpeedStat = 0) {
     const dx = player.x - this.x;
     const dy = player.y - this.y;
-    const dist = Math.hypot(dx, dy);
+    const dist = Math.hypot(dx, dy) || 1;
 
     this.angle = Math.atan2(dy, dx);
 
-    // Spin Outer Armor if present (Armored Hex)
+    // Smoothly decay enemy turret barrel kickback recovery
+    for (let i = 0; i < this.barrelRecoilOffsets.length; i++) {
+      this.barrelRecoilOffsets[i] = Math.max(0, this.barrelRecoilOffsets[i] - dt * CONFIG.WEAPONS.barrelRecoilDecay);
+    }
+
     if (this.config.outerArmor) {
       this.outerArmorAngle += this.config.outerArmor.spinSpeed * dt;
     }
 
-    // Process Kinetic Surge Boost Ability for Armored Hex
     if (this.config.boostAbility) {
       this.boostTimer += dt;
       if (this.boostTimer >= this.config.boostAbility.cooldown) {
         this.boostTimer = 0;
-        this.boostVx = Math.cos(this.angle) * this.config.boostAbility.force;
-        this.boostVy = Math.sin(this.angle) * this.config.boostAbility.force;
+        this.vx += Math.cos(this.angle) * this.config.boostAbility.force;
+        this.vy += Math.sin(this.angle) * this.config.boostAbility.force;
       }
     }
 
-    // Move logic
-    let moveVx = 0;
-    let moveVy = 0;
+    let dirX = 0;
+    let dirY = 0;
 
     if (this.archetypeKey === 'ranged' && dist < 350) {
-      moveVx = -Math.cos(this.angle) * (this.speed * 0.5);
-      moveVy = -Math.sin(this.angle) * (this.speed * 0.5);
+      dirX = -dx / dist;
+      dirY = -dy / dist;
     } else {
-      moveVx = Math.cos(this.angle) * this.speed;
-      moveVy = Math.sin(this.angle) * this.speed;
+      dirX = dx / dist;
+      dirY = dy / dist;
     }
 
-    // Dampen boost impulse velocity over time
-    this.boostVx *= 0.91;
-    this.boostVy *= 0.91;
+    let accel = this.config.acceleration || 500;
 
-    this.vx = moveVx + this.boostVx;
-    this.vy = moveVy + this.boostVy;
+    if (this.archetypeKey === 'chaser') {
+      const speedBonusFactor = 1.0 + (playerMoveSpeedStat * CONFIG.PLAYER.statIncrements.moveSpeedMult * 0.5);
+      accel *= speedBonusFactor;
+    }
+
+    const drag = this.config.drag || 3.8;
+
+    this.vx += dirX * accel * dt;
+    this.vy += dirY * accel * dt;
 
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    // Ranged Enemy Shooting
+    this.vx -= this.vx * drag * dt;
+    this.vy -= this.vy * drag * dt;
+
+    // Ranged Enemy Shooting (Spawns at Barrel Tip + Recoil Animation Trigger)
     if (this.archetypeKey === 'ranged') {
       this.fireTimer += dt;
       if (this.fireTimer >= this.config.fireRate) {
         this.fireTimer = 0;
+
+        // Trigger Turret Kickback Recoil Animation
+        if (this.barrelRecoilOffsets.length > 0) {
+          this.barrelRecoilOffsets[0] = 10;
+        }
+
+        // Calculate Barrel Tip Position
+        const mainTurret = (this.config.turrets && this.config.turrets[0]) || { length: 34 };
+        const barrelTipOffset = mainTurret.length + 2;
+        const spawnX = this.x + Math.cos(this.angle) * barrelTipOffset;
+        const spawnY = this.y + Math.sin(this.angle) * barrelTipOffset;
+
         const bVx = Math.cos(this.angle) * this.config.bulletSpeed;
         const bVy = Math.sin(this.angle) * this.config.bulletSpeed;
         const pen = this.config.bulletPenetration || 22;
-        enemyBullets.push(new Projectile(this.x, this.y, bVx, bVy, 6, 3.5, this.damage, pen, '#f14e54', '#b82a30'));
+
+        enemyBullets.push(new Projectile(spawnX, spawnY, bVx, bVy, 6, 3.5, this.damage, pen, '#f14e54', '#b82a30'));
       }
     }
   }
@@ -194,7 +217,7 @@ export class EnemyUnit {
   }
 
   draw(canvasMgr) {
-    // 1. Draw Outer Armor Bumper (Armored Hex)
+    // 1. Draw Outer Armor Bumper
     if (this.config.outerArmor) {
       canvasMgr.drawPolygon(
         this.x, this.y,
@@ -207,9 +230,20 @@ export class EnemyUnit {
       );
     }
 
-    // 2. Draw Turret for Ranged Drone
-    if (this.archetypeKey === 'ranged') {
-      canvasMgr.drawTurretBarrel(this.x, this.y, 12, 28, this.angle);
+    // 2. Draw Enemy Turret Barrels with Active Recoil Subtraction
+    if (this.config.turrets && this.config.turrets.length > 0) {
+      this.config.turrets.forEach((turret, idx) => {
+        const recoil = this.barrelRecoilOffsets[idx] || 0;
+        const barrelLen = Math.max(6, turret.length - recoil);
+
+        canvasMgr.drawTurretBarrel(
+          this.x, this.y,
+          turret.width, barrelLen,
+          this.angle + (turret.angleOffset || 0),
+          turret.xOffset || 0,
+          turret.yOffset || 0
+        );
+      });
     }
 
     // 3. Draw Base Body Polygon

@@ -13,7 +13,7 @@ export class Projectile {
     this.speed = Math.hypot(vx, vy);
     this.currentAngle = Math.atan2(vy, vx);
     this.targetAngle = this.currentAngle;
-    this.turnSpeed = 6.0; // Smooth trajectory steering rate
+    this.turnSpeed = CONFIG.WEAPONS.turnSpeed;
 
     this.vx = vx;
     this.vy = vy;
@@ -28,7 +28,6 @@ export class Projectile {
   }
 
   update(dt) {
-    // Smooth Angular Steering Towards Target Trajectory
     const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.currentAngle), Math.cos(this.targetAngle - this.currentAngle));
     this.currentAngle += angleDiff * Math.min(1.0, this.turnSpeed * dt);
 
@@ -50,16 +49,19 @@ export class Projectile {
     return this.damage * ratio;
   }
 
-  // Smooth Piercing Deflection & Slowdown (Curved Trajectory)
-  applyPiercingDeflection(nx, ny, slowdownFactor = 0.88) {
-    if (this.speed === 0) return;
+  applyCenterRepulsion(objX, objY, dt, repelStrength = CONFIG.WEAPONS.repelStrength) {
+    const dx = this.x - objX;
+    const dy = this.y - objY;
+    let dist = Math.hypot(dx, dy);
+    if (dist === 0) dist = 0.01;
 
-    const impactNormalAngle = Math.atan2(-ny, -nx);
-    const angleDiff = Math.atan2(Math.sin(impactNormalAngle - this.currentAngle), Math.cos(impactNormalAngle - this.currentAngle));
+    const nx = dx / dist;
+    const ny = dy / dist;
 
-    // Shift target trajectory smoothly by 12%
-    this.targetAngle = this.currentAngle + angleDiff * 0.12;
-    this.speed *= slowdownFactor;
+    this.vx += nx * repelStrength * dt;
+    this.vy += ny * repelStrength * dt;
+    this.vx *= 0.96;
+    this.vy *= 0.96;
   }
 
   takePenetrationDamage(amount) {
@@ -128,13 +130,11 @@ export class WeaponSystem {
     this.penetration = wConfig.penetration || 25;
     this.recoil = wConfig.recoil;
     this.shellRadius = wConfig.shellRadius;
-    this.shellColor = wConfig.shellColor;
-    this.shellStroke = wConfig.shellStroke;
   }
 
   update(dt, player, isFiring) {
     for (let i = 0; i < this.barrelRecoilOffsets.length; i++) {
-      this.barrelRecoilOffsets[i] = Math.max(0, this.barrelRecoilOffsets[i] - dt * 40);
+      this.barrelRecoilOffsets[i] = Math.max(0, this.barrelRecoilOffsets[i] - dt * CONFIG.WEAPONS.barrelRecoilDecay);
     }
 
     let recoilImpulse = { x: 0, y: 0 };
@@ -238,7 +238,8 @@ export class WeaponSystem {
     const angle = player.angle;
 
     if (this.chassisKey === 'smasher') {
-      const surgeForce = 450;
+      player.dashTimer = CONFIG.WEAPONS.smasherDashDuration;
+      const surgeForce = CONFIG.WEAPONS.smasherDashForce;
       return {
         x: Math.cos(angle) * surgeForce,
         y: Math.sin(angle) * surgeForce
@@ -247,8 +248,10 @@ export class WeaponSystem {
 
     let recoilMagnitude = this.recoil;
     let recoilAngle = angle + Math.PI;
+    const lifetime = CONFIG.WEAPONS.defaultLifetime;
 
-    const lifetime = 3.2;
+    const bulletFill = player.fillColor || '#00e5ff';
+    const bulletStroke = player.strokeColor || '#00a8bc';
 
     if (this.chassisKey === 'twin') {
       const barrelOffset = (this.activeBarrelIndex === 0) ? -8 : 8;
@@ -261,7 +264,7 @@ export class WeaponSystem {
       const vx = Math.cos(angle) * this.shellSpeed;
       const vy = Math.sin(angle) * this.shellSpeed;
 
-      this.projectiles.push(new Projectile(spawnX, spawnY, vx, vy, this.shellRadius, lifetime, this.damage, this.penetration, this.shellColor, this.shellStroke));
+      this.projectiles.push(new Projectile(spawnX, spawnY, vx, vy, this.shellRadius, lifetime, this.damage, this.penetration, bulletFill, bulletStroke));
       this.activeBarrelIndex = (this.activeBarrelIndex + 1) % 2;
 
     } else if (this.chassisKey === 'flank') {
@@ -270,12 +273,12 @@ export class WeaponSystem {
 
       const fX = player.x + Math.cos(angle) * 30;
       const fY = player.y + Math.sin(angle) * 30;
-      this.projectiles.push(new Projectile(fX, fY, Math.cos(angle) * this.shellSpeed, Math.sin(angle) * this.shellSpeed, this.shellRadius, lifetime, this.damage, this.penetration, this.shellColor, this.shellStroke));
+      this.projectiles.push(new Projectile(fX, fY, Math.cos(angle) * this.shellSpeed, Math.sin(angle) * this.shellSpeed, this.shellRadius, lifetime, this.damage, this.penetration, bulletFill, bulletStroke));
 
       const rearAngle = angle + Math.PI;
       const rX = player.x + Math.cos(rearAngle) * 30;
       const rY = player.y + Math.sin(rearAngle) * 30;
-      this.projectiles.push(new Projectile(rX, rY, Math.cos(rearAngle) * this.shellSpeed, Math.sin(rearAngle) * this.shellSpeed, this.shellRadius, lifetime, this.damage, this.penetration, this.shellColor, this.shellStroke));
+      this.projectiles.push(new Projectile(rX, rY, Math.cos(rearAngle) * this.shellSpeed, Math.sin(rearAngle) * this.shellSpeed, this.shellRadius, lifetime, this.damage, this.penetration, bulletFill, bulletStroke));
 
       recoilMagnitude = 0;
 
@@ -289,7 +292,7 @@ export class WeaponSystem {
       const vx = Math.cos(spreadAngle) * this.shellSpeed;
       const vy = Math.sin(spreadAngle) * this.shellSpeed;
 
-      this.projectiles.push(new Projectile(spawnX, spawnY, vx, vy, this.shellRadius, 2.8, this.damage, this.penetration, this.shellColor, this.shellStroke));
+      this.projectiles.push(new Projectile(spawnX, spawnY, vx, vy, this.shellRadius, 2.8, this.damage, this.penetration, bulletFill, bulletStroke));
 
     } else {
       this.barrelRecoilOffsets[0] = (this.chassisKey === 'sniper') ? 16 : 10;
@@ -301,7 +304,7 @@ export class WeaponSystem {
       const vx = Math.cos(angle) * this.shellSpeed;
       const vy = Math.sin(angle) * this.shellSpeed;
 
-      this.projectiles.push(new Projectile(spawnX, spawnY, vx, vy, this.shellRadius, lifetime, this.damage, this.penetration, this.shellColor, this.shellStroke));
+      this.projectiles.push(new Projectile(spawnX, spawnY, vx, vy, this.shellRadius, lifetime, this.damage, this.penetration, bulletFill, bulletStroke));
     }
 
     return {

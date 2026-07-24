@@ -18,7 +18,7 @@ const state = {
 
   level: 1,
   xp: 0,
-  xpToNext: 50,
+  xpToNext: CONFIG.PLAYER.baseXpToNext,
   statPoints: 0,
   stats: {
     maxHp: 0,
@@ -53,7 +53,7 @@ const input = {
   }
 };
 
-// Player Entity with Inertia Physics
+// Player Entity
 const player = {
   x: 0,
   y: 0,
@@ -62,13 +62,16 @@ const player = {
   hp: CONFIG.PLAYER.maxHp,
   maxHp: CONFIG.PLAYER.maxHp,
   iFrameTimer: 0,
+  dashTimer: 0,
   timeSinceLastDamage: 999,
   radius: CONFIG.PLAYER.radius,
-  speed: CONFIG.PLAYER.speed,
+  accel: CONFIG.PLAYER.acceleration, // Dynamically scaled acceleration
   angle: 0,
+  fillColor: '#00e5ff',
+  strokeColor: '#00a8bc',
 
   takeDamage(amount, chassisKey) {
-    if (this.iFrameTimer > 0 || state.isGameOver || state.inMenu || state.godMode) return;
+    if (this.dashTimer > 0 || this.iFrameTimer > 0 || state.isGameOver || state.inMenu || state.godMode) return;
 
     const chassisConfig = CONFIG.CHASSIS[chassisKey];
     const resistance = chassisConfig && chassisConfig.damageResistance !== undefined 
@@ -86,7 +89,7 @@ const player = {
   }
 };
 
-// Core Systems
+// Engines Setup
 const storageMgr = new StorageManager();
 const canvasMgr = new CanvasManager('gameCanvas');
 const weaponSys = new WeaponSystem(state.activeChassis);
@@ -110,6 +113,7 @@ function initGame() {
 
 function startRun() {
   state.inMenu = false;
+  console.log('[RUN] Deploying vehicle to arena');
   restartRun();
 }
 
@@ -117,7 +121,7 @@ function restartRun() {
   state.isGameOver = false;
   state.level = 1;
   state.xp = 0;
-  state.xpToNext = 50;
+  state.xpToNext = CONFIG.PLAYER.baseXpToNext;
   state.statPoints = 0;
 
   Object.keys(state.stats).forEach(k => state.stats[k] = 0);
@@ -128,6 +132,7 @@ function restartRun() {
   player.vy = 0;
   player.hp = CONFIG.PLAYER.maxHp;
   player.maxHp = CONFIG.PLAYER.maxHp;
+  player.dashTimer = 0;
 
   setActiveChassis('basic');
 
@@ -142,13 +147,13 @@ function restartRun() {
 
 function triggerGameOver() {
   state.isGameOver = true;
-
-  // Complete Entity Destruction on Death
   waveMgr.clearAll();
 
   const commanderLvl = storageMgr.data.crewLevels.commander || 0;
-  const coinMultiplier = 1.0 + (commanderLvl * 0.10);
-  const coinsEarned = Math.floor((waveMgr.score / 10) * coinMultiplier);
+  const coinMultiplier = 1.0 + (commanderLvl * CONFIG.CREW.commanderBonus);
+  const coinsEarned = Math.floor((waveMgr.score * CONFIG.META.scoreToCoinRatio) * coinMultiplier);
+
+  console.warn(`[GAME OVER] Vehicle destroyed on Wave ${waveMgr.waveNumber} (Score: ${waveMgr.score}, Coins: +${coinsEarned})`);
 
   storageMgr.addCoins(coinsEarned);
   storageMgr.recordRun(waveMgr.score, waveMgr.waveNumber);
@@ -158,18 +163,19 @@ function triggerGameOver() {
 
 function addXP(amount) {
   const commanderLvl = storageMgr.data.crewLevels.commander || 0;
-  const xpBonus = 1.0 + (commanderLvl * 0.10);
+  const xpBonus = 1.0 + (commanderLvl * CONFIG.CREW.commanderBonus);
 
   state.xp += Math.round(amount * xpBonus);
 
   let leveledUp = false;
 
-  while (state.xp >= state.xpToNext && state.level < 150) {
+  while (state.xp >= state.xpToNext && state.level < CONFIG.PLAYER.maxLevel) {
     state.xp -= state.xpToNext;
     state.level++;
     state.statPoints++;
-    state.xpToNext = Math.floor(50 * Math.pow(1.18, state.level - 1));
+    state.xpToNext = Math.floor(CONFIG.PLAYER.baseXpToNext * Math.pow(CONFIG.PLAYER.xpGrowthExponent, state.level - 1));
     leveledUp = true;
+    console.log(`[LEVEL UP] Reached LVL ${state.level}! (+1 Stat Point)`);
   }
 
   uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
@@ -181,9 +187,11 @@ function addXP(amount) {
 }
 
 function handleStatUpgrade(statKey) {
-  if (state.statPoints > 0 && state.stats[statKey] < 7) {
+  if (state.statPoints > 0 && state.stats[statKey] < CONFIG.PLAYER.maxStatLevel) {
     state.statPoints--;
     state.stats[statKey]++;
+
+    console.log(`[UPGRADE] Stat '${statKey}' upgraded to Level ${state.stats[statKey]}`);
 
     applyCrewAndStatModifiers();
     uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
@@ -191,35 +199,54 @@ function handleStatUpgrade(statKey) {
   }
 }
 
+// Calculate & Apply All Modifiers (Stats + Crew Barracks + Chassis Bonuses)
 function applyCrewAndStatModifiers() {
   const crew = storageMgr.data.crewLevels;
+  const inc = CONFIG.PLAYER.statIncrements;
 
-  const bonusHp = state.stats.maxHp * 20;
+  // Active Color Selection
+  const activeColorKey = storageMgr.data.activeColor || 'default';
+  const chassis = CONFIG.CHASSIS[state.activeChassis];
+
+  if (activeColorKey === 'custom' && storageMgr.data.unlockedColorWheel) {
+    player.fillColor = storageMgr.data.customColor || '#00e5ff';
+    player.strokeColor = '#101018';
+  } else if (CONFIG.COLOR_THEMES[activeColorKey]) {
+    player.fillColor = CONFIG.COLOR_THEMES[activeColorKey].color;
+    player.strokeColor = CONFIG.COLOR_THEMES[activeColorKey].stroke;
+  } else {
+    player.fillColor = chassis.diepColor;
+    player.strokeColor = chassis.diepStroke;
+  }
+
+  // 1. Health Upgrade
+  const bonusHp = state.stats.maxHp * inc.maxHp;
   player.maxHp = CONFIG.PLAYER.maxHp + bonusHp;
   if (!state.godMode) player.hp = Math.min(player.hp, player.maxHp);
 
-  const driverMult = 1.0 + (crew.driver * 0.05) + (state.stats.moveSpeed * 0.08);
-  const chassisConfig = CONFIG.CHASSIS[state.activeChassis];
-  player.speed = CONFIG.PLAYER.speed * driverMult * (chassisConfig.speedMultiplier || 1.0);
+  // 2. Movement Speed Stat + Driver Crew Upgrade -> Scales Player WASD Acceleration directly!
+  const driverMult = 1.0 + (crew.driver * CONFIG.CREW.driverBonus) + (state.stats.moveSpeed * inc.moveSpeedMult);
+  player.accel = CONFIG.PLAYER.acceleration * driverMult * (chassis.speedMultiplier || 1.0);
 
-  const loaderMult = 1.0 - (crew.loader * 0.05) - (state.stats.reloadSpeed * 0.08);
-  const gunnerSpeedMult = 1.0 + (crew.gunner * 0.05) + (state.stats.shellSpeed * 0.10);
-  const gunnerDmgMult = 1.0 + (crew.gunner * 0.05) + (state.stats.shellDamage * 0.15);
-  const gunnerPenMult = 1.0 + (crew.gunner * 0.05) + (state.stats.shellPenetration * 0.20);
+  // 3. Gunner & Loader Weapon Modifiers
+  const loaderMult = 1.0 - (crew.loader * CONFIG.CREW.loaderBonus) - (state.stats.reloadSpeed * inc.reloadMult);
+  const gunnerSpeedMult = 1.0 + (crew.gunner * CONFIG.CREW.gunnerBonus) + (state.stats.shellSpeed * inc.shellSpeedMult);
+  const gunnerDmgMult = 1.0 + (crew.gunner * CONFIG.CREW.gunnerBonus) + (state.stats.shellDamage * inc.shellDmgMult);
+  const gunnerPenMult = 1.0 + (crew.gunner * CONFIG.CREW.gunnerBonus) + (state.stats.shellPenetration * inc.shellPenMult);
 
-  weaponSys.shellSpeed = (chassisConfig.weapon.shellSpeed || 350) * gunnerSpeedMult;
-  weaponSys.damage = (chassisConfig.weapon.damage || 16) * gunnerDmgMult;
-  weaponSys.penetration = (chassisConfig.weapon.penetration || 20) * gunnerPenMult;
+  weaponSys.shellSpeed = (chassis.weapon.shellSpeed || 350) * gunnerSpeedMult;
+  weaponSys.damage = (chassis.weapon.damage || 16) * gunnerDmgMult;
+  weaponSys.penetration = (chassis.weapon.penetration || 20) * gunnerPenMult;
 
   if (weaponSys.type === WEAPON_TYPE.READY_RACK) {
-    weaponSys.reloadTimePerShell = Math.max(0.3, (chassisConfig.weapon.reloadTimePerShell || 1.4) * loaderMult);
+    weaponSys.reloadTimePerShell = Math.max(0.3, (chassis.weapon.reloadTimePerShell || 1.4) * loaderMult);
   } else if (weaponSys.type === WEAPON_TYPE.THERMAL) {
-    weaponSys.coolRate = (chassisConfig.weapon.coolRate || 28) / Math.max(0.4, loaderMult);
+    weaponSys.coolRate = (chassis.weapon.coolRate || 28) / Math.max(0.4, loaderMult);
   } else if (weaponSys.type === WEAPON_TYPE.ENERGY) {
-    weaponSys.rechargeRate = (chassisConfig.weapon.rechargeRate || 26) / Math.max(0.4, loaderMult);
+    weaponSys.rechargeRate = (chassis.weapon.rechargeRate || 26) / Math.max(0.4, loaderMult);
   }
 
-  camera.targetZoom = chassisConfig.cameraZoom || CONFIG.CAMERA.defaultZoom;
+  camera.targetZoom = chassis.cameraZoom || CONFIG.CAMERA.defaultZoom;
 }
 
 function setupInputs() {
@@ -228,7 +255,6 @@ function setupInputs() {
   window.addEventListener('keydown', (e) => {
     input.keys[e.key.toLowerCase()] = true;
 
-    // Seamless Admin Panel Toggle with Backtick (`) or F2
     if (e.key === '`' || e.key === 'F2') {
       uiMgr.toggleAdminPanel();
     }
@@ -268,10 +294,11 @@ function setActiveChassis(chassisKey) {
   weaponSys.loadChassisConfig(chassisKey);
   applyCrewAndStatModifiers();
 
+  console.log(`[EVOLVE] Vehicle transformed into ${CONFIG.CHASSIS[chassisKey].name.toUpperCase()}`);
+
   uiMgr.renderDiepUpgradeUI(state.level, state.activeChassis, setActiveChassis);
 }
 
-// Admin Console Controls
 function setupAdminPanelListeners() {
   document.getElementById('adm-chassis-select').addEventListener('change', (e) => {
     setActiveChassis(e.target.value);
@@ -331,7 +358,6 @@ function setupAdminPanelListeners() {
   });
 }
 
-// Player Physics Engine with Smooth WASD Acceleration & Deceleration Damping
 function updatePlayer(dt) {
   if (state.isGameOver || state.inMenu) return;
 
@@ -339,9 +365,12 @@ function updatePlayer(dt) {
     player.iFrameTimer -= dt;
   }
 
-  // Passive Regeneration
+  if (player.dashTimer > 0) {
+    player.dashTimer -= dt;
+  }
+
   player.timeSinceLastDamage += dt;
-  const regenBonus = state.stats.regenRate * 2.5;
+  const regenBonus = state.stats.regenRate * CONFIG.PLAYER.statIncrements.regenRate;
   if (player.timeSinceLastDamage >= CONFIG.PLAYER.regenDelay && player.hp < player.maxHp) {
     player.hp = Math.min(player.maxHp, player.hp + (CONFIG.PLAYER.regenRate + regenBonus) * dt);
   }
@@ -365,24 +394,21 @@ function updatePlayer(dt) {
     dirY *= 0.7071;
   }
 
-  // Velocity Acceleration Integration
-  const accel = CONFIG.PLAYER.acceleration;
+  // Use dynamically calculated player.accel (incorporates stat upgrades & crew)
+  const accel = player.accel || CONFIG.PLAYER.acceleration;
   player.vx += dirX * accel * dt;
   player.vy += dirY * accel * dt;
 
-  // Recoil Impulse
   const recoilImpulse = weaponSys.update(dt, player, input.mouse.isDown);
   player.vx += recoilImpulse.x;
   player.vy += recoilImpulse.y;
 
-  // Integrate Velocity Position & Smooth Drag Deceleration
   player.x += player.vx * dt;
   player.y += player.vy * dt;
 
   player.vx -= player.vx * CONFIG.PLAYER.drag * dt;
   player.vy -= player.vy * CONFIG.PLAYER.drag * dt;
 
-  // Ultra-Smooth Camera Following & Sniper Cursor Look-Ahead Lean
   let camTargetX = player.x;
   let camTargetY = player.y;
 
@@ -394,7 +420,7 @@ function updatePlayer(dt) {
   camera.x += (camTargetX - camera.x) * CONFIG.CAMERA.smoothness;
   camera.y += (camTargetY - camera.y) * CONFIG.CAMERA.smoothness;
 
-  camera.zoom += (camera.targetZoom - camera.zoom) * 0.05;
+  camera.zoom += (camera.targetZoom - camera.zoom) * CONFIG.CAMERA.zoomLerpSpeed;
 
   input.mouse.worldX = (input.mouse.screenX - canvasMgr.width / 2) / camera.zoom + camera.x;
   input.mouse.worldY = (input.mouse.screenY - canvasMgr.height / 2) / camera.zoom + camera.y;
@@ -411,18 +437,6 @@ function renderPlayerChassis() {
 
   if (player.iFrameTimer > 0 && Math.floor(performance.now() / 50) % 2 === 0) {
     return;
-  }
-
-  const activeColorKey = storageMgr.data.activeColor || 'default';
-  let fillClr = chassis.diepColor;
-  let strokeClr = chassis.diepStroke;
-
-  if (activeColorKey === 'custom' && storageMgr.data.unlockedColorWheel) {
-    fillClr = storageMgr.data.customColor || '#00e5ff';
-    strokeClr = '#101018';
-  } else if (CONFIG.COLOR_THEMES[activeColorKey]) {
-    fillClr = CONFIG.COLOR_THEMES[activeColorKey].color;
-    strokeClr = CONFIG.COLOR_THEMES[activeColorKey].stroke;
   }
 
   if (chassis.outerArmor) {
@@ -448,10 +462,14 @@ function renderPlayerChassis() {
     x, y, radius,
     chassis.sides,
     angle,
-    fillClr,
-    strokeClr,
+    player.fillColor,
+    player.strokeColor,
     CONFIG.PLAYER.strokeWidth
   );
+
+  if (player.dashTimer > 0) {
+    canvasMgr.drawDebugCircle(x, y, radius * 1.6, '#00ffff');
+  }
 
   if (state.debugMode) {
     canvasMgr.drawDebugCircle(x, y, radius, '#ff0055');
@@ -469,6 +487,7 @@ function updateHUD() {
   const hpText = document.getElementById('player-hp-text');
   const hpRatio = (player.hp / player.maxHp) * 100;
   hpFill.style.width = `${hpRatio}%`;
+  hpFill.style.background = player.fillColor;
   hpText.textContent = state.godMode ? '99999 / 99999 HP (GOD MODE)' : `${Math.round(player.hp)} / ${Math.round(player.maxHp)} HP`;
 
   const waveStatus = document.getElementById('wave-status');
@@ -500,7 +519,8 @@ function updateHUD() {
     const energy = Math.round(weaponSys.energy);
     barFill.style.width = `${energy}%`;
     barFill.className = 'gauge-bar-fill energy';
-    barText.textContent = `${energy} / 100 TURBO`;
+    barFill.style.background = player.fillColor;
+    barText.textContent = player.dashTimer > 0 ? 'INVULNERABLE DASH!' : `${energy} / 100 TURBO`;
   } else if (weaponSys.type === WEAPON_TYPE.READY_RACK) {
     titleElem.textContent = (weaponSys.chassisKey === 'sniper') ? 'BREECH LOADER' : 'READY-RACK SYSTEM';
     rackContainer.classList.remove('hidden');
@@ -511,11 +531,11 @@ function updateHUD() {
     for (let i = 0; i < weaponSys.maxRack; i++) {
       const pip = document.createElement('div');
       pip.className = 'shell-pip';
-      pip.style.borderColor = weaponSys.shellColor;
+      pip.style.borderColor = player.fillColor;
 
       if (i < weaponSys.currentRack) {
         pip.classList.add('loaded');
-        pip.style.background = weaponSys.shellColor;
+        pip.style.background = player.fillColor;
       } else if (i === weaponSys.currentRack && weaponSys.reloadTimer > 0) {
         pip.classList.add('reloading');
       }
@@ -530,13 +550,14 @@ function updateHUD() {
     barFill.style.width = `${heat}%`;
     barText.textContent = `${heat}% HEAT`;
 
-    barFill.className = 'gauge-bar-fill';
-    if (heat > 80) barFill.classList.add('heat-critical');
-    else if (heat > 50) barFill.classList.add('heat-high');
-
-    if (weaponSys.isOverheated) {
+    if (weaponSys.isOverheated || heat > 80) {
+      barFill.style.background = '#ff3344';
       overheatBanner.classList.remove('hidden');
+    } else if (heat > 50) {
+      barFill.style.background = '#ff9900';
+      overheatBanner.classList.add('hidden');
     } else {
+      barFill.style.background = player.fillColor;
       overheatBanner.classList.add('hidden');
     }
   } else if (weaponSys.type === WEAPON_TYPE.ENERGY) {
@@ -548,6 +569,7 @@ function updateHUD() {
     const energy = Math.round(weaponSys.energy);
     barFill.style.width = `${energy}%`;
     barFill.className = 'gauge-bar-fill energy';
+    barFill.style.background = player.fillColor;
     barText.textContent = `${energy} / 100 PWR`;
   }
 }
@@ -560,7 +582,8 @@ function gameLoop(timestamp) {
   if (!state.isGameOver && !state.inMenu) {
     const prevScore = waveMgr.score;
     updatePlayer(dt);
-    waveMgr.update(dt, player, weaponSys, state.activeChassis);
+    
+    waveMgr.update(dt, player, weaponSys, state.activeChassis, state.stats.moveSpeed);
 
     if (waveMgr.score > prevScore) {
       addXP(waveMgr.score - prevScore);
@@ -581,5 +604,5 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
-// Start
+// Start Engine
 initGame();
