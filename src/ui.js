@@ -1,5 +1,5 @@
 /**
- * UI Engine: CSS-Variable Alignment, Log Terminal, Settings & Admin Modal
+ * UI Engine: CSS-Variable Alignment, Log Terminal, Edge Hover Triggers & Evolution Previews
  */
 import { CONFIG } from './config.js';
 
@@ -15,7 +15,18 @@ export class UIManager {
     this.evolutionPanelVisible = true;
     this.openedShopFromGameOver = false;
 
+    this.previewSpinAngle = 0;
+    this.previewCanvases = [];
+    this.playerFillColor = '#00b2e1';
+    this.playerStrokeColor = '#0083a8';
+
+    this.hasEvolutionsAvailable = false;
+    this.statPointsAvailable = 0;
+    this.mouseInEvolutionZone = false;
+    this.mouseInStatZone = false;
+
     this.initElements();
+    this.setupEdgeHoverTriggers();
     this.setupDebugLogTerminal();
     this.applySettings();
   }
@@ -41,7 +52,29 @@ export class UIManager {
     this.settingsModal = document.getElementById('settings-modal');
     this.adminModal = document.getElementById('admin-panel-modal');
 
+    this.playerNameInput = document.getElementById('player-name-input');
+
     this.bindEvents();
+  }
+
+  setupEdgeHoverTriggers() {
+    window.addEventListener('mousemove', (e) => {
+      const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale')) || 1.0;
+      const x = e.clientX;
+      const y = e.clientY;
+
+      // Top-left trigger area for tank evolution panel
+      const evoThresholdX = 240 * scale;
+      const evoThresholdY = 260 * scale;
+      this.mouseInEvolutionZone = (x <= evoThresholdX && y <= evoThresholdY);
+
+      // Bottom-left trigger area for stat upgrade panel
+      const statThresholdX = 280 * scale;
+      const statThresholdY = window.innerHeight - (280 * scale);
+      this.mouseInStatZone = (x <= statThresholdX && y >= statThresholdY);
+
+      this.updatePanelVisibilities();
+    });
   }
 
   setupDebugLogTerminal() {
@@ -65,8 +98,8 @@ export class UIManager {
     };
 
     console.log = (...args) => { origLog(...args); appendLog(args.join(' ')); };
-    console.warn = (...args) => { origWarn(...args); appendLog(args.join(' '), '#ffea00'); };
-    console.error = (...args) => { origErr(...args); appendLog(args.join(' '), '#ff3344'); };
+    console.warn = (...args) => { origWarn(...args); appendLog(args.join(' '), '#c2942c'); };
+    console.error = (...args) => { origErr(...args); appendLog(args.join(' '), '#b83b43'); };
 
     console.log('[SYSTEM] Engine initialized cleanly');
   }
@@ -124,6 +157,12 @@ export class UIManager {
       this.hideSettings();
     });
 
+    if (this.playerNameInput) {
+      this.playerNameInput.addEventListener('input', (e) => {
+        this.storage.setPlayerName(e.target.value);
+      });
+    }
+
     document.getElementById('theme-select').addEventListener('change', (e) => {
       this.storage.saveSettings(e.target.value, parseFloat(document.getElementById('ui-scale-select').value));
       this.applySettings();
@@ -137,6 +176,10 @@ export class UIManager {
     document.getElementById('close-admin-btn').addEventListener('click', () => {
       this.hideAdminPanel();
     });
+
+    document.getElementById('diep-ignore-btn').addEventListener('click', () => {
+      this.toggleEvolutionPanel();
+    });
   }
 
   applySettings() {
@@ -146,6 +189,10 @@ export class UIManager {
 
     this.canvasMgr.setTheme(theme);
     document.documentElement.style.setProperty('--ui-scale', scale);
+
+    if (this.playerNameInput) {
+      this.playerNameInput.value = this.storage.data.playerName || 'Player';
+    }
 
     if (theme === 'light') {
       document.body.classList.add('theme-light');
@@ -159,10 +206,32 @@ export class UIManager {
 
   toggleEvolutionPanel() {
     this.evolutionPanelVisible = !this.evolutionPanelVisible;
-    if (this.evolutionPanelVisible) {
+    this.updatePanelVisibilities();
+  }
+
+  updatePanelVisibilities() {
+    if (this.hasEvolutionsAvailable && (this.mouseInEvolutionZone || this.evolutionPanelVisible)) {
       this.diepPanel.classList.remove('hidden');
     } else {
       this.diepPanel.classList.add('hidden');
+    }
+
+    const shouldShowStatPanel = (this.statPointsAvailable > 0) || this.mouseInStatZone;
+
+    if (shouldShowStatPanel) {
+      this.statPanel.classList.remove('hidden');
+    } else {
+      this.statPanel.classList.add('hidden');
+    }
+
+    if (this.statPointsAvailable > 0) {
+      this.statPointBadge.classList.remove('hidden');
+      const pts = this.statPointsAvailable;
+      this.statPointBadge.textContent = pts === 1 
+        ? '+1 STAT POINT AVAILABLE' 
+        : `+${pts} STAT POINTS AVAILABLE FOR UPGRADE`;
+    } else {
+      this.statPointBadge.classList.add('hidden');
     }
   }
 
@@ -208,9 +277,20 @@ export class UIManager {
     }, 2800);
   }
 
+  updatePreviewSpin(dt, playerFillColor, playerStrokeColor) {
+    if (playerFillColor) this.playerFillColor = playerFillColor;
+    if (playerStrokeColor) this.playerStrokeColor = playerStrokeColor;
+
+    this.previewSpinAngle += dt * 0.9;
+    if (!this.diepPanel.classList.contains('hidden')) {
+      this.renderPreviewCanvases();
+    }
+  }
+
   renderDiepUpgradeUI(playerLevel, activeChassis, onEvolve) {
     const grid = document.getElementById('upgrade-grid');
     grid.innerHTML = '';
+    this.previewCanvases = [];
 
     let visibleCardsCount = 0;
 
@@ -229,12 +309,13 @@ export class UIManager {
       const card = document.createElement('div');
       card.className = `diep-card ${key === activeChassis ? 'active' : ''}`;
       
+      card.style.backgroundColor = chassis.uiBgColor || '#72e1e1';
+
       if (!isShopUnlocked) {
         card.classList.add('locked-shop');
       }
 
       card.setAttribute('data-chassis', key);
-      card.style.borderColor = isShopUnlocked ? chassis.diepColor : '#ff3d00';
 
       let lockBadge = '';
       if (!isShopUnlocked) {
@@ -243,8 +324,14 @@ export class UIManager {
 
       card.innerHTML = `
         ${lockBadge}
-        <div class="diep-card-name" style="color: ${isShopUnlocked ? '#fff' : '#bb8888'}">${chassis.name}</div>
+        <canvas class="diep-card-canvas" width="110" height="110"></canvas>
+        <div class="diep-card-name">${chassis.name}</div>
       `;
+
+      const canvas = card.querySelector('canvas');
+      if (canvas) {
+        this.previewCanvases.push({ canvas, ctx: canvas.getContext('2d'), chassisKey: key });
+      }
 
       card.addEventListener('click', () => {
         if (!isShopUnlocked) {
@@ -257,11 +344,103 @@ export class UIManager {
       grid.appendChild(card);
     });
 
-    if (visibleCardsCount > 0 && this.evolutionPanelVisible) {
-      this.diepPanel.classList.remove('hidden');
-    } else {
-      this.diepPanel.classList.add('hidden');
+    this.hasEvolutionsAvailable = (visibleCardsCount > 0);
+    this.updatePanelVisibilities();
+    this.renderPreviewCanvases();
+  }
+
+  renderPreviewCanvases() {
+    if (!this.previewCanvases || this.previewCanvases.length === 0) return;
+
+    this.previewCanvases.forEach(item => {
+      this.drawTankPreview(item.ctx, item.chassisKey, this.previewSpinAngle);
+    });
+  }
+
+  drawTankPreview(ctx, chassisKey, spinAngle) {
+    const chassis = CONFIG.CHASSIS[chassisKey];
+    if (!chassis) return;
+
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.save();
+    ctx.translate(width / 2, height / 2);
+    ctx.scale(0.75, 0.75);
+    ctx.rotate(spinAngle);
+
+    if (chassis.outerArmor) {
+      const outerRadius = 18 * chassis.outerArmor.radiusMultiplier;
+      this.drawPreviewPolygon(ctx, 0, 0, outerRadius, chassis.outerArmor.sides, spinAngle * 0.5, chassis.outerArmor.color, chassis.outerArmor.stroke, 3);
     }
+
+    if (chassis.turrets) {
+      chassis.turrets.forEach(turret => {
+        ctx.save();
+        ctx.rotate(turret.angleOffset || 0);
+
+        const bx = turret.xOffset || 0;
+        const backWidth = turret.width;
+        const frontWidth = turret.frontWidth || turret.width;
+        const halfBack = backWidth / 2;
+        const halfFront = frontWidth / 2;
+
+        ctx.fillStyle = '#9999a5';
+        ctx.strokeStyle = '#555560';
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        ctx.moveTo(bx, (turret.yOffset || 0) - halfBack);
+        ctx.lineTo(bx + turret.length, (turret.yOffset || 0) - halfFront);
+        ctx.lineTo(bx + turret.length, (turret.yOffset || 0) + halfFront);
+        ctx.lineTo(bx, (turret.yOffset || 0) + halfBack);
+        ctx.closePath();
+
+        ctx.fill();
+        ctx.lineJoin = 'miter';
+        ctx.stroke();
+        ctx.restore();
+      });
+    }
+
+    const radius = 18 * (chassis.radiusMultiplier || 1.0);
+    const sides = chassis.sides || 0;
+    const bodyColor = this.playerFillColor || '#00b2e1';
+    const strokeColor = this.playerStrokeColor || '#0083a8';
+
+    this.drawPreviewPolygon(ctx, 0, 0, radius, sides, 0, bodyColor, strokeColor, 3.5);
+
+    ctx.restore();
+  }
+
+  drawPreviewPolygon(ctx, x, y, radius, sides, angle, fillColor, strokeColor, strokeWidth = 3) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.beginPath();
+
+    if (sides === 0) {
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    } else {
+      for (let i = 0; i < sides; i++) {
+        const a = (i * 2 * Math.PI) / sides;
+        const px = radius * Math.cos(a);
+        const py = radius * Math.sin(a);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    }
+
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+    ctx.lineWidth = strokeWidth;
+    ctx.strokeStyle = strokeColor;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    ctx.restore();
   }
 
   updateXPBar(level, xp, xpToNext, statPoints) {
@@ -269,44 +448,57 @@ export class UIManager {
     const pct = Math.min(100, (xp / xpToNext) * 100);
     this.xpFill.style.width = `${pct}%`;
 
-    if (statPoints > 0) {
-      this.statPointBadge.classList.remove('hidden');
-      this.statPointBadge.textContent = `+${statPoints} STAT POINTS AVAILABLE`;
-      this.statPanel.classList.remove('hidden');
-    } else {
-      this.statPointBadge.classList.add('hidden');
-    }
+    this.statPointsAvailable = statPoints;
+    this.updatePanelVisibilities();
   }
 
-  renderStatUpgrades(stats, statPoints, onUpgrade) {
+  // Renders the stat upgrade panel. When Smasher is active, ONLY the 4 Smasher stats are rendered (matching Image #1)
+  renderStatUpgrades(stats, statPoints, onUpgrade, activeChassis = 'basic') {
     this.statList.innerHTML = '';
 
-    const statLabels = [
-      { key: 'maxHp', name: '[1] Max Health', color: '#ff6961' },
-      { key: 'regenRate', name: '[2] Health Regen', color: '#85e364' },
-      { key: 'bodyDamage', name: '[3] Body Damage', color: '#a040d0' },
-      { key: 'shellSpeed', name: '[4] Bullet Speed', color: '#00e5ff' },
-      { key: 'shellPenetration', name: '[5] Bullet Penetration', color: '#ffea00' },
-      { key: 'shellDamage', name: '[6] Bullet Damage', color: '#ff9100' },
-      { key: 'reloadSpeed', name: '[7] Reload Speed', color: '#e040fb' },
-      { key: 'moveSpeed', name: '[8] Movement Speed', color: '#00e676' }
+    const isSmasher = (activeChassis === 'smasher');
+
+    let statLabels = [
+      { key: 'regenRate', name: '[1] Health Regen', color: '#eca767' },
+      { key: 'maxHp', name: '[2] Max Health', color: '#ff63be' },
+      { key: 'bodyDamage', name: '[3] Body Damage', color: '#a433d8' },
+      { key: 'shellSpeed', name: '[4] Bullet Speed', color: '#527bd4' },
+      { key: 'shellPenetration', name: '[5] Bullet Penetration', color: '#ffdf2d' },
+      { key: 'shellDamage', name: '[6] Bullet Damage', color: '#eb392c' },
+      { key: 'reloadSpeed', name: '[7] Reload Speed', color: '#6eec55' },
+      { key: 'moveSpeed', name: '[8] Movement Speed', color: '#2ff5eb' }
     ];
+
+    // Filter out bullet stats completely for Smasher (Matching Image #1)
+    if (isSmasher) {
+      statLabels = [
+        { key: 'regenRate', name: '[1] Health Regen', color: '#eca767' },
+        { key: 'maxHp', name: '[2] Max Health', color: '#ff63be' },
+        { key: 'bodyDamage', name: '[3] Body Damage', color: '#a433d8' },
+        { key: 'moveSpeed', name: '[8] Movement Speed', color: '#2ff5eb' }
+      ];
+    }
 
     statLabels.forEach(s => {
       const level = stats[s.key] || 0;
+      const maxCap = isSmasher ? 10 : 7;
+
       const row = document.createElement('div');
       row.className = 'stat-row';
+
+      const fillWidthPct = Math.min(100, (level / maxCap) * 100);
+      const canUpgrade = statPoints > 0 && level < maxCap;
 
       row.innerHTML = `
         <span class="stat-name">${s.name}</span>
         <div class="stat-bar-track">
-          <div class="stat-bar-fill" style="width: ${(level / 7) * 100}%; background: ${s.color}"></div>
+          <div class="stat-bar-fill" style="width: ${fillWidthPct}%; background: ${s.color}"></div>
         </div>
-        <button class="stat-add-btn ${statPoints > 0 && level < 7 ? '' : 'disabled'}">+</button>
+        <button class="stat-add-btn ${canUpgrade ? '' : 'disabled'}">+</button>
       `;
 
       row.querySelector('.stat-add-btn').addEventListener('click', () => {
-        if (statPoints > 0 && level < 7) {
+        if (canUpgrade) {
           onUpgrade(s.key);
         }
       });
@@ -358,10 +550,10 @@ export class UIManager {
 
         const card = document.createElement('div');
         card.className = 'shop-card';
-        card.style.borderColor = chassis.diepColor;
+        card.style.borderColor = '#359bb5';
 
         card.innerHTML = `
-          <div class="shop-title" style="color: ${chassis.diepColor}">${chassis.name.toUpperCase()}</div>
+          <div class="shop-title" style="color: #359bb5">${chassis.name.toUpperCase()}</div>
           <div class="shop-desc">Requires LVL ${chassis.reqLevel} in-run to evolve.</div>
           ${isUnlocked 
             ? `<div class="shop-status unlocked">UNLOCKED</div>`
@@ -387,10 +579,10 @@ export class UIManager {
       tabCrewBtn.classList.add('active');
 
       const crewData = [
-        { key: 'loader', name: 'Loader', desc: '-5% Weapon Reload & Cooling Time per Lvl', color: '#ffff00' },
-        { key: 'gunner', name: 'Gunner', desc: '+5% Velocity, Damage & Penetration per Lvl', color: '#ff9100' },
-        { key: 'driver', name: 'Driver', desc: '+5% Top Movement Speed per Lvl', color: '#00e676' },
-        { key: 'commander', name: 'Commander', desc: '+10% Bonus XP & Coin Earnings per Lvl', color: '#00e5ff' }
+        { key: 'loader', name: 'Loader', desc: '-5% Weapon Reload & Cooling Time per Lvl', color: '#c2a02c' },
+        { key: 'gunner', name: 'Gunner', desc: '+5% Velocity, Damage & Penetration per Lvl', color: '#c4702b' },
+        { key: 'driver', name: 'Driver', desc: '+5% Top Movement Speed per Lvl', color: '#389e67' },
+        { key: 'commander', name: 'Commander', desc: '+10% Bonus XP & Coin Earnings per Lvl', color: '#308ba6' }
       ];
 
       crewData.forEach(c => {
@@ -427,16 +619,16 @@ export class UIManager {
 
       const wheelCard = document.createElement('div');
       wheelCard.className = 'shop-card custom-wheel-card';
-      wheelCard.style.borderColor = '#00e5ff';
+      wheelCard.style.borderColor = '#359bb5';
 
       wheelCard.innerHTML = `
         <div style="flex:1;">
-          <div class="shop-title" style="color: #00e5ff;">CUSTOM RGB COLOR WHEEL</div>
+          <div class="shop-title" style="color: #359bb5;">CUSTOM RGB COLOR WHEEL</div>
           <div class="shop-desc">Pick any custom hex color for your tank!</div>
         </div>
         ${isWheelUnlocked
           ? `<div style="display:flex; align-items:center; gap:8px;">
-               <input type="color" id="rgb-color-picker" value="${this.storage.data.customColor || '#00e5ff'}">
+               <input type="color" id="rgb-color-picker" value="${this.storage.data.customColor || '#00b2e1'}">
                <button class="shop-buy-btn ${isWheelActive ? 'active-equip' : ''}" id="equip-wheel-btn">
                  ${isWheelActive ? 'EQUIPPED' : 'EQUIP'}
                </button>

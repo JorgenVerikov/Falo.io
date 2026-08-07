@@ -43,12 +43,6 @@ export class Projectile {
     }
   }
 
-  getEffectiveDamage() {
-    if (this.maxPenetration <= 0) return this.damage;
-    const ratio = Math.max(0.1, this.penetration / this.maxPenetration);
-    return this.damage * ratio;
-  }
-
   applyCenterRepulsion(objX, objY, dt, repelStrength = CONFIG.WEAPONS.repelStrength) {
     const dx = this.x - objX;
     const dy = this.y - objY;
@@ -98,36 +92,39 @@ export class WeaponSystem {
     this.type = wConfig.type;
     this.barrelRecoilOffsets = config.turrets.map(() => 0);
 
+    this.baseReloadTicks = wConfig.baseReloadTicks || 40;
+    this.fireRateTicks = wConfig.fireRateTicks || 500;
+
     if (this.type === WEAPON_TYPE.READY_RACK) {
       this.maxRack = wConfig.maxRack;
       this.currentRack = wConfig.maxRack;
-      this.cycleDelay = wConfig.cycleDelay;
-      this.reloadTimePerShell = wConfig.reloadTimePerShell;
+      this.cycleDelay = (this.fireRateTicks / 60);
+      this.reloadTimePerShell = (this.baseReloadTicks / 60) * 2.5;
       this.cycleTimer = 0;
       this.reloadTimer = 0;
     } else if (this.type === WEAPON_TYPE.THERMAL) {
       this.heat = 0;
       this.heatPerShot = wConfig.heatPerShot;
       this.coolRate = wConfig.coolRate;
-      this.fireRate = wConfig.fireRate;
+      this.fireRate = (this.fireRateTicks / 60);
       this.cooldownTimer = 0;
       this.isOverheated = false;
       this.overheatLockoutTime = wConfig.overheatLockoutTime;
       this.overheatLockoutTimer = 0;
-      this.spread = wConfig.spread || 0;
       this.activeBarrelIndex = 0;
     } else if (this.type === WEAPON_TYPE.ENERGY) {
       this.maxEnergy = wConfig.maxEnergy;
       this.energy = wConfig.maxEnergy;
       this.costPerShot = wConfig.costPerShot;
       this.rechargeRate = wConfig.rechargeRate;
-      this.fireRate = wConfig.fireRate;
+      this.fireRate = (this.fireRateTicks / 60);
       this.cooldownTimer = 0;
     }
 
+    this.spread = wConfig.spread || 0;
     this.shellSpeed = wConfig.shellSpeed;
     this.damage = wConfig.damage;
-    this.penetration = wConfig.penetration || 25;
+    this.penetration = wConfig.penetration || 2.0;
     this.recoil = wConfig.recoil;
     this.shellRadius = wConfig.shellRadius;
   }
@@ -221,7 +218,7 @@ export class WeaponSystem {
 
     if (this.cooldownTimer > 0) this.cooldownTimer -= dt;
 
-    if (!isFiring || this.energy < this.costPerShot) {
+    if (!isFiring) {
       this.energy = Math.min(this.maxEnergy, this.energy + this.rechargeRate * dt);
     }
 
@@ -236,6 +233,7 @@ export class WeaponSystem {
 
   spawnShot(player) {
     const angle = player.angle;
+    const sizeScale = (player && player.radius) ? (player.radius / CONFIG.PLAYER.radius) : 1.0;
 
     if (this.chassisKey === 'smasher') {
       player.dashTimer = CONFIG.WEAPONS.smasherDashDuration;
@@ -250,35 +248,38 @@ export class WeaponSystem {
     let recoilAngle = angle + Math.PI;
     const lifetime = CONFIG.WEAPONS.defaultLifetime;
 
-    const bulletFill = player.fillColor || '#00e5ff';
-    const bulletStroke = player.strokeColor || '#00a8bc';
+    const bulletFill = player.fillColor || '#00b2e1';
+    const bulletStroke = player.strokeColor || '#0083a8';
 
     if (this.chassisKey === 'twin') {
-      const barrelOffset = (this.activeBarrelIndex === 0) ? -8 : 8;
+      const barrelOffset = ((this.activeBarrelIndex === 0) ? -9 : 9) * sizeScale;
       this.barrelRecoilOffsets[this.activeBarrelIndex] = 10;
 
       const perpAngle = angle + Math.PI / 2;
-      const spawnX = player.x + Math.cos(angle) * 32 + Math.cos(perpAngle) * barrelOffset;
-      const spawnY = player.y + Math.sin(angle) * 32 + Math.sin(perpAngle) * barrelOffset;
+      const spawnX = player.x + Math.cos(angle) * (32 * sizeScale) + Math.cos(perpAngle) * barrelOffset;
+      const spawnY = player.y + Math.sin(angle) * (32 * sizeScale) + Math.sin(perpAngle) * barrelOffset;
 
-      const vx = Math.cos(angle) * this.shellSpeed;
-      const vy = Math.sin(angle) * this.shellSpeed;
+      const shotAngle = angle + (Math.random() - 0.5) * this.spread;
+      const vx = Math.cos(shotAngle) * this.shellSpeed;
+      const vy = Math.sin(shotAngle) * this.shellSpeed;
 
-      this.projectiles.push(new Projectile(spawnX, spawnY, vx, vy, this.shellRadius, lifetime, this.damage, this.penetration, bulletFill, bulletStroke));
+      this.projectiles.push(new Projectile(spawnX, spawnY, vx, vy, this.shellRadius * sizeScale, lifetime, this.damage, this.penetration, bulletFill, bulletStroke));
       this.activeBarrelIndex = (this.activeBarrelIndex + 1) % 2;
 
     } else if (this.chassisKey === 'flank') {
       this.barrelRecoilOffsets[0] = 8;
       this.barrelRecoilOffsets[1] = 8;
 
-      const fX = player.x + Math.cos(angle) * 30;
-      const fY = player.y + Math.sin(angle) * 30;
-      this.projectiles.push(new Projectile(fX, fY, Math.cos(angle) * this.shellSpeed, Math.sin(angle) * this.shellSpeed, this.shellRadius, lifetime, this.damage, this.penetration, bulletFill, bulletStroke));
+      const fAngle = angle + (Math.random() - 0.5) * this.spread;
+      const fX = player.x + Math.cos(angle) * (30 * sizeScale);
+      const fY = player.y + Math.sin(angle) * (30 * sizeScale);
+      this.projectiles.push(new Projectile(fX, fY, Math.cos(fAngle) * this.shellSpeed, Math.sin(fAngle) * this.shellSpeed, this.shellRadius * sizeScale, lifetime, this.damage, this.penetration, bulletFill, bulletStroke));
 
-      const rearAngle = angle + Math.PI;
-      const rX = player.x + Math.cos(rearAngle) * 30;
-      const rY = player.y + Math.sin(rearAngle) * 30;
-      this.projectiles.push(new Projectile(rX, rY, Math.cos(rearAngle) * this.shellSpeed, Math.sin(rearAngle) * this.shellSpeed, this.shellRadius, lifetime, this.damage, this.penetration, bulletFill, bulletStroke));
+      const rAngle = angle + Math.PI + (Math.random() - 0.5) * this.spread;
+      const rearBaseAngle = angle + Math.PI;
+      const rX = player.x + Math.cos(rearBaseAngle) * (30 * sizeScale);
+      const rY = player.y + Math.sin(rearBaseAngle) * (30 * sizeScale);
+      this.projectiles.push(new Projectile(rX, rY, Math.cos(rAngle) * this.shellSpeed, Math.sin(rAngle) * this.shellSpeed, this.shellRadius * sizeScale, lifetime, this.damage, this.penetration, bulletFill, bulletStroke));
 
       recoilMagnitude = 0;
 
@@ -286,25 +287,26 @@ export class WeaponSystem {
       this.barrelRecoilOffsets[0] = 6;
       const spreadAngle = angle + (Math.random() - 0.5) * this.spread;
 
-      const spawnX = player.x + Math.cos(spreadAngle) * 30;
-      const spawnY = player.y + Math.sin(spreadAngle) * 30;
+      const spawnX = player.x + Math.cos(spreadAngle) * (30 * sizeScale);
+      const spawnY = player.y + Math.sin(spreadAngle) * (30 * sizeScale);
 
       const vx = Math.cos(spreadAngle) * this.shellSpeed;
       const vy = Math.sin(spreadAngle) * this.shellSpeed;
 
-      this.projectiles.push(new Projectile(spawnX, spawnY, vx, vy, this.shellRadius, 2.8, this.damage, this.penetration, bulletFill, bulletStroke));
+      this.projectiles.push(new Projectile(spawnX, spawnY, vx, vy, this.shellRadius * sizeScale, 2.8, this.damage, this.penetration, bulletFill, bulletStroke));
 
     } else {
       this.barrelRecoilOffsets[0] = (this.chassisKey === 'sniper') ? 16 : 10;
-      const barrelLen = (this.chassisKey === 'sniper') ? 48 : 34;
+      const barrelLen = ((this.chassisKey === 'sniper') ? 46 : 34) * sizeScale;
 
+      const shotAngle = angle + (Math.random() - 0.5) * this.spread;
       const spawnX = player.x + Math.cos(angle) * barrelLen;
       const spawnY = player.y + Math.sin(angle) * barrelLen;
 
-      const vx = Math.cos(angle) * this.shellSpeed;
-      const vy = Math.sin(angle) * this.shellSpeed;
+      const vx = Math.cos(shotAngle) * this.shellSpeed;
+      const vy = Math.sin(shotAngle) * this.shellSpeed;
 
-      this.projectiles.push(new Projectile(spawnX, spawnY, vx, vy, this.shellRadius, lifetime, this.damage, this.penetration, bulletFill, bulletStroke));
+      this.projectiles.push(new Projectile(spawnX, spawnY, vx, vy, this.shellRadius * sizeScale, lifetime, this.damage, this.penetration, bulletFill, bulletStroke));
     }
 
     return {

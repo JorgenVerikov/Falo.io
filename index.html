@@ -22,9 +22,11 @@
       <div id="wave-timer-text" class="wave-timer">ENEMIES REMAINING: 4</div>
     </div>
 
+    <!-- Diep.io Evolution Upgrade Panel -->
     <div id="diep-upgrade-panel" class="hidden">
-      <div class="diep-panel-header">TANK EVOLUTIONS (E/U TOGGLE)</div>
+      <div class="diep-panel-header"><span style="font-size: 16px;"></span> Upgrades</div>
       <div id="upgrade-grid" class="diep-upgrade-grid"></div>
+      <button id="diep-ignore-btn" class="diep-ignore-btn">Ignore</button>
     </div>
 
     <div id="stat-upgrade-panel" class="hud-panel bottom-left-panel">
@@ -32,15 +34,20 @@
       <div id="stat-upgrade-list" class="stat-list"></div>
     </div>
 
+    <!-- Bottom HUD (Matching Image #1 Layout) -->
     <div id="bottom-hud-wrapper">
-      <div class="xp-bar-wrapper">
-        <div id="xp-bar-fill" class="xp-bar-fill"></div>
-        <span id="player-level-display" class="xp-text">LVL 1</span>
+      <div id="player-name-display" class="hud-player-name">Tank</div>
+
+      <!-- Score Bar (Dark track + green dot + Score text) -->
+      <div class="hud-bar-wrapper score-bar-wrapper">
+        <div class="score-pip"></div>
+        <span id="score-bar-text" class="hud-bar-text">Score: 0</span>
       </div>
 
-      <div class="player-hp-bar-wrapper">
-        <div id="player-hp-fill" class="player-hp-fill"></div>
-        <span id="player-hp-text" class="player-hp-text">60 / 60 HP</span>
+      <!-- Level / XP Bar (Dark track + yellow fill + Lvl text) -->
+      <div class="hud-bar-wrapper level-bar-wrapper">
+        <div id="xp-bar-fill" class="xp-bar-fill"></div>
+        <span id="player-level-display" class="hud-bar-text">Lvl 1 Basic Tank</span>
       </div>
 
       <div id="weapon-hud" class="hud-panel center-hud">
@@ -93,10 +100,15 @@
       <h1 class="modal-title">SETTINGS</h1>
       
       <div class="setting-row">
+        <label>PLAYER NAME</label>
+        <input type="text" id="player-name-input" class="setting-input" value="Tank" maxlength="20" />
+      </div>
+
+      <div class="setting-row">
         <label>ARENA THEME</label>
         <select id="theme-select" class="setting-input">
           <option value="dark">DARK SLATE</option>
-          <option value="light">DIEP LIGHT GREY</option>
+          <option value="light">LIGHT GREY</option>
         </select>
       </div>
 
@@ -152,7 +164,6 @@
         <label><input type="checkbox" id="adm-debug-overlay"> Wireframe Hitbox Overlay</label>
       </div>
 
-      <!-- Real-time Debug Log Terminal moved inside Admin Panel -->
       <div class="admin-log-title">REAL-TIME DEBUG LOG CONSOLE</div>
       <div id="debug-log-console" class="debug-log-console"></div>
 
@@ -185,3 +196,5 @@
   <script type="module" src="src/main.js"></script>
 </body>
 </html>
+
+// updated

@@ -125,7 +125,6 @@ export class EnemyUnit {
     this.fireTimer = 0;
     this.boostTimer = 0;
 
-    // Track visual barrel recoil kickback offsets per enemy turret
     this.barrelRecoilOffsets = (this.config.turrets || []).map(() => 0);
   }
 
@@ -136,7 +135,6 @@ export class EnemyUnit {
 
     this.angle = Math.atan2(dy, dx);
 
-    // Smoothly decay enemy turret barrel kickback recovery
     for (let i = 0; i < this.barrelRecoilOffsets.length; i++) {
       this.barrelRecoilOffsets[i] = Math.max(0, this.barrelRecoilOffsets[i] - dt * CONFIG.WEAPONS.barrelRecoilDecay);
     }
@@ -183,18 +181,15 @@ export class EnemyUnit {
     this.vx -= this.vx * drag * dt;
     this.vy -= this.vy * drag * dt;
 
-    // Ranged Enemy Shooting (Spawns at Barrel Tip + Recoil Animation Trigger)
     if (this.archetypeKey === 'ranged') {
       this.fireTimer += dt;
       if (this.fireTimer >= this.config.fireRate) {
         this.fireTimer = 0;
 
-        // Trigger Turret Kickback Recoil Animation
         if (this.barrelRecoilOffsets.length > 0) {
           this.barrelRecoilOffsets[0] = 10;
         }
 
-        // Calculate Barrel Tip Position
         const mainTurret = (this.config.turrets && this.config.turrets[0]) || { length: 34 };
         const barrelTipOffset = mainTurret.length + 2;
         const spawnX = this.x + Math.cos(this.angle) * barrelTipOffset;
@@ -202,9 +197,10 @@ export class EnemyUnit {
 
         const bVx = Math.cos(this.angle) * this.config.bulletSpeed;
         const bVy = Math.sin(this.angle) * this.config.bulletSpeed;
-        const pen = this.config.bulletPenetration || 22;
+        const pen = this.config.bulletPenetration || 2.0;
+        const dmg = this.config.bulletDamage || 6.0;
 
-        enemyBullets.push(new Projectile(spawnX, spawnY, bVx, bVy, 6, 3.5, this.damage, pen, '#f14e54', '#b82a30'));
+        enemyBullets.push(new Projectile(spawnX, spawnY, bVx, bVy, 6, 3.5, dmg, pen, '#f14e54', '#b82a30'));
       }
     }
   }
@@ -217,7 +213,6 @@ export class EnemyUnit {
   }
 
   draw(canvasMgr) {
-    // 1. Draw Outer Armor Bumper
     if (this.config.outerArmor) {
       canvasMgr.drawPolygon(
         this.x, this.y,
@@ -230,7 +225,6 @@ export class EnemyUnit {
       );
     }
 
-    // 2. Draw Enemy Turret Barrels with Active Recoil Subtraction
     if (this.config.turrets && this.config.turrets.length > 0) {
       this.config.turrets.forEach((turret, idx) => {
         const recoil = this.barrelRecoilOffsets[idx] || 0;
@@ -241,12 +235,12 @@ export class EnemyUnit {
           turret.width, barrelLen,
           this.angle + (turret.angleOffset || 0),
           turret.xOffset || 0,
-          turret.yOffset || 0
+          turret.yOffset || 0,
+          turret.frontWidth || turret.width
         );
       });
     }
 
-    // 3. Draw Base Body Polygon
     canvasMgr.drawPolygon(this.x, this.y, this.radius, this.sides, this.angle, this.color, this.stroke, 3);
 
     if (this.hp < this.maxHp) {

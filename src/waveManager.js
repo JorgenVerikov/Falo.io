@@ -7,6 +7,7 @@ export class WaveManager {
     this.waveNumber = 1;
     this.isBreak = false;
     this.breakTimer = 0;
+    this.graceTimer = 0; // 20-second initial preparation grace period
     this.score = 0;
     this.isPaused = false;
 
@@ -35,24 +36,36 @@ export class WaveManager {
     this.enemyQueue = [];
     this.spawnTimer = 0;
 
+    // 20-second preparation grace period on initial Wave 1 start
+    if (waveNum === 1) {
+      this.graceTimer = 20.0;
+      console.log('[WAVE] Wave 1 Started — Initial 20s preparation grace period active.');
+    } else {
+      this.graceTimer = 0;
+    }
+
     const totalEnemies = Math.floor(CONFIG.WAVE.baseEnemyCount * Math.pow(CONFIG.WAVE.growthFactor, this.waveNumber - 1));
 
-    for (let i = 0; i < totalEnemies; i++) {
-      let archetype = 'chaser';
-      const rand = Math.random();
-      if (this.waveNumber >= 2 && rand > 0.55) archetype = 'ranged';
-      if (this.waveNumber >= 3 && rand > 0.82) archetype = 'heavy';
+    const availableArchetypes = Object.keys(CONFIG.ENEMIES).filter(key => {
+      const minW = CONFIG.ENEMIES[key].minWave || 1;
+      return this.waveNumber >= minW;
+    });
 
+    for (let i = 0; i < totalEnemies; i++) {
+      const archetype = availableArchetypes[Math.floor(Math.random() * availableArchetypes.length)] || 'chaser';
       this.enemyQueue.push(archetype);
     }
 
-    console.log(`[WAVE] Wave ${waveNum} Started — ${totalEnemies} hostile units queued`);
+    console.log(`[WAVE] Wave ${waveNum} Queued — ${totalEnemies} hostile units`);
   }
 
-  update(dt, player, playerWeapon, activeChassisKey, playerMoveSpeedStat = 0) {
+  update(dt, player, playerWeapon, activeChassisKey, playerStats = {}) {
     if (this.isPaused) return;
 
-    if (!this.isBreak && this.enemyQueue.length > 0) {
+    // Process initial preparation grace period
+    if (this.graceTimer > 0) {
+      this.graceTimer -= dt;
+    } else if (!this.isBreak && this.enemyQueue.length > 0) {
       this.spawnTimer += dt;
       if (this.spawnTimer >= CONFIG.WAVE.spawnInterval) {
         this.spawnTimer = 0;
@@ -61,7 +74,7 @@ export class WaveManager {
       }
     }
 
-    if (!this.isBreak && this.enemyQueue.length === 0 && this.enemies.length === 0) {
+    if (!this.isBreak && this.graceTimer <= 0 && this.enemyQueue.length === 0 && this.enemies.length === 0) {
       this.isBreak = true;
       this.breakTimer = CONFIG.WAVE.breakDuration;
       console.log(`[WAVE] Wave ${this.waveNumber} Cleared! Intermission timer started (${CONFIG.WAVE.breakDuration}s)`);
@@ -75,7 +88,7 @@ export class WaveManager {
     this.maintainShapes(player);
 
     for (const s of this.shapes) s.update(dt);
-    for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerMoveSpeedStat);
+    for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerStats.moveSpeed || 0);
     for (const b of this.enemyBullets) b.update(dt);
 
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -83,7 +96,7 @@ export class WaveManager {
       if (this.particles[i].lifetime <= 0) this.particles.splice(i, 1);
     }
 
-    PhysicsSystem.resolvePhysicalCollisions(this, dt, player, playerWeapon, activeChassisKey);
+    PhysicsSystem.resolvePhysicalCollisions(this, dt, player, playerWeapon, activeChassisKey, playerStats);
 
     this.shapes = this.shapes.filter(s => !s.dead);
     this.enemies = this.enemies.filter(e => !e.dead);
@@ -103,10 +116,17 @@ export class WaveManager {
       const x = player.x + Math.cos(angle) * dist;
       const y = player.y + Math.sin(angle) * dist;
 
-      const rand = Math.random() * 100;
+      const chance = CONFIG.SHAPES.spawnChance || { square: 0.65, triangle: 0.25, pentagon: 0.10 };
+      const rand = Math.random();
       let type = 'square';
-      if (rand > 90) type = 'pentagon';
-      else if (rand > 60) type = 'triangle';
+
+      if (rand < chance.square) {
+        type = 'square';
+      } else if (rand < chance.square + chance.triangle) {
+        type = 'triangle';
+      } else {
+        type = 'pentagon';
+      }
 
       this.shapes.push(new ResourceShape(x, y, type));
     }

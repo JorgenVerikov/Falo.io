@@ -1,13 +1,14 @@
-const STORAGE_KEY = 'DIEP_SURVIVAL_SAVE_DATA_V5';
+const STORAGE_KEY = 'DIEP_SURVIVAL_SAVE_DATA_V6';
 
 const DEFAULT_DATA = {
+  playerName: 'Player',
   coins: 0,
   highScore: 0,
   maxWave: 1,
   unlockedChassis: ['basic'],
   unlockedColors: ['default'],
   unlockedColorWheel: false,
-  customColor: '#00e5ff',
+  customColor: '#00b2e1',
   activeColor: 'default',
   settings: {
     theme: 'dark',
@@ -50,6 +51,13 @@ export class StorageManager {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
     } catch (e) {
       console.error('Failed to save data:', e);
+    }
+  }
+
+  setPlayerName(name) {
+    if (name && name.trim()) {
+      this.data.playerName = name.trim().slice(0, 20);
+      this.save();
     }
   }
 

@@ -112,7 +112,7 @@ export class CanvasManager {
     ctx.restore();
   }
 
-  drawTurretBarrel(x, y, width, length, angle, offsetX = 0, offsetY = 0) {
+  drawTurretBarrel(x, y, width, length, angle, offsetX = 0, offsetY = 0, frontWidth = width) {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(x, y);
@@ -123,11 +123,61 @@ export class CanvasManager {
     ctx.lineWidth = 3;
 
     const bx = offsetX;
-    const by = offsetY - width / 2;
+    const halfBack = width / 2;
+    const halfFront = frontWidth / 2;
 
-    ctx.fillRect(bx, by, length, width);
-    ctx.strokeRect(bx, by, length, width);
+    ctx.beginPath();
+    ctx.moveTo(bx, offsetY - halfBack);
+    ctx.lineTo(bx + length, offsetY - halfFront);
+    ctx.lineTo(bx + length, offsetY + halfFront);
+    ctx.lineTo(bx, offsetY + halfBack);
+    ctx.closePath();
 
+    ctx.fill();
+    ctx.lineJoin = 'miter';
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // Draw text with Diep-style crisp dark stroke outline
+  drawStrokedText(text, x, y, fontSize = 16, fillColor = '#ffffff', strokeColor = '#000000', strokeWidth = 3.5, align = 'center') {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.font = `900 ${fontSize}px 'Ubuntu', 'Segoe UI', sans-serif`;
+    ctx.textAlign = align;
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = strokeWidth;
+    ctx.strokeStyle = strokeColor;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = fillColor;
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  // Draw Player Name above tank
+  drawPlayerNameAbove(x, y, name, radius) {
+    this.drawStrokedText(name || 'Tank', x, y - radius - 18, 16, '#ffffff', '#000000', 3.8, 'center');
+  }
+
+  // Draw Health Bar under tank (ONLY shown when player is damaged)
+  drawPlayerHealthBar(x, y, hp, maxHp, radius) {
+    if (hp >= maxHp) return; // Hide when HP is full!
+
+    const ctx = this.ctx;
+    const width = radius * 2.4;
+    const height = 5;
+    const barX = x - width / 2;
+    const barY = y + radius + 12;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(barX, barY, width, height);
+
+    const ratio = Math.max(0, hp / maxHp);
+    ctx.fillStyle = '#85e364'; // Green health fill
+    ctx.fillRect(barX, barY, width * ratio, height);
     ctx.restore();
   }
 
