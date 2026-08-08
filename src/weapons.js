@@ -93,7 +93,7 @@ export class WeaponSystem {
     this.barrelRecoilOffsets = config.turrets.map(() => 0);
 
     this.baseReloadTicks = wConfig.baseReloadTicks || 40;
-    this.fireRateTicks = wConfig.fireRateTicks || 500;
+    this.fireRateTicks = wConfig.fireRateTicks || 30;
 
     if (this.type === WEAPON_TYPE.READY_RACK) {
       this.maxRack = wConfig.maxRack;
