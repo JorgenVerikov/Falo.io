@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../core/config.js';
 
 export const WEAPON_TYPE = {
   READY_RACK: 'READY_RACK',
@@ -18,6 +18,7 @@ export class Projectile {
 
     this.vx = vx;
     this.vy = vy;
+    this.baseRadius = radius;
     this.radius = radius;
     this.lifetime = lifetime;
     this.damage = damage;
@@ -25,10 +26,34 @@ export class Projectile {
     this.maxPenetration = penetration;
     this.color = color;
     this.strokeColor = strokeColor;
-    this.dead = false;
+    this.dead = false; // When true, ceases active collision
+    this.isDying = false;
+    this.deathTimer = 0;
+    this.deathDuration = 0.20; // 200ms expand and fade
+    this.destroyed = false; // When true, completely removed
+  }
+
+  kill() {
+    if (this.dead) return;
+    this.dead = true;
+    this.isDying = true;
+    this.deathTimer = 0;
   }
 
   update(dt) {
+    if (this.isDying) {
+      this.deathTimer += dt;
+      const progress = Math.min(1.0, this.deathTimer / this.deathDuration);
+      this.radius = this.baseRadius * (1.0 + progress * 0.9);
+      this.x += this.vx * dt * 0.25;
+      this.y += this.vy * dt * 0.25;
+
+      if (this.deathTimer >= this.deathDuration) {
+        this.destroyed = true;
+      }
+      return;
+    }
+
     const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.currentAngle), Math.cos(this.targetAngle - this.currentAngle));
     this.currentAngle += angleDiff * Math.min(1.0, this.turnSpeed * dt);
 
@@ -40,11 +65,12 @@ export class Projectile {
 
     this.lifetime -= dt;
     if (this.lifetime <= 0 || this.penetration <= 0) {
-      this.dead = true;
+      this.kill();
     }
   }
 
   applyCenterRepulsion(objX, objY, dt, repelStrength = CONFIG.WEAPONS.repelStrength) {
+    if (this.dead) return;
     const dx = this.x - objX;
     const dy = this.y - objY;
     let dist = Math.hypot(dx, dy);
@@ -60,14 +86,19 @@ export class Projectile {
   }
 
   takePenetrationDamage(amount) {
+    if (this.dead) return;
     this.penetration -= amount;
     if (this.penetration <= 0) {
-      this.dead = true;
+      this.kill();
     }
   }
 
   draw(ctx) {
     ctx.save();
+    if (this.isDying) {
+      const alpha = Math.max(0, 1.0 - (this.deathTimer / this.deathDuration));
+      ctx.globalAlpha = alpha;
+    }
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
     ctx.fillStyle = this.color;
@@ -308,7 +339,7 @@ export class WeaponSystem {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
       p.update(dt);
-      if (p.dead) {
+      if (p.destroyed) {
         this.projectiles.splice(i, 1);
       }
     }

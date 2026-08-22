@@ -1,7 +1,8 @@
 /**
- * UI Engine: CSS-Variable Alignment, Log Terminal, Edge Hover Triggers & Evolution Previews
+ * UI Engine: CSS-Variable Alignment, Authentication, Log Terminal, Edge Hover Triggers & Evolution Previews
  */
-import { CONFIG } from './config.js';
+import { CONFIG } from '../core/config.js';
+import { signInEmail, signUpEmail, signInWithGoogle, signOut, onAuthStateChange, getUser } from '../core/auth.js';
 
 export class UIManager {
   constructor(storageMgr, canvasMgr, onStartRun, onRestart, onChassisSelect) {
@@ -26,6 +27,7 @@ export class UIManager {
     this.mouseInStatZone = false;
 
     this.initElements();
+    this.initAuthUI();
     this.setupEdgeHoverTriggers();
     this.setupDebugLogTerminal();
     this.applySettings();
@@ -57,18 +59,129 @@ export class UIManager {
     this.bindEvents();
   }
 
+  initAuthUI() {
+    this.authModal = document.getElementById('auth-modal');
+    this.authEmailInput = document.getElementById('auth-email-input');
+    this.authPassInput = document.getElementById('auth-password-input');
+    this.authErrorMsg = document.getElementById('auth-error-msg');
+    this.authStatusLabel = document.getElementById('auth-status-label');
+    this.authOpenBtn = document.getElementById('auth-modal-open-btn');
+    this.authLogoutBtn = document.getElementById('auth-logout-btn');
+
+    this.authOpenBtn?.addEventListener('click', () => {
+      this.showAuthModal();
+    });
+
+    document.getElementById('close-auth-modal-btn')?.addEventListener('click', () => {
+      this.hideAuthModal();
+    });
+
+    document.getElementById('auth-signin-btn')?.addEventListener('click', async () => {
+      await this.handleEmailAuth(false);
+    });
+
+    document.getElementById('auth-signup-btn')?.addEventListener('click', async () => {
+      await this.handleEmailAuth(true);
+    });
+
+    document.getElementById('auth-google-btn')?.addEventListener('click', async () => {
+      try {
+        await signInWithGoogle();
+      } catch (err) {
+        this.showAuthError(err.message);
+      }
+    });
+
+    this.authLogoutBtn?.addEventListener('click', async () => {
+      try {
+        await signOut();
+        this.showToast('LOGGED OUT. RETURNED TO GUEST PROFILE.');
+      } catch (err) {
+        this.showToast(`LOGOUT ERROR: ${err.message}`);
+      }
+    });
+
+    onAuthStateChange(async (event, session) => {
+      console.log(`[AUTH EVENT] ${event}`);
+      if (session?.user) {
+        this.updateAuthStatusDisplay(session.user.email);
+        await this.storage.loadSaveData();
+        this.applySettings();
+      } else {
+        this.updateAuthStatusDisplay(null);
+      }
+    });
+
+    getUser().then(user => {
+      if (user) {
+        this.updateAuthStatusDisplay(user.email);
+        this.storage.loadSaveData().then(() => this.applySettings());
+      } else {
+        this.updateAuthStatusDisplay(null);
+      }
+    });
+  }
+
+  showAuthModal() {
+    this.authErrorMsg.classList.add('hidden');
+    this.authModal.classList.remove('hidden');
+  }
+
+  hideAuthModal() {
+    this.authModal.classList.add('hidden');
+  }
+
+  showAuthError(msg) {
+    this.authErrorMsg.textContent = msg;
+    this.authErrorMsg.classList.remove('hidden');
+  }
+
+  async handleEmailAuth(isSignUp) {
+    const email = this.authEmailInput.value.trim();
+    const password = this.authPassInput.value;
+
+    if (!email || !password) {
+      this.showAuthError('Please enter both email and password.');
+      return;
+    }
+
+    try {
+      this.authErrorMsg.classList.add('hidden');
+      if (isSignUp) {
+        await signUpEmail(email, password);
+        this.showToast('SIGN UP SUCCESS! PLEASE CHECK YOUR INBOX IF VERIFICATION IS ACTIVE.');
+      } else {
+        await signInEmail(email, password);
+        this.showToast(`WELCOME BACK, ${email.split('@')[0].toUpperCase()}!`);
+      }
+      this.hideAuthModal();
+    } catch (err) {
+      this.showAuthError(err.message || 'Authentication failed.');
+    }
+  }
+
+  updateAuthStatusDisplay(userEmail) {
+    if (userEmail) {
+      this.authStatusLabel.textContent = `USER: ${userEmail}`;
+      this.authOpenBtn.classList.add('hidden');
+      this.authLogoutBtn.classList.remove('hidden');
+    } else {
+      this.authStatusLabel.textContent = 'PROFILE: GUEST MODE';
+      this.authOpenBtn.classList.remove('hidden');
+      this.authLogoutBtn.classList.add('hidden');
+    }
+  }
+
   setupEdgeHoverTriggers() {
     window.addEventListener('mousemove', (e) => {
       const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale')) || 1.0;
       const x = e.clientX;
       const y = e.clientY;
 
-      // Top-left trigger area for tank evolution panel
       const evoThresholdX = 240 * scale;
       const evoThresholdY = 260 * scale;
       this.mouseInEvolutionZone = (x <= evoThresholdX && y <= evoThresholdY);
 
-      // Bottom-left trigger area for stat upgrade panel
       const statThresholdX = 280 * scale;
       const statThresholdY = window.innerHeight - (280 * scale);
       this.mouseInStatZone = (x <= statThresholdX && y >= statThresholdY);
@@ -160,6 +273,13 @@ export class UIManager {
     if (this.playerNameInput) {
       this.playerNameInput.addEventListener('input', (e) => {
         this.storage.setPlayerName(e.target.value);
+      });
+
+      this.playerNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          document.getElementById('start-game-btn')?.click();
+        }
       });
     }
 
@@ -287,7 +407,6 @@ export class UIManager {
     }
   }
 
-  // Evolution cards are styled with clean neutral white backgrounds adaptable to Light Theme
   renderDiepUpgradeUI(playerLevel, activeChassis, onEvolve) {
     const grid = document.getElementById('upgrade-grid');
     grid.innerHTML = '';
@@ -451,7 +570,6 @@ export class UIManager {
     this.updatePanelVisibilities();
   }
 
-  // Renders stat upgrade list using definitions & Smasher rules from CONFIG.PLAYER
   renderStatUpgrades(stats, statPoints, onUpgrade, activeChassis = 'basic') {
     this.statList.innerHTML = '';
 
@@ -493,9 +611,9 @@ export class UIManager {
   }
 
   showGameOver(score, wave, coinsEarned) {
-    this.finalScoreEl.textContent = score;
-    this.finalWaveEl.textContent = wave;
-    this.coinsEarnedEl.textContent = `+${coinsEarned} COINS`;
+    this.finalScoreEl.textContent = (score || 0).toLocaleString();
+    this.finalWaveEl.textContent = wave || 1;
+    this.coinsEarnedEl.textContent = `+${(coinsEarned || 0).toLocaleString()} COINS`;
     this.gameOverModal.classList.remove('hidden');
   }
 
@@ -512,7 +630,6 @@ export class UIManager {
     this.armoryModal.classList.add('hidden');
   }
 
-  // Fully Extensible Shop Content rendering dynamically from CONFIG.CHASSIS
   renderShopContent() {
     const coinsEl = document.getElementById('armory-coins-display');
     coinsEl.textContent = this.storage.data.coins;

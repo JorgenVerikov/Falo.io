@@ -1,8 +1,8 @@
 import { CanvasManager } from './canvas.js';
-import { WeaponSystem, WEAPON_TYPE } from './weapons.js';
-import { WaveManager } from './waveManager.js';
+import { WeaponSystem, WEAPON_TYPE } from '../entities/weapons.js';
+import { WaveManager } from '../systems/waveManager.js';
 import { StorageManager } from './storage.js';
-import { UIManager } from './ui.js';
+import { UIManager } from '../ui/ui.js';
 import { CONFIG } from './config.js';
 
 // Calculates secondary (stroke) color by shifting each channel by 30 based on 127.5 threshold
@@ -112,9 +112,14 @@ const player = {
   angle: 0,
   fillColor: '#00b2e1',
   strokeColor: '#0083a8',
+  isDying: false,
+  deathTimer: 0,
+  deathDuration: 0.75,
+  deathScale: 1.0,
+  deathAlpha: 1.0,
 
   takeDamage(amount, chassisKey) {
-    if (this.dashTimer > 0 || this.iFrameTimer > 0 || state.isGameOver || state.inMenu || state.godMode) return;
+    if (this.isDying || this.dashTimer > 0 || this.iFrameTimer > 0 || state.isGameOver || state.inMenu || state.godMode) return;
 
     const chassisConfig = CONFIG.CHASSIS[chassisKey];
     const resistance = chassisConfig && chassisConfig.damageResistance !== undefined 
@@ -127,7 +132,13 @@ const player = {
     this.timeSinceLastDamage = 0;
 
     if (this.hp <= 0) {
-      triggerGameOver();
+      this.hp = 0;
+      this.isDying = true;
+      this.deathTimer = 0;
+      this.deathScale = 1.0;
+      this.deathAlpha = 1.0;
+      waveMgr.spawnShatterParticles(this.x, this.y, this.fillColor, 16);
+      console.warn(`[PLAYER DESTROYED] Vehicle sustaining terminal structural failure...`);
     }
   }
 };
@@ -139,7 +150,9 @@ const weaponSys = new WeaponSystem(state.activeChassis);
 const waveMgr = new WaveManager();
 let uiMgr;
 
-function initGame() {
+async function initGame() {
+  await storageMgr.loadSaveData();
+
   uiMgr = new UIManager(
     storageMgr,
     canvasMgr,
@@ -191,6 +204,10 @@ function restartRun() {
   player.hp = CONFIG.PLAYER.baseMaxHp;
   player.maxHp = CONFIG.PLAYER.baseMaxHp;
   player.dashTimer = 0;
+  player.isDying = false;
+  player.deathTimer = 0;
+  player.deathScale = 1.0;
+  player.deathAlpha = 1.0;
 
   setActiveChassis('basic');
 
@@ -205,6 +222,7 @@ function restartRun() {
 
 function triggerGameOver() {
   state.isGameOver = true;
+  player.isDying = false;
   waveMgr.clearAll();
 
   const commanderLvl = storageMgr.data.crewLevels.commander || 0;
@@ -295,7 +313,6 @@ function applyCrewAndStatModifiers() {
     player.strokeColor = '#0083a8';
   }
 
-  // Level growth scaling
   const growthCfg = CONFIG.PLAYER.growthScaling;
   const growthLevel = Math.min(growthCfg.maxGrowthLevel, state.level);
   const levelSizeMult = 1.0 + (growthLevel - 1) * growthCfg.radiusIncreasePerLevel;
@@ -327,18 +344,16 @@ function applyCrewAndStatModifiers() {
 
   const rCfg = CONFIG.WEAPONS.reloadScaling;
 
-  // Apply stat upgrades to each turret
   weaponSys.turrets.forEach((turret, index) => {
     const chassisTurrets = CONFIG.CHASSIS[state.activeChassis].turrets || [];
     const turretConfig = chassisTurrets[index] || {};
     const baseW = turretConfig.weapon || CONFIG.CHASSIS[state.activeChassis].weapon || {};
 
-    // Calculate fireIntervalSec for all turrets (including recoiling decorative ones)
     const baseFireRateTicks = baseW.fireRateTicks || 28;
     const actualFireRateTicks = Math.max(rCfg.minFireRateTicks, baseFireRateTicks - (reloadStat * rCfg.fireRateTickReductionPerPoint));
     turret.fireIntervalSec = Math.max(rCfg.minFireIntervalSec, (actualFireRateTicks / 60) * loaderCrewMult);
 
-    if (!turret.shootsBullet) return; // Skip bullet/heat/damage calculations for non-shooting barrels
+    if (!turret.shootsBullet) return;
 
     const baseDmg = baseW.damage || 7.0;
     turret.damage = (baseDmg + (dmgStat * inc.shellDmgMult)) * gunnerCrewMult;
@@ -403,7 +418,6 @@ function setupInputs() {
 function setActiveChassis(chassisKey) {
   state.activeChassis = chassisKey;
 
-  // Smasher specific rules: refund spent points in bullet stats
   const smasherCfg = CONFIG.PLAYER.smasherRules;
   if (chassisKey === 'smasher') {
     let refunded = 0;
@@ -494,6 +508,26 @@ function setupAdminPanelListeners() {
 function updatePlayer(dt) {
   if (state.isGameOver || state.inMenu) return;
 
+  if (player.isDying) {
+    player.deathTimer += dt;
+    const progress = Math.min(1.0, player.deathTimer / player.deathDuration);
+    player.deathScale = 1.0 + progress * 0.9;
+    player.deathAlpha = Math.max(0, 1.0 - progress);
+
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+    player.vx *= 0.94;
+    player.vy *= 0.94;
+
+    camera.x += (player.x - camera.x) * CONFIG.CAMERA.smoothness;
+    camera.y += (player.y - camera.y) * CONFIG.CAMERA.smoothness;
+
+    if (player.deathTimer >= player.deathDuration) {
+      triggerGameOver();
+    }
+    return;
+  }
+
   const growthCfg = CONFIG.PLAYER.growthScaling;
   const growthLevel = Math.min(growthCfg.maxGrowthLevel, state.level);
   const levelSizeMult = 1.0 + (growthLevel - 1) * growthCfg.radiusIncreasePerLevel;
@@ -575,18 +609,28 @@ function updatePlayer(dt) {
 }
 
 function renderPlayerChassis() {
+  if (state.isGameOver && !player.isDying) return;
+
   const { x, y, angle } = player;
   const chassis = CONFIG.CHASSIS[state.activeChassis];
 
-  if (player.iFrameTimer > 0 && Math.floor(performance.now() / 50) % 2 === 0) {
+  if (!player.isDying && player.iFrameTimer > 0 && Math.floor(performance.now() / 50) % 2 === 0) {
     return;
   }
 
-  const radius = player.radius * chassis.radiusMultiplier;
+  const ctx = canvasMgr.ctx;
+  ctx.save();
+
+  if (player.isDying) {
+    ctx.globalAlpha = player.deathAlpha;
+  }
+
+  const baseRadius = player.radius * chassis.radiusMultiplier;
+  const radius = player.isDying ? baseRadius * player.deathScale : baseRadius;
   const sizeScale = radius / CONFIG.PLAYER.radius;
 
   if (chassis.outerArmor) {
-    const outerRadius = player.radius * chassis.outerArmor.radiusMultiplier;
+    const outerRadius = (player.radius * chassis.outerArmor.radiusMultiplier) * (player.isDying ? player.deathScale : 1.0);
     canvasMgr.drawPolygon(
       x, y, outerRadius,
       chassis.outerArmor.sides,
@@ -617,20 +661,21 @@ function renderPlayerChassis() {
     CONFIG.PLAYER.strokeWidth
   );
 
-  // Render Player Name above tank
-  const playerName = storageMgr.data.playerName || 'Tank';
-  canvasMgr.drawPlayerNameAbove(x, y, playerName, radius);
+  ctx.restore();
 
-  // Render Health Bar under tank ONLY when damaged
-  canvasMgr.drawPlayerHealthBar(x, y, player.hp, player.maxHp, radius);
+  if (!player.isDying) {
+    const playerName = storageMgr.data.playerName || 'Tank';
+    canvasMgr.drawPlayerNameAbove(x, y, playerName, radius);
+    canvasMgr.drawPlayerHealthBar(x, y, player.hp, player.maxHp, radius);
 
-  if (player.dashTimer > 0) {
-    canvasMgr.drawDebugCircle(x, y, radius * 1.6, '#00ffff');
-  }
+    if (player.dashTimer > 0) {
+      canvasMgr.drawDebugCircle(x, y, radius * 1.6, '#00ffff');
+    }
 
-  if (state.debugMode) {
-    canvasMgr.drawDebugCircle(x, y, radius, '#ff0055');
-    canvasMgr.drawDebugCircle(input.mouse.worldX, input.mouse.worldY, 12, '#00ff88');
+    if (state.debugMode) {
+      canvasMgr.drawDebugCircle(x, y, radius, '#ff0055');
+      canvasMgr.drawDebugCircle(input.mouse.worldX, input.mouse.worldY, 12, '#00ff88');
+    }
   }
 }
 
@@ -640,7 +685,6 @@ function updateHUD() {
   document.getElementById('fps-counter').textContent = Math.round(state.fps);
   document.getElementById('score-display').textContent = waveMgr.score;
 
-  // Bottom HUD
   const playerName = storageMgr.data.playerName || 'Tank';
   const chassisName = CONFIG.CHASSIS[state.activeChassis].name;
 
@@ -652,17 +696,6 @@ function updateHUD() {
 
   const levelText = document.getElementById('player-level-display');
   if (levelText) levelText.textContent = `Lvl ${state.level} ${chassisName}`;
-
-  const hpFill = document.getElementById('player-hp-fill');
-  const hpText = document.getElementById('player-hp-text');
-  const hpRatio = (player.hp / player.maxHp) * 100;
-  if (hpFill) {
-    hpFill.style.width = `${hpRatio}%`;
-    hpFill.style.background = player.fillColor;
-  }
-  if (hpText) {
-    hpText.textContent = state.godMode ? 'GOD MODE' : `${Math.round(player.hp)} / ${Math.round(player.maxHp)} HP`;
-  }
 
   const waveStatus = document.getElementById('wave-status');
   const waveTimerText = document.getElementById('wave-timer-text');
@@ -688,7 +721,6 @@ function updateHUD() {
   const barText = document.getElementById('gauge-text');
   const overheatBanner = document.getElementById('overheat-banner');
 
-  // Check if chassis has any active shooting turrets
   const hasShootingTurrets = weaponSys.turrets && weaponSys.turrets.some(t => t.shootsBullet);
 
   if (!hasShootingTurrets) {

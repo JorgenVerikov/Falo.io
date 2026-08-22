@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../core/config.js';
 
 export class PhysicsSystem {
   static resolveCircleOverlap(a, b, pushRatioA = 0.5, pushRatioB = 0.5) {
@@ -125,14 +125,18 @@ export class PhysicsSystem {
 
     // 3. ENEMY vs ENEMY
     for (let i = 0; i < waveMgr.enemies.length; i++) {
+      if (waveMgr.enemies[i].dead) continue;
       for (let j = i + 1; j < waveMgr.enemies.length; j++) {
+        if (waveMgr.enemies[j].dead) continue;
         this.resolveCircleOverlap(waveMgr.enemies[i], waveMgr.enemies[j], 0.5, 0.5);
       }
     }
 
     // 4. ENEMY vs SHAPES
     for (const enemy of waveMgr.enemies) {
+      if (enemy.dead) continue;
       for (const shape of waveMgr.shapes) {
+        if (shape.dead) continue;
         this.resolveCircleOverlap(enemy, shape, 0.6, 0.4);
       }
     }
@@ -224,7 +228,7 @@ export class PhysicsSystem {
       if (bullet.dead) continue;
 
       if (Math.hypot(player.x - bullet.x, player.y - bullet.y) < player.radius + bullet.radius) {
-        bullet.dead = true;
+        bullet.kill();
         player.takeDamage(bullet.damage, activeChassisKey);
         waveMgr.spawnShatterParticles(player.x, player.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
       }

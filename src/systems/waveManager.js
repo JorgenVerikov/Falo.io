@@ -1,5 +1,5 @@
-import { CONFIG } from './config.js';
-import { ResourceShape, EnemyUnit, Particle } from './enemy.js';
+import { CONFIG } from '../core/config.js';
+import { ResourceShape, EnemyUnit, Particle } from '../entities/enemy.js';
 import { PhysicsSystem } from './physics.js';
 
 export class WaveManager {
@@ -90,7 +90,9 @@ export class WaveManager {
       }
     }
 
-    if (!this.isBreak && this.graceTimer <= 0 && this.enemyQueue.length === 0 && this.enemies.length === 0) {
+    const activeEnemies = this.enemies.filter(e => !e.dead);
+
+    if (!this.isBreak && this.graceTimer <= 0 && this.enemyQueue.length === 0 && activeEnemies.length === 0) {
       this.isBreak = true;
       this.breakTimer = CONFIG.WAVE.breakDuration;
       console.log(`[WAVE] Wave ${this.waveNumber} Cleared! Intermission timer started (${CONFIG.WAVE.breakDuration}s)`);
@@ -114,16 +116,16 @@ export class WaveManager {
 
     PhysicsSystem.resolvePhysicalCollisions(this, dt, player, playerWeapon, activeChassisKey, playerStats);
 
-    this.shapes = this.shapes.filter(s => !s.dead);
-    this.enemies = this.enemies.filter(e => !e.dead);
-    this.enemyBullets = this.enemyBullets.filter(b => !b.dead);
+    this.shapes = this.shapes.filter(s => !s.destroyed);
+    this.enemies = this.enemies.filter(e => !e.destroyed);
+    this.enemyBullets = this.enemyBullets.filter(b => !b.destroyed);
   }
 
   // Fully Extensible Shape Spawner reading spawnWeight directly from CONFIG.SHAPES.types
   maintainShapes(player) {
     for (const shape of this.shapes) {
-      if (Math.hypot(shape.x - player.x, shape.y - player.y) > CONFIG.SHAPES.despawnRadius) {
-        shape.dead = true;
+      if (!shape.isDying && Math.hypot(shape.x - player.x, shape.y - player.y) > CONFIG.SHAPES.despawnRadius) {
+        shape.destroyed = true;
       }
     }
 
@@ -133,7 +135,9 @@ export class WaveManager {
       totalSpawnWeight += (CONFIG.SHAPES.types[key].spawnWeight || 1.0);
     });
 
-    while (this.shapes.length < CONFIG.SHAPES.maxCount) {
+    let activeShapesCount = this.shapes.filter(s => !s.dead).length;
+
+    while (activeShapesCount < CONFIG.SHAPES.maxCount && this.shapes.length < CONFIG.SHAPES.maxCount + 10) {
       const angle = Math.random() * Math.PI * 2;
       const dist = CONFIG.SHAPES.minSpawnDist + Math.random() * (CONFIG.SHAPES.maxSpawnDist - CONFIG.SHAPES.minSpawnDist);
       const x = player.x + Math.cos(angle) * dist;
@@ -152,6 +156,7 @@ export class WaveManager {
       }
 
       this.shapes.push(new ResourceShape(x, y, selectedType));
+      activeShapesCount++;
     }
   }
 
@@ -167,7 +172,8 @@ export class WaveManager {
   }
 
   getRemainingEnemyCount() {
-    return this.enemyQueue.length + this.enemies.length;
+    const activeEnemies = this.enemies.filter(e => !e.dead).length;
+    return this.enemyQueue.length + activeEnemies;
   }
 
   spawnShatterParticles(x, y, color, count = 8) {

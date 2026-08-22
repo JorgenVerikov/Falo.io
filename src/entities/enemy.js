@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../core/config.js';
 import { Projectile } from './weapons.js';
 
 export class Particle {
@@ -40,6 +40,7 @@ export class ResourceShape {
     this.config = CONFIG.SHAPES.types[shapeType];
 
     this.sides = this.config.sides;
+    this.baseRadius = this.config.radius;
     this.radius = this.config.radius;
     this.hp = this.config.hp;
     this.maxHp = this.config.hp;
@@ -56,9 +57,36 @@ export class ResourceShape {
     this.vx = Math.cos(moveAngle) * speed;
     this.vy = Math.sin(moveAngle) * speed;
     this.dead = false;
+    this.isDying = false;
+    this.deathTimer = 0;
+    this.deathDuration = 0.28;
+    this.destroyed = false;
+  }
+
+  kill() {
+    if (this.dead) return;
+    this.dead = true;
+    this.isDying = true;
+    this.deathTimer = 0;
   }
 
   update(dt) {
+    if (this.isDying) {
+      this.deathTimer += dt;
+      const progress = Math.min(1.0, this.deathTimer / this.deathDuration);
+      this.radius = this.baseRadius * (1.0 + progress * 0.75);
+      this.angle += this.rotSpeed * dt * 1.5;
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      this.vx *= 0.95;
+      this.vy *= 0.95;
+
+      if (this.deathTimer >= this.deathDuration) {
+        this.destroyed = true;
+      }
+      return;
+    }
+
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
@@ -69,16 +97,24 @@ export class ResourceShape {
   }
 
   takeDamage(amount) {
+    if (this.dead) return;
     this.hp -= amount;
     if (this.hp <= 0) {
-      this.dead = true;
+      this.kill();
     }
   }
 
   draw(canvasMgr) {
+    const ctx = canvasMgr.ctx;
+    ctx.save();
+    if (this.isDying) {
+      const alpha = Math.max(0, 1.0 - (this.deathTimer / this.deathDuration));
+      ctx.globalAlpha = alpha;
+    }
     canvasMgr.drawPolygon(this.x, this.y, this.radius, this.sides, this.angle, this.color, this.stroke, 3);
+    ctx.restore();
 
-    if (this.hp < this.maxHp) {
+    if (!this.isDying && this.hp < this.maxHp) {
       this.drawHealthBar(canvasMgr.ctx);
     }
   }
@@ -111,7 +147,8 @@ export class EnemyUnit {
     
     // Scale radius using radiusMultiplier (matching Player tank multiplier logic)
     const sizeMult = this.config.radiusMultiplier || 1.0;
-    this.radius = (this.config.radius || 18) * sizeMult;
+    this.baseRadius = (this.config.radius || 18) * sizeMult;
+    this.radius = this.baseRadius;
 
     this.hp = this.config.hp;
     this.maxHp = this.config.hp;
@@ -125,6 +162,10 @@ export class EnemyUnit {
     this.vy = 0;
     this.outerArmorAngle = Math.random() * Math.PI * 2;
     this.dead = false;
+    this.isDying = false;
+    this.deathTimer = 0;
+    this.deathDuration = 0.35;
+    this.destroyed = false;
 
     this.fireTimer = 0;
     this.boostTimer = 0;
@@ -132,7 +173,32 @@ export class EnemyUnit {
     this.barrelRecoilOffsets = (this.config.turrets || []).map(() => 0);
   }
 
+  kill() {
+    if (this.dead) return;
+    this.dead = true;
+    this.isDying = true;
+    this.deathTimer = 0;
+  }
+
   update(dt, player, enemyBullets, playerMoveSpeedStat = 0) {
+    if (this.isDying) {
+      this.deathTimer += dt;
+      const progress = Math.min(1.0, this.deathTimer / this.deathDuration);
+      this.radius = this.baseRadius * (1.0 + progress * 0.70);
+      if (this.config.outerArmor) {
+        this.outerArmorAngle += (this.config.outerArmor.spinSpeed || 1.0) * dt * 1.5;
+      }
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      this.vx *= 0.94;
+      this.vy *= 0.94;
+
+      if (this.deathTimer >= this.deathDuration) {
+        this.destroyed = true;
+      }
+      return;
+    }
+
     const dx = player.x - this.x;
     const dy = player.y - this.y;
     const dist = Math.hypot(dx, dy) || 1;
@@ -220,13 +286,21 @@ export class EnemyUnit {
   }
 
   takeDamage(amount) {
+    if (this.dead) return;
     this.hp -= amount;
     if (this.hp <= 0) {
-      this.dead = true;
+      this.kill();
     }
   }
 
   draw(canvasMgr) {
+    const ctx = canvasMgr.ctx;
+    ctx.save();
+    if (this.isDying) {
+      const alpha = Math.max(0, 1.0 - (this.deathTimer / this.deathDuration));
+      ctx.globalAlpha = alpha;
+    }
+
     const sizeScale = this.radius / (this.config.radius || 18);
 
     if (this.config.outerArmor) {
@@ -260,7 +334,9 @@ export class EnemyUnit {
 
     canvasMgr.drawPolygon(this.x, this.y, this.radius, this.sides, this.angle, this.color, this.stroke, 3);
 
-    if (this.hp < this.maxHp) {
+    ctx.restore();
+
+    if (!this.isDying && this.hp < this.maxHp) {
       this.drawHealthBar(canvasMgr.ctx);
     }
   }

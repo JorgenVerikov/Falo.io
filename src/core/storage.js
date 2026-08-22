@@ -1,3 +1,5 @@
+import { getSupabase, getUser } from './auth.js';
+
 const STORAGE_KEY = 'DIEP_SURVIVAL_SAVE_DATA_V6';
 
 const DEFAULT_DATA = {
@@ -24,35 +26,163 @@ const DEFAULT_DATA = {
 
 export class StorageManager {
   constructor() {
-    this.data = this.load();
+    this.data = this.loadLocal();
+    this.currentUser = null;
+    this.isSyncing = false;
+    this.syncDebounceTimer = null;
   }
 
-  load() {
+  /**
+   * Loads cached state from LocalStorage immediately
+   */
+  loadLocal() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return { ...DEFAULT_DATA };
       const parsed = JSON.parse(raw);
-      return { 
-        ...DEFAULT_DATA, 
-        ...parsed, 
-        settings: { ...DEFAULT_DATA.settings, ...(parsed.settings || {}) },
-        unlockedChassis: Array.from(new Set(['basic', ...(parsed.unlockedChassis || [])])),
-        unlockedColors: Array.from(new Set(['default', ...(parsed.unlockedColors || [])])),
-        crewLevels: { ...DEFAULT_DATA.crewLevels, ...(parsed.crewLevels || {}) } 
-      };
+      return this.mergeWithDefaults(parsed);
     } catch (e) {
-      console.warn('Failed to load save data, using defaults:', e);
+      console.warn('[STORAGE] Failed to load local save data, fallback to defaults:', e);
       return { ...DEFAULT_DATA };
     }
   }
 
+  mergeWithDefaults(data = {}) {
+    return {
+      ...DEFAULT_DATA,
+      ...data,
+      settings: { ...DEFAULT_DATA.settings, ...(data.settings || {}) },
+      unlockedChassis: Array.from(new Set(['basic', ...(data.unlockedChassis || [])])),
+      unlockedColors: Array.from(new Set(['default', ...(data.unlockedColors || [])])),
+      crewLevels: { ...DEFAULT_DATA.crewLevels, ...(data.crewLevels || {}) }
+    };
+  }
+
+  /**
+   * Fetches cloud save if authenticated, auto-creates initial save if row does not exist,
+   * or merges cloud data with any offline local progress.
+   */
+  async loadSaveData() {
+    this.currentUser = await getUser();
+
+    if (!this.currentUser) {
+      this.data = this.loadLocal();
+      console.log('[STORAGE] Guest mode active: Using LocalStorage.');
+      return this.data;
+    }
+
+    const client = getSupabase();
+    if (!client) {
+      this.data = this.loadLocal();
+      return this.data;
+    }
+
+    try {
+      const { data: cloudRow, error } = await client
+        .from('player_saves')
+        .select('save_data')
+        .eq('user_id', this.currentUser.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[STORAGE] Error fetching cloud save:', error);
+        return this.data;
+      }
+
+      if (!cloudRow) {
+        // First-time login: create initial cloud save with existing local progress
+        console.log('[STORAGE] No cloud save found. Uploading initial save profile...');
+        await this.syncToCloud(this.data);
+      } else {
+        // Cloud save exists: Merge and update local storage
+        const mergedData = this.mergeSaveStates(this.data, cloudRow.save_data);
+        this.data = this.mergeWithDefaults(mergedData);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
+        console.log('[STORAGE] Cloud save loaded and synchronized successfully.');
+      }
+    } catch (err) {
+      console.error('[STORAGE] Cloud save synchronization exception:', err);
+    }
+
+    return this.data;
+  }
+
+  /**
+   * Intelligently merges local and cloud progress (favors higher scores, union of unlocks, max crew levels)
+   */
+  mergeSaveStates(local, cloud) {
+    if (!cloud) return local;
+    return {
+      playerName: cloud.playerName || local.playerName || 'Player',
+      coins: Math.max(local.coins || 0, cloud.coins || 0),
+      highScore: Math.max(local.highScore || 0, cloud.highScore || 0),
+      maxWave: Math.max(local.maxWave || 1, cloud.maxWave || 1),
+      unlockedChassis: Array.from(new Set([...(local.unlockedChassis || []), ...(cloud.unlockedChassis || [])])),
+      unlockedColors: Array.from(new Set([...(local.unlockedColors || []), ...(cloud.unlockedColors || [])])),
+      unlockedColorWheel: Boolean(local.unlockedColorWheel || cloud.unlockedColorWheel),
+      customColor: cloud.customColor || local.customColor || '#00b2e1',
+      activeColor: cloud.activeColor || local.activeColor || 'default',
+      settings: {
+        theme: cloud.settings?.theme || local.settings?.theme || 'dark',
+        uiScale: cloud.settings?.uiScale || local.settings?.uiScale || 1.0
+      },
+      crewLevels: {
+        loader: Math.max(local.crewLevels?.loader || 0, cloud.crewLevels?.loader || 0),
+        gunner: Math.max(local.crewLevels?.gunner || 0, cloud.crewLevels?.gunner || 0),
+        driver: Math.max(local.crewLevels?.driver || 0, cloud.crewLevels?.driver || 0),
+        commander: Math.max(local.crewLevels?.commander || 0, cloud.crewLevels?.commander || 0)
+      }
+    };
+  }
+
+  /**
+   * Saves data locally immediately and schedules an asynchronous cloud sync
+   */
   save() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
     } catch (e) {
-      console.error('Failed to save data:', e);
+      console.error('[STORAGE] Failed to write to localStorage:', e);
+    }
+
+    if (this.currentUser) {
+      clearTimeout(this.syncDebounceTimer);
+      this.syncDebounceTimer = setTimeout(() => {
+        this.syncToCloud(this.data);
+      }, 500);
     }
   }
+
+  async syncToCloud(payload) {
+    if (!this.currentUser) return;
+    const client = getSupabase();
+    if (!client) return;
+
+    try {
+      this.isSyncing = true;
+      const { error } = await client
+        .from('player_saves')
+        .upsert(
+          {
+            user_id: this.currentUser.id,
+            save_data: payload
+          },
+          { onConflict: 'user_id' }
+        );
+
+      if (error) {
+        console.error('[STORAGE] Cloud sync failed:', error);
+      } else {
+        console.log('[STORAGE] Cloud sync complete.');
+      }
+    } catch (err) {
+      console.error('[STORAGE] Cloud sync exception:', err);
+    } finally {
+      this.isSyncing = false;
+    }
+  }
+
+  // --- Mutator Helpers ---
 
   setPlayerName(name) {
     if (name && name.trim()) {
