@@ -3,8 +3,8 @@
  */
 
 // Replace these placeholders with your actual Supabase Project details
-export const SUPABASE_URL = 'https://YOUR_SUPABASE_PROJECT_ID.supabase.co';
-export const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+export const SUPABASE_URL = 'https://wqimapojtpkqzrhckjhy.supabase.co';
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxaW1hcG9qdHBrcXpyaGNramh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwODg0MTMsImV4cCI6MjEwMTY2NDQxM30.iUuzHLcb3e0r2C9CSHd_7wuskd62hPYbCYxlHeJdjKk';
 
 let supabaseClient = null;
 
