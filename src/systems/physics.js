@@ -30,12 +30,14 @@ export class PhysicsSystem {
     const chassisConfig = CONFIG.CHASSIS[activeChassisKey];
     const bodyDmgStat = playerStats.bodyDamage || 0;
 
-    // Diep.io Body Damage Calculation Formulas
+    // Configurable Diep.io Body Damage Calculation Formulas
     const ramDmgShape = CONFIG.PLAYER.baseBodyDamageShapes + (bodyDmgStat * CONFIG.PLAYER.bodyDmgPerPointShape);
     const ramDmgTank = CONFIG.PLAYER.baseBodyDamageTanks + (bodyDmgStat * CONFIG.PLAYER.bodyDmgPerPointTank);
     const playerRamDamage = ramDmgTank * (chassisConfig.bodyDamageMultiplier || 1.0);
 
-    // 1. PLAYER vs RESOURCE SHAPES (Phasing Overlap + Heavy Repulsion Force)
+    const pCol = CONFIG.PLAYER.collision;
+
+    // 1. PLAYER vs RESOURCE SHAPES (Configurable Phasing Overlap + Heavy Repulsion)
     for (const shape of waveMgr.shapes) {
       if (shape.dead) continue;
 
@@ -53,10 +55,9 @@ export class PhysicsSystem {
 
         const shapeWeight = shape.config.weight || 1.0;
 
-        // Heavy spring repulsion force allowing smooth phasing + ramming pushback
-        const baseRepulsion = 1800 + overlap * 120;
-        const playerPushFactor = 0.25 / (1.0 + (bodyDmgStat * 0.1));
-        const shapePushFactor = 0.75 / shapeWeight;
+        const baseRepulsion = pCol.shapeRepulsionBase + overlap * pCol.shapeRepulsionOverlapFactor;
+        const playerPushFactor = pCol.shapePlayerPushFactor / (1.0 + (bodyDmgStat * 0.1));
+        const shapePushFactor = (1.0 - pCol.shapePlayerPushFactor) / shapeWeight;
 
         player.vx -= nx * baseRepulsion * playerPushFactor * dt;
         player.vy -= ny * baseRepulsion * playerPushFactor * dt;
@@ -64,8 +65,7 @@ export class PhysicsSystem {
         shape.vx += nx * baseRepulsion * shapePushFactor * dt;
         shape.vy += ny * baseRepulsion * shapePushFactor * dt;
 
-        // Continuous ramming damage while overlapping
-        shape.takeDamage(ramDmgShape * 1.8 * dt);
+        shape.takeDamage(ramDmgShape * pCol.shapeRamDamageMultiplier * dt);
         player.takeDamage(shape.ramDamage, activeChassisKey);
 
         if (Math.random() < 0.3) {
@@ -80,7 +80,7 @@ export class PhysicsSystem {
       }
     }
 
-    // 2. PLAYER vs SWARM ENEMIES (Phasing Overlap + Heavy Repulsion Force)
+    // 2. PLAYER vs SWARM ENEMIES (Configurable Phasing Overlap + Heavy Repulsion)
     for (const enemy of waveMgr.enemies) {
       if (enemy.dead) continue;
 
@@ -98,19 +98,18 @@ export class PhysicsSystem {
 
         const enemyWeight = enemy.config.weight || 1.5;
 
-        // Heavy repulsion force for tank vs enemy collisions
-        const baseRepulsion = 2200 + overlap * 150;
-        const playerPushFactor = 0.30;
-        const enemyPushFactor = 0.70 / enemyWeight;
+        const enemyRepulsion = pCol.enemyRepulsionBase + overlap * pCol.enemyRepulsionOverlapFactor;
+        const enemyPlayerPush = pCol.enemyPlayerPushFactor;
+        const enemyPushFactor = (1.0 - pCol.enemyPlayerPushFactor) / enemyWeight;
 
-        player.vx -= nx * baseRepulsion * playerPushFactor * dt;
-        player.vy -= ny * baseRepulsion * playerPushFactor * dt;
+        player.vx -= nx * enemyRepulsion * enemyPlayerPush * dt;
+        player.vy -= ny * enemyRepulsion * enemyPlayerPush * dt;
 
-        enemy.vx += nx * baseRepulsion * enemyPushFactor * dt;
-        enemy.vy += ny * baseRepulsion * enemyPushFactor * dt;
+        enemy.vx += nx * enemyRepulsion * enemyPushFactor * dt;
+        enemy.vy += ny * enemyRepulsion * enemyPushFactor * dt;
 
         player.takeDamage(enemy.damage, activeChassisKey);
-        enemy.takeDamage(playerRamDamage * 1.8 * dt);
+        enemy.takeDamage(playerRamDamage * pCol.enemyRamDamageMultiplier * dt);
 
         if (Math.random() < 0.35) {
           waveMgr.spawnShatterParticles(enemy.x - nx * enemy.radius * 0.5, enemy.y - ny * enemy.radius * 0.5, enemy.color, 3);
