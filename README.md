@@ -1,2 +1,2 @@
-# falo.io
+# Falo.io
 Repository for Falo.io
