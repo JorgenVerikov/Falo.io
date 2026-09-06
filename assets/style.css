@@ -1201,9 +1201,9 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 .shop-tab-btn {
   flex: 1;
   padding: calc(8px * var(--ui-scale));
-  background-color: #eec951;
+  background-color: #007a9c;
   background-image: linear-gradient(to bottom, transparent 70%, rgba(0, 0, 0, 0.18) 70%);
-  border: calc(2.5px * var(--ui-scale)) solid #c7a844;
+  border: calc(2.5px * var(--ui-scale)) solid #004f64;
   color: #ffffff;
   font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
   font-weight: 900;
