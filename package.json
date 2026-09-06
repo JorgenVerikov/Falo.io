@@ -1,0 +1,16 @@
+{
+  "name": "falo-io",
+  "version": "1.0.0",
+  "description": "Falo.io - Top-down 2D tank survival and arena combat game",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "node build.js",
+    "lint": "node --check server.js build.js src/core/*.js src/entities/*.js src/systems/*.js src/ui/*.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

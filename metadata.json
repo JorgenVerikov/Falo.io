@@ -1,0 +1,8 @@
+{
+  "name": "Falo.io",
+  "description": "Top-down 2D tank survival and arena combat game with upgrades, waves, and vehicle customization",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
