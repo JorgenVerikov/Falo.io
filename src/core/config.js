@@ -87,14 +87,14 @@ export const CONFIG = {
     },
 
     statDefinitions: [
-      { key: 'regenRate', keyNum: '1', name: '[1] Health Regen', color: '#eca767', physical: true },
-      { key: 'maxHp', keyNum: '2', name: '[2] Max Health', color: '#ff63be', physical: true },
-      { key: 'bodyDamage', keyNum: '3', name: '[3] Body Damage', color: '#a433d8', physical: true },
-      { key: 'shellSpeed', keyNum: '4', name: '[4] Bullet Speed', color: '#527bd4', physical: false },
-      { key: 'shellPenetration', keyNum: '5', name: '[5] Bullet Penetration', color: '#ffdf2d', physical: false },
-      { key: 'shellDamage', keyNum: '6', name: '[6] Bullet Damage', color: '#eb392c', physical: false },
-      { key: 'reloadSpeed', keyNum: '7', name: '[7] Reload Speed', color: '#6eec55', physical: false },
-      { key: 'moveSpeed', keyNum: '8', name: '[8] Movement Speed', color: '#2ff5eb', physical: true }
+      { key: 'regenRate', keyNum: '1', label: 'Health Regen', name: 'Health Regen', color: '#f0b58e', physical: true },
+      { key: 'maxHp', keyNum: '2', label: 'Max Health', name: 'Max Health', color: '#eb64d8', physical: true },
+      { key: 'bodyDamage', keyNum: '3', label: 'Body Damage', name: 'Body Damage', color: '#8f61f2', physical: true },
+      { key: 'shellSpeed', keyNum: '4', label: 'Bullet Speed', name: 'Bullet Speed', color: '#5b8fed', physical: false },
+      { key: 'shellPenetration', keyNum: '5', label: 'Bullet Penetration', name: 'Bullet Penetration', color: '#f5d450', physical: false },
+      { key: 'shellDamage', keyNum: '6', label: 'Bullet Damage', name: 'Bullet Damage', color: '#ea5454', physical: false },
+      { key: 'reloadSpeed', keyNum: '7', label: 'Reload', name: 'Reload', color: '#88e33c', physical: false },
+      { key: 'moveSpeed', keyNum: '8', label: 'Movement Speed', name: 'Movement Speed', color: '#4be3e3', physical: true }
     ]
   },
 

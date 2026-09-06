@@ -390,8 +390,10 @@ function setupInputs() {
     }
 
     if (['1', '2', '3', '4', '5', '6', '7', '8'].includes(e.key) && state.statPoints > 0) {
-      const keys = ['maxHp', 'regenRate', 'bodyDamage', 'shellSpeed', 'shellPenetration', 'shellDamage', 'reloadSpeed', 'moveSpeed'];
-      handleStatUpgrade(keys[parseInt(e.key) - 1]);
+      const statDef = CONFIG.PLAYER.statDefinitions[parseInt(e.key) - 1];
+      if (statDef) {
+        handleStatUpgrade(statDef.key);
+      }
     }
   });
 

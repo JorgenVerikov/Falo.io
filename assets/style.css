@@ -258,19 +258,22 @@ html, body {
   transform: none;
 }
 
-/* 8-Stat Upgrade Panel */
+/* 8-Stat Upgrade Panel (Diep.io Style) */
 .bottom-left-panel {
   position: fixed;
-  bottom: calc(16px * var(--ui-scale));
-  left: calc(16px * var(--ui-scale));
-  width: calc(260px * var(--ui-scale));
+  bottom: calc(12px * var(--ui-scale));
+  left: calc(12px * var(--ui-scale));
+  width: calc(182px * var(--ui-scale));
   display: flex;
   flex-direction: column;
-  gap: calc(4px * var(--ui-scale));
-  padding: calc(8px * var(--ui-scale)) calc(10px * var(--ui-scale));
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  gap: calc(2.2px * var(--ui-scale));
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  transition: opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   opacity: 1;
-  transform: translateY(0);
+  transform: translateX(0);
   z-index: 50;
   pointer-events: auto;
 }
@@ -278,100 +281,211 @@ html, body {
 .bottom-left-panel.hidden {
   display: flex !important;
   opacity: 0;
-  transform: translateY(18px);
+  transform: translateX(-115%);
   pointer-events: none;
 }
 
-.stat-badge {
-  font-size: calc(10px * var(--ui-scale));
-  font-weight: 900;
-  color: #359bb5;
-  letter-spacing: 0.5px;
-  margin-bottom: calc(4px * var(--ui-scale));
-  text-align: center;
-  text-transform: uppercase;
-  animation: flashAlert 0.5s infinite alternate;
-  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-  white-space: nowrap;
-}
-
-.stat-list {
-  display: flex;
-  flex-direction: column;
-  gap: calc(3px * var(--ui-scale));
-}
-
-.stat-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(6px * var(--ui-scale));
-}
-
-.stat-name {
-  font-size: calc(10px * var(--ui-scale));
-  font-weight: 800;
-  width: calc(125px * var(--ui-scale));
-  color: #dbdee1;
-  white-space: nowrap;
-  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-}
-
-.stat-bar-track {
-  flex: 1;
-  height: calc(9px * var(--ui-scale));
-  background: #1e1f22;
-  border-radius: 3px;
-  border: 1px solid rgba(255,255,255,0.08);
-  overflow: hidden;
-}
-
-.stat-bar-fill {
-  height: 100%;
-  width: 0%;
-  transition: width 0.15s ease;
-}
-
-.stat-add-btn {
-  width: calc(16px * var(--ui-scale));
-  height: calc(16px * var(--ui-scale));
-  background-color: #00b2e1;
-  background-image: linear-gradient(to bottom, transparent 65%, rgba(0, 0, 0, 0.18) 65%);
-  border: calc(1.5px * var(--ui-scale)) solid #007a9e;
-  border-radius: calc(3px * var(--ui-scale));
-  color: #fff;
+/* Floating angled point count badge above bars (e.g. x33) */
+.stat-points-badge {
+  position: absolute;
+  top: calc(-22px * var(--ui-scale));
+  right: calc(4px * var(--ui-scale));
+  transform: rotate(-20deg);
+  transform-origin: center center;
   font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
   font-weight: 900;
-  font-size: calc(11px * var(--ui-scale));
-  cursor: pointer;
+  font-size: calc(19px * var(--ui-scale));
+  color: #ffffff;
+  -webkit-text-stroke: calc(1.4px * var(--ui-scale)) #181818;
+  text-shadow: 
+    -1.5px -1.5px 0 #181818,
+     1.5px -1.5px 0 #181818,
+    -1.5px  1.5px 0 #181818,
+     1.5px  1.5px 0 #181818,
+     0   -1.5px 0 #181818,
+     0    1.5px 0 #181818,
+    -1.5px  0   0 #181818,
+     1.5px  0   0 #181818;
+  letter-spacing: -0.5px;
+  pointer-events: none;
+  user-select: none;
+  z-index: 10;
+}
+
+.stat-points-badge.hidden {
+  display: none !important;
+}
+
+/* Subtle corner trigger / pill when panel is collapsed */
+.stat-corner-tab {
+  position: fixed;
+  bottom: calc(10px * var(--ui-scale));
+  left: calc(10px * var(--ui-scale));
+  height: calc(22px * var(--ui-scale));
+  padding: 0 calc(8px * var(--ui-scale));
+  background: #363636;
+  border: calc(1.8px * var(--ui-scale)) solid #181818;
+  border-radius: calc(11px * var(--ui-scale));
   display: flex;
   align-items: center;
   justify-content: center;
-  text-shadow: -1px -1px 0 #222, 1px -1px 0 #222, -1px 1px 0 #222, 1px 1px 0 #222;
-  -webkit-text-stroke: 0.4px #222;
-  transition: filter 0.12s ease;
-  transform: none;
+  cursor: pointer;
+  z-index: 45;
+  transition: transform 0.12s ease, opacity 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
 }
 
-.stat-add-btn:hover:not(.disabled) {
-  filter: brightness(1.2);
-  transform: none;
+.stat-corner-tab:hover {
+  transform: scale(1.08);
 }
 
-.stat-add-btn:active:not(.disabled) {
-  filter: brightness(0.92);
-  transform: none;
+.stat-corner-tab.hidden {
+  display: none !important;
 }
 
-.stat-add-btn.disabled {
-  background-color: #55585c;
-  background-image: none;
-  border-color: #3d4044;
-  color: #8c8f94;
-  cursor: default;
-  text-shadow: none;
-  -webkit-text-stroke: 0px;
-  filter: none;
+.stat-corner-badge {
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-weight: 900;
+  font-size: calc(11.5px * var(--ui-scale));
+  color: #ffffff;
+  -webkit-text-stroke: calc(0.7px * var(--ui-scale)) #181818;
+  text-shadow: -1.2px -1.2px 0 #181818, 1.2px -1.2px 0 #181818, -1.2px 1.2px 0 #181818, 1.2px 1.2px 0 #181818;
+}
+
+/* Stat Upgrade List Container */
+.stat-upgrade-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2.2px * var(--ui-scale));
+}
+
+/* Each Pill Bar */
+.stat-bar-pill {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  height: calc(18px * var(--ui-scale));
+  width: 100%;
+  background: #363636;
+  border: calc(1.8px * var(--ui-scale)) solid #181818;
+  border-radius: calc(10px * var(--ui-scale));
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.1s ease;
+}
+
+/* Left portion of pill: dark track with stat label and hotkey [1] */
+.stat-bar-main {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border-top-left-radius: calc(8px * var(--ui-scale));
+  border-bottom-left-radius: calc(8px * var(--ui-scale));
+}
+
+/* Level Fill Bar inside the pill */
+.stat-bar-fill-level {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  opacity: 0.95;
+  transition: width 0.15s ease-out;
+  z-index: 1;
+}
+
+/* Content over fill: Name on left, shortcut [X] on right */
+.stat-bar-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-left: calc(9px * var(--ui-scale));
+  padding-right: calc(6px * var(--ui-scale));
+  pointer-events: none;
+  user-select: none;
+}
+
+.stat-bar-label {
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-size: calc(9.5px * var(--ui-scale));
+  font-weight: 900;
+  color: #ffffff;
+  white-space: nowrap;
+  letter-spacing: 0.1px;
+  text-shadow: 
+    -1.2px -1.2px 0 #181818,
+     1.2px -1.2px 0 #181818,
+    -1.2px  1.2px 0 #181818,
+     1.2px  1.2px 0 #181818,
+     0px   -1.2px 0 #181818,
+     0px    1.2px 0 #181818,
+    -1.2px  0px   0 #181818,
+     1.2px  0px   0 #181818;
+}
+
+.stat-bar-hotkey {
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-size: calc(9px * var(--ui-scale));
+  font-weight: 900;
+  color: #ffffff;
+  white-space: nowrap;
+  letter-spacing: 0.1px;
+  text-shadow: 
+    -1.2px -1.2px 0 #181818,
+     1.2px -1.2px 0 #181818,
+    -1.2px  1.2px 0 #181818,
+     1.2px  1.2px 0 #181818,
+     0px   -1.2px 0 #181818,
+     0px    1.2px 0 #181818,
+    -1.2px  0px   0 #181818,
+     1.2px  0px   0 #181818;
+}
+
+/* Right button: colorful pill cap with bold black + */
+.stat-btn-plus {
+  position: relative;
+  z-index: 3;
+  width: calc(22px * var(--ui-scale));
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-left: calc(1.8px * var(--ui-scale)) solid #181818;
+  border-top-right-radius: calc(8px * var(--ui-scale));
+  border-bottom-right-radius: calc(8px * var(--ui-scale));
+  cursor: pointer;
+  transition: filter 0.1s ease;
+  user-select: none;
+  padding: 0;
+  margin: 0;
+}
+
+.stat-btn-plus:hover {
+  filter: brightness(1.18);
+}
+
+.stat-btn-plus:active {
+  filter: brightness(0.88);
+}
+
+.stat-plus-symbol {
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-weight: 900;
+  font-size: calc(13px * var(--ui-scale));
+  color: #181818;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: calc(-1px * var(--ui-scale));
 }
 
 /* Bottom HUD Layout */
@@ -710,20 +824,45 @@ html, body {
 }
 
 .main-menu-title {
-  font-size: calc(28px * var(--ui-scale));
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-size: calc(32px * var(--ui-scale));
   font-weight: 900;
-  letter-spacing: 3px;
-  color: #359bb5;
-  text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+  letter-spacing: 2.5px;
+  color: #00b2e1;
+  -webkit-text-stroke: calc(1.8px * var(--ui-scale)) #181818;
+  paint-order: stroke fill;
+  text-shadow: 
+    -2px -2px 0 #181818,
+     2px -2px 0 #181818,
+    -2px  2px 0 #181818,
+     2px  2px 0 #181818,
+     0px -2px 0 #181818,
+     0px  2px 0 #181818,
+    -2px  0px 0 #181818,
+     2px  0px 0 #181818;
+  user-select: none;
 }
 
 .main-menu-sub {
-  font-size: calc(12px * var(--ui-scale));
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-size: calc(12.5px * var(--ui-scale));
   font-weight: 800;
-  letter-spacing: 2px;
-  color: #949ba4;
-  margin-top: 4px;
+  letter-spacing: 1.5px;
+  color: #d2d6da;
+  -webkit-text-stroke: calc(1px * var(--ui-scale)) #181818;
+  paint-order: stroke fill;
+  text-shadow: 
+    -1.5px -1.5px 0 #181818,
+     1.5px -1.5px 0 #181818,
+    -1.5px  1.5px 0 #181818,
+     1.5px  1.5px 0 #181818,
+     0px   -1.5px 0 #181818,
+     0px    1.5px 0 #181818,
+    -1.5px  0px   0 #181818,
+     1.5px  0px   0 #181818;
+  margin-top: calc(4px * var(--ui-scale));
   margin-bottom: calc(18px * var(--ui-scale));
+  user-select: none;
 }
 
 /* Main Menu Player Name Input (Diep.io Classic Style) */
@@ -1396,8 +1535,35 @@ body.theme-light .modal-box {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
 }
 
-body.theme-light .main-menu-title { color: #287294; text-shadow: none; }
-body.theme-light .main-menu-sub { color: #5a5d62; }
+body.theme-light .main-menu-title {
+  color: #00b2e1;
+  -webkit-text-stroke: calc(1.8px * var(--ui-scale)) #181818;
+  paint-order: stroke fill;
+  text-shadow: 
+    -2px -2px 0 #181818,
+     2px -2px 0 #181818,
+    -2px  2px 0 #181818,
+     2px  2px 0 #181818,
+     0px -2px 0 #181818,
+     0px  2px 0 #181818,
+    -2px  0px 0 #181818,
+     2px  0px 0 #181818;
+}
+
+body.theme-light .main-menu-sub {
+  color: #d2d6da;
+  -webkit-text-stroke: calc(1px * var(--ui-scale)) #181818;
+  paint-order: stroke fill;
+  text-shadow: 
+    -1.5px -1.5px 0 #181818,
+     1.5px -1.5px 0 #181818,
+    -1.5px  1.5px 0 #181818,
+     1.5px  1.5px 0 #181818,
+     0px   -1.5px 0 #181818,
+     0px    1.5px 0 #181818,
+    -1.5px  0px   0 #181818,
+     1.5px  0px   0 #181818;
+}
 
 body.theme-light .menu-btn.primary,
 body.theme-light .modal-btn.primary {

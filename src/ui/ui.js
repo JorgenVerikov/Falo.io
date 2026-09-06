@@ -43,6 +43,8 @@ export class UIManager {
 
     this.statPanel = document.getElementById('stat-upgrade-panel');
     this.statList = document.getElementById('stat-upgrade-list');
+    this.statCornerTab = document.getElementById('stat-corner-tab');
+    this.statCornerBadge = document.getElementById('stat-corner-badge');
     this.faloPanel = document.getElementById('falo-upgrade-panel');
 
     this.gameOverModal = document.getElementById('game-over-modal');
@@ -187,9 +189,36 @@ export class UIManager {
         this.mouseInEvolutionZone = (x <= evoThresholdX && y <= evoThresholdY);
       }
 
-      const statThresholdX = 280 * scale;
-      const statThresholdY = window.innerHeight - (280 * scale);
-      this.mouseInStatZone = (x <= statThresholdX && y >= statThresholdY);
+      // Upgrade bar hover trigger:
+      // Only appear when player's cursor is REALLY CLOSE to the bottom left side of the screen
+      // to prevent it appearing when the player is aiming bottom-left.
+      const isPanelOpen = this.statPanel && !this.statPanel.classList.contains('hidden');
+
+      if (isPanelOpen) {
+        // While currently open, keep it open while cursor is on or immediately next to the panel
+        const rect = this.statPanel.getBoundingClientRect();
+        this.mouseInStatZone = (
+          x <= rect.right + 20 * scale &&
+          y >= rect.top - 20 * scale &&
+          y <= window.innerHeight + 10
+        );
+      } else {
+        // When closed, only open when cursor is really close to the bottom left corner/side
+        const edgeTriggerX = 45 * scale;
+        const edgeTriggerY = window.innerHeight - (45 * scale);
+
+        let inCornerTab = false;
+        if (this.statCornerTab && !this.statCornerTab.classList.contains('hidden')) {
+          const tabRect = this.statCornerTab.getBoundingClientRect();
+          inCornerTab = (
+            x <= tabRect.right + 8 * scale &&
+            y >= tabRect.top - 8 * scale &&
+            y <= window.innerHeight
+          );
+        }
+
+        this.mouseInStatZone = (x <= edgeTriggerX && y >= edgeTriggerY) || inCornerTab;
+      }
 
       this.updatePanelVisibilities();
     });
@@ -223,6 +252,24 @@ export class UIManager {
   }
 
   bindEvents() {
+    if (this.statCornerTab) {
+      this.statCornerTab.addEventListener('mouseenter', () => {
+        this.mouseInStatZone = true;
+        this.updatePanelVisibilities();
+      });
+      this.statCornerTab.addEventListener('click', () => {
+        this.mouseInStatZone = true;
+        this.updatePanelVisibilities();
+      });
+    }
+
+    if (this.statPanel) {
+      this.statPanel.addEventListener('mouseleave', () => {
+        this.mouseInStatZone = false;
+        this.updatePanelVisibilities();
+      });
+    }
+
     document.getElementById('start-game-btn').addEventListener('click', () => {
       this.hideMainMenu();
       this.onStartRun();
@@ -341,20 +388,30 @@ export class UIManager {
       this.faloPanel.classList.add('hidden');
     }
 
-    const shouldShowStatPanel = (this.statPointsAvailable > 0) || this.mouseInStatZone;
+    const shouldShowStatPanel = Boolean(this.mouseInStatZone);
 
     if (shouldShowStatPanel) {
       this.statPanel.classList.remove('hidden');
+      if (this.statCornerTab) {
+        this.statCornerTab.classList.add('hidden');
+      }
     } else {
       this.statPanel.classList.add('hidden');
+      if (this.statCornerTab) {
+        if (this.statPointsAvailable > 0) {
+          this.statCornerTab.classList.remove('hidden');
+          if (this.statCornerBadge) {
+            this.statCornerBadge.textContent = `x${this.statPointsAvailable}`;
+          }
+        } else {
+          this.statCornerTab.classList.add('hidden');
+        }
+      }
     }
 
     if (this.statPointsAvailable > 0) {
       this.statPointBadge.classList.remove('hidden');
-      const pts = this.statPointsAvailable;
-      this.statPointBadge.textContent = pts === 1 
-        ? '+1 STAT POINT AVAILABLE' 
-        : `+${pts} STAT POINTS AVAILABLE FOR UPGRADE`;
+      this.statPointBadge.textContent = `x${this.statPointsAvailable}`;
     } else {
       this.statPointBadge.classList.add('hidden');
     }
@@ -580,6 +637,7 @@ export class UIManager {
 
   renderStatUpgrades(stats, statPoints, onUpgrade, activeChassis = 'basic') {
     this.statList.innerHTML = '';
+    this.statPointsAvailable = statPoints;
 
     const isSmasher = (activeChassis === 'smasher');
     const smasherCfg = CONFIG.PLAYER.smasherRules;
@@ -594,28 +652,42 @@ export class UIManager {
       const level = stats[s.key] || 0;
       const maxCap = isSmasher ? smasherCfg.maxStatLevel : CONFIG.PLAYER.maxStatLevel;
 
-      const row = document.createElement('div');
-      row.className = 'stat-row';
+      const pill = document.createElement('div');
+      pill.className = 'stat-bar-pill';
 
       const fillWidthPct = Math.min(100, (level / maxCap) * 100);
       const canUpgrade = statPoints > 0 && level < maxCap;
 
-      row.innerHTML = `
-        <span class="stat-name">${s.name}</span>
-        <div class="stat-bar-track">
-          <div class="stat-bar-fill" style="width: ${fillWidthPct}%; background: ${s.color}"></div>
+      const label = s.label || s.name.replace(/\[\d+\]\s*/, '');
+      const hotkey = s.keyNum || '1';
+
+      pill.innerHTML = `
+        <div class="stat-bar-main">
+          <div class="stat-bar-fill-level" style="width: ${fillWidthPct}%; background-color: ${s.color};"></div>
+          <div class="stat-bar-content">
+            <span class="stat-bar-label">${label}</span>
+            <span class="stat-bar-hotkey">[${hotkey}]</span>
+          </div>
         </div>
-        <button class="stat-add-btn ${canUpgrade ? '' : 'disabled'}">+</button>
+        ${statPoints > 0 ? `
+          <button class="stat-btn-plus" style="background-color: ${s.color};" ${canUpgrade ? '' : 'disabled style="opacity: 0.35; cursor: default;"'}>
+            <span class="stat-plus-symbol">+</span>
+          </button>
+        ` : ''}
       `;
 
-      row.querySelector('.stat-add-btn').addEventListener('click', () => {
-        if (canUpgrade) {
+      const plusBtn = pill.querySelector('.stat-btn-plus');
+      if (plusBtn && canUpgrade) {
+        plusBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
           onUpgrade(s.key);
-        }
-      });
+        });
+      }
 
-      this.statList.appendChild(row);
+      this.statList.appendChild(pill);
     });
+
+    this.updatePanelVisibilities();
   }
 
   showGameOver(score, wave, coinsEarned) {
