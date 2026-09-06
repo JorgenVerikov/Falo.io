@@ -318,7 +318,7 @@ export const CONFIG = {
           weapon: {
             type: 'READY_RACK',
             maxRack: 3,
-            baseReloadTicks: 60,
+            baseReloadTicks: 50,
             fireRateTicks: 35,
             shellSpeed: 160,
             penetration: 2.0,

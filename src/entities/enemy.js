@@ -61,6 +61,7 @@ export class ResourceShape {
     this.deathTimer = 0;
     this.deathDuration = 0.28;
     this.destroyed = false;
+    this.flashTimer = 0;
   }
 
   kill() {
@@ -71,6 +72,10 @@ export class ResourceShape {
   }
 
   update(dt) {
+    if (this.flashTimer > 0) {
+      this.flashTimer = Math.max(0, this.flashTimer - dt);
+    }
+
     if (this.isDying) {
       this.deathTimer += dt;
       const progress = Math.min(1.0, this.deathTimer / this.deathDuration);
@@ -99,6 +104,7 @@ export class ResourceShape {
   takeDamage(amount) {
     if (this.dead) return;
     this.hp -= amount;
+    this.flashTimer = 0.12;
     if (this.hp <= 0) {
       this.kill();
     }
@@ -111,7 +117,10 @@ export class ResourceShape {
       const alpha = Math.max(0, 1.0 - (this.deathTimer / this.deathDuration));
       ctx.globalAlpha = alpha;
     }
-    canvasMgr.drawPolygon(this.x, this.y, this.radius, this.sides, this.angle, this.color, this.stroke, 3);
+    const isFlashing = this.flashTimer > 0;
+    const fillColor = isFlashing ? '#f14e54' : this.color;
+    const strokeColor = isFlashing ? '#b82a30' : this.stroke;
+    canvasMgr.drawPolygon(this.x, this.y, this.radius, this.sides, this.angle, fillColor, strokeColor, 3);
     ctx.restore();
 
     if (!this.isDying && this.hp < this.maxHp) {

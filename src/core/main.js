@@ -217,7 +217,7 @@ function restartRun() {
   applyCrewAndStatModifiers();
   uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
   uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
-  uiMgr.renderDiepUpgradeUI(state.level, state.activeChassis, setActiveChassis);
+  uiMgr.renderFaloUpgradeUI(state.level, state.activeChassis, setActiveChassis);
 }
 
 function triggerGameOver() {
@@ -267,7 +267,7 @@ function addXP(amount) {
 
   if (leveledUp) {
     applyCrewAndStatModifiers();
-    uiMgr.renderDiepUpgradeUI(state.level, state.activeChassis, setActiveChassis);
+    uiMgr.renderFaloUpgradeUI(state.level, state.activeChassis, setActiveChassis);
   }
 }
 
@@ -438,7 +438,7 @@ function setActiveChassis(chassisKey) {
 
   console.log(`[EVOLVE] Vehicle transformed into ${CONFIG.CHASSIS[chassisKey].name.toUpperCase()}`);
 
-  uiMgr.renderDiepUpgradeUI(state.level, state.activeChassis, setActiveChassis);
+  uiMgr.renderFaloUpgradeUI(state.level, state.activeChassis, setActiveChassis);
   uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
 }
 
@@ -474,7 +474,7 @@ function setupAdminPanelListeners() {
     applyCrewAndStatModifiers();
     uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
     uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
-    uiMgr.renderDiepUpgradeUI(state.level, state.activeChassis, setActiveChassis);
+    uiMgr.renderFaloUpgradeUI(state.level, state.activeChassis, setActiveChassis);
     uiMgr.showToast("ADMIN: MAX LEVEL 150 GRANTED (33 SKILL PTS)");
   });
 

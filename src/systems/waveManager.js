@@ -138,10 +138,26 @@ export class WaveManager {
     let activeShapesCount = this.shapes.filter(s => !s.dead).length;
 
     while (activeShapesCount < CONFIG.SHAPES.maxCount && this.shapes.length < CONFIG.SHAPES.maxCount + 10) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist = CONFIG.SHAPES.minSpawnDist + Math.random() * (CONFIG.SHAPES.maxSpawnDist - CONFIG.SHAPES.minSpawnDist);
-      const x = player.x + Math.cos(angle) * dist;
-      const y = player.y + Math.sin(angle) * dist;
+      let x = 0;
+      let y = 0;
+      let validSpawn = false;
+      let attempts = 0;
+
+      while (!validSpawn && attempts < 10) {
+        attempts++;
+        const angle = Math.random() * Math.PI * 2;
+        const dist = CONFIG.SHAPES.minSpawnDist + Math.random() * (CONFIG.SHAPES.maxSpawnDist - CONFIG.SHAPES.minSpawnDist);
+        x = player.x + Math.cos(angle) * dist;
+        y = player.y + Math.sin(angle) * dist;
+
+        validSpawn = true;
+        for (const existing of this.shapes) {
+          if (!existing.dead && Math.hypot(existing.x - x, existing.y - y) < (existing.radius + 30)) {
+            validSpawn = false;
+            break;
+          }
+        }
+      }
 
       let rand = Math.random() * totalSpawnWeight;
       let selectedType = shapeKeys[0] || 'square';

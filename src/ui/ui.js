@@ -43,7 +43,7 @@ export class UIManager {
 
     this.statPanel = document.getElementById('stat-upgrade-panel');
     this.statList = document.getElementById('stat-upgrade-list');
-    this.diepPanel = document.getElementById('diep-upgrade-panel');
+    this.faloPanel = document.getElementById('falo-upgrade-panel');
 
     this.gameOverModal = document.getElementById('game-over-modal');
     this.finalScoreEl = document.getElementById('final-score');
@@ -178,9 +178,14 @@ export class UIManager {
       const x = e.clientX;
       const y = e.clientY;
 
-      const evoThresholdX = 240 * scale;
-      const evoThresholdY = 260 * scale;
-      this.mouseInEvolutionZone = (x <= evoThresholdX && y <= evoThresholdY);
+      if (this.faloPanel && !this.faloPanel.classList.contains('hidden')) {
+        const rect = this.faloPanel.getBoundingClientRect();
+        this.mouseInEvolutionZone = (x <= rect.right + 30 * scale && y <= rect.bottom + 30 * scale);
+      } else {
+        const evoThresholdX = 240 * scale;
+        const evoThresholdY = 260 * scale;
+        this.mouseInEvolutionZone = (x <= evoThresholdX && y <= evoThresholdY);
+      }
 
       const statThresholdX = 280 * scale;
       const statThresholdY = window.innerHeight - (280 * scale);
@@ -297,7 +302,7 @@ export class UIManager {
       this.hideAdminPanel();
     });
 
-    document.getElementById('diep-ignore-btn').addEventListener('click', () => {
+    document.getElementById('falo-ignore-btn').addEventListener('click', () => {
       this.toggleEvolutionPanel();
     });
   }
@@ -331,9 +336,9 @@ export class UIManager {
 
   updatePanelVisibilities() {
     if (this.hasEvolutionsAvailable && (this.mouseInEvolutionZone || this.evolutionPanelVisible)) {
-      this.diepPanel.classList.remove('hidden');
+      this.faloPanel.classList.remove('hidden');
     } else {
-      this.diepPanel.classList.add('hidden');
+      this.faloPanel.classList.add('hidden');
     }
 
     const shouldShowStatPanel = (this.statPointsAvailable > 0) || this.mouseInStatZone;
@@ -402,12 +407,12 @@ export class UIManager {
     if (playerStrokeColor) this.playerStrokeColor = playerStrokeColor;
 
     this.previewSpinAngle += dt * 0.9;
-    if (!this.diepPanel.classList.contains('hidden')) {
+    if (!this.faloPanel.classList.contains('hidden')) {
       this.renderPreviewCanvases();
     }
   }
 
-  renderDiepUpgradeUI(playerLevel, activeChassis, onEvolve) {
+  renderFaloUpgradeUI(playerLevel, activeChassis, onEvolve) {
     const grid = document.getElementById('upgrade-grid');
     grid.innerHTML = '';
     this.previewCanvases = [];
@@ -427,7 +432,7 @@ export class UIManager {
       visibleCardsCount++;
 
       const card = document.createElement('div');
-      card.className = `diep-card ${key === activeChassis ? 'active' : ''}`;
+      card.className = `falo-card ${key === activeChassis ? 'active' : ''}`;
 
       if (!isShopUnlocked) {
         card.classList.add('locked-shop');
@@ -442,8 +447,8 @@ export class UIManager {
 
       card.innerHTML = `
         ${lockBadge}
-        <canvas class="diep-card-canvas" width="110" height="110"></canvas>
-        <div class="diep-card-name">${chassis.name}</div>
+        <canvas class="falo-card-canvas" width="110" height="110"></canvas>
+        <div class="falo-card-name">${chassis.name}</div>
       `;
 
       const canvas = card.querySelector('canvas');
@@ -461,6 +466,9 @@ export class UIManager {
 
       grid.appendChild(card);
     });
+
+    const rows = Math.min(3, Math.max(1, visibleCardsCount));
+    grid.style.gridTemplateRows = `repeat(${rows}, calc(82px * var(--ui-scale)))`;
 
     this.hasEvolutionsAvailable = (visibleCardsCount > 0);
     this.updatePanelVisibilities();

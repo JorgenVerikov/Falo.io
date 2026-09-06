@@ -141,6 +141,39 @@ export class PhysicsSystem {
       }
     }
 
+    // 4b. SHAPE vs SHAPE (prevent overlapping)
+    for (let i = 0; i < waveMgr.shapes.length; i++) {
+      const shapeA = waveMgr.shapes[i];
+      if (shapeA.dead) continue;
+      for (let j = i + 1; j < waveMgr.shapes.length; j++) {
+        const shapeB = waveMgr.shapes[j];
+        if (shapeB.dead) continue;
+
+        const weightA = shapeA.config.weight || 1.0;
+        const weightB = shapeB.config.weight || 1.0;
+        const totalWeight = weightA + weightB;
+        const pushA = weightB / totalWeight;
+        const pushB = weightA / totalWeight;
+
+        const col = this.resolveCircleOverlap(shapeA, shapeB, pushA, pushB);
+        if (col.collided) {
+          // Elastic separation impulse to prevent sticking
+          const rvx = shapeB.vx - shapeA.vx;
+          const rvy = shapeB.vy - shapeA.vy;
+          const normalVel = rvx * col.nx + rvy * col.ny;
+
+          if (normalVel < 0) {
+            const restitution = 0.5;
+            const impulse = -(1 + restitution) * normalVel / 2;
+            shapeA.vx -= col.nx * impulse * pushA;
+            shapeA.vy -= col.ny * impulse * pushA;
+            shapeB.vx += col.nx * impulse * pushB;
+            shapeB.vy += col.ny * impulse * pushB;
+          }
+        }
+      }
+    }
+
     // 5. PLAYER PROJECTILES vs SHAPES & ENEMIES
     for (const proj of playerWeapon.projectiles) {
       if (proj.dead) continue;
@@ -164,8 +197,10 @@ export class PhysicsSystem {
           }
 
           const shapeWeight = shape.config.weight || 1.0;
-          shape.vx += (proj.vx * 0.05 * dt * 60) / shapeWeight;
-          shape.vy += (proj.vy * 0.05 * dt * 60) / shapeWeight;
+          const bSpeed = Math.hypot(proj.vx, proj.vy) || 1;
+          const pushForce = 55;
+          shape.vx += ((proj.vx / bSpeed) * pushForce) / shapeWeight;
+          shape.vy += ((proj.vy / bSpeed) * pushForce) / shapeWeight;
 
           if (shape.dead) {
             waveMgr.score += shape.xp;
@@ -223,7 +258,7 @@ export class PhysicsSystem {
       }
     }
 
-    // 7. ENEMY PROJECTILES vs PLAYER
+    // 7. ENEMY PROJECTILES vs PLAYER & SHAPES
     for (const bullet of waveMgr.enemyBullets) {
       if (bullet.dead) continue;
 
@@ -231,6 +266,33 @@ export class PhysicsSystem {
         bullet.kill();
         player.takeDamage(bullet.damage, activeChassisKey);
         waveMgr.spawnShatterParticles(player.x, player.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
+        continue;
+      }
+
+      // Contact with Shapes
+      for (const shape of waveMgr.shapes) {
+        if (shape.dead || bullet.dead) continue;
+
+        const dist = Math.hypot(bullet.x - shape.x, bullet.y - shape.y);
+        if (dist < bullet.radius + shape.radius) {
+          shape.takeDamage(bullet.damage);
+          bullet.takePenetrationDamage(CONFIG.WEAPONS.shapePenetrationDrain || 2.0);
+          bullet.applyCenterRepulsion(shape.x, shape.y, dt, CONFIG.WEAPONS.repelStrength);
+
+          if (Math.random() < 0.3) {
+            waveMgr.spawnShatterParticles(bullet.x, bullet.y, shape.color, 2);
+          }
+
+          const shapeWeight = shape.config.weight || 1.0;
+          const bSpeed = Math.hypot(bullet.vx, bullet.vy) || 1;
+          const pushForce = 45;
+          shape.vx += ((bullet.vx / bSpeed) * pushForce) / shapeWeight;
+          shape.vy += ((bullet.vy / bSpeed) * pushForce) / shapeWeight;
+
+          if (shape.dead) {
+            waveMgr.spawnShatterParticles(shape.x, shape.y, shape.color, CONFIG.VFX.shapeShatterCount);
+          }
+        }
       }
     }
   }
