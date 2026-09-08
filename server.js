@@ -9,10 +9,12 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3000;
 
-// Determine static root: dist if it exists, otherwise project root
+// Determine static root: dist or public if they exist, otherwise project root
 const staticDir = fs.existsSync(path.join(__dirname, 'dist'))
   ? path.join(__dirname, 'dist')
-  : __dirname;
+  : (fs.existsSync(path.join(__dirname, 'public'))
+    ? path.join(__dirname, 'public')
+    : __dirname);
 
 app.use(express.static(staticDir));
 

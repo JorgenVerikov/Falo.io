@@ -1,13 +1,18 @@
 import fs from 'fs';
 import path from 'path';
 
-const distDir = path.resolve('dist');
-if (!fs.existsSync(distDir)) {
-  fs.mkdirSync(distDir, { recursive: true });
+function copyStatic(targetDirName) {
+  const targetDir = path.resolve(targetDirName);
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+
+  fs.cpSync('index.html', path.join(targetDir, 'index.html'));
+  fs.cpSync('assets', path.join(targetDir, 'assets'), { recursive: true });
+  fs.cpSync('src', path.join(targetDir, 'src'), { recursive: true });
 }
 
-fs.cpSync('index.html', path.join(distDir, 'index.html'));
-fs.cpSync('assets', path.join(distDir, 'assets'), { recursive: true });
-fs.cpSync('src', path.join(distDir, 'src'), { recursive: true });
+copyStatic('dist');
+copyStatic('public');
 
-console.log('Build complete: static files copied to dist/');
+console.log('Build complete: static files copied to dist/ and public/');
