@@ -38,7 +38,7 @@ export class CanvasManager {
     this.ctx.restore();
   }
 
-  drawGrid(camera, gridSize = 60) {
+  drawGrid(camera, gridSize = (CONFIG.ARENA && CONFIG.ARENA.gridSize) || 25) {
     const ctx = this.ctx;
     ctx.save();
 
@@ -112,15 +112,15 @@ export class CanvasManager {
     ctx.restore();
   }
 
-  drawTurretBarrel(x, y, width, length, angle, offsetX = 0, offsetY = 0, frontWidth = width) {
+  drawTurretBarrel(x, y, width, length, angle, offsetX = 0, offsetY = 0, frontWidth = width, fillColor = '#999999', strokeColor = '#727272', strokeWidth = 3.5) {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
 
-    ctx.fillStyle = '#9999a5';
-    ctx.strokeStyle = '#555560';
-    ctx.lineWidth = 3;
+    ctx.fillStyle = fillColor;
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = strokeWidth;
 
     const bx = offsetX;
     const halfBack = width / 2;
@@ -163,7 +163,7 @@ export class CanvasManager {
 
   // Draw Health Bar under tank (ONLY shown when player is damaged)
   drawPlayerHealthBar(x, y, hp, maxHp, radius) {
-    if (hp >= maxHp) return; // Hide when HP is full!
+    if (hp >= maxHp - 0.01) return; // Hide when HP is full!
 
     const ctx = this.ctx;
     const width = radius * 2.4;

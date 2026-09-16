@@ -72,6 +72,20 @@ export class ResourceShape {
   }
 
   update(dt) {
+    const cfg = CONFIG.SHAPES.types[this.type];
+    if (cfg) {
+      this.config = cfg;
+      this.sides = cfg.sides;
+      this.baseRadius = cfg.radius;
+      if (!this.isDying) {
+        this.radius = cfg.radius;
+      }
+      this.color = cfg.color;
+      this.stroke = cfg.stroke;
+      this.ramDamage = cfg.ramDamage;
+      this.xp = cfg.xp;
+    }
+
     if (this.flashTimer > 0) {
       this.flashTimer = Math.max(0, this.flashTimer - dt);
     }
@@ -118,9 +132,11 @@ export class ResourceShape {
       ctx.globalAlpha = alpha;
     }
     const isFlashing = this.flashTimer > 0;
-    const fillColor = isFlashing ? '#f14e54' : this.color;
-    const strokeColor = isFlashing ? '#b82a30' : this.stroke;
-    canvasMgr.drawPolygon(this.x, this.y, this.radius, this.sides, this.angle, fillColor, strokeColor, 3);
+    const cfg = CONFIG.SHAPES.types[this.type] || this.config;
+    const fillColor = isFlashing ? '#f14e54' : (cfg.color || this.color);
+    const strokeColor = isFlashing ? '#b82a30' : (cfg.stroke || this.stroke);
+    const strokeWidth = cfg.strokeWidth || 3.5;
+    canvasMgr.drawPolygon(this.x, this.y, this.radius, cfg.sides || this.sides, this.angle, fillColor, strokeColor, strokeWidth);
     ctx.restore();
 
     if (!this.isDying && this.hp < this.maxHp) {
@@ -154,9 +170,10 @@ export class EnemyUnit {
 
     this.sides = this.config.sides;
     
-    // Scale radius using radiusMultiplier (matching Player tank multiplier logic)
+    // Scale radius using player base radius stat
+    const baseStatRadius = CONFIG.PLAYER.baseRadius || 25;
     const sizeMult = this.config.radiusMultiplier || 1.0;
-    this.baseRadius = (this.config.radius || 18) * sizeMult;
+    this.baseRadius = (this.config.radius || baseStatRadius) * sizeMult;
     this.radius = this.baseRadius;
 
     this.hp = this.config.hp;
@@ -274,7 +291,7 @@ export class EnemyUnit {
           this.barrelRecoilOffsets[0] = 10;
         }
 
-        const sizeScale = this.radius / (this.config.radius || 18);
+        const sizeScale = this.radius / (CONFIG.PLAYER.baseRadius || 25);
         const mainTurret = (this.config.turrets && this.config.turrets[0]) || { length: 34 };
         const barrelTipOffset = (mainTurret.length * sizeScale) + 2;
         const spawnX = this.x + Math.cos(this.angle) * barrelTipOffset;
@@ -310,7 +327,7 @@ export class EnemyUnit {
       ctx.globalAlpha = alpha;
     }
 
-    const sizeScale = this.radius / (this.config.radius || 18);
+    const sizeScale = this.radius / (CONFIG.PLAYER.baseRadius || 25);
 
     if (this.config.outerArmor) {
       canvasMgr.drawPolygon(

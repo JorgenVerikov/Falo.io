@@ -3,7 +3,9 @@ import { WeaponSystem, WEAPON_TYPE } from '../entities/weapons.js';
 import { WaveManager } from '../systems/waveManager.js';
 import { StorageManager } from './storage.js';
 import { UIManager } from '../ui/ui.js';
-import { CONFIG } from './config.js';
+import { CONFIG, getXPRequiredForLevel, getTotalXPForLevel } from './config.js';
+
+export { getXPRequiredForLevel, getTotalXPForLevel };
 
 // Calculates secondary (stroke) color by shifting each channel by 30 based on 127.5 threshold
 export function computeStrokeColor(hex) {
@@ -58,11 +60,15 @@ const state = {
   inMenu: true,
   debugMode: false,
   godMode: false,
+  autoFire: false,
+  autoSpin: false,
 
   level: 1,
   xp: 0,
-  xpToNext: CONFIG.PLAYER.baseXpToNext,
+  xpToNext: getXPRequiredForLevel(1),
   statPoints: 0,
+  lastEvolvedMilestone: 0,
+  ignoredMilestone: 0,
   stats: {
     maxHp: 0,
     regenRate: 0,
@@ -190,10 +196,14 @@ function startRun() {
 
 function restartRun() {
   state.isGameOver = false;
+  state.autoFire = false;
+  state.autoSpin = false;
   state.level = 1;
   state.xp = 0;
-  state.xpToNext = CONFIG.PLAYER.baseXpToNext;
+  state.xpToNext = getXPRequiredForLevel(1);
   state.statPoints = 0;
+  state.lastEvolvedMilestone = 0;
+  state.ignoredMilestone = 0;
 
   Object.keys(state.stats).forEach(k => state.stats[k] = 0);
 
@@ -217,7 +227,7 @@ function restartRun() {
   applyCrewAndStatModifiers();
   uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
   uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
-  uiMgr.renderFaloUpgradeUI(state.level, state.activeChassis, setActiveChassis);
+  checkEvolutionProgression();
 }
 
 function triggerGameOver() {
@@ -237,9 +247,9 @@ function triggerGameOver() {
   uiMgr.showGameOver(waveMgr.score, waveMgr.waveNumber, coinsEarned);
 }
 
-function addXP(amount) {
+function addXP(amount, isDirect = false) {
   const commanderLvl = storageMgr.data.crewLevels.commander || 0;
-  const xpBonus = 1.0 + (commanderLvl * CONFIG.CREW.commanderBonus);
+  const xpBonus = isDirect ? 1.0 : (1.0 + (commanderLvl * CONFIG.CREW.commanderBonus));
 
   state.xp += Math.round(amount * xpBonus);
 
@@ -253,7 +263,7 @@ function addXP(amount) {
     const earned = newPoints - oldPoints;
     state.statPoints += earned;
 
-    state.xpToNext = Math.floor(CONFIG.PLAYER.baseXpToNext * Math.pow(CONFIG.PLAYER.xpGrowthExponent, state.level - 1));
+    state.xpToNext = getXPRequiredForLevel(state.level);
     leveledUp = true;
     if (earned > 0) {
       console.log(`[LEVEL UP] Reached LVL ${state.level}! (+${earned} Skill Point)`);
@@ -267,7 +277,7 @@ function addXP(amount) {
 
   if (leveledUp) {
     applyCrewAndStatModifiers();
-    uiMgr.renderFaloUpgradeUI(state.level, state.activeChassis, setActiveChassis);
+    checkEvolutionProgression();
   }
 }
 
@@ -315,18 +325,39 @@ function applyCrewAndStatModifiers() {
 
   const growthCfg = CONFIG.PLAYER.growthScaling;
   const growthLevel = Math.min(growthCfg.maxGrowthLevel, state.level);
-  const levelSizeMult = 1.0 + (growthLevel - 1) * growthCfg.radiusIncreasePerLevel;
-  player.radius = CONFIG.PLAYER.radius * levelSizeMult;
-
+  const baseDiameter = growthCfg.baseDiameter || 50;
+  const growthExponent = growthCfg.growthExponent || 1.01;
+  const tankDiameter = baseDiameter * Math.pow(growthExponent, growthLevel - 1);
   const chassisConfig = CONFIG.CHASSIS[state.activeChassis];
+  player.radius = (tankDiameter / 2) * ((chassisConfig && chassisConfig.radiusMultiplier) || 1.0);
+
   const levelZoomMult = 1.0 + (growthLevel - 1) * growthCfg.cameraZoomIncreasePerLevel;
   camera.targetZoom = (chassisConfig.cameraZoom || CONFIG.CAMERA.defaultZoom) / levelZoomMult;
 
+  const previousMaxHp = player.maxHp;
   const maxHpStat = state.stats.maxHp || 0;
   const hpFromLevel = (state.level - 1) * CONFIG.PLAYER.hpPerLevel;
   const hpFromStat = maxHpStat * CONFIG.PLAYER.hpPerStatPoint;
-  player.maxHp = CONFIG.PLAYER.baseMaxHp + hpFromLevel + hpFromStat;
-  if (!state.godMode) player.hp = Math.min(player.hp, player.maxHp);
+  const calculatedMaxHp = CONFIG.PLAYER.baseMaxHp + hpFromLevel + hpFromStat;
+
+  if (state.godMode) {
+    player.maxHp = Infinity;
+    player.hp = Infinity;
+  } else {
+    if (previousMaxHp && Number.isFinite(previousMaxHp) && previousMaxHp > 0 && calculatedMaxHp > 0) {
+      if (player.hp >= previousMaxHp - 0.01) {
+        // Was at full health, remain at full state so no damaged health bar appears
+        player.hp = calculatedMaxHp;
+      } else {
+        // Preserve exact current health percentage ratio
+        const healthRatio = Math.max(0, player.hp / previousMaxHp);
+        player.hp = Math.min(calculatedMaxHp, healthRatio * calculatedMaxHp);
+      }
+    } else {
+      player.hp = calculatedMaxHp;
+    }
+    player.maxHp = calculatedMaxHp;
+  }
 
   const driverMult = 1.0 + (crew.driver * CONFIG.CREW.driverBonus) + (state.stats.moveSpeed * inc.moveSpeedMult);
   player.accel = CONFIG.PLAYER.acceleration * driverMult * (chassisConfig.speedMultiplier || 1.0);
@@ -343,50 +374,157 @@ function applyCrewAndStatModifiers() {
   const speedStat = state.stats.shellSpeed || 0;
 
   const rCfg = CONFIG.WEAPONS.reloadScaling;
+  const baseCfg = CONFIG.WEAPONS.basicBarrelBase || {
+    damage: 7.0,
+    penetration: 2.0,
+    bulletSpeed: 160,
+    bulletSize: 9,
+    baseReloadTicks: 120,
+    fireRateTicks: 80,
+    spread: 0.04,
+    recoil: 45,
+    lifetime: 3.0
+  };
 
   weaponSys.turrets.forEach((turret, index) => {
     const chassisTurrets = CONFIG.CHASSIS[state.activeChassis].turrets || [];
     const turretConfig = chassisTurrets[index] || {};
     const baseW = turretConfig.weapon || CONFIG.CHASSIS[state.activeChassis].weapon || {};
 
-    const baseFireRateTicks = baseW.fireRateTicks || 28;
-    const actualFireRateTicks = Math.max(rCfg.minFireRateTicks, baseFireRateTicks - (reloadStat * rCfg.fireRateTickReductionPerPoint));
-    turret.fireIntervalSec = Math.max(rCfg.minFireIntervalSec, (actualFireRateTicks / 60) * loaderCrewMult);
+    // Diep.io barrel multipliers (matching Tank Editor)
+    const mDamage = (turretConfig.damage !== undefined) ? turretConfig.damage : 1.0;
+    const mPen = (turretConfig.penetration !== undefined) ? turretConfig.penetration : 1.0;
+    const mSpeed = (turretConfig.bulletSpeed !== undefined) ? turretConfig.bulletSpeed : 1.0;
+    const mSize = (turretConfig.bulletSize !== undefined) ? turretConfig.bulletSize : 1.0;
+    const mReload = (turretConfig.reload !== undefined) ? turretConfig.reload : 1.0;
+    const mSpread = (turretConfig.spread !== undefined) ? turretConfig.spread : 1.0;
+    const mRecoil = (turretConfig.recoil !== undefined) ? turretConfig.recoil : 1.0;
+    const mLaunch = (turretConfig.launchSpeed !== undefined) ? turretConfig.launchSpeed : 1.0;
+
+    turret.damageMult = mDamage;
+    turret.penetrationMult = mPen;
+    turret.bulletSpeedMult = mSpeed;
+    turret.bulletSizeMult = mSize;
+    turret.reloadMult = mReload;
+    turret.spreadMult = mSpread;
+    turret.recoilMult = mRecoil;
+    turret.launchSpeedMult = mLaunch;
+    turret.bulletsPerShot = turretConfig.bulletsPerShot || 1;
+    turret.lifetime = turretConfig.lifetime || baseCfg.lifetime || 3.0;
+
+    // 1. Firerate scaling (cyclic fire rate delay between loaded shells)
+    const baseFireRateTicks = (baseW.fireRateTicks !== undefined) ? baseW.fireRateTicks : Math.round(baseCfg.fireRateTicks * mReload);
+    const reloadFireRateMult = 1.0 + (reloadStat * (rCfg.fireRateScalePerPoint || 0.08));
+    const baseFireSec = baseFireRateTicks / 60;
+    turret.fireIntervalSec = Math.max(rCfg.minFireIntervalSec || 0.20, (baseFireSec / reloadFireRateMult) * loaderCrewMult);
 
     if (!turret.shootsBullet) return;
 
-    const baseDmg = baseW.damage || 7.0;
-    turret.damage = (baseDmg + (dmgStat * inc.shellDmgMult)) * gunnerCrewMult;
+    // In Diep.io: Bullet Damage scales linearly from base 7.0 (+3.0 per stat point), adjusted by the tank's damage multiplier
+    const baseDmgVal = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * mDamage;
+    turret.damage = baseDmgVal * gunnerCrewMult;
 
-    const basePen = baseW.penetration || 2.0;
-    turret.penetration = (basePen + (penStat * inc.shellPenMult)) * gunnerCrewMult;
+    // Bullet Penetration: base 2.0 (+1.5 per stat point), adjusted by penetration multiplier
+    const basePenVal = (baseCfg.penetration + (penStat * inc.shellPenMult)) * mPen;
+    turret.penetration = basePenVal * gunnerCrewMult;
 
-    const baseSpeed = baseW.shellSpeed || 160;
-    turret.shellSpeed = baseSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * gunnerCrewMult;
+    // Bullet Speed: base 160 (+speedStat * inc), adjusted by bulletSpeed and launchSpeed multipliers
+    const baseSpeedVal = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * mSpeed * mLaunch;
+    turret.shellSpeed = baseSpeedVal * gunnerCrewMult;
 
-    const rackFactor = (turret.type === WEAPON_TYPE.READY_RACK) ? rCfg.rackReloadFactor : 1.0;
-    const baseReloadTicks = baseW.baseReloadTicks || 45;
-    const actualReloadTicks = Math.max(rCfg.minReloadTicks, baseReloadTicks - (reloadStat * rCfg.reloadTickReductionPerPoint));
-    turret.reloadIntervalSec = Math.max(rCfg.minReloadIntervalSec, (actualReloadTicks / 60) * loaderCrewMult * rackFactor);
+    // Shell Radius / Size
+    turret.shellRadius = (baseCfg.bulletSize || 9) * mSize;
 
-    turret.coolRate = (baseW.coolRate || 22) * (1.0 + (reloadStat * rCfg.thermalCoolRateStatScaling)) / loaderCrewMult;
-    turret.heatPerShot = (baseW.heatPerShot || 6) / (1.0 + (reloadStat * rCfg.thermalHeatReductionStatScaling));
-    turret.rechargeRate = (baseW.rechargeRate || 20) * (1.0 + (reloadStat * rCfg.thermalCoolRateStatScaling)) / loaderCrewMult;
+    // Recoil
+    turret.recoil = (baseCfg.recoil || 45) * mRecoil;
+
+    // Spread
+    turret.spread = (baseCfg.spread || 0.04) * mSpread;
+
+    // 2. Reload speed scaling (deliberate scaling so reload is slower than firerate to prevent spam)
+    const rackFactor = (turret.type === WEAPON_TYPE.READY_RACK) ? (rCfg.rackReloadFactor || 1.50) : 1.0;
+    const baseReloadTicks = (baseW.baseReloadTicks !== undefined) ? baseW.baseReloadTicks : Math.round(baseCfg.baseReloadTicks * mReload);
+    const baseReloadSec = (baseReloadTicks / 60) * rackFactor;
+    const reloadSpeedMult = 1.0 + (reloadStat * (rCfg.reloadSpeedScalePerPoint || 0.06));
+    turret.reloadIntervalSec = Math.max(rCfg.minReloadIntervalSec || 0.75, (baseReloadSec / reloadSpeedMult) * loaderCrewMult);
+
+    // 3. Thermal & Energy cooling/recharge rates
+    turret.coolRate = (baseW.coolRate || 22) * (1.0 + (reloadStat * (rCfg.thermalCoolRateStatScaling || 0.12))) / loaderCrewMult;
+    turret.heatPerShot = (baseW.heatPerShot || 6) / (1.0 + (reloadStat * (rCfg.thermalHeatReductionStatScaling || 0.05)));
+    turret.rechargeRate = (baseW.rechargeRate || 20) * (1.0 + (reloadStat * (rCfg.energyRechargeStatScaling || 0.10))) / loaderCrewMult;
   });
+}
+
+function toggleAutoFire() {
+  if (state.isGameOver || state.inMenu) return;
+  state.autoFire = !state.autoFire;
+  if (uiMgr) {
+    uiMgr.showToast(`AUTO-FIRE: ${state.autoFire ? 'ON' : 'OFF'}`);
+  }
+}
+
+function toggleAutoSpin() {
+  if (state.isGameOver || state.inMenu) return;
+  state.autoSpin = !state.autoSpin;
+  if (uiMgr) {
+    uiMgr.showToast(`AUTO-SPIN: ${state.autoSpin ? 'ON' : 'OFF'}`);
+  }
+}
+
+function selfDestructPlayer() {
+  if (state.isGameOver || state.inMenu || player.isDying) return;
+  player.hp = 0;
+  player.isDying = true;
+  player.deathTimer = 0;
+  player.deathScale = 1.0;
+  player.deathAlpha = 1.0;
+  state.autoFire = false;
+  state.autoSpin = false;
+  if (uiMgr) {
+    uiMgr.showToast('SELF DESTRUCT ACTIVATED');
+  }
+  waveMgr.spawnShatterParticles(player.x, player.y, player.fillColor, 24);
+  console.warn('[SELF DESTRUCT] Player self destructed.');
 }
 
 function setupInputs() {
   window.addEventListener('contextmenu', (e) => e.preventDefault());
 
   window.addEventListener('keydown', (e) => {
+    // If typing in an input or textarea, ignore game hotkeys
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+      return;
+    }
+
     input.keys[e.key.toLowerCase()] = true;
 
     if (e.key === '`' || e.key === 'F2') {
       uiMgr.toggleAdminPanel();
     }
 
-    if (e.key.toLowerCase() === 'e' || e.key.toLowerCase() === 'u') {
+    // E: Autofire toggle
+    if (e.key.toLowerCase() === 'e') {
+      toggleAutoFire();
+    }
+
+    // C: Autospin toggle
+    if (e.key.toLowerCase() === 'c') {
+      toggleAutoSpin();
+    }
+
+    // O: Self Destruct (counts as defeat)
+    if (e.key.toLowerCase() === 'o') {
+      selfDestructPlayer();
+    }
+
+    // N: Toggle evolution upgrades panel
+    if (e.key.toLowerCase() === 'n') {
       uiMgr.toggleEvolutionPanel();
+    }
+
+    // U: Toggle stat upgrades panel
+    if (e.key.toLowerCase() === 'u') {
+      uiMgr.toggleStatPanel();
     }
 
     if (['1', '2', '3', '4', '5', '6', '7', '8'].includes(e.key) && state.statPoints > 0) {
@@ -440,8 +578,144 @@ function setActiveChassis(chassisKey) {
 
   console.log(`[EVOLVE] Vehicle transformed into ${CONFIG.CHASSIS[chassisKey].name.toUpperCase()}`);
 
-  uiMgr.renderFaloUpgradeUI(state.level, state.activeChassis, setActiveChassis);
+  checkEvolutionProgression();
   uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
+}
+
+function getCurrentMilestone(level) {
+  const milestones = CONFIG.EVOLUTION?.milestones || [15, 30, 45];
+  let cur = 0;
+  for (const m of milestones) {
+    if (level >= m) {
+      cur = m;
+    }
+  }
+  return cur;
+}
+
+function getAvailableEvolutions(playerLevel, activeChassis) {
+  const matchingKeys = [];
+
+  Object.keys(CONFIG.CHASSIS).forEach(key => {
+    if (key === 'basic' || key === activeChassis) return;
+
+    const chassis = CONFIG.CHASSIS[key];
+
+    // Tank can appear once required level has been reached
+    if (playerLevel < chassis.reqLevel) return;
+
+    // And player is in a specific tree that can upgrade into this chassis
+    if (chassis.upgradesFrom && !chassis.upgradesFrom.includes(activeChassis)) {
+      return;
+    }
+
+    matchingKeys.push(key);
+  });
+
+  return matchingKeys;
+}
+
+function handleEvolutionSelect(chassisKey) {
+  const currentMilestone = getCurrentMilestone(state.level);
+  state.lastEvolvedMilestone = currentMilestone;
+  state.ignoredMilestone = 0;
+  setActiveChassis(chassisKey);
+}
+
+function handleEvolutionIgnore() {
+  const currentMilestone = getCurrentMilestone(state.level);
+  state.ignoredMilestone = currentMilestone;
+  console.log(`[EVOLUTION] Ignored upgrades for tier ${currentMilestone}. Will reappear at next evolution tier.`);
+  checkEvolutionProgression();
+}
+
+function checkEvolutionProgression() {
+  if (!uiMgr) return;
+  const currentMilestone = getCurrentMilestone(state.level);
+
+  // If player has not reached any evolution level yet
+  if (currentMilestone === 0) {
+    uiMgr.renderFaloUpgradeUI([], handleEvolutionSelect, handleEvolutionIgnore);
+    return;
+  }
+
+  // If player already picked an evolution tree for this tier milestone
+  if (state.lastEvolvedMilestone >= currentMilestone) {
+    uiMgr.renderFaloUpgradeUI([], handleEvolutionSelect, handleEvolutionIgnore);
+    return;
+  }
+
+  // If player ignored the upgrade for this tier milestone
+  if (state.ignoredMilestone >= currentMilestone) {
+    uiMgr.renderFaloUpgradeUI([], handleEvolutionSelect, handleEvolutionIgnore);
+    return;
+  }
+
+  // Unified upgrade system: merge all available tanks reachable at player's current level & tree
+  const availableKeys = getAvailableEvolutions(state.level, state.activeChassis);
+  uiMgr.renderFaloUpgradeUI(availableKeys, handleEvolutionSelect, handleEvolutionIgnore);
+}
+
+function grantLevels(levelsToAdd) {
+  if (state.level >= CONFIG.PLAYER.maxLevel) {
+    uiMgr.showToast(`ADMIN: ALREADY AT MAX LEVEL ${CONFIG.PLAYER.maxLevel}`);
+    return;
+  }
+
+  const startLevel = state.level;
+  const targetLevel = Math.min(CONFIG.PLAYER.maxLevel, startLevel + levelsToAdd);
+
+  // Exact XP needed to complete current level and intermediate levels up to targetLevel
+  let xpNeeded = Math.max(0, state.xpToNext - state.xp);
+  for (let lvl = startLevel + 1; lvl < targetLevel; lvl++) {
+    xpNeeded += getXPRequiredForLevel(lvl);
+  }
+
+  // Update cumulative score to reflect the granted levels
+  waveMgr.score = Math.max(waveMgr.score + xpNeeded, getTotalXPForLevel(targetLevel));
+
+  // Add XP directly without commander bonus distortion to advance levels
+  addXP(xpNeeded, true);
+
+  // Ensure exact target level synchronization
+  state.level = targetLevel;
+  state.xp = 0;
+  state.xpToNext = getXPRequiredForLevel(targetLevel);
+  const totalEarned = getSkillPointsEarnedUpToLevel(targetLevel);
+  const spent = Object.values(state.stats).reduce((a, b) => a + b, 0);
+  state.statPoints = Math.max(0, totalEarned - spent);
+
+  applyCrewAndStatModifiers();
+  checkEvolutionProgression();
+  uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
+  uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
+
+  const levelsGained = targetLevel - startLevel;
+  uiMgr.showToast(`ADMIN: +${levelsGained} LEVELS GRANTED (NOW LVL ${targetLevel})`);
+}
+
+function grantMaxLevel() {
+  const maxLvl = CONFIG.PLAYER.maxLevel;
+  const maxScore = getTotalXPForLevel(maxLvl);
+
+  if (waveMgr.score < maxScore) {
+    waveMgr.score = maxScore;
+  }
+
+  state.level = maxLvl;
+  state.xp = 0;
+  state.xpToNext = getXPRequiredForLevel(maxLvl);
+
+  const totalEarned = getSkillPointsEarnedUpToLevel(maxLvl);
+  const spent = Object.values(state.stats).reduce((a, b) => a + b, 0);
+  state.statPoints = Math.max(0, totalEarned - spent);
+
+  applyCrewAndStatModifiers();
+  checkEvolutionProgression();
+  uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
+  uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
+
+  uiMgr.showToast(`ADMIN: MAX LEVEL ${maxLvl} GRANTED (${state.statPoints} SKILL PTS)`);
 }
 
 function setupAdminPanelListeners() {
@@ -456,28 +730,19 @@ function setupAdminPanelListeners() {
       player.hp = Infinity;
       player.maxHp = Infinity;
     } else {
-      player.hp = CONFIG.PLAYER.baseMaxHp;
-      player.maxHp = CONFIG.PLAYER.baseMaxHp;
+      player.maxHp = 0;
+      applyCrewAndStatModifiers();
+      player.hp = player.maxHp;
     }
     uiMgr.showToast(`ADMIN: GOD MODE ${state.godMode ? 'ENABLED' : 'DISABLED'}`);
   });
 
   document.getElementById('adm-lvl-10').addEventListener('click', () => {
-    addXP(2000);
-    uiMgr.showToast("ADMIN: +10 LEVELS GRANTED");
+    grantLevels(10);
   });
 
   document.getElementById('adm-lvl-max').addEventListener('click', () => {
-    state.level = 150;
-    const totalEarned = getSkillPointsEarnedUpToLevel(150);
-    const spent = Object.values(state.stats).reduce((a, b) => a + b, 0);
-    state.statPoints = Math.max(0, totalEarned - spent);
-
-    applyCrewAndStatModifiers();
-    uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
-    uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
-    uiMgr.renderFaloUpgradeUI(state.level, state.activeChassis, setActiveChassis);
-    uiMgr.showToast("ADMIN: MAX LEVEL 150 GRANTED (33 SKILL PTS)");
+    grantMaxLevel();
   });
 
   document.getElementById('adm-spawn-swarmer').addEventListener('click', () => {
@@ -532,10 +797,12 @@ function updatePlayer(dt) {
 
   const growthCfg = CONFIG.PLAYER.growthScaling;
   const growthLevel = Math.min(growthCfg.maxGrowthLevel, state.level);
-  const levelSizeMult = 1.0 + (growthLevel - 1) * growthCfg.radiusIncreasePerLevel;
-  player.radius = CONFIG.PLAYER.radius * levelSizeMult;
-
+  const baseDiameter = growthCfg.baseDiameter || 50;
+  const growthExponent = growthCfg.growthExponent || 1.01;
+  const tankDiameter = baseDiameter * Math.pow(growthExponent, growthLevel - 1);
   const chassisConfig = CONFIG.CHASSIS[state.activeChassis];
+  player.radius = (tankDiameter / 2) * ((chassisConfig && chassisConfig.radiusMultiplier) || 1.0);
+
   const levelZoomMult = 1.0 + (growthLevel - 1) * growthCfg.cameraZoomIncreasePerLevel;
   camera.targetZoom = (chassisConfig.cameraZoom || CONFIG.CAMERA.defaultZoom) / levelZoomMult;
 
@@ -579,7 +846,8 @@ function updatePlayer(dt) {
   player.vx += dirX * accel * dt;
   player.vy += dirY * accel * dt;
 
-  const recoilImpulse = weaponSys.update(dt, player, input.mouse.isDown);
+  const isFiring = input.mouse.isDown || state.autoFire;
+  const recoilImpulse = weaponSys.update(dt, player, isFiring);
   player.vx += recoilImpulse.x;
   player.vy += recoilImpulse.y;
 
@@ -592,7 +860,7 @@ function updatePlayer(dt) {
   let camTargetX = player.x;
   let camTargetY = player.y;
 
-  if (state.activeChassis === 'sniper') {
+  if (state.activeChassis === 'sniper' && !state.autoSpin) {
     camTargetX += (input.mouse.worldX - player.x) * CONFIG.CAMERA.sniperLeanFactor;
     camTargetY += (input.mouse.worldY - player.y) * CONFIG.CAMERA.sniperLeanFactor;
   }
@@ -605,9 +873,16 @@ function updatePlayer(dt) {
   input.mouse.worldX = (input.mouse.screenX - canvasMgr.width / 2) / camera.zoom + camera.x;
   input.mouse.worldY = (input.mouse.screenY - canvasMgr.height / 2) / camera.zoom + camera.y;
 
-  const dx = input.mouse.worldX - player.x;
-  const dy = input.mouse.worldY - player.y;
-  player.angle = Math.atan2(dy, dx);
+  if (state.autoSpin) {
+    // Autospin: spin slowly clockwise (~1.35 rad/s)
+    player.angle += 1.35 * dt;
+    if (player.angle > Math.PI) player.angle -= Math.PI * 2;
+    else if (player.angle < -Math.PI) player.angle += Math.PI * 2;
+  } else {
+    const dx = input.mouse.worldX - player.x;
+    const dy = input.mouse.worldY - player.y;
+    player.angle = Math.atan2(dy, dx);
+  }
 }
 
 function renderPlayerChassis() {
@@ -627,9 +902,9 @@ function renderPlayerChassis() {
     ctx.globalAlpha = player.deathAlpha;
   }
 
-  const baseRadius = player.radius * chassis.radiusMultiplier;
+  const baseRadius = player.radius;
   const radius = player.isDying ? baseRadius * player.deathScale : baseRadius;
-  const sizeScale = radius / CONFIG.PLAYER.radius;
+  const sizeScale = radius / (CONFIG.PLAYER.baseRadius || 25);
 
   if (chassis.outerArmor) {
     const outerRadius = (player.radius * chassis.outerArmor.radiusMultiplier) * (player.isDying ? player.deathScale : 1.0);
@@ -685,7 +960,7 @@ function updateHUD() {
   if (state.inMenu) return;
 
   document.getElementById('fps-counter').textContent = Math.round(state.fps);
-  document.getElementById('score-display').textContent = waveMgr.score;
+  document.getElementById('score-display').textContent = Math.floor(waveMgr.score).toLocaleString();
 
   const playerName = storageMgr.data.playerName || 'Tank';
   const chassisName = CONFIG.CHASSIS[state.activeChassis].name;
@@ -694,10 +969,30 @@ function updateHUD() {
   if (nameDisplay) nameDisplay.textContent = playerName;
 
   const scoreText = document.getElementById('score-bar-text');
-  if (scoreText) scoreText.textContent = `Score: ${waveMgr.score.toLocaleString()}`;
+  if (scoreText) scoreText.textContent = `Score: ${Math.floor(waveMgr.score).toLocaleString()}`;
+
+  const scoreFill = document.getElementById('score-bar-fill');
+  if (scoreFill) {
+    const maxScore = getTotalXPForLevel(CONFIG.PLAYER.maxLevel);
+    const pct = (state.level >= CONFIG.PLAYER.maxLevel || waveMgr.score >= maxScore)
+      ? 100
+      : Math.min(100, Math.max(0, (waveMgr.score / maxScore) * 100));
+    scoreFill.style.width = `${pct}%`;
+  }
 
   const levelText = document.getElementById('player-level-display');
-  if (levelText) levelText.textContent = `Lvl ${state.level} ${chassisName}`;
+  if (levelText) {
+    if (state.level >= CONFIG.PLAYER.maxLevel) {
+      levelText.textContent = `Lvl ${state.level} ${chassisName} (MAX)`;
+    } else {
+      levelText.textContent = `Lvl ${state.level} ${chassisName}`;
+    }
+  }
+
+  const xpBarFill = document.getElementById('xp-bar-fill');
+  if (xpBarFill && state.level >= CONFIG.PLAYER.maxLevel) {
+    xpBarFill.style.width = '100%';
+  }
 
   const waveStatus = document.getElementById('wave-status');
   const waveTimerText = document.getElementById('wave-timer-text');

@@ -1,7 +1,7 @@
 /**
  * UI Engine: CSS-Variable Alignment, Authentication, Log Terminal, Edge Hover Triggers & Evolution Previews
  */
-import { CONFIG } from '../core/config.js';
+import { CONFIG, getTotalXPForLevel } from '../core/config.js';
 import { signInEmail, signUpEmail, signInWithGoogle, signOut, onAuthStateChange, getUser } from '../core/auth.js';
 
 export class UIManager {
@@ -22,7 +22,11 @@ export class UIManager {
     this.playerStrokeColor = '#0083a8';
 
     this.hasEvolutionsAvailable = false;
+    this.currentPendingMilestone = null;
+    this.onEvolutionSelectCallback = null;
+    this.onIgnoreEvolutionCallback = null;
     this.statPointsAvailable = 0;
+    this.statPanelPinned = false;
     this.mouseInEvolutionZone = false;
     this.mouseInStatZone = false;
 
@@ -39,6 +43,9 @@ export class UIManager {
 
     this.levelDisplay = document.getElementById('player-level-display');
     this.xpFill = document.getElementById('xp-bar-fill');
+    this.scoreText = document.getElementById('score-bar-text');
+    this.scoreFill = document.getElementById('score-bar-fill');
+    this.topScoreDisplay = document.getElementById('score-display');
     this.statPointBadge = document.getElementById('stat-point-badge');
 
     this.statPanel = document.getElementById('stat-upgrade-panel');
@@ -180,46 +187,64 @@ export class UIManager {
       const x = e.clientX;
       const y = e.clientY;
 
-      if (this.faloPanel && !this.faloPanel.classList.contains('hidden')) {
+      if (!this.hasEvolutionsAvailable) {
+        this.mouseInEvolutionZone = false;
+      } else if (this.faloPanel && !this.faloPanel.classList.contains('hidden')) {
         const rect = this.faloPanel.getBoundingClientRect();
-        this.mouseInEvolutionZone = (x <= rect.right + 30 * scale && y <= rect.bottom + 30 * scale);
+        this.mouseInEvolutionZone = (x <= rect.right + 10 * scale && y <= rect.bottom + 10 * scale);
       } else {
-        const evoThresholdX = 240 * scale;
-        const evoThresholdY = 260 * scale;
+        const evoThresholdX = 140 * scale;
+        const evoThresholdY = 140 * scale;
         this.mouseInEvolutionZone = (x <= evoThresholdX && y <= evoThresholdY);
       }
 
       // Upgrade bar hover trigger:
-      // Only appear when player's cursor is REALLY CLOSE to the bottom left side of the screen
-      // to prevent it appearing when the player is aiming bottom-left.
+      // When points are available (> 0), the upgrade bars are permanently visible on screen.
+      // When no points are available (=== 0), the upgrade bars hide themselves, but hovering bottom-left displays them.
+      const hasPoints = this.statPointsAvailable > 0;
       const isPanelOpen = this.statPanel && !this.statPanel.classList.contains('hidden');
 
-      if (isPanelOpen) {
-        // While currently open, keep it open while cursor is on or immediately next to the panel
+      if (hasPoints) {
+        this.mouseInStatZone = true;
+      } else if (isPanelOpen) {
+        // While inspecting stats via hover with 0 points:
+        // Keep it open as long as cursor is inside the panel bounds.
         const rect = this.statPanel.getBoundingClientRect();
         this.mouseInStatZone = (
-          x <= rect.right + 20 * scale &&
-          y >= rect.top - 20 * scale &&
-          y <= window.innerHeight + 10
+          x >= 0 &&
+          x <= rect.right + 6 * scale &&
+          y >= rect.top - 6 * scale &&
+          y <= window.innerHeight
         );
+        if (!this.mouseInStatZone) {
+          this.statPanelPinned = false;
+        }
       } else {
-        // When closed, only open when cursor is really close to the bottom left corner/side
-        const edgeTriggerX = 45 * scale;
-        const edgeTriggerY = window.innerHeight - (45 * scale);
-
+        // When hidden with 0 points:
+        // Hovering near the bottom-left corner or the bottom-left edge brings the upgrade bars back up to inspect stats
         let inCornerTab = false;
         if (this.statCornerTab && !this.statCornerTab.classList.contains('hidden')) {
           const tabRect = this.statCornerTab.getBoundingClientRect();
           inCornerTab = (
-            x <= tabRect.right + 8 * scale &&
-            y >= tabRect.top - 8 * scale &&
-            y <= window.innerHeight
+            x >= tabRect.left - 2 * scale &&
+            x <= tabRect.right + 2 * scale &&
+            y >= tabRect.top - 2 * scale &&
+            y <= tabRect.bottom + 2 * scale
           );
         }
-
-        this.mouseInStatZone = (x <= edgeTriggerX && y >= edgeTriggerY) || inCornerTab;
+        const inCornerZone = (x <= 36 * scale && y >= window.innerHeight - (36 * scale));
+        const inEdgeZone = (x <= 18 * scale && y >= window.innerHeight - (190 * scale));
+        this.mouseInStatZone = inCornerTab || inCornerZone || inEdgeZone;
       }
 
+      this.updatePanelVisibilities();
+    });
+
+    document.addEventListener('mouseleave', () => {
+      this.mouseInEvolutionZone = false;
+      if (this.statPointsAvailable === 0) {
+        this.mouseInStatZone = false;
+      }
       this.updatePanelVisibilities();
     });
   }
@@ -350,7 +375,12 @@ export class UIManager {
     });
 
     document.getElementById('falo-ignore-btn').addEventListener('click', () => {
-      this.toggleEvolutionPanel();
+      this.hasEvolutionsAvailable = false;
+      this.evolutionPanelVisible = false;
+      this.updatePanelVisibilities();
+      if (this.onIgnoreEvolutionCallback) {
+        this.onIgnoreEvolutionCallback();
+      }
     });
   }
 
@@ -377,7 +407,13 @@ export class UIManager {
   }
 
   toggleEvolutionPanel() {
+    if (!this.hasEvolutionsAvailable) return;
     this.evolutionPanelVisible = !this.evolutionPanelVisible;
+    this.updatePanelVisibilities();
+  }
+
+  toggleStatPanel() {
+    this.statPanelPinned = !this.statPanelPinned;
     this.updatePanelVisibilities();
   }
 
@@ -388,7 +424,8 @@ export class UIManager {
       this.faloPanel.classList.add('hidden');
     }
 
-    const shouldShowStatPanel = Boolean(this.mouseInStatZone);
+    const hasPoints = this.statPointsAvailable > 0;
+    const shouldShowStatPanel = hasPoints || Boolean(this.mouseInStatZone || this.statPanelPinned);
 
     if (shouldShowStatPanel) {
       this.statPanel.classList.remove('hidden');
@@ -398,18 +435,11 @@ export class UIManager {
     } else {
       this.statPanel.classList.add('hidden');
       if (this.statCornerTab) {
-        if (this.statPointsAvailable > 0) {
-          this.statCornerTab.classList.remove('hidden');
-          if (this.statCornerBadge) {
-            this.statCornerBadge.textContent = `x${this.statPointsAvailable}`;
-          }
-        } else {
-          this.statCornerTab.classList.add('hidden');
-        }
+        this.statCornerTab.classList.add('hidden');
       }
     }
 
-    if (this.statPointsAvailable > 0) {
+    if (hasPoints) {
       this.statPointBadge.classList.remove('hidden');
       this.statPointBadge.textContent = `x${this.statPointsAvailable}`;
     } else {
@@ -469,27 +499,33 @@ export class UIManager {
     }
   }
 
-  renderFaloUpgradeUI(playerLevel, activeChassis, onEvolve) {
+  renderFaloUpgradeUI(availableChassisKeys, onEvolve, onIgnore) {
+    this.onEvolutionSelectCallback = onEvolve;
+    this.onIgnoreEvolutionCallback = onIgnore;
+
     const grid = document.getElementById('upgrade-grid');
     grid.innerHTML = '';
     this.previewCanvases = [];
 
-    let visibleCardsCount = 0;
+    if (!availableChassisKeys || availableChassisKeys.length === 0) {
+      this.hasEvolutionsAvailable = false;
+      this.evolutionPanelVisible = false;
+      this.updatePanelVisibilities();
+      return;
+    }
 
-    Object.keys(CONFIG.CHASSIS).forEach(key => {
+    const headerEl = this.faloPanel?.querySelector('.falo-panel-header');
+    if (headerEl) {
+      headerEl.textContent = 'Upgrades';
+    }
+
+    availableChassisKeys.forEach(key => {
       const chassis = CONFIG.CHASSIS[key];
-
-      if (key === 'basic') return;
-
-      const isLevelUnlocked = playerLevel >= chassis.reqLevel;
+      if (!chassis) return;
       const isShopUnlocked = this.storage.data.unlockedChassis.includes(key);
 
-      if (!isLevelUnlocked) return;
-
-      visibleCardsCount++;
-
       const card = document.createElement('div');
-      card.className = `falo-card ${key === activeChassis ? 'active' : ''}`;
+      card.className = 'falo-card';
 
       if (!isShopUnlocked) {
         card.classList.add('locked-shop');
@@ -517,17 +553,30 @@ export class UIManager {
         if (!isShopUnlocked) {
           this.showToast(`BUY ${chassis.name.toUpperCase()} IN THE SHOP FIRST TO EVOLVE!`);
         } else {
-          onEvolve(key);
+          this.hasEvolutionsAvailable = false;
+          this.evolutionPanelVisible = false;
+          this.updatePanelVisibilities();
+          if (onEvolve) {
+            onEvolve(key);
+          }
         }
       });
 
       grid.appendChild(card);
     });
 
-    const rows = Math.min(3, Math.max(1, visibleCardsCount));
+    let rows = 1;
+    if (availableChassisKeys.length >= 5) {
+      rows = 3;
+    } else if (availableChassisKeys.length === 4) {
+      rows = 2;
+    } else {
+      rows = Math.min(3, availableChassisKeys.length);
+    }
     grid.style.gridTemplateRows = `repeat(${rows}, calc(82px * var(--ui-scale)))`;
 
-    this.hasEvolutionsAvailable = (visibleCardsCount > 0);
+    this.hasEvolutionsAvailable = true;
+    this.evolutionPanelVisible = true;
     this.updatePanelVisibilities();
     this.renderPreviewCanvases();
   }
@@ -559,25 +608,28 @@ export class UIManager {
     }
 
     if (chassis.turrets) {
+      const previewScale = 18 / (CONFIG.PLAYER.radius || 25);
       chassis.turrets.forEach(turret => {
         ctx.save();
         ctx.rotate(turret.angleOffset || 0);
 
-        const bx = turret.xOffset || 0;
-        const backWidth = turret.width;
-        const frontWidth = turret.frontWidth || turret.width;
+        const bx = (turret.xOffset || 0) * previewScale;
+        const backWidth = turret.width * previewScale;
+        const frontWidth = (turret.frontWidth || turret.width) * previewScale;
         const halfBack = backWidth / 2;
         const halfFront = frontWidth / 2;
+        const tLen = turret.length * previewScale;
+        const tY = (turret.yOffset || 0) * previewScale;
 
-        ctx.fillStyle = '#9999a5';
-        ctx.strokeStyle = '#555560';
-        ctx.lineWidth = 3;
+        ctx.fillStyle = '#999999';
+        ctx.strokeStyle = '#727272';
+        ctx.lineWidth = 2.5;
 
         ctx.beginPath();
-        ctx.moveTo(bx, (turret.yOffset || 0) - halfBack);
-        ctx.lineTo(bx + turret.length, (turret.yOffset || 0) - halfFront);
-        ctx.lineTo(bx + turret.length, (turret.yOffset || 0) + halfFront);
-        ctx.lineTo(bx, (turret.yOffset || 0) + halfBack);
+        ctx.moveTo(bx, tY - halfBack);
+        ctx.lineTo(bx + tLen, tY - halfFront);
+        ctx.lineTo(bx + tLen, tY + halfFront);
+        ctx.lineTo(bx, tY + halfBack);
         ctx.closePath();
 
         ctx.fill();
@@ -626,9 +678,26 @@ export class UIManager {
     ctx.restore();
   }
 
+  updateScoreBar(score, level = 1, xp = 0, xpToNext = 50) {
+    if (this.scoreText) {
+      this.scoreText.textContent = `Score: ${Math.floor(score).toLocaleString()}`;
+    }
+    if (this.topScoreDisplay) {
+      this.topScoreDisplay.textContent = Math.floor(score).toLocaleString();
+    }
+    if (this.scoreFill) {
+      const maxScore = getTotalXPForLevel(CONFIG.PLAYER.maxLevel);
+      const pct = (level >= CONFIG.PLAYER.maxLevel || score >= maxScore)
+        ? 100
+        : Math.min(100, Math.max(0, (score / maxScore) * 100));
+      this.scoreFill.style.width = `${pct}%`;
+    }
+  }
+
   updateXPBar(level, xp, xpToNext, statPoints) {
-    this.levelDisplay.textContent = `LVL ${level}`;
-    const pct = Math.min(100, (xp / xpToNext) * 100);
+    const isMax = (level >= CONFIG.PLAYER.maxLevel);
+    this.levelDisplay.textContent = isMax ? `LVL ${level} (MAX)` : `LVL ${level}`;
+    const pct = isMax ? 100 : Math.min(100, (xp / Math.max(1, xpToNext)) * 100);
     this.xpFill.style.width = `${pct}%`;
 
     this.statPointsAvailable = statPoints;
@@ -654,6 +723,9 @@ export class UIManager {
 
       const pill = document.createElement('div');
       pill.className = 'stat-bar-pill';
+      if (s.description) {
+        pill.title = s.description;
+      }
 
       const fillWidthPct = Math.min(100, (level / maxCap) * 100);
       const canUpgrade = statPoints > 0 && level < maxCap;

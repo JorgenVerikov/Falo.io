@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Falo.io</title>
+  <meta name="description" content="Top-down 2D tank survival and arena combat game with upgrades, waves, and vehicle customization" />
+  <meta property="og:title" content="Falo.io" />
+  <meta property="og:description" content="Top-down 2D tank survival and arena combat game with upgrades, waves, and vehicle customization" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="assets/style.css"/>
+  <link rel="icon" type="image/png" href="assets/Falo.png"/>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="toast-banner" class="toast-banner hidden">ALERT MESSAGE HERE</div>
+
+  <div id="ui-container">
+    <div id="top-left-hud" class="hud-panel" style="position: absolute; top: 16px; right: 16px;">
+      <div class="hud-row"><span class="hud-label">FPS:</span><span id="fps-counter" class="hud-val">60</span></div>
+      <div class="hud-row"><span class="hud-label">SCORE:</span><span id="score-display" class="hud-val">0</span></div>
+    </div>
+
+    <div id="wave-banner" class="hud-panel center-top">
+      <div id="wave-status" class="wave-title">WAVE 1</div>
+      <div id="wave-timer-text" class="wave-timer">ENEMIES REMAINING: 4</div>
+    </div>
+
+    <!-- Falo Evolution Upgrade Panel -->
+    <div id="falo-upgrade-panel" class="hidden">
+      <div class="falo-panel-header"><span style="font-size: 16px;"></span> Upgrades</div>
+      <div id="upgrade-grid" class="falo-upgrade-grid"></div>
+      <button id="falo-ignore-btn" class="falo-ignore-btn">Ignore</button>
+    </div>
+
+    <div id="stat-upgrade-panel" class="bottom-left-panel hidden">
+      <div id="stat-point-badge" class="stat-points-badge hidden">x0</div>
+      <div id="stat-upgrade-list" class="stat-upgrade-list"></div>
+    </div>
+    <div id="stat-corner-tab" class="stat-corner-tab hidden">
+      <span id="stat-corner-badge" class="stat-corner-badge">x0</span>
+    </div>
+
+    <!-- Bottom HUD Layout -->
+    <div id="bottom-hud-wrapper">
+      <div id="player-name-display" class="hud-player-name">Tank</div>
+
+      <!-- Score Bar -->
+      <div class="hud-bar-wrapper score-bar-wrapper">
+        <div id="score-bar-fill" class="score-bar-fill"></div>
+        <span id="score-bar-text" class="hud-bar-text">Score: 0</span>
+      </div>
+
+      <!-- Level / XP Bar -->
+      <div class="hud-bar-wrapper level-bar-wrapper">
+        <div id="xp-bar-fill" class="xp-bar-fill"></div>
+        <span id="player-level-display" class="hud-bar-text">Lvl 1 Basic Tank</span>
+      </div>
+
+      <div id="weapon-hud" class="hud-panel center-hud">
+        <div id="weapon-title" class="weapon-title">READY-RACK SYSTEM</div>
+        <div id="ready-rack-container" class="rack-container"></div>
+
+        <div id="gauge-bar-wrapper" class="gauge-bar-wrapper hidden">
+          <div id="gauge-bar-fill" class="gauge-bar-fill"></div>
+          <span id="gauge-text" class="gauge-text">0%</span>
+        </div>
+        
+        <div id="overheat-banner" class="overheat-banner hidden">OVERHEAT LOCKOUT</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Menu Overlay -->
+  <div id="main-menu-overlay" class="modal-overlay">
+    <div class="main-menu-box">
+      <h1 class="main-menu-title">FALO.IO</h1>
+      <p class="main-menu-sub">This is the tale of...</p>
+
+      <div class="player-name-wrapper">
+        <input type="text" id="player-name-input" class="player-name-main-input" placeholder="(This is the tale of...)" value="Tank" maxlength="20" autocomplete="off" spellcheck="false" />
+      </div>
+
+      <div class="main-menu-actions">
+        <button id="start-game-btn" class="menu-btn primary">DEPLOY</button>
+        <button id="main-menu-armory-btn" class="menu-btn secondary">ARMORY</button>
+        <button id="main-menu-settings-btn" class="menu-btn secondary">SETTINGS</button>
+      </div>
+    </div>
+
+    <!-- Account / Authentication Status Bar (Bottom Right) -->
+    <div id="auth-status-container" class="auth-status-container">
+      <span id="auth-status-label" class="auth-status-label">PROFILE: GUEST MODE</span>
+      <button id="auth-modal-open-btn" class="auth-action-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        LOG IN / SYNC
+      </button>
+      <button id="auth-logout-btn" class="auth-action-link hidden">LOG OUT</button>
+    </div>
+  </div>
+
+  <!-- Authentication & Cloud Sync Modal -->
+  <div id="auth-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h1 class="modal-title">PILOT AUTHENTICATION</h1>
+      <p class="modal-sub">CLOUD SAVE & OAUTH PROFILE SYNC</p>
+
+      <div id="auth-error-msg" class="auth-error-msg hidden"></div>
+
+      <form id="auth-form" onsubmit="return false;" style="margin-top: 14px;">
+        <div class="setting-row">
+          <label>EMAIL</label>
+          <input type="email" id="auth-email-input" class="setting-input" placeholder="pilot@arena.io" autocomplete="username" />
+        </div>
+
+        <div class="setting-row">
+          <label>PASSWORD</label>
+          <input type="password" id="auth-password-input" class="setting-input" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+
+        <div class="modal-actions" style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px;">
+          <div style="display: flex; gap: 8px; width: 100%;">
+            <button id="auth-signin-btn" class="menu-btn primary" style="flex: 1;">SIGN IN</button>
+            <button id="auth-signup-btn" class="menu-btn secondary" style="flex: 1;">SIGN UP</button>
+          </div>
+
+          <div class="auth-divider"><span>OR</span></div>
+
+          <button id="auth-google-btn" class="menu-btn google-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 6px;">
+              <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"/>
+              <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+              <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2s.7 5.5 1.9 7.9l3.7-2.9z"/>
+              <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
+            </svg>
+            CONTINUE WITH GOOGLE
+          </button>
+
+          <button id="close-auth-modal-btn" class="menu-btn secondary" style="margin-top: 4px;">PLAY AS GUEST</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Game Over Modal -->
+  <div id="game-over-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h1 class="modal-title alert">VEHICLE DESTROYED</h1>
+      <div class="modal-stats">
+        <div class="stat-box"><span class="lbl">FINAL SCORE</span><span id="final-score" class="val">0</span></div>
+        <div class="stat-box"><span class="lbl">WAVE REACHED</span><span id="final-wave" class="val">1</span></div>
+        <div class="stat-box"><span class="lbl">CURRENCY</span><span id="coins-earned" class="val gold">+0 COINS</span></div>
+      </div>
+      <div class="modal-actions">
+        <button id="restart-btn" class="modal-btn primary">REDEPLOY</button>
+        <button id="open-armory-btn" class="modal-btn secondary">ARMORY</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h1 class="modal-title">SETTINGS</h1>
+      
+      <div class="setting-row">
+        <label>ARENA THEME</label>
+        <select id="theme-select" class="setting-input">
+          <option value="dark">DARK SLATE</option>
+          <option value="light">LIGHT GREY</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <label>UI SCALE</label>
+        <select id="ui-scale-select" class="setting-input">
+          <option value="0.8">80%</option>
+          <option value="1.0" selected>100%</option>
+          <option value="1.2">120%</option>
+        </select>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 20px;">
+        <button id="close-settings-btn" class="modal-btn primary">SAVE & CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Panel & Debug Modal -->
+  <div id="admin-panel-modal" class="modal-overlay hidden">
+    <div class="modal-box wide">
+      <h1 class="modal-title alert">ADMIN PANEL (` OR F2 TOGGLE)</h1>
+      
+      <div class="admin-grid">
+        <div class="setting-row" style="grid-column: span 2;">
+          <label>SELECT TANK CLASS:</label>
+          <select id="adm-chassis-select" class="setting-input">
+            <option value="basic">BASIC TANK</option>
+            <option value="twin">TWIN</option>
+            <option value="sniper">SNIPER</option>
+            <option value="flank">FLANK GUARD</option>
+            <option value="machinegun">MACHINE GUN</option>
+            <option value="smasher">SMASHER</option>
+            <option value="tesla">TESLA</option>
+          </select>
+        </div>
+
+        <button id="adm-lvl-10" class="admin-btn">+10 LEVELS</button>
+        <button id="adm-lvl-max" class="admin-btn">SET MAX LEVEL 150</button>
+        
+        <button id="adm-spawn-swarmer" class="admin-btn">+5 SWARMERS</button>
+        <button id="adm-spawn-sniper" class="admin-btn">+5 SNIPER DRONES</button>
+        <button id="adm-spawn-heavy" class="admin-btn">+3 HEAVY HEXES</button>
+        
+        <button id="adm-toggle-pause" class="admin-btn">TOGGLE WAVE PAUSE</button>
+        <button id="adm-clear-all" class="admin-btn alert">CLEAR ALL ENTITIES</button>
+      </div>
+
+      <div class="admin-checkbox-row" style="margin-top: 10px;">
+        <label><input type="checkbox" id="adm-godmode-toggle"> God Mode (Infinite Health)</label>
+      </div>
+      <div class="admin-checkbox-row">
+        <label><input type="checkbox" id="adm-debug-overlay"> Wireframe Hitbox Overlay</label>
+      </div>
+
+      <div class="admin-log-title">REAL-TIME DEBUG LOG CONSOLE</div>
+      <div id="debug-log-console" class="debug-log-console"></div>
+
+      <div class="modal-actions" style="margin-top: 18px;">
+        <button id="close-admin-btn" class="modal-btn secondary">EXIT CONSOLE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Armory & Shop Modal -->
+  <div id="armory-modal" class="modal-overlay hidden">
+    <div class="modal-box wide">
+      <h1 class="modal-title">ARMORY</h1>
+      <div class="armory-currency">AVAILABLE COINS: <span id="armory-coins-display" class="gold">0</span></div>
+      
+      <div class="shop-tabs">
+        <button id="tab-tanks-btn" class="shop-tab-btn active">TANK UNLOCKS</button>
+        <button id="tab-crew-btn" class="shop-tab-btn">CREW BARRACKS</button>
+        <button id="tab-colors-btn" class="shop-tab-btn">COLOR THEMES</button>
+      </div>
+
+      <div id="shop-content-grid" class="shop-grid"></div>
+
+      <div class="modal-actions" style="margin-top: 18px;">
+        <button id="close-armory-btn" class="modal-btn primary">CLOSE ARMORY</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/core/main.js"></script>
+</body>
+</html>
