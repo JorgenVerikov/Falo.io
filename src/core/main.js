@@ -144,7 +144,6 @@ const player = {
       this.deathScale = 1.0;
       this.deathAlpha = 1.0;
       waveMgr.spawnShatterParticles(this.x, this.y, this.fillColor, 16);
-      console.warn(`[PLAYER DESTROYED] Vehicle sustaining terminal structural failure...`);
     }
   }
 };
@@ -190,7 +189,6 @@ function populateAdminChassisSelect() {
 
 function startRun() {
   state.inMenu = false;
-  console.log('[RUN] Deploying vehicle to arena');
   restartRun();
 }
 
@@ -239,8 +237,6 @@ function triggerGameOver() {
   const coinMultiplier = 1.0 + (commanderLvl * CONFIG.CREW.commanderBonus);
   const coinsEarned = Math.floor((waveMgr.score * CONFIG.META.scoreToCoinRatio) * coinMultiplier);
 
-  console.warn(`[GAME OVER] Vehicle destroyed on Wave ${waveMgr.waveNumber} (Score: ${waveMgr.score}, Coins: +${coinsEarned})`);
-
   storageMgr.addCoins(coinsEarned);
   storageMgr.recordRun(waveMgr.score, waveMgr.waveNumber);
 
@@ -265,11 +261,6 @@ function addXP(amount, isDirect = false) {
 
     state.xpToNext = getXPRequiredForLevel(state.level);
     leveledUp = true;
-    if (earned > 0) {
-      console.log(`[LEVEL UP] Reached LVL ${state.level}! (+${earned} Skill Point)`);
-    } else {
-      console.log(`[LEVEL UP] Reached LVL ${state.level}!`);
-    }
   }
 
   uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
@@ -286,7 +277,6 @@ function handleStatUpgrade(statKey) {
   const isSmasher = (state.activeChassis === 'smasher');
 
   if (isSmasher && smasherCfg.blockedStats.includes(statKey)) {
-    console.warn(`[UPGRADE] Smasher cannot upgrade '${statKey}'`);
     return;
   }
 
@@ -297,8 +287,6 @@ function handleStatUpgrade(statKey) {
   if (state.statPoints > 0 && state.stats[statKey] < maxStatCap) {
     state.statPoints--;
     state.stats[statKey]++;
-
-    console.log(`[UPGRADE] Stat '${statKey}' upgraded to Level ${state.stats[statKey]} (Max: ${maxStatCap})`);
 
     applyCrewAndStatModifiers();
     uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
@@ -432,8 +420,10 @@ function applyCrewAndStatModifiers() {
     const baseSpeedVal = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * mSpeed * mLaunch;
     turret.shellSpeed = baseSpeedVal * gunnerCrewMult;
 
-    // Shell Radius / Size
-    turret.shellRadius = (baseCfg.bulletSize || 9) * mSize;
+    // Shell Radius / Size relative to the cannon's base size (width attaching to the hull, not frontWidth tip)
+    const cannonBaseWidth = (turretConfig.width !== undefined) ? turretConfig.width : (turret.width !== undefined ? turret.width : 20);
+    const baseBulletRadius = (cannonBaseWidth / 20) * (baseCfg.bulletSize || 9);
+    turret.shellRadius = Math.round(baseBulletRadius * mSize * 10) / 10;
 
     // Recoil
     turret.recoil = (baseCfg.recoil || 45) * mRecoil;
@@ -484,7 +474,6 @@ function selfDestructPlayer() {
     uiMgr.showToast('SELF DESTRUCT ACTIVATED');
   }
   waveMgr.spawnShatterParticles(player.x, player.y, player.fillColor, 24);
-  console.warn('[SELF DESTRUCT] Player self destructed.');
 }
 
 function setupInputs() {
@@ -569,14 +558,11 @@ function setActiveChassis(chassisKey) {
     });
     if (refunded > 0) {
       state.statPoints += refunded;
-      console.log(`[SMASHER] Refunded ${refunded} stat points from bullet stats!`);
     }
   }
 
   weaponSys.loadChassisConfig(chassisKey);
   applyCrewAndStatModifiers();
-
-  console.log(`[EVOLVE] Vehicle transformed into ${CONFIG.CHASSIS[chassisKey].name.toUpperCase()}`);
 
   checkEvolutionProgression();
   uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
@@ -625,7 +611,6 @@ function handleEvolutionSelect(chassisKey) {
 function handleEvolutionIgnore() {
   const currentMilestone = getCurrentMilestone(state.level);
   state.ignoredMilestone = currentMilestone;
-  console.log(`[EVOLUTION] Ignored upgrades for tier ${currentMilestone}. Will reappear at next evolution tier.`);
   checkEvolutionProgression();
 }
 

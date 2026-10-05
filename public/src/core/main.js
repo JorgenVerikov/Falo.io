@@ -60,6 +60,8 @@ const state = {
   inMenu: true,
   debugMode: false,
   godMode: false,
+  autoFire: false,
+  autoSpin: false,
 
   level: 1,
   xp: 0,
@@ -142,7 +144,6 @@ const player = {
       this.deathScale = 1.0;
       this.deathAlpha = 1.0;
       waveMgr.spawnShatterParticles(this.x, this.y, this.fillColor, 16);
-      console.warn(`[PLAYER DESTROYED] Vehicle sustaining terminal structural failure...`);
     }
   }
 };
@@ -188,12 +189,13 @@ function populateAdminChassisSelect() {
 
 function startRun() {
   state.inMenu = false;
-  console.log('[RUN] Deploying vehicle to arena');
   restartRun();
 }
 
 function restartRun() {
   state.isGameOver = false;
+  state.autoFire = false;
+  state.autoSpin = false;
   state.level = 1;
   state.xp = 0;
   state.xpToNext = getXPRequiredForLevel(1);
@@ -235,8 +237,6 @@ function triggerGameOver() {
   const coinMultiplier = 1.0 + (commanderLvl * CONFIG.CREW.commanderBonus);
   const coinsEarned = Math.floor((waveMgr.score * CONFIG.META.scoreToCoinRatio) * coinMultiplier);
 
-  console.warn(`[GAME OVER] Vehicle destroyed on Wave ${waveMgr.waveNumber} (Score: ${waveMgr.score}, Coins: +${coinsEarned})`);
-
   storageMgr.addCoins(coinsEarned);
   storageMgr.recordRun(waveMgr.score, waveMgr.waveNumber);
 
@@ -261,11 +261,6 @@ function addXP(amount, isDirect = false) {
 
     state.xpToNext = getXPRequiredForLevel(state.level);
     leveledUp = true;
-    if (earned > 0) {
-      console.log(`[LEVEL UP] Reached LVL ${state.level}! (+${earned} Skill Point)`);
-    } else {
-      console.log(`[LEVEL UP] Reached LVL ${state.level}!`);
-    }
   }
 
   uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
@@ -282,7 +277,6 @@ function handleStatUpgrade(statKey) {
   const isSmasher = (state.activeChassis === 'smasher');
 
   if (isSmasher && smasherCfg.blockedStats.includes(statKey)) {
-    console.warn(`[UPGRADE] Smasher cannot upgrade '${statKey}'`);
     return;
   }
 
@@ -293,8 +287,6 @@ function handleStatUpgrade(statKey) {
   if (state.statPoints > 0 && state.stats[statKey] < maxStatCap) {
     state.statPoints--;
     state.stats[statKey]++;
-
-    console.log(`[UPGRADE] Stat '${statKey}' upgraded to Level ${state.stats[statKey]} (Max: ${maxStatCap})`);
 
     applyCrewAndStatModifiers();
     uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
@@ -370,57 +362,156 @@ function applyCrewAndStatModifiers() {
   const speedStat = state.stats.shellSpeed || 0;
 
   const rCfg = CONFIG.WEAPONS.reloadScaling;
+  const baseCfg = CONFIG.WEAPONS.basicBarrelBase || {
+    damage: 7.0,
+    penetration: 2.0,
+    bulletSpeed: 160,
+    bulletSize: 9,
+    baseReloadTicks: 120,
+    fireRateTicks: 80,
+    spread: 0.04,
+    recoil: 45,
+    lifetime: 3.0
+  };
 
   weaponSys.turrets.forEach((turret, index) => {
     const chassisTurrets = CONFIG.CHASSIS[state.activeChassis].turrets || [];
     const turretConfig = chassisTurrets[index] || {};
     const baseW = turretConfig.weapon || CONFIG.CHASSIS[state.activeChassis].weapon || {};
 
+    // Diep.io barrel multipliers (matching Tank Editor)
+    const mDamage = (turretConfig.damage !== undefined) ? turretConfig.damage : 1.0;
+    const mPen = (turretConfig.penetration !== undefined) ? turretConfig.penetration : 1.0;
+    const mSpeed = (turretConfig.bulletSpeed !== undefined) ? turretConfig.bulletSpeed : 1.0;
+    const mSize = (turretConfig.bulletSize !== undefined) ? turretConfig.bulletSize : 1.0;
+    const mReload = (turretConfig.reload !== undefined) ? turretConfig.reload : 1.0;
+    const mSpread = (turretConfig.spread !== undefined) ? turretConfig.spread : 1.0;
+    const mRecoil = (turretConfig.recoil !== undefined) ? turretConfig.recoil : 1.0;
+    const mLaunch = (turretConfig.launchSpeed !== undefined) ? turretConfig.launchSpeed : 1.0;
+
+    turret.damageMult = mDamage;
+    turret.penetrationMult = mPen;
+    turret.bulletSpeedMult = mSpeed;
+    turret.bulletSizeMult = mSize;
+    turret.reloadMult = mReload;
+    turret.spreadMult = mSpread;
+    turret.recoilMult = mRecoil;
+    turret.launchSpeedMult = mLaunch;
+    turret.bulletsPerShot = turretConfig.bulletsPerShot || 1;
+    turret.lifetime = turretConfig.lifetime || baseCfg.lifetime || 3.0;
+
     // 1. Firerate scaling (cyclic fire rate delay between loaded shells)
-    const baseFireRateTicks = baseW.fireRateTicks || 44;
+    const baseFireRateTicks = (baseW.fireRateTicks !== undefined) ? baseW.fireRateTicks : Math.round(baseCfg.fireRateTicks * mReload);
     const reloadFireRateMult = 1.0 + (reloadStat * (rCfg.fireRateScalePerPoint || 0.08));
     const baseFireSec = baseFireRateTicks / 60;
     turret.fireIntervalSec = Math.max(rCfg.minFireIntervalSec || 0.20, (baseFireSec / reloadFireRateMult) * loaderCrewMult);
 
     if (!turret.shootsBullet) return;
 
-    const baseDmg = baseW.damage || 7.0;
-    turret.damage = (baseDmg + (dmgStat * inc.shellDmgMult)) * gunnerCrewMult;
+    // In Diep.io: Bullet Damage scales linearly from base 7.0 (+3.0 per stat point), adjusted by the tank's damage multiplier
+    const baseDmgVal = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * mDamage;
+    turret.damage = baseDmgVal * gunnerCrewMult;
 
-    const basePen = baseW.penetration || 2.0;
-    turret.penetration = (basePen + (penStat * inc.shellPenMult)) * gunnerCrewMult;
+    // Bullet Penetration: base 2.0 (+1.5 per stat point), adjusted by penetration multiplier
+    const basePenVal = (baseCfg.penetration + (penStat * inc.shellPenMult)) * mPen;
+    turret.penetration = basePenVal * gunnerCrewMult;
 
-    const baseSpeed = baseW.shellSpeed || 160;
-    turret.shellSpeed = baseSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * gunnerCrewMult;
+    // Bullet Speed: base 160 (+speedStat * inc), adjusted by bulletSpeed and launchSpeed multipliers
+    const baseSpeedVal = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * mSpeed * mLaunch;
+    turret.shellSpeed = baseSpeedVal * gunnerCrewMult;
 
-    // 2. Reload speed scaling (separate, deliberate scaling so reload is slower than firerate to prevent spam)
+    // Shell Radius / Size relative to the cannon's base size (width attaching to the hull, not frontWidth tip)
+    const cannonBaseWidth = (turretConfig.width !== undefined) ? turretConfig.width : (turret.width !== undefined ? turret.width : 20);
+    const baseBulletRadius = (cannonBaseWidth / 20) * (baseCfg.bulletSize || 9);
+    turret.shellRadius = Math.round(baseBulletRadius * mSize * 10) / 10;
+
+    // Recoil
+    turret.recoil = (baseCfg.recoil || 45) * mRecoil;
+
+    // Spread
+    turret.spread = (baseCfg.spread || 0.04) * mSpread;
+
+    // 2. Reload speed scaling (deliberate scaling so reload is slower than firerate to prevent spam)
     const rackFactor = (turret.type === WEAPON_TYPE.READY_RACK) ? (rCfg.rackReloadFactor || 1.50) : 1.0;
-    const baseReloadTicks = baseW.baseReloadTicks || 75;
+    const baseReloadTicks = (baseW.baseReloadTicks !== undefined) ? baseW.baseReloadTicks : Math.round(baseCfg.baseReloadTicks * mReload);
     const baseReloadSec = (baseReloadTicks / 60) * rackFactor;
     const reloadSpeedMult = 1.0 + (reloadStat * (rCfg.reloadSpeedScalePerPoint || 0.06));
     turret.reloadIntervalSec = Math.max(rCfg.minReloadIntervalSec || 0.75, (baseReloadSec / reloadSpeedMult) * loaderCrewMult);
 
     // 3. Thermal & Energy cooling/recharge rates
-    turret.coolRate = (baseW.coolRate || 22) * (1.0 + (reloadStat * (rCfg.thermalCoolRateStatScaling || 0.15))) / loaderCrewMult;
-    turret.heatPerShot = (baseW.heatPerShot || 6) / (1.0 + (reloadStat * (rCfg.thermalHeatReductionStatScaling || 0.06)));
-    turret.rechargeRate = (baseW.rechargeRate || 20) * (1.0 + (reloadStat * (rCfg.energyRechargeStatScaling || 0.14))) / loaderCrewMult;
+    turret.coolRate = (baseW.coolRate || 22) * (1.0 + (reloadStat * (rCfg.thermalCoolRateStatScaling || 0.12))) / loaderCrewMult;
+    turret.heatPerShot = (baseW.heatPerShot || 6) / (1.0 + (reloadStat * (rCfg.thermalHeatReductionStatScaling || 0.05)));
+    turret.rechargeRate = (baseW.rechargeRate || 20) * (1.0 + (reloadStat * (rCfg.energyRechargeStatScaling || 0.10))) / loaderCrewMult;
   });
+}
+
+function toggleAutoFire() {
+  if (state.isGameOver || state.inMenu) return;
+  state.autoFire = !state.autoFire;
+  if (uiMgr) {
+    uiMgr.showToast(`AUTO-FIRE: ${state.autoFire ? 'ON' : 'OFF'}`);
+  }
+}
+
+function toggleAutoSpin() {
+  if (state.isGameOver || state.inMenu) return;
+  state.autoSpin = !state.autoSpin;
+  if (uiMgr) {
+    uiMgr.showToast(`AUTO-SPIN: ${state.autoSpin ? 'ON' : 'OFF'}`);
+  }
+}
+
+function selfDestructPlayer() {
+  if (state.isGameOver || state.inMenu || player.isDying) return;
+  player.hp = 0;
+  player.isDying = true;
+  player.deathTimer = 0;
+  player.deathScale = 1.0;
+  player.deathAlpha = 1.0;
+  state.autoFire = false;
+  state.autoSpin = false;
+  if (uiMgr) {
+    uiMgr.showToast('SELF DESTRUCT ACTIVATED');
+  }
+  waveMgr.spawnShatterParticles(player.x, player.y, player.fillColor, 24);
 }
 
 function setupInputs() {
   window.addEventListener('contextmenu', (e) => e.preventDefault());
 
   window.addEventListener('keydown', (e) => {
+    // If typing in an input or textarea, ignore game hotkeys
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+      return;
+    }
+
     input.keys[e.key.toLowerCase()] = true;
 
     if (e.key === '`' || e.key === 'F2') {
       uiMgr.toggleAdminPanel();
     }
 
+    // E: Autofire toggle
     if (e.key.toLowerCase() === 'e') {
+      toggleAutoFire();
+    }
+
+    // C: Autospin toggle
+    if (e.key.toLowerCase() === 'c') {
+      toggleAutoSpin();
+    }
+
+    // O: Self Destruct (counts as defeat)
+    if (e.key.toLowerCase() === 'o') {
+      selfDestructPlayer();
+    }
+
+    // N: Toggle evolution upgrades panel
+    if (e.key.toLowerCase() === 'n') {
       uiMgr.toggleEvolutionPanel();
     }
 
+    // U: Toggle stat upgrades panel
     if (e.key.toLowerCase() === 'u') {
       uiMgr.toggleStatPanel();
     }
@@ -467,14 +558,11 @@ function setActiveChassis(chassisKey) {
     });
     if (refunded > 0) {
       state.statPoints += refunded;
-      console.log(`[SMASHER] Refunded ${refunded} stat points from bullet stats!`);
     }
   }
 
   weaponSys.loadChassisConfig(chassisKey);
   applyCrewAndStatModifiers();
-
-  console.log(`[EVOLVE] Vehicle transformed into ${CONFIG.CHASSIS[chassisKey].name.toUpperCase()}`);
 
   checkEvolutionProgression();
   uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
@@ -523,7 +611,6 @@ function handleEvolutionSelect(chassisKey) {
 function handleEvolutionIgnore() {
   const currentMilestone = getCurrentMilestone(state.level);
   state.ignoredMilestone = currentMilestone;
-  console.log(`[EVOLUTION] Ignored upgrades for tier ${currentMilestone}. Will reappear at next evolution tier.`);
   checkEvolutionProgression();
 }
 
@@ -744,7 +831,8 @@ function updatePlayer(dt) {
   player.vx += dirX * accel * dt;
   player.vy += dirY * accel * dt;
 
-  const recoilImpulse = weaponSys.update(dt, player, input.mouse.isDown);
+  const isFiring = input.mouse.isDown || state.autoFire;
+  const recoilImpulse = weaponSys.update(dt, player, isFiring);
   player.vx += recoilImpulse.x;
   player.vy += recoilImpulse.y;
 
@@ -757,7 +845,7 @@ function updatePlayer(dt) {
   let camTargetX = player.x;
   let camTargetY = player.y;
 
-  if (state.activeChassis === 'sniper') {
+  if (state.activeChassis === 'sniper' && !state.autoSpin) {
     camTargetX += (input.mouse.worldX - player.x) * CONFIG.CAMERA.sniperLeanFactor;
     camTargetY += (input.mouse.worldY - player.y) * CONFIG.CAMERA.sniperLeanFactor;
   }
@@ -770,9 +858,16 @@ function updatePlayer(dt) {
   input.mouse.worldX = (input.mouse.screenX - canvasMgr.width / 2) / camera.zoom + camera.x;
   input.mouse.worldY = (input.mouse.screenY - canvasMgr.height / 2) / camera.zoom + camera.y;
 
-  const dx = input.mouse.worldX - player.x;
-  const dy = input.mouse.worldY - player.y;
-  player.angle = Math.atan2(dy, dx);
+  if (state.autoSpin) {
+    // Autospin: spin slowly clockwise (~1.35 rad/s)
+    player.angle += 1.35 * dt;
+    if (player.angle > Math.PI) player.angle -= Math.PI * 2;
+    else if (player.angle < -Math.PI) player.angle += Math.PI * 2;
+  } else {
+    const dx = input.mouse.worldX - player.x;
+    const dy = input.mouse.worldY - player.y;
+    player.angle = Math.atan2(dy, dx);
+  }
 }
 
 function renderPlayerChassis() {

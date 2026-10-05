@@ -38,7 +38,6 @@ export class WaveManager {
 
     if (waveNum === 1) {
       this.graceTimer = 20.0;
-      console.log('[WAVE] Wave 1 Started — Initial 20s preparation grace period active.');
     } else {
       this.graceTimer = 0;
     }
@@ -51,29 +50,28 @@ export class WaveManager {
       return this.waveNumber >= minW;
     });
 
-    // Dynamic weighted selection for enemies
-    let totalWeight = 0;
+    // Dynamic weighted selection for enemies using spawnWeight (matching shape spawn structure)
+    let totalSpawnWeight = 0;
     availableArchetypes.forEach(key => {
-      totalWeight += (CONFIG.ENEMIES[key].weight || 1.0);
+      const sw = (CONFIG.ENEMIES[key].spawnWeight !== undefined) ? CONFIG.ENEMIES[key].spawnWeight : 1.0;
+      totalSpawnWeight += sw;
     });
 
     for (let i = 0; i < totalEnemies; i++) {
-      let rand = Math.random() * totalWeight;
+      let rand = Math.random() * totalSpawnWeight;
       let selected = availableArchetypes[0] || 'chaser';
 
       for (const key of availableArchetypes) {
-        const w = CONFIG.ENEMIES[key].weight || 1.0;
-        if (rand < w) {
+        const sw = (CONFIG.ENEMIES[key].spawnWeight !== undefined) ? CONFIG.ENEMIES[key].spawnWeight : 1.0;
+        if (rand < sw) {
           selected = key;
           break;
         }
-        rand -= w;
+        rand -= sw;
       }
 
       this.enemyQueue.push(selected);
     }
-
-    console.log(`[WAVE] Wave ${waveNum} Queued — ${totalEnemies} hostile units`);
   }
 
   update(dt, player, playerWeapon, activeChassisKey, playerStats = {}) {
@@ -95,7 +93,6 @@ export class WaveManager {
     if (!this.isBreak && this.graceTimer <= 0 && this.enemyQueue.length === 0 && activeEnemies.length === 0) {
       this.isBreak = true;
       this.breakTimer = CONFIG.WAVE.breakDuration;
-      console.log(`[WAVE] Wave ${this.waveNumber} Cleared! Intermission timer started (${CONFIG.WAVE.breakDuration}s)`);
     } else if (this.isBreak) {
       this.breakTimer -= dt;
       if (this.breakTimer <= 0) {
@@ -105,27 +102,53 @@ export class WaveManager {
 
     this.maintainShapes(player);
 
+    const playerProjectiles = (playerWeapon && playerWeapon.projectiles) ? playerWeapon.projectiles : [];
     for (const s of this.shapes) s.update(dt);
-    for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerStats.moveSpeed || 0);
+    for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerStats.moveSpeed || 0, this.enemies, playerProjectiles);
     for (const b of this.enemyBullets) b.update(dt);
 
-    for (let i = this.particles.length - 1; i >= 0; i--) {
-      this.particles[i].update(dt);
-      if (this.particles[i].lifetime <= 0) this.particles.splice(i, 1);
+    // High performance in-place compaction for particles
+    let pWrite = 0;
+    for (let i = 0; i < this.particles.length; i++) {
+      const p = this.particles[i];
+      p.update(dt);
+      if (p.lifetime > 0) {
+        this.particles[pWrite++] = p;
+      }
     }
+    this.particles.length = pWrite;
 
     PhysicsSystem.resolvePhysicalCollisions(this, dt, player, playerWeapon, activeChassisKey, playerStats);
 
-    this.shapes = this.shapes.filter(s => !s.destroyed);
-    this.enemies = this.enemies.filter(e => !e.destroyed);
-    this.enemyBullets = this.enemyBullets.filter(b => !b.destroyed);
+    this.compactDestroyedEntities();
+  }
+
+  compactDestroyedEntities() {
+    this.compactList(this.shapes);
+    this.compactList(this.enemies);
+    this.compactList(this.enemyBullets);
+  }
+
+  compactList(list) {
+    let write = 0;
+    for (let i = 0; i < list.length; i++) {
+      if (!list[i].destroyed) {
+        list[write++] = list[i];
+      }
+    }
+    list.length = write;
   }
 
   // Fully Extensible Shape Spawner reading spawnWeight directly from CONFIG.SHAPES.types
   maintainShapes(player) {
+    const despawnRadiusSq = CONFIG.SHAPES.despawnRadius * CONFIG.SHAPES.despawnRadius;
     for (const shape of this.shapes) {
-      if (!shape.isDying && Math.hypot(shape.x - player.x, shape.y - player.y) > CONFIG.SHAPES.despawnRadius) {
-        shape.destroyed = true;
+      if (!shape.isDying) {
+        const sdx = shape.x - player.x;
+        const sdy = shape.y - player.y;
+        if (sdx * sdx + sdy * sdy > despawnRadiusSq) {
+          shape.destroyed = true;
+        }
       }
     }
 
@@ -152,9 +175,14 @@ export class WaveManager {
 
         validSpawn = true;
         for (const existing of this.shapes) {
-          if (!existing.dead && Math.hypot(existing.x - x, existing.y - y) < (existing.radius + 30)) {
-            validSpawn = false;
-            break;
+          if (!existing.dead) {
+            const edx = existing.x - x;
+            const edy = existing.y - y;
+            const r = existing.radius + 30;
+            if (edx * edx + edy * edy < r * r) {
+              validSpawn = false;
+              break;
+            }
           }
         }
       }
@@ -184,7 +212,6 @@ export class WaveManager {
 
     const enemy = new EnemyUnit(x, y, archetype);
     this.enemies.push(enemy);
-    console.log(`[SPAWN] ${enemy.config.name.toUpperCase()} spawned in arena`);
   }
 
   getRemainingEnemyCount() {

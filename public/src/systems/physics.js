@@ -4,13 +4,11 @@ export class PhysicsSystem {
   static resolveCircleOverlap(a, b, pushRatioA = 0.5, pushRatioB = 0.5) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
-    let dist = Math.hypot(dx, dy);
-
-    if (dist === 0) dist = 0.01;
-
     const minDist = a.radius + b.radius;
+    const distSq = dx * dx + dy * dy;
 
-    if (dist < minDist) {
+    if (distSq < minDist * minDist) {
+      const dist = Math.sqrt(distSq) || 0.001;
       const overlap = minDist - dist;
       const nx = dx / dist;
       const ny = dy / dist;
@@ -43,12 +41,11 @@ export class PhysicsSystem {
 
       const dx = shape.x - player.x;
       const dy = shape.y - player.y;
-      let dist = Math.hypot(dx, dy);
-      if (dist === 0) dist = 0.01;
-
       const minDist = player.radius + shape.radius;
+      const distSq = dx * dx + dy * dy;
 
-      if (dist < minDist) {
+      if (distSq < minDist * minDist) {
+        const dist = Math.sqrt(distSq) || 0.001;
         const overlap = minDist - dist;
         const nx = dx / dist;
         const ny = dy / dist;
@@ -74,7 +71,6 @@ export class PhysicsSystem {
 
         if (shape.dead) {
           waveMgr.score += shape.xp;
-          console.log(`[DESTROY] ${shape.type.toUpperCase()} shattered (+${shape.xp} XP)`);
           waveMgr.spawnShatterParticles(shape.x, shape.y, shape.color, CONFIG.VFX.shapeShatterCount);
         }
       }
@@ -86,12 +82,12 @@ export class PhysicsSystem {
 
       const dx = enemy.x - player.x;
       const dy = enemy.y - player.y;
-      let dist = Math.hypot(dx, dy);
-      if (dist === 0) dist = 0.01;
-
       const minDist = player.radius + enemy.radius;
+      if (Math.abs(dx) > minDist || Math.abs(dy) > minDist) continue;
+      const distSq = dx * dx + dy * dy;
 
-      if (dist < minDist) {
+      if (distSq < minDist * minDist) {
+        const dist = Math.sqrt(distSq) || 0.001;
         const overlap = minDist - dist;
         const nx = dx / dist;
         const ny = dy / dist;
@@ -117,7 +113,6 @@ export class PhysicsSystem {
 
         if (enemy.dead) {
           waveMgr.score += enemy.xp;
-          console.log(`[KILL] Defeated ${enemy.config.name.toUpperCase()} (+${enemy.xp} XP)`);
           waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
         }
       }
@@ -182,8 +177,12 @@ export class PhysicsSystem {
       for (const shape of waveMgr.shapes) {
         if (shape.dead || proj.dead) continue;
 
-        const dist = Math.hypot(proj.x - shape.x, proj.y - shape.y);
-        if (dist < proj.radius + shape.radius) {
+        const dx = proj.x - shape.x;
+        const dy = proj.y - shape.y;
+        const minDist = proj.radius + shape.radius;
+        if (Math.abs(dx) > minDist || Math.abs(dy) > minDist) continue;
+
+        if (dx * dx + dy * dy < minDist * minDist) {
           const dmg = proj.damage;
           shape.takeDamage(dmg);
 
@@ -204,7 +203,6 @@ export class PhysicsSystem {
 
           if (shape.dead) {
             waveMgr.score += shape.xp;
-            console.log(`[DESTROY] ${shape.type.toUpperCase()} shattered (+${shape.xp} XP)`);
             waveMgr.spawnShatterParticles(shape.x, shape.y, shape.color, CONFIG.VFX.shapeShatterCount);
           }
         }
@@ -216,8 +214,12 @@ export class PhysicsSystem {
       for (const enemy of waveMgr.enemies) {
         if (enemy.dead || proj.dead) continue;
 
-        const dist = Math.hypot(proj.x - enemy.x, proj.y - enemy.y);
-        if (dist < proj.radius + enemy.radius) {
+        const dx = proj.x - enemy.x;
+        const dy = proj.y - enemy.y;
+        const minDist = proj.radius + enemy.radius;
+        if (Math.abs(dx) > minDist || Math.abs(dy) > minDist) continue;
+
+        if (dx * dx + dy * dy < minDist * minDist) {
           const dmg = proj.damage;
           enemy.takeDamage(dmg);
 
@@ -232,7 +234,6 @@ export class PhysicsSystem {
 
           if (enemy.dead) {
             waveMgr.score += enemy.xp;
-            console.log(`[KILL] Defeated ${enemy.config.name.toUpperCase()} (+${enemy.xp} XP)`);
             waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
           }
         }
@@ -246,8 +247,11 @@ export class PhysicsSystem {
       for (const enemyProj of waveMgr.enemyBullets) {
         if (enemyProj.dead || playerProj.dead) continue;
 
-        const dist = Math.hypot(playerProj.x - enemyProj.x, playerProj.y - enemyProj.y);
-        if (dist < playerProj.radius + enemyProj.radius) {
+        const dx = playerProj.x - enemyProj.x;
+        const dy = playerProj.y - enemyProj.y;
+        const minDist = playerProj.radius + enemyProj.radius;
+
+        if (dx * dx + dy * dy < minDist * minDist) {
           playerProj.takePenetrationDamage(1.0);
           enemyProj.takePenetrationDamage(1.0);
 
@@ -262,7 +266,11 @@ export class PhysicsSystem {
     for (const bullet of waveMgr.enemyBullets) {
       if (bullet.dead) continue;
 
-      if (Math.hypot(player.x - bullet.x, player.y - bullet.y) < player.radius + bullet.radius) {
+      const pdx = player.x - bullet.x;
+      const pdy = player.y - bullet.y;
+      const pMinDist = player.radius + bullet.radius;
+
+      if (pdx * pdx + pdy * pdy < pMinDist * pMinDist) {
         bullet.kill();
         player.takeDamage(bullet.damage, activeChassisKey);
         waveMgr.spawnShatterParticles(player.x, player.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
@@ -273,8 +281,11 @@ export class PhysicsSystem {
       for (const shape of waveMgr.shapes) {
         if (shape.dead || bullet.dead) continue;
 
-        const dist = Math.hypot(bullet.x - shape.x, bullet.y - shape.y);
-        if (dist < bullet.radius + shape.radius) {
+        const dx = bullet.x - shape.x;
+        const dy = bullet.y - shape.y;
+        const minDist = bullet.radius + shape.radius;
+
+        if (dx * dx + dy * dy < minDist * minDist) {
           shape.takeDamage(bullet.damage);
           bullet.takePenetrationDamage(CONFIG.WEAPONS.shapePenetrationDrain || 2.0);
           bullet.applyCenterRepulsion(shape.x, shape.y, dt, CONFIG.WEAPONS.repelStrength);

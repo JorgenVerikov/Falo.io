@@ -50,19 +50,17 @@ export class CanvasManager {
 
     const scaledStep = gridSize * camera.zoom * this.dpr;
 
+    ctx.beginPath();
     for (let x = startX; x < this.canvas.width; x += scaledStep) {
-      ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, this.canvas.height);
-      ctx.stroke();
     }
 
     for (let y = startY; y < this.canvas.height; y += scaledStep) {
-      ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(this.canvas.width, y);
-      ctx.stroke();
     }
+    ctx.stroke();
 
     ctx.restore();
   }

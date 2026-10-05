@@ -146,15 +146,29 @@ export class WeaponSystem {
         fireDelayTicks: t.fireDelayTicks || 0,
         recoilKickAmount: t.recoilKickAmount || 10,
 
+        // Diep.io Tank Editor parameters & multipliers
+        damageMult: (t.damage !== undefined) ? t.damage : 1.0,
+        penetrationMult: (t.penetration !== undefined) ? t.penetration : 1.0,
+        bulletSpeedMult: (t.bulletSpeed !== undefined) ? t.bulletSpeed : 1.0,
+        bulletSizeMult: (t.bulletSize !== undefined) ? t.bulletSize : 1.0,
+        reloadMult: (t.reload !== undefined) ? t.reload : 1.0,
+        spreadMult: (t.spread !== undefined) ? t.spread : 1.0,
+        recoilMult: (t.recoil !== undefined) ? t.recoil : 1.0,
+        knockbackMult: (t.knockback !== undefined) ? t.knockback : 1.0,
+        launchSpeedMult: (t.launchSpeed !== undefined) ? t.launchSpeed : 1.0,
+        bulletsPerShot: t.bulletsPerShot || 1,
+        lifetime: t.lifetime || CONFIG.WEAPONS.defaultLifetime || 3.0,
+        fireDelay: t.fireDelay || 0,
+
         // Independent Weapon Parameters
         type: weaponType,
-        baseReloadTicks: w.baseReloadTicks || 75,
-        fireRateTicks: w.fireRateTicks || 44,
+        baseReloadTicks: w.baseReloadTicks || 120,
+        fireRateTicks: w.fireRateTicks || 80,
         shellSpeed: w.shellSpeed || 160,
         penetration: w.penetration || 2.0,
         damage: w.damage || 7.0,
         recoil: w.recoil || 0,
-        shellRadius: w.shellRadius || 8,
+        shellRadius: (w.shellRadius !== undefined) ? w.shellRadius : Math.round(((t.width || 20) / 20) * (CONFIG.WEAPONS.basicBarrelBase.bulletSize || 9) * (t.bulletSize || 1.0) * 10) / 10,
         spread: w.spread || 0,
         maxRack: w.maxRack || 3,
         heatPerShot: w.heatPerShot || 6,
@@ -163,8 +177,8 @@ export class WeaponSystem {
         maxEnergy: w.maxEnergy || 100,
         costPerShot: w.costPerShot || 25,
         rechargeRate: w.rechargeRate || 20,
-        fireIntervalSec: Math.max(rCfg.minFireIntervalSec || 0.20, (w.fireRateTicks || 44) / 60),
-        reloadIntervalSec: Math.max(rCfg.minReloadIntervalSec || 0.75, ((w.baseReloadTicks || 75) / 60) * rackFactor)
+        fireIntervalSec: Math.max(rCfg.minFireIntervalSec || 0.20, (w.fireRateTicks || 80) / 60),
+        reloadIntervalSec: Math.max(rCfg.minReloadIntervalSec || 0.75, ((w.baseReloadTicks || 120) / 60) * rackFactor)
       };
     });
 
@@ -188,10 +202,9 @@ export class WeaponSystem {
       energy: t.maxEnergy
     }));
 
-    // Firing mode and alternating queue state
+    // Firing mode and state tracking
     this.firingMode = chassis.firingMode || 'simultaneous';
-    this.alternatingTurretIndex = 0;
-    this.alternatingCooldownTimer = 0;
+    this.wasFiring = false;
 
     // Bind primary HUD readouts to the first SHOOTING turret on the tank
     const primaryShootingIdx = this.turrets.findIndex(t => t.shootsBullet);
@@ -270,22 +283,29 @@ export class WeaponSystem {
     });
 
     const shootingTurrets = this.turrets.filter(t => t.shootsBullet);
+    const hasDelayTurrets = shootingTurrets.some(t => (t.fireDelay || 0) > 0);
+    const isAlternating = this.firingMode === 'alternating' || hasDelayTurrets;
 
-    // 3. Firing Execution: Alternating Queue vs. Simultaneous
-    if (this.firingMode === 'alternating' && shootingTurrets.length > 1) {
-      if (this.alternatingCooldownTimer > 0) {
-        this.alternatingCooldownTimer -= dt;
+    // 3. Firing Execution
+    // When beginning to fire from idle in alternating mode, offset delayed turrets by their fireDelay phase
+    if (isFiring && !this.wasFiring && isAlternating) {
+      const allReady = shootingTurrets.every(t => this.turretStates[t.index].cooldownTimer <= 0);
+      if (allReady) {
+        shootingTurrets.forEach(turret => {
+          const delayFraction = (turret.fireDelay !== undefined) ? turret.fireDelay : (turret.fireDelayTicks ? (turret.fireDelayTicks / 60 / turret.fireIntervalSec) : 0);
+          this.turretStates[turret.index].cooldownTimer = delayFraction * turret.fireIntervalSec;
+        });
       }
+    }
+    this.wasFiring = isFiring;
 
-      if (isFiring && this.alternatingCooldownTimer <= 0) {
-        if (this.alternatingTurretIndex >= shootingTurrets.length) {
-          this.alternatingTurretIndex = 0;
-        }
+    // Each turret fires as fast as its own firerate (no bottlenecking queue)
+    shootingTurrets.forEach(turret => {
+      const state = this.turretStates[turret.index];
 
-        const turret = shootingTurrets[this.alternatingTurretIndex];
-        const state = this.turretStates[turret.index];
-
+      if (isFiring && state.cooldownTimer <= 0) {
         let canFire = false;
+
         if (turret.type === WEAPON_TYPE.READY_RACK && state.currentRack > 0) {
           state.currentRack--;
           canFire = true;
@@ -303,48 +323,13 @@ export class WeaponSystem {
         }
 
         if (canFire) {
+          state.cooldownTimer = turret.fireIntervalSec;
           const impulse = this.executeTurretShot(player, turret, state);
           totalRecoilImpulse.x += impulse.x;
           totalRecoilImpulse.y += impulse.y;
-
-          this.alternatingCooldownTimer = turret.fireIntervalSec;
-          this.alternatingTurretIndex = (this.alternatingTurretIndex + 1) % shootingTurrets.length;
         }
       }
-    } else {
-      // Simultaneous / Standard firing (single barrel or simultaneous multi-barrel like Flank)
-      this.turrets.forEach((turret, i) => {
-        if (!turret.shootsBullet) return;
-        const state = this.turretStates[i];
-
-        if (isFiring && state.cooldownTimer <= 0) {
-          let canFire = false;
-
-          if (turret.type === WEAPON_TYPE.READY_RACK && state.currentRack > 0) {
-            state.currentRack--;
-            canFire = true;
-          } else if (turret.type === WEAPON_TYPE.THERMAL && !state.isOverheated) {
-            state.heat += turret.heatPerShot;
-            if (state.heat >= 100) {
-              state.heat = 100;
-              state.isOverheated = true;
-              state.overheatLockoutTimer = turret.overheatLockoutTime;
-            }
-            canFire = true;
-          } else if (turret.type === WEAPON_TYPE.ENERGY && state.energy >= turret.costPerShot) {
-            state.energy -= turret.costPerShot;
-            canFire = true;
-          }
-
-          if (canFire) {
-            state.cooldownTimer = turret.fireIntervalSec;
-            const impulse = this.executeTurretShot(player, turret, state);
-            totalRecoilImpulse.x += impulse.x;
-            totalRecoilImpulse.y += impulse.y;
-          }
-        }
-      });
-    }
+    });
 
     // 4. Sync aggregate HUD metrics
     const primaryShootingIdx = this.turrets.findIndex(t => t.shootsBullet);
@@ -357,7 +342,7 @@ export class WeaponSystem {
       this.currentRack = pState.currentRack;
       this.reloadTimer = pState.reloadTimer;
 
-      if (this.firingMode === 'alternating') {
+      if (isAlternating) {
         let maxHeat = 0;
         let anyOverheated = false;
         shootingTurrets.forEach(t => {
@@ -386,14 +371,16 @@ export class WeaponSystem {
       }
     }
 
-    // Update active projectiles
-    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+    // Update active projectiles (in-place compaction for O(N) performance)
+    let pWrite = 0;
+    for (let i = 0; i < this.projectiles.length; i++) {
       const p = this.projectiles[i];
       p.update(dt);
-      if (p.destroyed) {
-        this.projectiles.splice(i, 1);
+      if (!p.destroyed) {
+        this.projectiles[pWrite++] = p;
       }
     }
+    this.projectiles.length = pWrite;
 
     return totalRecoilImpulse;
   }
@@ -423,26 +410,30 @@ export class WeaponSystem {
       const spawnX = player.x + Math.cos(barrelAngle) * barrelTipLen + Math.cos(perpAngle) * (turret.yOffset * sizeScale);
       const spawnY = player.y + Math.sin(barrelAngle) * barrelTipLen + Math.sin(perpAngle) * (turret.yOffset * sizeScale);
 
-      const shotAngle = barrelAngle + (Math.random() - 0.5) * turret.spread;
-      const vx = Math.cos(shotAngle) * turret.shellSpeed;
-      const vy = Math.sin(shotAngle) * turret.shellSpeed;
-
       const bulletFill = player.fillColor || '#00b2e1';
       const bulletStroke = player.strokeColor || '#0083a8';
       const bulletRadius = turret.shellRadius * sizeScale;
+      const bulletLifetime = turret.lifetime || CONFIG.WEAPONS.defaultLifetime || 3.0;
+      const count = turret.bulletsPerShot || 1;
 
-      this.projectiles.push(
-        new Projectile(
-          spawnX, spawnY,
-          vx, vy,
-          bulletRadius,
-          CONFIG.WEAPONS.defaultLifetime,
-          turret.damage,
-          turret.penetration,
-          bulletFill,
-          bulletStroke
-        )
-      );
+      for (let b = 0; b < count; b++) {
+        const shotAngle = barrelAngle + (Math.random() - 0.5) * turret.spread;
+        const vx = Math.cos(shotAngle) * turret.shellSpeed;
+        const vy = Math.sin(shotAngle) * turret.shellSpeed;
+
+        this.projectiles.push(
+          new Projectile(
+            spawnX, spawnY,
+            vx, vy,
+            bulletRadius,
+            bulletLifetime,
+            turret.damage,
+            turret.penetration,
+            bulletFill,
+            bulletStroke
+          )
+        );
+      }
     }
 
     return impulse;

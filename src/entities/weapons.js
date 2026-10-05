@@ -168,7 +168,7 @@ export class WeaponSystem {
         penetration: w.penetration || 2.0,
         damage: w.damage || 7.0,
         recoil: w.recoil || 0,
-        shellRadius: w.shellRadius || 9,
+        shellRadius: (w.shellRadius !== undefined) ? w.shellRadius : Math.round(((t.width || 20) / 20) * (CONFIG.WEAPONS.basicBarrelBase.bulletSize || 9) * (t.bulletSize || 1.0) * 10) / 10,
         spread: w.spread || 0,
         maxRack: w.maxRack || 3,
         heatPerShot: w.heatPerShot || 6,
@@ -371,14 +371,16 @@ export class WeaponSystem {
       }
     }
 
-    // Update active projectiles
-    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+    // Update active projectiles (in-place compaction for O(N) performance)
+    let pWrite = 0;
+    for (let i = 0; i < this.projectiles.length; i++) {
       const p = this.projectiles[i];
       p.update(dt);
-      if (p.destroyed) {
-        this.projectiles.splice(i, 1);
+      if (!p.destroyed) {
+        this.projectiles[pWrite++] = p;
       }
     }
+    this.projectiles.length = pWrite;
 
     return totalRecoilImpulse;
   }
