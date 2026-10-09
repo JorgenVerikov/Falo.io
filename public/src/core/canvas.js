@@ -8,7 +8,7 @@ export class CanvasManager {
     
     this.width = 0;
     this.height = 0;
-    this.theme = 'dark';
+    this.theme = 'light';
 
     this.resize();
     window.addEventListener('resize', () => this.resize());

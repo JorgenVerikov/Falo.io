@@ -552,6 +552,118 @@ export class EnemyCommunicationSystem {
   }
 }
 
+/**
+ * Calculates fluid lateral steering deflection and tangential perimeter sliding
+ * around destructible resource shapes (excluding eggs), so enemies maneuver seamlessly
+ * around obstacles without running into them, getting stuck, or slowing forward motion.
+ */
+function getShapeManeuverVector(posX, posY, radius, goalDirX, goalDirY, shapes, unitId = 0) {
+  if (!shapes || shapes.length === 0) {
+    return { steerX: 0, steerY: 0, hasObstacle: false };
+  }
+
+  let totalManeuverX = 0;
+  let totalManeuverY = 0;
+  let hasObstacle = false;
+
+  // Normal vector perpendicular to the left of the goal direction
+  const perpLeftX = -goalDirY;
+  const perpLeftY = goalDirX;
+
+  for (let i = 0; i < shapes.length; i++) {
+    const shape = shapes[i];
+    // Maneuver around shapes EXCEPT eggs (enemies ignore eggs)
+    if (shape.dead || shape.destroyed || shape.type === 'egg') continue;
+
+    const toShapeX = shape.x - posX;
+    const toShapeY = shape.y - posY;
+
+    // Fast bounding box reject
+    const clearance = radius + shape.radius + 26; // Desired clear distance
+    const lookAhead = clearance + 85; // Forward lookahead distance
+    if (Math.abs(toShapeX) > lookAhead || Math.abs(toShapeY) > lookAhead) continue;
+
+    const distSq = toShapeX * toShapeX + toShapeY * toShapeY;
+    if (distSq > lookAhead * lookAhead || distSq < 0.001) continue;
+
+    const dist = Math.sqrt(distSq);
+
+    // Forward projection along travel direction
+    const forwardDist = toShapeX * goalDirX + toShapeY * goalDirY;
+
+    // If shape is behind us and not within immediate touch clearance, ignore
+    if (forwardDist < -clearance * 0.35 && dist > clearance) continue;
+
+    // Lateral distance from the travel line to the shape center
+    const lateralDist = toShapeX * perpLeftX + toShapeY * perpLeftY;
+    const absLateral = Math.abs(lateralDist);
+
+    // Shape is within the travel corridor and ahead
+    if (absLateral < clearance && forwardDist < lookAhead) {
+      hasObstacle = true;
+
+      // Steer laterally away from the shape center
+      let sideSign = 0;
+      if (absLateral < 1.0) {
+        // Dead center in front: deterministic unitId parity picks left or right
+        sideSign = (unitId % 2 === 0) ? 1 : -1;
+      } else {
+        sideSign = (lateralDist > 0) ? -1 : 1;
+      }
+
+      // Proximity & alignment weighting
+      const lateralWeight = (clearance - absLateral) / clearance;
+      const forwardUrgency = Math.max(0.4, (lookAhead - Math.max(0, forwardDist)) / lookAhead);
+      const steerMagnitude = lateralWeight * forwardUrgency * 1.6;
+
+      totalManeuverX += perpLeftX * sideSign * steerMagnitude;
+      totalManeuverY += perpLeftY * sideSign * steerMagnitude;
+
+      // When within clearance radius, add tangential sliding along the shape boundary
+      if (dist < clearance) {
+        const fromShapeNormX = -toShapeX / dist;
+        const fromShapeNormY = -toShapeY / dist;
+
+        // Two possible tangents along the shape perimeter
+        const tan1X = -fromShapeNormY;
+        const tan1Y = fromShapeNormX;
+        const tan2X = fromShapeNormY;
+        const tan2Y = -fromShapeNormX;
+
+        // Choose tangent that advances forward along the goal direction
+        const dot1 = tan1X * goalDirX + tan1Y * goalDirY;
+        const dot2 = tan2X * goalDirX + tan2Y * goalDirY;
+        const bestTanX = (dot1 >= dot2) ? tan1X : tan2X;
+        const bestTanY = (dot1 >= dot2) ? tan1Y : tan2Y;
+
+        const proximity = (clearance - dist) / clearance;
+        totalManeuverX += bestTanX * proximity * 1.5;
+        totalManeuverY += bestTanY * proximity * 1.5;
+
+        // Radial push outward without pushing backward against goal direction
+        const radialDot = fromShapeNormX * goalDirX + fromShapeNormY * goalDirY;
+        let safePushX = fromShapeNormX;
+        let safePushY = fromShapeNormY;
+        if (radialDot < 0) {
+          safePushX -= radialDot * goalDirX;
+          safePushY -= radialDot * goalDirY;
+        }
+        totalManeuverX += safePushX * proximity * 1.2;
+        totalManeuverY += safePushY * proximity * 1.2;
+      }
+    }
+  }
+
+  // Cap max maneuver steering force to maintain balanced trajectory
+  const manMag = Math.hypot(totalManeuverX, totalManeuverY);
+  if (manMag > 2.2) {
+    totalManeuverX = (totalManeuverX / manMag) * 2.2;
+    totalManeuverY = (totalManeuverY / manMag) * 2.2;
+  }
+
+  return { steerX: totalManeuverX, steerY: totalManeuverY, hasObstacle };
+}
+
 export class EnemyUnit {
   constructor(x, y, archetypeKey) {
     this.unitId = nextEnemyUnitId++;
@@ -590,8 +702,8 @@ export class EnemyUnit {
     this.fireTimer = 0;
     this.boostTimer = 0;
 
-    // Speed multiplier reading from archetype configuration
-    this.speedMultiplier = (this.config && this.config.speedMultiplier !== undefined) ? this.config.speedMultiplier : 1.0;
+    // Base speed with no multipliers
+    this.speedMultiplier = 1.0;
 
     // AI Tactical Coordination & Movement properties
     this.orbitDir = (Math.random() < 0.5) ? 1 : -1;
@@ -708,7 +820,7 @@ export class EnemyUnit {
     }
   }
 
-  update(dt, player, enemyBullets, playerMoveSpeedStat = 0, allEnemies = [], playerProjectiles = [], remainingWaveEnemies = null) {
+  update(dt, player, enemyBullets, playerMoveSpeedStat = 0, allEnemies = [], playerProjectiles = [], remainingWaveEnemies = null, shapes = []) {
     this.allEnemiesRef = allEnemies;
 
     if (this.chatCooldown > 0) {
@@ -984,8 +1096,7 @@ export class EnemyUnit {
         }
       } else if (isPlayerWounded || this.moraleState === 'HIGH') {
         // TACTIC: BLOOD IN THE WATER / HIGH MORALE (Frenzy Converge)
-        const leadMultiplier = (this.moraleState === 'HIGH') ? 0.95 : (aiCfg.leadInterception || 0.85);
-        const leadSeconds = Math.min(dist / 320, 0.65) * leadMultiplier;
+        const leadSeconds = Math.min(dist / 320, 0.65) * (aiCfg.leadInterception || 0.85);
         targetWaypointX = player.x + pVx * leadSeconds;
         targetWaypointY = player.y + pVy * leadSeconds;
         if (Math.random() < 0.10) {
@@ -1159,7 +1270,7 @@ export class EnemyUnit {
     } else if (this.archetypeKey === 'heavy') {
       // HEAVY: Vanguard tank collapsing player's perimeter with smart charge & morale effects
       if (this.isRetreating) {
-        // RETREATING: Backs away from player
+        // RETREATING: Backs away from player while navigating obstacles
         dirX = -dx / dist;
         dirY = -dy / dist;
         if (Math.random() < 0.08) {
@@ -1325,17 +1436,34 @@ export class EnemyUnit {
 
       // Evasion creates an organic, smooth banking deflection curve around the projectile
       const evadeWeight = 1.25 * this.evadeInfluence;
-      const blendedX = chaseDirX + this.smoothEvadeX * evadeWeight;
-      const blendedY = chaseDirY + this.smoothEvadeY * evadeWeight;
+      let targetHeadingX = chaseDirX + this.smoothEvadeX * evadeWeight;
+      let targetHeadingY = chaseDirY + this.smoothEvadeY * evadeWeight;
+      const headingMag = Math.hypot(targetHeadingX, targetHeadingY) || 1;
+      targetHeadingX /= headingMag;
+      targetHeadingY /= headingMag;
+
+      // Fluid shape obstacle maneuvering around non-egg shapes
+      const shapeManeuver = getShapeManeuverVector(this.x, this.y, this.radius, targetHeadingX, targetHeadingY, shapes, this.unitId);
+
+      let blendedX = targetHeadingX + shapeManeuver.steerX;
+      let blendedY = targetHeadingY + shapeManeuver.steerY;
+
+      // Ensure steering never reverses or stalls forward progress
+      const forwardDot = blendedX * chaseDirX + blendedY * chaseDirY;
+      if (forwardDot < 0.25) {
+        blendedX += chaseDirX * (0.35 - forwardDot);
+        blendedY += chaseDirY * (0.35 - forwardDot);
+      }
+
       const desiredAngle = Math.atan2(blendedY, blendedX);
 
-      // Smooth angular turning with natural banking rate (no abrupt snapping or twitching)
+      // Smooth angular turning with natural rate - NO MULTIPLIERS
       const angleDiff = Math.atan2(Math.sin(desiredAngle - this.angle), Math.cos(desiredAngle - this.angle));
       const turnSpeed = (this.config.ai && this.config.ai.smoothTurnRate) ? this.config.ai.smoothTurnRate : 4.8;
       const maxTurn = turnSpeed * dt;
       this.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), maxTurn);
 
-      // Pure pointing-direction propulsion: strictly forward along body angle
+      // Direction of travel is strictly forward along body angle
       dirX = Math.cos(this.angle);
       dirY = Math.sin(this.angle);
     } else {
@@ -1351,7 +1479,7 @@ export class EnemyUnit {
         }
       }
 
-      // Blend flocking separation forces to maintain cohesive spacing
+      // Blend flocking separation forces
       const sepWeight = (this.config.ai && this.config.ai.separationWeight) ? this.config.ai.separationWeight : 1.0;
       if (this.archetypeKey === 'ranged' && dist < (this.config.ai?.kitingDistance || 350)) {
         dirX += sepX * (sepWeight * 0.35);
@@ -1360,29 +1488,36 @@ export class EnemyUnit {
         dirX += sepX * sepWeight;
         dirY += sepY * sepWeight;
       }
-      const finalMag = Math.hypot(dirX, dirY) || 1;
-      dirX /= finalMag;
-      dirY /= finalMag;
+      const rawMag = Math.hypot(dirX, dirY) || 1;
+      const goalDirX = dirX / rawMag;
+      const goalDirY = dirY / rawMag;
+
+      // Fluid shape obstacle maneuvering around non-egg shapes
+      const shapeManeuver = getShapeManeuverVector(this.x, this.y, this.radius, goalDirX, goalDirY, shapes, this.unitId);
+      let blendedX = goalDirX + shapeManeuver.steerX;
+      let blendedY = goalDirY + shapeManeuver.steerY;
+
+      // Ensure steering never reverses or stalls forward progress
+      const forwardDot = blendedX * goalDirX + blendedY * goalDirY;
+      if (forwardDot < 0.25) {
+        blendedX += goalDirX * (0.35 - forwardDot);
+        blendedY += goalDirY * (0.35 - forwardDot);
+      }
+
+      const finalMag = Math.hypot(blendedX, blendedY) || 1;
+      dirX = blendedX / finalMag;
+      dirY = blendedY / finalMag;
     }
 
-    // Enemies derive main base speed/acceleration from player config, scaled by speedMultiplier
-    const basePlayerSpeed = (CONFIG.PLAYER && CONFIG.PLAYER.acceleration) ? CONFIG.PLAYER.acceleration : 500;
-    const speedMult = (this.speedMultiplier !== undefined) ? this.speedMultiplier : (this.config.speedMultiplier || 1.0);
-    let accel = basePlayerSpeed * speedMult;
-
-    if (this.archetypeKey === 'chaser' || this.archetypeKey === 'ranged') {
-      const statInc = (CONFIG.PLAYER && CONFIG.PLAYER.statIncrements) ? CONFIG.PLAYER.statIncrements.moveSpeedMult : 0.07;
-      const speedBonusFactor = 1.0 + (playerMoveSpeedStat * statInc * 0.70);
-      accel *= speedBonusFactor;
-    }
-
+    // Standard base acceleration with no multipliers applied to the enemy
+    const accel = (CONFIG.PLAYER && CONFIG.PLAYER.acceleration) ? CONFIG.PLAYER.acceleration : 500;
     const drag = this.config.drag || 4.0;
 
-    // Standard directional acceleration without boosts (vanilla movement)
+    // Standard directional acceleration without multipliers
     this.vx += dirX * accel * dt;
     this.vy += dirY * accel * dt;
 
-    // Apply continuous exponential drag damping so drag always affects enemies
+    // Apply continuous exponential drag damping
     const dragFactor = Math.exp(-drag * dt);
     this.vx *= dragFactor;
     this.vy *= dragFactor;

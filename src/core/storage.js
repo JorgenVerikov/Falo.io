@@ -9,13 +9,14 @@ const DEFAULT_DATA = {
   maxWave: 1,
   unlockedChassis: ['basic'],
   activeChassis: 'basic',
-  unlockedColors: ['default'],
+  unlockedColors: ['default', 'cyan'],
   unlockedColorWheel: false,
-  customColor: '#00b2e1',
+  customColor: '#ffffff',
   activeColor: 'default',
   settings: {
-    theme: 'dark',
-    uiScale: 1.0
+    theme: 'light',
+    uiScale: 1.0,
+    _explicitTheme: false
   },
   crewLevels: {
     loader: 0,
@@ -49,13 +50,19 @@ export class StorageManager {
   }
 
   mergeWithDefaults(data = {}) {
+    const rawSettings = data.settings || {};
+    const effectiveTheme = rawSettings._explicitTheme ? (rawSettings.theme || 'light') : 'light';
     return {
       ...DEFAULT_DATA,
       ...data,
-      settings: { ...DEFAULT_DATA.settings, ...(data.settings || {}) },
+      settings: {
+        ...DEFAULT_DATA.settings,
+        ...rawSettings,
+        theme: effectiveTheme
+      },
       unlockedChassis: Array.from(new Set(['basic', ...(data.unlockedChassis || [])])),
       activeChassis: data.activeChassis || 'basic',
-      unlockedColors: Array.from(new Set(['default', ...(data.unlockedColors || [])])),
+      unlockedColors: Array.from(new Set(['default', 'cyan', ...(data.unlockedColors || [])])),
       crewLevels: { ...DEFAULT_DATA.crewLevels, ...(data.crewLevels || {}) }
     };
   }
@@ -125,8 +132,9 @@ export class StorageManager {
       customColor: cloud.customColor || local.customColor || '#00b2e1',
       activeColor: cloud.activeColor || local.activeColor || 'default',
       settings: {
-        theme: cloud.settings?.theme || local.settings?.theme || 'dark',
-        uiScale: cloud.settings?.uiScale || local.settings?.uiScale || 1.0
+        theme: (cloud.settings?._explicitTheme ? cloud.settings?.theme : null) || (local.settings?._explicitTheme ? local.settings?.theme : null) || 'light',
+        uiScale: cloud.settings?.uiScale || local.settings?.uiScale || 1.0,
+        _explicitTheme: Boolean(cloud.settings?._explicitTheme || local.settings?._explicitTheme)
       },
       crewLevels: {
         loader: Math.max(local.crewLevels?.loader || 0, cloud.crewLevels?.loader || 0),
@@ -269,6 +277,7 @@ export class StorageManager {
   saveSettings(theme, uiScale) {
     this.data.settings.theme = theme;
     this.data.settings.uiScale = uiScale;
+    this.data.settings._explicitTheme = true;
     this.save();
   }
 

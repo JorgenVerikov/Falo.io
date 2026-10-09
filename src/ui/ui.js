@@ -389,7 +389,7 @@ export class UIManager {
 
   applySettings() {
     const s = this.storage.data.settings;
-    const theme = s.theme || 'dark';
+    const theme = s.theme || 'light';
     const scale = s.uiScale || 1.0;
 
     this.canvasMgr.setTheme(theme);
@@ -828,7 +828,37 @@ export class UIManager {
     }
   }
 
-  generateTankSvg(chassisKey, color = '#00b2e1', size = 110) {
+  computeStrokeColor(hex) {
+    if (!hex) return '#101018';
+    let c = hex.replace('#', '');
+    if (c.length === 3) {
+      c = c.split('').map(x => x + x).join('');
+    }
+    if (c.length !== 6) return '#101018';
+
+    let r = parseInt(c.substring(0, 2), 16);
+    let g = parseInt(c.substring(2, 4), 16);
+    let b = parseInt(c.substring(4, 6), 16);
+
+    const HALF = 127.5;
+    const OFFSET = 30;
+
+    const adjust = (val) => {
+      if (val < HALF) {
+        return Math.min(255, val + OFFSET);
+      } else {
+        return Math.max(0, val - OFFSET);
+      }
+    };
+
+    const rStr = adjust(r).toString(16).padStart(2, '0');
+    const gStr = adjust(g).toString(16).padStart(2, '0');
+    const bStr = adjust(b).toString(16).padStart(2, '0');
+
+    return `#${rStr}${gStr}${bStr}`;
+  }
+
+  generateTankSvg(chassisKey, color = '#00b2e1', stroke = null, size = 110) {
     const cfg = CONFIG.CHASSIS[chassisKey] || CONFIG.CHASSIS.basic;
     const center = size / 2;
     const scale = size / 100;
@@ -836,6 +866,17 @@ export class UIManager {
     
     // Facing upwards (-90 degrees) for classic Diep.io shop presentation
     const baseAngle = -90;
+
+    // Resolve matching outline / stroke color based on theme stroke or compute darker shade
+    let strokeColor = stroke;
+    if (!strokeColor) {
+      const foundTheme = Object.values(CONFIG.COLOR_THEMES).find(t => t.color && t.color.toLowerCase() === color.toLowerCase());
+      if (foundTheme && foundTheme.stroke) {
+        strokeColor = foundTheme.stroke;
+      } else {
+        strokeColor = this.computeStrokeColor(color);
+      }
+    }
 
     let turretsSvg = '';
     if (cfg.turrets && cfg.turrets.length > 0) {
@@ -870,7 +911,6 @@ export class UIManager {
     }
 
     let bodySvg = '';
-    const strokeColor = '#007a9e';
     if (cfg.sides && cfg.sides > 0) {
       const pts = [];
       for (let i = 0; i < cfg.sides; i++) {
@@ -882,7 +922,7 @@ export class UIManager {
       bodySvg = `<circle cx="${center}" cy="${center}" r="${bodyRadius}" fill="${color}" stroke="${strokeColor}" stroke-width="3"/>`;
     }
 
-    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.3)); display: block; margin: auto;">
+    return `<svg class="diep-preview-tank-spin" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.3)); display: block; margin: auto;">
       ${armorSvg}
       ${turretsSvg}
       ${bodySvg}
@@ -926,9 +966,13 @@ export class UIManager {
   renderTanksShop(container) {
     const coins = this.storage.data.coins;
     const unlocked = this.storage.data.unlockedChassis || ['basic'];
-    const playerPaintColor = (this.storage.data.activeColor === 'custom')
-      ? (this.storage.data.customColor || '#00b2e1')
-      : (CONFIG.COLOR_THEMES[this.storage.data.activeColor]?.color || '#00b2e1');
+    const activeColorKey = this.storage.data.activeColor || 'default';
+    const playerPaintColor = (activeColorKey === 'custom')
+      ? (this.storage.data.customColor || '#ffffff')
+      : (CONFIG.COLOR_THEMES[activeColorKey]?.color || '#ffffff');
+    const playerPaintStroke = (activeColorKey === 'custom')
+      ? this.computeStrokeColor(playerPaintColor)
+      : (CONFIG.COLOR_THEMES[activeColorKey]?.stroke || '#737373');
 
     const tanks = [
       { key: 'tesla', name: 'Tesla Surge', rarity: 'Legendary', cost: 500, reqLvl: 30, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
@@ -985,12 +1029,12 @@ export class UIManager {
     this.sortShopItems(displayTanks);
 
     displayTanks.forEach(tank => {
-      allGrid.appendChild(this.createTankCard(tank, coins, unlocked, playerPaintColor));
+      allGrid.appendChild(this.createTankCard(tank, coins, unlocked, playerPaintColor, playerPaintStroke));
     });
     container.appendChild(allSection);
   }
 
-  createTankCard(tank, coins, unlocked, playerPaintColor) {
+  createTankCard(tank, coins, unlocked, playerPaintColor, playerPaintStroke) {
     const card = document.createElement('div');
     const rarityClass = `rarity-${tank.rarity.toLowerCase()}`;
     card.className = `diep-card ${rarityClass}`;
@@ -1000,7 +1044,7 @@ export class UIManager {
 
     card.innerHTML = `
       <div class="diep-card-preview-stage">
-        ${this.generateTankSvg(tank.key, playerPaintColor, 105)}
+        ${this.generateTankSvg(tank.key, playerPaintColor, playerPaintStroke, 105)}
       </div>
       <div class="diep-card-footer">
         <div class="diep-card-details-row">
@@ -1161,7 +1205,29 @@ export class UIManager {
       };
     });
 
-    // 1. CUSTOM RGB COLOR WHEEL CARD
+    // 1. FEATURED COLOR THEMES SECTION (FEATURED IS BACK FOR COLOR THEMES ONLY)
+    const featuredKeys = ['gold', 'pastel', 'neon'];
+    const featuredItems = featuredKeys.map(k => themes.find(t => t.key === k)).filter(Boolean);
+
+    const featuredSection = document.createElement('div');
+    featuredSection.className = 'diep-shop-section';
+    featuredSection.innerHTML = `
+      <div class="diep-section-header">
+        <div class="diep-section-title-wrap">
+          <div class="diep-section-title">⭐ FEATURED THEMES</div>
+          <div class="diep-ends-in-tag">⏱️ REFRESHES DAILY</div>
+        </div>
+      </div>
+      <div class="diep-featured-grid" id="featured-colors-grid"></div>
+    `;
+
+    const featGrid = featuredSection.querySelector('#featured-colors-grid');
+    featuredItems.forEach(t => {
+      featGrid.appendChild(this.createColorCard(t, coins, unlockedColors, activeColor, true));
+    });
+    container.appendChild(featuredSection);
+
+    // 2. CUSTOM RGB COLOR WHEEL CARD
     const customSection = document.createElement('div');
     customSection.className = 'diep-shop-section';
     customSection.innerHTML = `
@@ -1222,7 +1288,7 @@ export class UIManager {
     }
     container.appendChild(customSection);
 
-    // 2. ALL COLOR THEMES SECTION
+    // 3. ALL COLOR THEMES SECTION
     const allSection = document.createElement('div');
     allSection.className = 'diep-shop-section';
     allSection.innerHTML = `
@@ -1267,17 +1333,18 @@ export class UIManager {
     this.sortShopItems(displayThemes);
 
     displayThemes.forEach(t => {
-      allGrid.appendChild(this.createColorCard(t, coins, unlockedColors, activeColor));
+      allGrid.appendChild(this.createColorCard(t, coins, unlockedColors, activeColor, false));
     });
     container.appendChild(allSection);
   }
 
-  createColorCard(theme, coins, unlockedColors, activeColor) {
+  createColorCard(theme, coins, unlockedColors, activeColor, isFeatured = false) {
     const card = document.createElement('div');
     card.className = 'diep-card';
     
-    // Explicit theme color border and matching tinted graph grid
-    card.style.borderColor = theme.color;
+    // Explicit theme color outline and matching tinted graph grid
+    const borderColor = theme.stroke || theme.color;
+    card.style.borderColor = borderColor;
     card.style.borderWidth = '3px';
     card.style.backgroundColor = '#f8fafc';
     card.style.backgroundImage = `
@@ -1286,18 +1353,39 @@ export class UIManager {
     `;
     card.style.backgroundSize = '16px 16px';
 
+    let finalCost = theme.cost;
+    let oldCost = null;
+    let discountBadge = null;
+
+    if (isFeatured) {
+      if (theme.key === 'gold') {
+        finalCost = 320;
+        oldCost = 400;
+        discountBadge = '20% OFF';
+      } else if (theme.key === 'pastel') {
+        finalCost = 280;
+        oldCost = 350;
+        discountBadge = 'HOT DEAL';
+      } else if (theme.key === 'neon') {
+        finalCost = 200;
+        oldCost = 250;
+        discountBadge = '20% OFF';
+      }
+    }
+
     const isUnlocked = unlockedColors.includes(theme.key);
     const isActive = activeColor === theme.key;
-    const canAfford = coins >= theme.cost;
+    const canAfford = coins >= finalCost;
 
     card.innerHTML = `
+      ${discountBadge ? `<div class="diep-card-discount-badge">${discountBadge}</div>` : ''}
       <div class="diep-card-preview-stage">
-        ${this.generateTankSvg('basic', theme.color, 105)}
+        ${this.generateTankSvg('basic', theme.color, theme.stroke, isFeatured ? 115 : 105)}
       </div>
       <div class="diep-card-footer">
         <div class="diep-card-details-row">
           <span class="diep-card-title">${theme.name}</span>
-          <span class="diep-card-rarity-label" style="color: ${theme.color}; font-weight: 900;">${theme.rarity}</span>
+          <span class="diep-card-rarity-label" style="color: ${theme.stroke || theme.color}; font-weight: 900;">${theme.rarity}</span>
         </div>
         <div class="diep-card-subdesc">${theme.desc}</div>
         ${isUnlocked
@@ -1305,7 +1393,8 @@ export class UIManager {
               ? `<button class="diep-card-action-btn equipped">EQUIPPED</button>`
               : `<button class="diep-card-action-btn equip-ready">EQUIP</button>`)
           : `<button class="diep-card-action-btn ${canAfford ? '' : 'disabled'}">
-              🪙 ${theme.cost.toLocaleString()}
+              ${oldCost ? `<span class="diep-old-price">🪙 ${oldCost.toLocaleString()}</span>` : ''}
+              🪙 ${finalCost.toLocaleString()}
              </button>`
         }
       </div>
@@ -1323,13 +1412,13 @@ export class UIManager {
           }
         } else {
           if (canAfford) {
-            if (this.storage.unlockColor(theme.key, theme.cost)) {
+            if (this.storage.unlockColor(theme.key, finalCost)) {
               if (this.onColorChangeCallback) this.onColorChangeCallback();
               this.showToast(`UNLOCKED ${theme.name.toUpperCase()} PAINT THEME!`);
               this.renderShopContent();
             }
           } else {
-            this.showToast(`NEED ${(theme.cost - coins).toLocaleString()} MORE COINS`);
+            this.showToast(`NEED ${(finalCost - coins).toLocaleString()} MORE COINS`);
           }
         }
       });

@@ -123,7 +123,7 @@ export class WaveManager {
     const playerProjectiles = (playerWeapon && playerWeapon.projectiles) ? playerWeapon.projectiles : [];
     for (const s of this.shapes) s.update(dt, this);
     const totalRemainingEnemies = this.getRemainingEnemyCount();
-    for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerStats.moveSpeed || 0, this.enemies, playerProjectiles, totalRemainingEnemies);
+    for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerStats.moveSpeed || 0, this.enemies, playerProjectiles, totalRemainingEnemies, this.shapes);
     for (const b of this.enemyBullets) b.update(dt);
 
     // Despawn retreating enemies when they reach or exceed distance threshold from the player so wave does not get stuck

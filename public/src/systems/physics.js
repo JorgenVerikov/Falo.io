@@ -136,7 +136,12 @@ export class PhysicsSystem {
       if (enemy.dead) continue;
       for (const shape of waveMgr.shapes) {
         if (shape.dead) continue;
-        this.resolveCircleOverlap(enemy, shape, 0.6, 0.4);
+        if (shape.type === 'egg') {
+          // Eggs are tiny and fragile: do not impede enemy velocity, egg is nudged aside
+          this.resolveCircleOverlap(enemy, shape, 0.0, 1.0);
+        } else {
+          this.resolveCircleOverlap(enemy, shape, 0.6, 0.4);
+        }
       }
     }
 

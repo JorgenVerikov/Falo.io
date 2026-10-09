@@ -13,7 +13,7 @@ export const ENEMY_CONFIG = {
     sides: 3,
     radiusMultiplier: 0.7,
     hp: 22,
-    speedMultiplier: 1.5, // 50% faster than player base speed
+    speedMultiplier: 1.0, // Matches base speed (no movement multipliers)
     drag: 3.6,
     damage: 12,
     xp: 40,

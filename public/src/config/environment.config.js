@@ -6,8 +6,8 @@
 export const ARENA_CONFIG = {
   darkBg: '#313338',
   darkGrid: 'rgba(255, 255, 255, 0.05)',
-  lightBg: '#b5b9bc',
-  lightGrid: 'rgba(0, 0, 0, 0.045)',
+  lightBg: '#cdcdcd',
+  lightGrid: 'rgba(0, 0, 0, 0.05)',
   gridSize: 30
 };
 
