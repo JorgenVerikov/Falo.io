@@ -159,3 +159,101 @@ Object.values(ENEMY_CONFIG).forEach(enemy => {
     enumerable: true
   });
 });
+
+/**
+ * ENEMY UPGRADE & PROGRESSION CONFIGURATION
+ * Enemies receive stat upgrades as waves progress, mirroring the player's stat upgrade system.
+ * To prevent enemies from becoming absurdly overpowered in later waves, each stat is strictly
+ * capped at maxStatLevel (7), and overall upgrade points are hard-capped at maxTotalPoints (24).
+ */
+export const ENEMY_UPGRADE_CONFIG = {
+  maxStatLevel: 7, // Maximum upgrade levels per individual stat, matching player's maxStatLevel (7)
+  startWave: 2,    // Upgrades begin appearing on wave 2
+  pointsPerWave: 1.0, // Base upgrade points granted per wave advance
+  maxTotalPoints: 24, // Hard overall cap on total allocated upgrade points to prevent overpowered scaling
+
+  increments: {
+    maxHp: 0.12,             // +12% base HP per stat point (max +84%)
+    regenRate: 0.35,         // +0.35 HP/sec health regeneration per stat point (max +2.45 HP/s)
+    bodyDamage: 0.10,        // +10% contact body ram damage per stat point (max +70%)
+    moveSpeed: 0.05,         // +5% movement acceleration & speed per stat point (max +35%)
+    bulletSpeed: 0.06,       // +6% projectile velocity per stat point (max +42%)
+    bulletDamage: 0.10,      // +10% projectile damage per stat point (max +70%)
+    bulletPenetration: 0.12, // +12% projectile penetration per stat point (max +84%)
+    reloadSpeed: 0.06        // +6% faster firerate / reduced cooldown per stat point (max +42%)
+  },
+
+  statDefinitions: [
+    { key: 'maxHp', name: 'Health', label: 'HP', color: '#eb64d8' },
+    { key: 'regenRate', name: 'Regen', label: 'REG', color: '#f0b58e' },
+    { key: 'bodyDamage', name: 'Body Damage', label: 'BDMG', color: '#8f61f2' },
+    { key: 'moveSpeed', name: 'Speed', label: 'SPD', color: '#4be3e3' },
+    { key: 'bulletSpeed', name: 'Bullet Speed', label: 'BSPD', color: '#5b8fed' },
+    { key: 'bulletDamage', name: 'Bullet Damage', label: 'BDMG', color: '#ea5454' },
+    { key: 'bulletPenetration', name: 'Penetration', label: 'PEN', color: '#f5d450' },
+    { key: 'reloadSpeed', name: 'Reload', label: 'RLD', color: '#88e33c' }
+  ],
+
+  // Priority stat distribution paths for each archetype:
+  // Points earned by the wave are allocated in round-robin order along these paths
+  archetypeStatPriority: {
+    chaser: ['moveSpeed', 'bodyDamage', 'maxHp', 'regenRate'],
+    ranged: ['bulletDamage', 'bulletSpeed', 'reloadSpeed', 'bulletPenetration', 'maxHp', 'moveSpeed', 'regenRate'],
+    heavy: ['maxHp', 'bodyDamage', 'regenRate', 'moveSpeed']
+  }
+};
+
+/**
+ * Calculates current upgrade stats for a given archetype at a specific wave number.
+ * Ensures all stats are strictly capped at maxStatLevel (7) and total points capped at maxTotalPoints (24).
+ */
+export function getEnemyUpgradesForWave(archetypeKey, waveNumber = 1) {
+  const cfg = ENEMY_UPGRADE_CONFIG;
+  const wave = Math.max(1, parseInt(waveNumber, 10) || 1);
+
+  const stats = {
+    maxHp: 0,
+    regenRate: 0,
+    bodyDamage: 0,
+    moveSpeed: 0,
+    bulletSpeed: 0,
+    bulletDamage: 0,
+    bulletPenetration: 0,
+    reloadSpeed: 0
+  };
+
+  if (wave < cfg.startWave) {
+    return {
+      totalPoints: 0,
+      tier: 0,
+      stats
+    };
+  }
+
+  const rawPoints = Math.floor((wave - cfg.startWave + 1) * cfg.pointsPerWave);
+  const totalPoints = Math.min(cfg.maxTotalPoints, Math.max(0, rawPoints));
+  const priorityList = cfg.archetypeStatPriority[archetypeKey] || ['maxHp', 'bodyDamage', 'moveSpeed'];
+
+  let allocated = 0;
+  while (allocated < totalPoints) {
+    let progressed = false;
+    for (const statKey of priorityList) {
+      if (allocated >= totalPoints) break;
+      if (stats[statKey] < cfg.maxStatLevel) {
+        stats[statKey]++;
+        allocated++;
+        progressed = true;
+      }
+    }
+    if (!progressed) break; // All priority stats reached maxStatLevel
+  }
+
+  const maxAllocatedStat = Math.max(0, ...Object.values(stats));
+
+  return {
+    totalPoints: allocated,
+    tier: maxAllocatedStat,
+    stats
+  };
+}
+

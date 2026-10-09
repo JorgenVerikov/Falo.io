@@ -837,6 +837,26 @@ html, body {
   pointer-events: auto;
 }
 
+#main-menu-overlay.modal-overlay {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+body.theme-light #main-menu-overlay.modal-overlay {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
 .main-menu-box {
   background: #2b2d31;
   border: 3px solid #359bb5;
@@ -1252,12 +1272,55 @@ html, body {
   color: #f2f3f5;
 }
 
+#settings-modal {
+  z-index: 125;
+}
+
+#settings-modal .modal-box {
+  min-width: calc(360px * var(--ui-scale));
+  max-width: 90vw;
+  box-sizing: border-box;
+}
+
+#settings-modal .setting-row {
+  margin-bottom: calc(16px * var(--ui-scale));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+#settings-modal .setting-row label {
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-size: calc(13px * var(--ui-scale));
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+}
+
+#settings-modal .setting-input {
+  min-width: 145px;
+  padding: calc(7px * var(--ui-scale)) calc(12px * var(--ui-scale));
+  font-size: calc(12px * var(--ui-scale));
+  font-weight: 700;
+  border-radius: 5px;
+}
+
 .setting-input {
   background: #1e1f22;
   color: #359bb5;
   border: 1px solid rgba(255,255,255,0.2);
   padding: 6px 10px;
   border-radius: 4px;
+  font-weight: bold;
+  font-size: calc(12px * var(--ui-scale));
+  min-width: 120px;
+  cursor: pointer;
+}
+
+select.setting-input option {
+  background: #1e1f22;
+  color: #359bb5;
   font-weight: bold;
 }
 
@@ -1405,12 +1468,22 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   margin: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.20);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.40);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   display: flex;
   align-items: stretch;
   justify-content: stretch;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.28s ease, visibility 0.28s ease;
+}
+
+#armory-modal.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .diep-shop-window {
@@ -1418,9 +1491,9 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   max-width: 100vw;
   height: 100vh;
   max-height: 100vh;
-  background-color: rgba(17, 18, 22, 0.88);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background-color: rgba(17, 18, 22, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border-radius: 0;
   box-shadow: none;
   display: flex;
@@ -1429,6 +1502,12 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   border: none;
   font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
   user-select: none;
+  transform: scale(0.97);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#armory-modal.modal-overlay.active .diep-shop-window {
+  transform: scale(1);
 }
 
 /* Header Bar */
@@ -2088,6 +2167,12 @@ body.theme-light .setting-input {
   border-color: #a2a6aa;
 }
 
+body.theme-light select.setting-input option {
+  background: #e8ebee;
+  color: #287294;
+  font-weight: bold;
+}
+
 body.theme-light .armory-currency { color: #2b2e31; }
 
 body.theme-light .shop-tab-btn {
@@ -2190,18 +2275,18 @@ body.theme-light #close-armory-btn:hover {
   transform: none !important;
 }
 
-/* Authentic Diep Light/White Theme Shop Overrides */
+/* Authentic Diep Light/Classic Theme Shop Overrides */
 body.theme-light #armory-modal.modal-overlay {
-  background: rgba(180, 184, 188, 0.20);
+  background: rgba(180, 184, 188, 0.30);
 }
 
 body.theme-light .diep-shop-window {
-  background-color: rgba(235, 238, 242, 0.94);
+  background-color: rgba(235, 238, 242, 0.70);
   color: #1f2937;
 }
 
 body.theme-light .diep-shop-header {
-  background-color: rgba(220, 224, 229, 0.96);
+  background-color: rgba(220, 224, 229, 0.85);
   border-bottom: 2px solid rgba(0, 0, 0, 0.12);
 }
 

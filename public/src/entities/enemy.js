@@ -1,4 +1,4 @@
-import { CONFIG } from '../core/config.js';
+import { CONFIG, ENEMY_UPGRADE_CONFIG, getEnemyUpgradesForWave } from '../core/config.js';
 import { Projectile } from './weapons.js';
 
 export class Particle {
@@ -665,12 +665,18 @@ function getShapeManeuverVector(posX, posY, radius, goalDirX, goalDirY, shapes, 
 }
 
 export class EnemyUnit {
-  constructor(x, y, archetypeKey) {
+  constructor(x, y, archetypeKey, waveNumber = 1) {
     this.unitId = nextEnemyUnitId++;
     this.x = x;
     this.y = y;
     this.archetypeKey = archetypeKey;
+    this.waveNumber = Math.max(1, parseInt(waveNumber, 10) || 1);
     this.config = CONFIG.ENEMIES[archetypeKey];
+
+    // Compute wave upgrades for this archetype
+    this.upgrades = getEnemyUpgradesForWave(archetypeKey, this.waveNumber);
+    this.upgradeTier = this.upgrades.tier || 0;
+    const inc = ENEMY_UPGRADE_CONFIG.increments;
 
     this.sides = this.config.sides;
     
@@ -682,10 +688,30 @@ export class EnemyUnit {
     this.baseRadius = baseStatRadius * mult;
     this.radius = this.baseRadius;
 
-    this.hp = this.config.hp;
-    this.maxHp = this.config.hp;
-    this.damage = this.config.damage;
+    // Upgraded Maximum Health
+    const hpMult = 1.0 + (this.upgrades.stats.maxHp * inc.maxHp);
+    this.maxHp = Math.round(this.config.hp * hpMult);
+    this.hp = this.maxHp;
+
+    // Upgraded Body Contact / Ram Damage
+    const dmgMult = 1.0 + (this.upgrades.stats.bodyDamage * inc.bodyDamage);
+    this.damage = Math.round(this.config.damage * dmgMult * 10) / 10;
+
+    // Upgraded Health Regeneration
+    this.regenRate = this.upgrades.stats.regenRate * inc.regenRate;
+    this.timeSinceLastDamage = 999;
+
+    // Upgraded Movement Speed & Acceleration
+    const speedMult = 1.0 + (this.upgrades.stats.moveSpeed * inc.moveSpeed);
+    const pAccel = (CONFIG.PLAYER && CONFIG.PLAYER.acceleration) ? CONFIG.PLAYER.acceleration : 500;
+    const baseMult = (this.config.speedMultiplier !== undefined && this.config.speedMultiplier !== null) ? this.config.speedMultiplier : 1.0;
+    this.accel = Math.round(pAccel * baseMult * speedMult);
+    this.speedMultiplier = baseMult * speedMult;
+    this.boostForceMult = speedMult;
+
+    // Standard kill XP without upgrade bonuses
     this.xp = this.config.xp;
+
     this.color = this.config.color;
     this.stroke = this.config.stroke;
 
@@ -701,9 +727,6 @@ export class EnemyUnit {
 
     this.fireTimer = 0;
     this.boostTimer = 0;
-
-    // Base speed with no multipliers
-    this.speedMultiplier = 1.0;
 
     // AI Tactical Coordination & Movement properties
     this.orbitDir = (Math.random() < 0.5) ? 1 : -1;
@@ -852,6 +875,12 @@ export class EnemyUnit {
       return;
     }
 
+    // Upgraded Health Regeneration (passive healing when not recently damaged)
+    this.timeSinceLastDamage += dt;
+    if (this.regenRate > 0 && this.hp < this.maxHp && this.timeSinceLastDamage >= 3.0) {
+      this.hp = Math.min(this.maxHp, this.hp + this.regenRate * dt);
+    }
+
     if (this.dodgeCooldown > 0) {
       this.dodgeCooldown -= dt;
     }
@@ -871,7 +900,9 @@ export class EnemyUnit {
 
     // 1. ADVANCED MATHEMATICAL BALLISTIC LEAD PREDICTION WITH VELOCITY SMOOTHING & TURRET SLEW
     if (this.archetypeKey === 'ranged' && this.config.weapon) {
-      const bSpeed = this.config.weapon.bulletSpeed || 180;
+      const inc = ENEMY_UPGRADE_CONFIG.increments;
+      const bSpeedMult = 1.0 + (this.upgrades.stats.bulletSpeed * inc.bulletSpeed);
+      const bSpeed = (this.config.weapon.bulletSpeed || 180) * bSpeedMult;
 
       // Low-pass filter player velocity over ~120ms to eliminate jerky micro-movements
       const smoothWindow = (this.config.ai && this.config.ai.aimSmoothingTime) ? this.config.ai.aimSmoothingTime : 0.12;
@@ -1305,7 +1336,7 @@ export class EnemyUnit {
             this.boostTimer = 0;
             this.isBoosting = true;
             this.boostDurationTimer = 0.55;
-            const force = this.config.boostAbility.force;
+            const force = this.config.boostAbility.force * (this.boostForceMult || 1.0);
             this.vx += Math.cos(this.angle) * force;
             this.vy += Math.sin(this.angle) * force;
             EnemyCommunicationSystem.tryBroadcast(this, (this.isLastStand ? 'LAST_STAND' : (this.moraleState === 'HIGH' ? 'TAUNT' : 'HEX_CHARGE')), true);
@@ -1509,11 +1540,10 @@ export class EnemyUnit {
       dirY = blendedY / finalMag;
     }
 
-    // Standard base acceleration with no multipliers applied to the enemy
-    const accel = (CONFIG.PLAYER && CONFIG.PLAYER.acceleration) ? CONFIG.PLAYER.acceleration : 500;
+    // Upgraded directional acceleration
+    const accel = this.accel || ((CONFIG.PLAYER && CONFIG.PLAYER.acceleration) ? CONFIG.PLAYER.acceleration : 500);
     const drag = this.config.drag || 4.0;
 
-    // Standard directional acceleration without multipliers
     this.vx += dirX * accel * dt;
     this.vy += dirY * accel * dt;
 
@@ -1531,7 +1561,11 @@ export class EnemyUnit {
       const wCfg = this.config.weapon;
       this.fireTimer += dt;
       
-      const fireRateSec = wCfg.fireRateSec || 2.0;
+      const inc = ENEMY_UPGRADE_CONFIG.increments;
+      const fireRateMult = 1.0 + (this.upgrades.stats.reloadSpeed * inc.reloadSpeed);
+      const baseFireRate = wCfg.fireRateSec || 1.9;
+      const fireRateSec = Math.max(0.65, baseFireRate / fireRateMult);
+
       if (this.fireTimer >= fireRateSec) {
         this.fireTimer = 0;
 
@@ -1545,11 +1579,16 @@ export class EnemyUnit {
         const spawnX = this.x + Math.cos(this.angle) * barrelTipOffset;
         const spawnY = this.y + Math.sin(this.angle) * barrelTipOffset;
 
-        const bSpeed = wCfg.bulletSpeed || 175;
+        const bSpeedMult = 1.0 + (this.upgrades.stats.bulletSpeed * inc.bulletSpeed);
+        const bSpeed = (wCfg.bulletSpeed || 180) * bSpeedMult;
         const bVx = Math.cos(this.angle) * bSpeed;
         const bVy = Math.sin(this.angle) * bSpeed;
-        const pen = wCfg.bulletPenetration || 2.0;
-        const dmg = wCfg.bulletDamage || 6.0;
+
+        const penMult = 1.0 + (this.upgrades.stats.bulletPenetration * inc.bulletPenetration);
+        const pen = (wCfg.bulletPenetration || 2.0) * penMult;
+
+        const dmgMult = 1.0 + (this.upgrades.stats.bulletDamage * inc.bulletDamage);
+        const dmg = (wCfg.bulletDamage || 6.0) * dmgMult;
 
         const cannonBaseWidth = (mainTurret.width !== undefined) ? mainTurret.width : 20;
         const baseBulletRad = (wCfg.bulletRadius !== undefined) ? wCfg.bulletRadius : 9;
@@ -1565,6 +1604,7 @@ export class EnemyUnit {
   takeDamage(amount) {
     if (this.dead) return;
     this.hp -= amount;
+    this.timeSinceLastDamage = 0;
     this.addMorale(-0.5); // Drastically reduced penalty per hit to preserve morale
     if (this.hp <= 0) {
       this.kill();

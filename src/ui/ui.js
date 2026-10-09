@@ -5,12 +5,13 @@ import { CONFIG, getTotalXPForLevel } from '../core/config.js';
 import { signInEmail, signUpEmail, signInWithGoogle, signOut, onAuthStateChange, getUser } from '../core/auth.js';
 
 export class UIManager {
-  constructor(storageMgr, canvasMgr, onStartRun, onRestart, onChassisSelect) {
+  constructor(storageMgr, canvasMgr, onStartRun, onRestart, onChassisSelect, onReturnToMenu) {
     this.storage = storageMgr;
     this.canvasMgr = canvasMgr;
     this.onStartRun = onStartRun;
     this.onRestart = onRestart;
     this.onChassisSelect = onChassisSelect;
+    this.onReturnToMenu = onReturnToMenu;
 
     this.activeShopTab = 'tanks';
     this.evolutionPanelVisible = true;
@@ -38,6 +39,7 @@ export class UIManager {
   }
 
   initElements() {
+    this.uiContainer = document.getElementById('ui-container');
     this.mainMenuModal = document.getElementById('main-menu-overlay');
     this.toastEl = document.getElementById('toast-banner');
 
@@ -55,6 +57,7 @@ export class UIManager {
     this.faloPanel = document.getElementById('falo-upgrade-panel');
 
     this.gameOverModal = document.getElementById('game-over-modal');
+    this.gameOverMenuBtn = document.getElementById('game-over-menu-btn');
     this.finalScoreEl = document.getElementById('final-score');
     this.finalWaveEl = document.getElementById('final-wave');
     this.coinsEarnedEl = document.getElementById('coins-earned');
@@ -300,7 +303,9 @@ export class UIManager {
 
     document.getElementById('start-game-btn').addEventListener('click', () => {
       this.hideMainMenu();
-      this.onStartRun();
+      if (this.onStartRun) {
+        this.onStartRun();
+      }
     });
 
     document.getElementById('main-menu-armory-btn').addEventListener('click', () => {
@@ -314,19 +319,36 @@ export class UIManager {
 
     document.getElementById('restart-btn').addEventListener('click', () => {
       this.hideGameOver();
-      this.onRestart();
+      if (this.onRestart) {
+        this.onRestart();
+      }
     });
 
     document.getElementById('open-armory-btn').addEventListener('click', () => {
       this.hideGameOver();
       this.openedShopFromGameOver = true;
-      this.showMainMenu();
+      if (this.onReturnToMenu) {
+        this.onReturnToMenu();
+      } else {
+        this.showMainMenu();
+      }
       this.showArmory();
+    });
+
+    this.gameOverMenuBtn?.addEventListener('click', () => {
+      this.hideGameOver();
+      if (this.onReturnToMenu) {
+        this.onReturnToMenu();
+      } else {
+        this.showMainMenu();
+      }
     });
 
     document.getElementById('close-armory-btn').addEventListener('click', () => {
       this.hideArmory();
-      if (this.openedShopFromGameOver) {
+      if (this.onReturnToMenu) {
+        this.onReturnToMenu();
+      } else {
         this.showMainMenu();
       }
     });
@@ -405,8 +427,24 @@ export class UIManager {
       document.body.classList.remove('theme-light');
     }
 
-    document.getElementById('theme-select').value = theme;
-    document.getElementById('ui-scale-select').value = scale;
+    const themeSelect = document.getElementById('theme-select');
+    if (themeSelect) themeSelect.value = theme;
+
+    const scaleSelect = document.getElementById('ui-scale-select');
+    if (scaleSelect) {
+      const numScale = parseFloat(scale) || 1.0;
+      let matched = false;
+      for (let i = 0; i < scaleSelect.options.length; i++) {
+        if (Math.abs(parseFloat(scaleSelect.options[i].value) - numScale) < 0.05) {
+          scaleSelect.selectedIndex = i;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        scaleSelect.value = numScale.toFixed(1);
+      }
+    }
   }
 
   toggleEvolutionPanel() {
@@ -450,7 +488,24 @@ export class UIManager {
     }
   }
 
+  showInGameHUD() {
+    if (this.uiContainer) {
+      this.uiContainer.classList.remove('hidden');
+    }
+  }
+
+  hideInGameHUD() {
+    if (this.uiContainer) {
+      this.uiContainer.classList.add('hidden');
+    }
+    if (this.faloPanel) this.faloPanel.classList.add('hidden');
+    if (this.statPanel) this.statPanel.classList.add('hidden');
+    if (this.statCornerTab) this.statCornerTab.classList.add('hidden');
+  }
+
   showMainMenu() {
+    this.hideInGameHUD();
+    this.hideGameOver();
     this.mainMenuModal.classList.remove('hidden');
   }
 
@@ -459,6 +514,7 @@ export class UIManager {
   }
 
   showSettings() {
+    this.applySettings();
     this.settingsModal.classList.remove('hidden');
   }
 
@@ -766,6 +822,7 @@ export class UIManager {
   }
 
   showGameOver(score, wave, coinsEarned) {
+    this.hideInGameHUD();
     this.finalScoreEl.textContent = (score || 0).toLocaleString();
     this.finalWaveEl.textContent = wave || 1;
     this.coinsEarnedEl.textContent = `+${(coinsEarned || 0).toLocaleString()} COINS`;
@@ -779,10 +836,17 @@ export class UIManager {
   showArmory() {
     this.renderShopContent();
     this.armoryModal.classList.remove('hidden');
+    void this.armoryModal.offsetWidth;
+    this.armoryModal.classList.add('active');
   }
 
   hideArmory() {
-    this.armoryModal.classList.add('hidden');
+    this.armoryModal.classList.remove('active');
+    setTimeout(() => {
+      if (!this.armoryModal.classList.contains('active')) {
+        this.armoryModal.classList.add('hidden');
+      }
+    }, 280);
   }
 
   renderShopContent() {
@@ -818,11 +882,13 @@ export class UIManager {
     } else if (this.shopSort === 'name') {
       items.sort((a, b) => a.name.localeCompare(b.name));
     } else {
-      // Featured / Rarity Priority
-      const rarityRank = { 'Legendary': 4, 'Epic': 3, 'Rare': 2, 'Common': 1 };
       items.sort((a, b) => {
+        if (a.reqLvl !== undefined && b.reqLvl !== undefined) {
+          if (a.reqLvl !== b.reqLvl) return a.reqLvl - b.reqLvl;
+        }
         if (a.featured && !b.featured) return -1;
         if (!a.featured && b.featured) return 1;
+        const rarityRank = { 'Legendary': 4, 'Epic': 3, 'Rare': 2, 'Common': 1 };
         return (rarityRank[b.rarity] || 0) - (rarityRank[a.rarity] || 0);
       });
     }
@@ -975,31 +1041,24 @@ export class UIManager {
       : (CONFIG.COLOR_THEMES[activeColorKey]?.stroke || '#737373');
 
     const tanks = [
-      { key: 'tesla', name: 'Tesla Surge', rarity: 'Legendary', cost: 500, reqLvl: 30, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
-      { key: 'smasher', name: 'Smasher', rarity: 'Epic', cost: 300, reqLvl: 30, desc: 'Heavy ramming chassis with spinning hexagonal armor.' },
-      { key: 'sniper', name: 'Sniper', rarity: 'Rare', cost: 250, reqLvl: 15, desc: 'High-velocity long barrel cannon with wide vision.' },
-      { key: 'machinegun', name: 'Machine Gun', rarity: 'Rare', cost: 220, reqLvl: 15, desc: 'Rapid spread-cone spray cannon with high fire-rate.' },
-      { key: 'twin', name: 'Twin', rarity: 'Common', cost: 200, reqLvl: 15, desc: 'Dual-barrel chassis with high cyclic rate-of-fire.' },
-      { key: 'flank', name: 'Flank Guard', rarity: 'Common', cost: 200, reqLvl: 15, desc: 'Front and rear guns providing omnidirectional defense.' },
-      { key: 'basic', name: 'Basic Tank', rarity: 'Common', cost: 0, reqLvl: 1, desc: 'Reliable all-around starter chassis with standard cannon.' }
+      { key: 'tesla', name: 'Tesla Surge', cost: 500, reqLvl: 30, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
+      { key: 'smasher', name: 'Smasher', cost: 300, reqLvl: 30, desc: 'Heavy ramming chassis with spinning hexagonal armor.' },
+      { key: 'sniper', name: 'Sniper', cost: 250, reqLvl: 15, desc: 'High-velocity long barrel cannon with wide vision.' },
+      { key: 'machinegun', name: 'Machine Gun', cost: 220, reqLvl: 15, desc: 'Rapid spread-cone spray cannon with high fire-rate.' },
+      { key: 'twin', name: 'Twin', cost: 200, reqLvl: 15, desc: 'Dual-barrel chassis with high cyclic rate-of-fire.' },
+      { key: 'flank', name: 'Flank Guard', cost: 200, reqLvl: 15, desc: 'Front and rear guns providing omnidirectional defense.' },
+      { key: 'basic', name: 'Basic Tank', cost: 0, reqLvl: 1, desc: 'Reliable all-around starter chassis with standard cannon.' }
     ];
 
-    // Single Clean Grid (No Featured)
+    // Single Clean Grid
     const allSection = document.createElement('div');
     allSection.className = 'diep-shop-section';
     allSection.innerHTML = `
       <div class="diep-section-header">
         <div class="diep-section-title">ALL TANKS</div>
         <div class="diep-filter-sort-bar">
-          <div class="diep-rarity-filter-dots">
-            <button class="diep-filter-dot dot-all ${this.shopFilter === 'all' ? 'active' : ''}" data-rarity="all">ALL</button>
-            <button class="diep-filter-dot dot-common ${this.shopFilter === 'Common' ? 'active' : ''}" data-rarity="Common" title="Common"></button>
-            <button class="diep-filter-dot dot-rare ${this.shopFilter === 'Rare' ? 'active' : ''}" data-rarity="Rare" title="Rare"></button>
-            <button class="diep-filter-dot dot-epic ${this.shopFilter === 'Epic' ? 'active' : ''}" data-rarity="Epic" title="Epic"></button>
-            <button class="diep-filter-dot dot-legendary ${this.shopFilter === 'Legendary' ? 'active' : ''}" data-rarity="Legendary" title="Legendary"></button>
-          </div>
           <select id="diep-shop-sort-select" class="diep-sort-select">
-            <option value="featured" ${this.shopSort === 'featured' ? 'selected' : ''}>Rarity Tier</option>
+            <option value="featured" ${this.shopSort === 'featured' ? 'selected' : ''}>Default</option>
             <option value="price-low" ${this.shopSort === 'price-low' ? 'selected' : ''}>Price: Low to High</option>
             <option value="price-high" ${this.shopSort === 'price-high' ? 'selected' : ''}>Price: High to Low</option>
             <option value="name" ${this.shopSort === 'name' ? 'selected' : ''}>Alphabetical</option>
@@ -1009,12 +1068,6 @@ export class UIManager {
       <div class="diep-items-grid" id="all-tanks-grid"></div>
     `;
 
-    allSection.querySelectorAll('.diep-filter-dot').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.shopFilter = btn.dataset.rarity;
-        this.renderShopContent();
-      });
-    });
     const sortSelect = allSection.querySelector('#diep-shop-sort-select');
     sortSelect.addEventListener('change', (e) => {
       this.shopSort = e.target.value;
@@ -1023,9 +1076,6 @@ export class UIManager {
 
     const allGrid = allSection.querySelector('#all-tanks-grid');
     let displayTanks = [...tanks];
-    if (this.shopFilter !== 'all') {
-      displayTanks = displayTanks.filter(t => t.rarity === this.shopFilter);
-    }
     this.sortShopItems(displayTanks);
 
     displayTanks.forEach(tank => {
@@ -1036,8 +1086,7 @@ export class UIManager {
 
   createTankCard(tank, coins, unlocked, playerPaintColor, playerPaintStroke) {
     const card = document.createElement('div');
-    const rarityClass = `rarity-${tank.rarity.toLowerCase()}`;
-    card.className = `diep-card ${rarityClass}`;
+    card.className = 'diep-card';
 
     const isUnlocked = unlocked.includes(tank.key);
     const canAfford = coins >= tank.cost;
@@ -1049,7 +1098,6 @@ export class UIManager {
       <div class="diep-card-footer">
         <div class="diep-card-details-row">
           <span class="diep-card-title">${tank.name}</span>
-          <span class="diep-card-rarity-label">${tank.rarity}</span>
         </div>
         <div class="diep-card-subdesc">${tank.desc}</div>
         ${isUnlocked
@@ -1261,7 +1309,12 @@ export class UIManager {
         this.storage.setCustomColor(e.target.value);
         if (this.storage.data.activeColor === 'custom') {
           if (this.onColorChangeCallback) this.onColorChangeCallback();
-          this.renderShopContent();
+        }
+      });
+      picker.addEventListener('change', (e) => {
+        this.storage.setCustomColor(e.target.value);
+        if (this.storage.data.activeColor === 'custom') {
+          if (this.onColorChangeCallback) this.onColorChangeCallback();
         }
       });
     }

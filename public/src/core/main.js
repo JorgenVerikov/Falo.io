@@ -58,6 +58,7 @@ const state = {
   lastFrameTime: performance.now(),
   isGameOver: false,
   inMenu: true,
+  isPlaying: false,
   debugMode: false,
   godMode: false,
   autoFire: false,
@@ -70,6 +71,7 @@ const state = {
   lastEvolvedMilestone: 0,
   ignoredMilestone: 0,
   lastAnnouncedGraceWave: 0,
+  lastAnnouncedUpgradeWave: 0,
   stats: {
     maxHp: 0,
     regenRate: 0,
@@ -158,13 +160,16 @@ let uiMgr;
 
 async function initGame() {
   await storageMgr.loadSaveData();
+  
+  unloadGame();
 
   uiMgr = new UIManager(
     storageMgr,
     canvasMgr,
     startRun,
     restartRun,
-    setActiveChassis
+    setActiveChassis,
+    returnToMenu
   );
 
   setupInputs();
@@ -207,12 +212,56 @@ function populateAdminShapeSelect() {
   });
 }
 
+function unloadGame() {
+  state.inMenu = true;
+  state.isPlaying = false;
+  state.isGameOver = false;
+
+  // Clear all arena entities & timers
+  waveMgr.clearAll();
+  weaponSys.projectiles = [];
+  weaponSys.heat = 0;
+  weaponSys.energy = weaponSys.maxEnergy || 100;
+
+  // Reset player state
+  player.x = 0;
+  player.y = 0;
+  player.vx = 0;
+  player.vy = 0;
+  player.hp = CONFIG.PLAYER.baseMaxHp;
+  player.maxHp = CONFIG.PLAYER.baseMaxHp;
+  player.isDying = false;
+  player.deathTimer = 0;
+  player.dashTimer = 0;
+
+  camera.x = 0;
+  camera.y = 0;
+  camera.zoom = CONFIG.CAMERA.defaultZoom;
+  camera.targetZoom = CONFIG.CAMERA.defaultZoom;
+
+  if (uiMgr) {
+    uiMgr.hideInGameHUD();
+  }
+}
+
+function returnToMenu() {
+  unloadGame();
+  if (uiMgr) {
+    uiMgr.showMainMenu();
+  }
+}
+
 function startRun() {
-  state.inMenu = false;
-  restartRun();
+  loadAndStartGame();
 }
 
 function restartRun() {
+  loadAndStartGame();
+}
+
+function loadAndStartGame() {
+  state.inMenu = false;
+  state.isPlaying = true;
   state.isGameOver = false;
   state.autoFire = false;
   state.autoSpin = false;
@@ -237,22 +286,34 @@ function restartRun() {
   player.deathScale = 1.0;
   player.deathAlpha = 1.0;
 
+  camera.x = 0;
+  camera.y = 0;
+
   setActiveChassis('basic');
 
   waveMgr.score = 0;
   state.lastAnnouncedGraceWave = 0;
+  state.lastAnnouncedUpgradeWave = 0;
+  waveMgr.clearAll();
   waveMgr.startWave(1);
 
   applyCrewAndStatModifiers();
-  uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
-  uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
-  checkEvolutionProgression();
+  if (uiMgr) {
+    uiMgr.showInGameHUD();
+    uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
+    uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
+    checkEvolutionProgression();
+  }
 }
 
 function triggerGameOver() {
   state.isGameOver = true;
+  state.isPlaying = false;
   player.isDying = false;
+  player.vx = 0;
+  player.vy = 0;
   waveMgr.clearAll();
+  weaponSys.projectiles = [];
 
   const commanderLvl = storageMgr.data.crewLevels.commander || 0;
   const coinMultiplier = 1.0 + (commanderLvl * CONFIG.CREW.commanderBonus);
@@ -261,7 +322,10 @@ function triggerGameOver() {
   storageMgr.addCoins(coinsEarned);
   storageMgr.recordRun(waveMgr.score, waveMgr.waveNumber);
 
-  uiMgr.showGameOver(waveMgr.score, waveMgr.waveNumber, coinsEarned);
+  if (uiMgr) {
+    uiMgr.hideInGameHUD();
+    uiMgr.showGameOver(waveMgr.score, waveMgr.waveNumber, coinsEarned);
+  }
 }
 
 function addXP(amount, isDirect = false) {
@@ -517,11 +581,35 @@ function setupInputs() {
       return;
     }
 
-    input.keys[e.key.toLowerCase()] = true;
-
     if (e.key === '`' || e.key === 'F2') {
       uiMgr.toggleAdminPanel();
+      return;
     }
+
+    if (e.key === 'Escape') {
+      if (uiMgr.adminModal && !uiMgr.adminModal.classList.contains('hidden')) {
+        uiMgr.hideAdminPanel();
+        return;
+      }
+      if (uiMgr.settingsModal && !uiMgr.settingsModal.classList.contains('hidden')) {
+        uiMgr.hideSettings();
+        return;
+      }
+      if (uiMgr.armoryModal && !uiMgr.armoryModal.classList.contains('hidden')) {
+        uiMgr.hideArmory();
+        return;
+      }
+      if (uiMgr.authModal && !uiMgr.authModal.classList.contains('hidden')) {
+        uiMgr.hideAuthModal();
+        return;
+      }
+    }
+
+    if (state.inMenu || !state.isPlaying || state.isGameOver) {
+      return;
+    }
+
+    input.keys[e.key.toLowerCase()] = true;
 
     // E: Autofire toggle
     if (e.key.toLowerCase() === 'e') {
@@ -566,6 +654,11 @@ function setupInputs() {
   });
 
   window.addEventListener('mousedown', (e) => {
+    if (state.inMenu || !state.isPlaying || state.isGameOver) {
+      input.mouse.isDown = false;
+      input.mouse.isRightDown = false;
+      return;
+    }
     if (e.button === 0) input.mouse.isDown = true;
     if (e.button === 2) input.mouse.isRightDown = true;
   });
@@ -783,6 +876,26 @@ function setupAdminPanelListeners() {
     waveMgr.isPaused = !waveMgr.isPaused;
     uiMgr.showToast(`ADMIN: WAVE ${waveMgr.isPaused ? 'PAUSED' : 'RESUMED'}`);
   });
+
+  const wavePrevBtn = document.getElementById('adm-wave-prev');
+  if (wavePrevBtn) {
+    wavePrevBtn.addEventListener('click', () => {
+      const prevWave = Math.max(1, waveMgr.waveNumber - 1);
+      waveMgr.clearAll();
+      waveMgr.startWave(prevWave);
+      uiMgr.showToast(`ADMIN: JUMPED TO WAVE ${prevWave} (UPGRADES: +${waveMgr.getEnemyUpgradePoints()} PTS)`);
+    });
+  }
+
+  const waveNextBtn = document.getElementById('adm-wave-next');
+  if (waveNextBtn) {
+    waveNextBtn.addEventListener('click', () => {
+      const nextWave = waveMgr.waveNumber + 1;
+      waveMgr.clearAll();
+      waveMgr.startWave(nextWave);
+      uiMgr.showToast(`ADMIN: JUMPED TO WAVE ${nextWave} (UPGRADES: +${waveMgr.getEnemyUpgradePoints()} PTS)`);
+    });
+  }
 
   document.getElementById('adm-debug-overlay').addEventListener('change', (e) => {
     state.debugMode = e.target.checked;
@@ -1004,7 +1117,7 @@ function renderPlayerChassis() {
 }
 
 function updateHUD() {
-  if (state.inMenu) return;
+  if (state.inMenu || !state.isPlaying || state.isGameOver) return;
 
   document.getElementById('fps-counter').textContent = Math.round(state.fps);
   document.getElementById('score-display').textContent = Math.floor(waveMgr.score).toLocaleString();
@@ -1044,10 +1157,21 @@ function updateHUD() {
   const waveStatus = document.getElementById('wave-status');
   const waveTimerText = document.getElementById('wave-timer-text');
 
+  const upgradePoints = waveMgr.getEnemyUpgradePoints();
+  const upgradeLabel = upgradePoints > 0 ? ` • ENEMIES: +${upgradePoints} STAT PTS` : '';
+
+  if (state.lastAnnouncedUpgradeWave !== waveMgr.waveNumber && !state.inMenu && !state.isGameOver && !waveMgr.isBreak) {
+    state.lastAnnouncedUpgradeWave = waveMgr.waveNumber;
+    if (upgradePoints > 0 && uiMgr) {
+      const isCapped = upgradePoints >= (CONFIG.ENEMY_UPGRADES?.maxTotalPoints || 24);
+      uiMgr.showToast(`WAVE ${waveMgr.waveNumber}: ENEMIES UPGRADED (+${upgradePoints} PTS${isCapped ? ' • MAX CAP' : ''})`);
+    }
+  }
+
   if (waveMgr.graceTimer > 0) {
     waveStatus.textContent = `WAVE ${waveMgr.waveNumber} (GRACE PERIOD)`;
     waveStatus.style.color = '#e9b439';
-    waveTimerText.textContent = `ENEMIES SPAWN IN: ${Math.ceil(waveMgr.graceTimer)}s`;
+    waveTimerText.textContent = `ENEMIES SPAWN IN: ${Math.ceil(waveMgr.graceTimer)}s${upgradeLabel}`;
     if (state.lastAnnouncedGraceWave !== waveMgr.waveNumber && !state.inMenu && !state.isGameOver) {
       state.lastAnnouncedGraceWave = waveMgr.waveNumber;
       if (uiMgr) {
@@ -1057,11 +1181,15 @@ function updateHUD() {
   } else if (waveMgr.isBreak) {
     waveStatus.textContent = `WAVE ${waveMgr.waveNumber} CLEARED`;
     waveStatus.style.color = '#57a857';
-    waveTimerText.textContent = `NEXT WAVE IN ${Math.ceil(waveMgr.breakTimer)}s`;
+    const nextWave = waveMgr.waveNumber + 1;
+    const cfg = CONFIG.ENEMY_UPGRADES;
+    const nextPoints = cfg ? Math.min(cfg.maxTotalPoints, Math.max(0, Math.floor((nextWave - cfg.startWave + 1) * cfg.pointsPerWave))) : 0;
+    const nextLabel = (nextPoints > upgradePoints) ? ` (ENEMY STATS UPGRADING)` : '';
+    waveTimerText.textContent = `NEXT WAVE IN ${Math.ceil(waveMgr.breakTimer)}s${nextLabel}`;
   } else {
     waveStatus.textContent = `WAVE ${waveMgr.waveNumber}`;
     waveStatus.style.color = '#359bb5';
-    waveTimerText.textContent = `ENEMIES REMAINING: ${waveMgr.getRemainingEnemyCount()}`;
+    waveTimerText.textContent = `ENEMIES REMAINING: ${waveMgr.getRemainingEnemyCount()}${upgradeLabel}`;
   }
 
   const titleElem = document.getElementById('weapon-title');
@@ -1160,7 +1288,7 @@ function gameLoop(timestamp) {
   state.lastFrameTime = timestamp;
   state.fps = 1 / dt;
 
-  if (!state.isGameOver && !state.inMenu) {
+  if (state.isPlaying && !state.isGameOver && !state.inMenu) {
     const prevScore = waveMgr.score;
     updatePlayer(dt);
     
@@ -1178,13 +1306,15 @@ function gameLoop(timestamp) {
   canvasMgr.clear();
   canvasMgr.drawGrid(camera, CONFIG.ARENA.gridSize);
 
-  canvasMgr.beginCamera(camera);
-  waveMgr.draw(canvasMgr);
-  weaponSys.draw(canvasMgr.ctx);
-  renderPlayerChassis();
-  canvasMgr.endCamera();
+  if (state.isPlaying && !state.inMenu) {
+    canvasMgr.beginCamera(camera);
+    waveMgr.draw(canvasMgr);
+    weaponSys.draw(canvasMgr.ctx);
+    renderPlayerChassis();
+    canvasMgr.endCamera();
 
-  updateHUD();
+    updateHUD();
+  }
 
   requestAnimationFrame(gameLoop);
 }

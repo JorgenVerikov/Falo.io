@@ -4,7 +4,7 @@
  */
 
 import { PLAYER_CONFIG, CHASSIS_CONFIG, EVOLUTION_CONFIG, getXPRequiredForLevel, DIEP_LEVEL_SCORES, getTotalXPForLevel } from './player.config.js';
-import { ENEMY_CONFIG } from './enemy.config.js';
+import { ENEMY_CONFIG, ENEMY_UPGRADE_CONFIG, getEnemyUpgradesForWave } from './enemy.config.js';
 import { SHAPES_CONFIG } from './shapes.config.js';
 import { ARENA_CONFIG, CAMERA_CONFIG, WAVE_CONFIG, VFX_CONFIG } from './environment.config.js';
 import { BASIC_BARREL_BASE, createBarrelTurret, WEAPONS_CONFIG } from './weapons.config.js';
@@ -15,6 +15,8 @@ export {
   CHASSIS_CONFIG,
   EVOLUTION_CONFIG,
   ENEMY_CONFIG,
+  ENEMY_UPGRADE_CONFIG,
+  getEnemyUpgradesForWave,
   SHAPES_CONFIG,
   ARENA_CONFIG,
   CAMERA_CONFIG,
@@ -38,6 +40,7 @@ export const CONFIG = {
   WEAPONS: WEAPONS_CONFIG,
   SHAPES: SHAPES_CONFIG,
   ENEMIES: ENEMY_CONFIG,
+  ENEMY_UPGRADES: ENEMY_UPGRADE_CONFIG,
   WAVE: WAVE_CONFIG,
   CREW: CREW_CONFIG,
   META: META_CONFIG,

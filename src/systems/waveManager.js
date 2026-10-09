@@ -19,7 +19,7 @@ export class WaveManager {
     this.particles = [];
     this.enemyBullets = [];
 
-    this.startWave(1);
+    // Do not load or start arena wave until run begins
   }
 
   clearAll() {
@@ -28,6 +28,11 @@ export class WaveManager {
     this.particles = [];
     this.enemyBullets = [];
     this.enemyQueue = [];
+    this.graceTimer = 0;
+    this.breakTimer = 0;
+    this.spawnTimer = 0;
+    this.isBreak = false;
+    this.score = 0;
   }
 
   clearShapes() {
@@ -60,7 +65,8 @@ export class WaveManager {
       this.graceTimer = 0;
     }
 
-    const totalEnemies = Math.floor(CONFIG.WAVE.baseEnemyCount * Math.pow(CONFIG.WAVE.growthFactor, this.waveNumber - 1));
+    const maxEnemies = (CONFIG.WAVE && CONFIG.WAVE.maxEnemyCount !== undefined) ? CONFIG.WAVE.maxEnemyCount : 150;
+    const totalEnemies = Math.min(maxEnemies, Math.floor(CONFIG.WAVE.baseEnemyCount * Math.pow(CONFIG.WAVE.growthFactor, this.waveNumber - 1)));
 
     // Dynamic enemy eligibility check reading directly from CONFIG.ENEMIES
     const availableArchetypes = Object.keys(CONFIG.ENEMIES).filter(key => {
@@ -269,8 +275,15 @@ export class WaveManager {
     const x = player.x + Math.cos(angle) * dist;
     const y = player.y + Math.sin(angle) * dist;
 
-    const enemy = new EnemyUnit(x, y, archetype);
+    const enemy = new EnemyUnit(x, y, archetype, this.waveNumber);
     this.enemies.push(enemy);
+  }
+
+  getEnemyUpgradePoints() {
+    const cfg = CONFIG.ENEMY_UPGRADES;
+    if (!cfg || this.waveNumber < cfg.startWave) return 0;
+    const rawPoints = Math.floor((this.waveNumber - cfg.startWave + 1) * cfg.pointsPerWave);
+    return Math.min(cfg.maxTotalPoints, Math.max(0, rawPoints));
   }
 
   getRemainingEnemyCount() {

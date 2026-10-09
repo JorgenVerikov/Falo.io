@@ -16,7 +16,7 @@
 
   <div id="toast-banner" class="toast-banner hidden">ALERT MESSAGE HERE</div>
 
-  <div id="ui-container">
+  <div id="ui-container" class="hidden">
     <div id="top-left-hud" class="hud-panel" style="position: absolute; top: 16px; right: 16px;">
       <div class="hud-row"><span class="hud-label">FPS:</span><span id="fps-counter" class="hud-val">60</span></div>
       <div class="hud-row"><span class="hud-label">SCORE:</span><span id="score-display" class="hud-val">0</span></div>
@@ -158,6 +158,7 @@
       <div class="modal-actions">
         <button id="restart-btn" class="modal-btn primary">REDEPLOY</button>
         <button id="open-armory-btn" class="modal-btn secondary">ARMORY</button>
+        <button id="game-over-menu-btn" class="modal-btn secondary">MAIN MENU</button>
       </div>
     </div>
   </div>
@@ -170,7 +171,7 @@
       <div class="setting-row">
         <label>ARENA THEME</label>
         <select id="theme-select" class="setting-input">
-          <option value="light" selected>WHITE THEME</option>
+          <option value="light" selected>CLASSIC</option>
           <option value="dark">DARK SLATE</option>
         </select>
       </div>
@@ -178,9 +179,11 @@
       <div class="setting-row">
         <label>UI SCALE</label>
         <select id="ui-scale-select" class="setting-input">
-          <option value="0.8">80%</option>
-          <option value="1.0" selected>100%</option>
-          <option value="1.2">120%</option>
+          <option value="0.75">75% (Compact)</option>
+          <option value="0.85">85%</option>
+          <option value="1.0" selected>100% (Default)</option>
+          <option value="1.15">115%</option>
+          <option value="1.25">125% (Large)</option>
         </select>
       </div>
 
@@ -218,6 +221,8 @@
         
         <button id="adm-toggle-pause" class="admin-btn">TOGGLE WAVE PAUSE</button>
         <button id="adm-clear-all" class="admin-btn alert">CLEAR ALL ENTITIES</button>
+        <button id="adm-wave-prev" class="admin-btn">PREV WAVE (-1)</button>
+        <button id="adm-wave-next" class="admin-btn">+1 WAVE (ADVANCE)</button>
 
         <div class="setting-row" style="grid-column: span 2; margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15);">
           <label>SPAWN SHAPE:</label>

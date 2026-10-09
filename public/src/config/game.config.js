@@ -18,7 +18,7 @@ export const META_CONFIG = {
 };
 
 export const COLOR_THEMES = {
-  default: { name: 'White Theme', color: '#ffffff', stroke: '#737373', cost: 0, rarity: 'Common', desc: 'Minimalist pristine white hull coating with crisp tactical borders.' },
+  default: { name: 'Classic', color: '#ffffff', stroke: '#737373', cost: 0, rarity: 'Common', desc: 'Minimalist pristine classic white hull coating with crisp tactical borders.' },
   cyan: { name: 'Classic Cyan', color: '#00b2e1', stroke: '#0083a8', cost: 0, rarity: 'Common', desc: 'The iconic traditional Diep.io cyan blue hull.' },
   crimson: { name: 'Crimson Red', color: '#e92835', stroke: '#bd202a', cost: 150, rarity: 'Rare', desc: 'Aggressive racing scarlet red tank chassis paint.' },
   lime: { name: 'Lime Green', color: '#2ee662', stroke: '#24b34f', cost: 150, rarity: 'Rare', desc: 'Vibrant neon radioactive lime coating.' },
