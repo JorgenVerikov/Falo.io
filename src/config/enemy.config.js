@@ -13,7 +13,7 @@ export const ENEMY_CONFIG = {
     sides: 3,
     radiusMultiplier: 0.7,
     hp: 22,
-    acceleration: 750,
+    speedMultiplier: 1.5, // 50% faster than player base speed
     drag: 3.6,
     damage: 12,
     xp: 40,
@@ -27,8 +27,13 @@ export const ENEMY_CONFIG = {
       leadInterception: 0.85,
       flankSpreadAngle: Math.PI * 0.45,
       evasion: true,
+      smoothTurnRate: 4.8, // Smooth swooping turns instead of snappy jerks
+      evadeBlendRate: 4.5, // Aerodynamic damping for smooth evasion banking
       separationDistance: 70,
-      separationWeight: 1.2
+      separationWeight: 1.2,
+      surroundArcDist: 220, // Distance when coordinating encirclement with allies
+      frenzyHpThreshold: 0.38, // "Blood in the water": closes in aggressively when player HP < 38%
+      blindSpotExploit: true // Swoops around player's front firing cone to strike from flanks/rear
     }
   },
   ranged: {
@@ -37,11 +42,7 @@ export const ENEMY_CONFIG = {
     sides: 0,
     radiusMultiplier: 1.0,
     hp: 32,
-    speedMultiplier: 1.15, // 15% faster than player's base speed
-    get acceleration() {
-      const pAccel = PLAYER_CONFIG ? (PLAYER_CONFIG.acceleration || 500) : 500;
-      return Math.round(pAccel * (this.speedMultiplier || 1.15));
-    },
+    speedMultiplier: 1.0, // Matches player base speed
     drag: 4.0, // Matches player's drag for vanilla physics
     damage: 10,
     xp: 100,
@@ -70,6 +71,7 @@ export const ENEMY_CONFIG = {
       role: 'ranged',
       kitingDistance: 350,
       kitingBuffer: 40,
+      frenzyKitingDist: 250, // Closes standoff distance to finish off wounded player
       crossfireAngle: Math.PI * 0.48, // ~86 degrees to player's sides
       orbitSpeed: 0.85,
       turretTurnSpeed: 8.5, // Smooth turret tracking speed in radians/sec
@@ -77,11 +79,12 @@ export const ENEMY_CONFIG = {
       predictiveAim: 1.0, // Full quadratic ballistic lead prediction
       meatShieldSeeking: true,
       evasion: true,
-      evasionChance: 0.65, // Slightly dumber: doesn't dodge every bullet (player shots can land)
-      evasionDangerDist: 210, // Only reacts to close threats, not bullets from far away
-      evasionCooldown: 0.45, // Recovery window after dodging before dodging again
+      evasionChance: 0.68,
+      evasionDangerDist: 210, // Reacts to close threats
+      evasionCooldown: 0.45, // Recovery window after dodging
       separationDistance: 85,
-      separationWeight: 1.3
+      separationWeight: 1.3,
+      coverThresholdHp: 0.35 // Seeks cover behind heavier allies when wounded
     }
   },
   heavy: {
@@ -90,7 +93,7 @@ export const ENEMY_CONFIG = {
     sides: 6,
     radiusMultiplier: 1.4,
     hp: 110,
-    acceleration: 260,
+    speedMultiplier: 0.52, // 52% of player base speed
     drag: 3.4,
     damage: 30,
     xp: 200,
@@ -116,7 +119,9 @@ export const ENEMY_CONFIG = {
       boostMinDistance: 160,
       boostMaxDistance: 500,
       separationDistance: 110,
-      separationWeight: 0.8
+      separationWeight: 0.8,
+      steerableBoost: true, // Dynamically steers charge into player's path
+      rampageAggroDist: 320
     }
   }
 };
@@ -132,6 +137,23 @@ Object.values(ENEMY_CONFIG).forEach(enemy => {
     set(v) {
       const base = PLAYER_CONFIG ? (PLAYER_CONFIG.baseRadius || 25) : 25;
       this.radiusMultiplier = v / base;
+    },
+    configurable: true,
+    enumerable: true
+  });
+});
+
+// Ensure all enemy archetypes inherit player's base acceleration stat, scaled by their speedMultiplier
+Object.values(ENEMY_CONFIG).forEach(enemy => {
+  Object.defineProperty(enemy, 'acceleration', {
+    get() {
+      const pAccel = PLAYER_CONFIG ? (PLAYER_CONFIG.acceleration || 500) : 500;
+      const mult = (this.speedMultiplier !== undefined && this.speedMultiplier !== null) ? this.speedMultiplier : 1.0;
+      return Math.round(pAccel * mult);
+    },
+    set(v) {
+      const pAccel = PLAYER_CONFIG ? (PLAYER_CONFIG.acceleration || 500) : 500;
+      this.speedMultiplier = v / pAccel;
     },
     configurable: true,
     enumerable: true

@@ -615,34 +615,57 @@ html, body {
 
 .gauge-bar-wrapper {
   position: relative;
-  width: 100%;
-  height: calc(18px * var(--ui-scale));
-  background: #1e1f22;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
+  width: calc(270px * var(--ui-scale));
+  max-width: 100%;
+  height: calc(23px * var(--ui-scale));
+  margin: 0 auto;
+  background: #383a40;
+  border: 2.5px solid #202225;
+  border-radius: 12px;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
 }
 
 .gauge-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
   height: 100%;
   width: 0%;
   background: #359bb5;
-  transition: width 0.05s linear;
+  border-radius: 9px;
+  transition: width 0.08s linear;
+  z-index: 1;
 }
 
 .gauge-bar-fill.heat-high { background: #c4702b; }
 .gauge-bar-fill.heat-critical { background: #d93838; }
 .gauge-bar-fill.energy { background: #c2942c; }
+.gauge-bar-fill.cooldown { background: #475569; }
+.gauge-bar-fill.ready { background: #00e5ff; }
 
 .gauge-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: calc(10px * var(--ui-scale));
+  position: relative;
+  z-index: 2;
+  font-size: calc(10.5px * var(--ui-scale));
   font-weight: 800;
   color: #ffffff;
-  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+  text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000;
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  pointer-events: none;
+  line-height: calc(19px * var(--ui-scale));
+  padding: 0 6px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .overheat-banner {

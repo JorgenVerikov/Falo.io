@@ -217,7 +217,7 @@ function solveBallisticIntercept(shooterX, shooterY, targetX, targetY, targetVx,
  * Calculates a verified perpendicular evasion unit vector that is guaranteed
  * to steer the enemy AWAY from an incoming projectile's trajectory ray.
  */
-function getBulletEvasionVector(enemyX, enemyY, enemyRadius, proj, enemyVx = 0, enemyVy = 0, maxThreatDist = 210) {
+function getBulletEvasionVector(enemyX, enemyY, enemyRadius, proj, enemyVx = 0, enemyVy = 0, maxThreatDist = 210, preferredSide = 0) {
   const pSpeedSq = proj.vx * proj.vx + proj.vy * proj.vy;
   if (pSpeedSq <= 1) return null;
   const pSpeed = Math.sqrt(pSpeedSq);
@@ -236,23 +236,35 @@ function getBulletEvasionVector(enemyX, enemyY, enemyRadius, proj, enemyVx = 0, 
   const perpY = relY - proj.vy * tClosest;
   const perpDistSq = perpX * perpX + perpY * perpY;
 
-  const dangerRadius = enemyRadius + (proj.radius || 9) + 22;
+  const dangerRadius = enemyRadius + (proj.radius || 9) + 26;
   if (perpDistSq >= dangerRadius * dangerRadius) return null;
 
   let evadeDirX = 0;
   let evadeDirY = 0;
 
+  // Trajectory normal (perpendicular vector to bullet velocity)
+  const normX = -proj.vy / pSpeed;
+  const normY = proj.vx / pSpeed;
+
   if (perpDistSq > 0.0001) {
     const perpDist = Math.sqrt(perpDistSq);
-    evadeDirX = perpX / perpDist;
-    evadeDirY = perpY / perpDist;
+    let px = perpX / perpDist;
+    let py = perpY / perpDist;
+
+    // If unit already committed to a dodge side, prevent flip-flopping across the center line
+    if (preferredSide !== 0) {
+      const dot = px * normX + py * normY;
+      if (Math.sign(dot) !== Math.sign(preferredSide)) {
+        px = normX * preferredSide;
+        py = normY * preferredSide;
+      }
+    }
+    evadeDirX = px;
+    evadeDirY = py;
   } else {
-    // Exactly centered on trajectory: pick perpendicular normal
-    const normX = -proj.vy / pSpeed;
-    const normY = proj.vx / pSpeed;
-    // Align with enemy's current momentum if moving, otherwise default positive
+    // Exactly centered on trajectory: pick perpendicular normal matching preferred side or momentum
     const dot = normX * enemyVx + normY * enemyVy;
-    const side = (dot < 0) ? -1 : 1;
+    const side = (preferredSide !== 0) ? preferredSide : ((dot < 0) ? -1 : 1);
     evadeDirX = normX * side;
     evadeDirY = normY * side;
   }
@@ -263,6 +275,209 @@ function getBulletEvasionVector(enemyX, enemyY, enemyRadius, proj, enemyVx = 0, 
     timeToImpact: tClosest,
     dist: Math.sqrt(distSq)
   };
+}
+
+/**
+ * Tactical Enemy Communication Callout Vocabularies
+ */
+export const ENEMY_CHAT_CALLOUTS = {
+  ALLY_DOWN: [
+    "One of us is Down!",
+    "Man down! Keep firing!",
+    "They got one of ours!",
+    "Avenge them!",
+    "Stay focused! One down!"
+  ],
+  ALLY_DOWN_LOW: [
+    "Another one down?! Pull back!",
+    "They got another one! Back up!",
+    "We're losing people! Fall back!",
+    "Our line is breaking!"
+  ],
+  ORDER_BACK_UP: [
+    "Fall back! Regroup!",
+    "Back up! Back up now!",
+    "Keep your distance!",
+    "Don't push too far!",
+    "Pull back to safe range!",
+    "Hold your ground, don't rush!",
+    "Too dangerous! Step back!",
+    "Give them room, fall back!"
+  ],
+  JEER: [
+    "Who said this would be easy?!",
+    "What kind of cannons are those?!",
+    "Stop feeding their fire, you fools!",
+    "Watch your spacing! Move!",
+    "We're taking too much fire!",
+    "They're tearing right through us!",
+    "You're getting too close, idiot!"
+  ],
+  CHEER: [
+    "Direct hit! They're cracking!",
+    "Got 'em! Keep the pressure on!",
+    "We got this! Push forward!",
+    "Outstanding hit! Keep firing!",
+    "Target hull compromised!",
+    "Yes! Break their hull!"
+  ],
+  TAUNT: [
+    "They can't stop all of us!",
+    "Easy prey! Don't let up!",
+    "You're surrounded, give up!",
+    "Is that all you've got?!",
+    "Nowhere left to run!",
+    "We outnumber you! Surrender!",
+    "Crush them! No mercy!",
+    "Target is on the ropes!",
+    "You won't survive this wave!"
+  ],
+  TERRIFIED: [
+    "I'm all that's left?! No no no!",
+    "Get away from me!",
+    "Retreat! RETREAT!",
+    "We can't stop this thing!",
+    "They're a monster!",
+    "Mayday! Squad is gone!",
+    "It's suicide! Pull out!",
+    "I don't wanna die here!",
+    "Run for your lives!",
+    "Stay away from me!",
+    "We never stood a chance!"
+  ],
+  FLANK: [
+    "Flank them!",
+    "Move it!",
+    "Hitting them from behind!",
+    "Break their line!",
+    "Get around their cannons!"
+  ],
+  ENCIRCLE: [
+    "Surround them!",
+    "Box them in!",
+    "Cut off their retreat!",
+    "Close the net!"
+  ],
+  COVER_BEHIND_HEX: [
+    "Behind the Hex, Now!",
+    "Use the heavy as cover!",
+    "Stack behind the armor!",
+    "Shield up behind the Hex!"
+  ],
+  HEX_CHARGE: [
+    "Clear the way!",
+    "Ramming speed!",
+    "Battering ram incoming!",
+    "Smash them!"
+  ],
+  FRENZY_PUSH: [
+    "They're weak! Push!",
+    "Finish them off!",
+    "No escape now!",
+    "Strike now, they're down!"
+  ],
+  EVADING: [
+    "Watch that fire!",
+    "Scatter!",
+    "Incoming shells!",
+    "Evasive maneuvers!"
+  ],
+  CROSSFIRE: [
+    "Crossfire locked!",
+    "Suppressing fire!",
+    "Pin them down!"
+  ]
+};
+
+export class EnemyCommunicationSystem {
+  static lastTeamCalloutTime = 0;
+  static teamCalloutCooldown = 1.1; // Staggered tactical radio calls
+
+  static tryBroadcast(speaker, category, force = false, duration = 2.2) {
+    if (!speaker || speaker.dead || speaker.isDying) return false;
+    if (speaker.chatTimer > 0) return false;
+    if (speaker.chatCooldown > 0 && !force) return false;
+
+    const now = performance.now() / 1000;
+    if (!force && (now - EnemyCommunicationSystem.lastTeamCalloutTime < EnemyCommunicationSystem.teamCalloutCooldown)) {
+      return false;
+    }
+
+    const pool = ENEMY_CHAT_CALLOUTS[category];
+    if (!pool || pool.length === 0) return false;
+
+    const phrase = pool[Math.floor(Math.random() * pool.length)];
+    speaker.speak(phrase, duration);
+    EnemyCommunicationSystem.lastTeamCalloutTime = now;
+    return true;
+  }
+
+  static onPlayerDamaged(allEnemies, directDealer = null, isRam = false) {
+    if (!allEnemies || allEnemies.length === 0) return;
+
+    for (let i = 0; i < allEnemies.length; i++) {
+      const ally = allEnemies[i];
+      if (ally.dead || ally.isDying) continue;
+      const boost = (ally === directDealer) ? (isRam ? 14 : 10) : 6;
+      ally.addMorale(boost);
+    }
+
+    const speaker = (directDealer && !directDealer.dead && !directDealer.isDying)
+      ? directDealer
+      : allEnemies.find(e => !e.dead && !e.isDying);
+
+    if (speaker) {
+      if (speaker.moraleState === 'HIGH') {
+        const cat = (Math.random() < 0.6) ? 'TAUNT' : 'CHEER';
+        EnemyCommunicationSystem.tryBroadcast(speaker, cat, false, 2.2);
+      } else {
+        EnemyCommunicationSystem.tryBroadcast(speaker, 'CHEER', false, 2.0);
+      }
+    }
+  }
+
+  static onAllyDown(deadUnit, allEnemies) {
+    if (!allEnemies || allEnemies.length === 0) return;
+
+    const isHeavy = deadUnit.archetypeKey === 'heavy';
+    const moraleHit = isHeavy ? 24 : 14;
+
+    let livingCount = 0;
+    let closestAlly = null;
+    let closestDistSq = 560 * 560;
+
+    for (let i = 0; i < allEnemies.length; i++) {
+      const ally = allEnemies[i];
+      if (ally === deadUnit || ally.dead || ally.isDying) continue;
+      livingCount++;
+      ally.addMorale(-moraleHit);
+
+      const dx = ally.x - deadUnit.x;
+      const dy = ally.y - deadUnit.y;
+      const dSq = dx * dx + dy * dy;
+      if (dSq < closestDistSq) {
+        closestDistSq = dSq;
+        closestAlly = ally;
+      }
+    }
+
+    if (livingCount === 1 && closestAlly) {
+      closestAlly.morale = Math.min(closestAlly.morale, 12);
+      closestAlly.updateMoraleState();
+      EnemyCommunicationSystem.tryBroadcast(closestAlly, 'TERRIFIED', true, 2.5);
+      return;
+    }
+
+    if (closestAlly) {
+      if (closestAlly.moraleState === 'TERRIFIED') {
+        EnemyCommunicationSystem.tryBroadcast(closestAlly, 'TERRIFIED', true, 2.4);
+      } else if (closestAlly.moraleState === 'LOW') {
+        EnemyCommunicationSystem.tryBroadcast(closestAlly, 'ALLY_DOWN_LOW', true, 2.4);
+      } else {
+        EnemyCommunicationSystem.tryBroadcast(closestAlly, 'ALLY_DOWN', true, 2.4);
+      }
+    }
+  }
 }
 
 export class EnemyUnit {
@@ -303,6 +518,9 @@ export class EnemyUnit {
     this.fireTimer = 0;
     this.boostTimer = 0;
 
+    // Speed multiplier reading from archetype configuration
+    this.speedMultiplier = (this.config && this.config.speedMultiplier !== undefined) ? this.config.speedMultiplier : 1.0;
+
     // AI Tactical Coordination & Movement properties
     this.orbitDir = (Math.random() < 0.5) ? 1 : -1;
     this.orbitTimer = 1.5 + Math.random() * 2.0;
@@ -310,10 +528,55 @@ export class EnemyUnit {
     this.dodgeCooldown = 0;
     this.isEvading = false;
     this.evadeTimer = 0;
+    this.evadeCommitSide = 0;
+    this.evadeThreatTimer = 0;
+    this.isBoosting = false;
+    this.boostDurationTimer = 0;
     this.smoothTargetVx = 0;
     this.smoothTargetVy = 0;
+    this.smoothEvadeX = 0;
+    this.smoothEvadeY = 0;
+    this.evadeInfluence = 0;
+
+    // Speech & Tactical Communication Bubble
+    this.chatText = null;
+    this.chatTimer = 0;
+    this.chatDuration = 2.2;
+    this.chatCooldown = 2.5 + Math.random() * 3.5;
+    this.allEnemiesRef = null;
+
+    // Morale & Psychological State System
+    this.morale = 55; // Range: 0 (Terrified) to 100 (Zealous / High Confidence)
+    this.moraleState = 'NORMAL'; // 'HIGH', 'NORMAL', 'LOW', 'TERRIFIED'
+    this.moraleCommentCooldown = 2.0 + Math.random() * 3.0;
+    this.cautiousOrbitDir = (Math.random() < 0.5) ? 1 : -1;
+    this.cautiousOrbitTimer = 1.5 + Math.random() * 2.0;
 
     this.barrelRecoilOffsets = (this.config.turrets || []).map(() => 0);
+  }
+
+  addMorale(delta) {
+    this.morale = Math.max(0, Math.min(100, this.morale + delta));
+    this.updateMoraleState();
+  }
+
+  updateMoraleState() {
+    if (this.morale >= 70) {
+      this.moraleState = 'HIGH';
+    } else if (this.morale < 20) {
+      this.moraleState = 'TERRIFIED';
+    } else if (this.morale < 40) {
+      this.moraleState = 'LOW';
+    } else {
+      this.moraleState = 'NORMAL';
+    }
+  }
+
+  speak(text, duration = 2.2) {
+    this.chatText = text;
+    this.chatTimer = duration;
+    this.chatDuration = duration;
+    this.chatCooldown = 4.5 + Math.random() * 3.5;
   }
 
   kill() {
@@ -321,9 +584,25 @@ export class EnemyUnit {
     this.dead = true;
     this.isDying = true;
     this.deathTimer = 0;
+    if (this.allEnemiesRef) {
+      EnemyCommunicationSystem.onAllyDown(this, this.allEnemiesRef);
+    }
   }
 
   update(dt, player, enemyBullets, playerMoveSpeedStat = 0, allEnemies = [], playerProjectiles = []) {
+    this.allEnemiesRef = allEnemies;
+
+    if (this.chatCooldown > 0) {
+      this.chatCooldown -= dt;
+    }
+    if (this.chatTimer > 0) {
+      this.chatTimer -= dt;
+      if (this.chatTimer <= 0) {
+        this.chatText = null;
+        this.chatTimer = 0;
+      }
+    }
+
     if (this.isDying) {
       this.deathTimer += dt;
       const progress = Math.min(1.0, this.deathTimer / this.deathDuration);
@@ -399,17 +678,24 @@ export class EnemyUnit {
     let totalSquadCount = 1;
     let friendlyHeavy = null;
     let closestHeavyDist = 550;
+    let minAllyDist = 9999;
+    let livingAlliesTotal = 0;
+    let hasLivingHeavy = false;
 
     for (let i = 0; i < allEnemies.length; i++) {
       const ally = allEnemies[i];
       if (ally === this || ally.dead || ally.destroyed) continue;
 
+      livingAlliesTotal++;
+      if (ally.archetypeKey === 'heavy') hasLivingHeavy = true;
+
       const adx = this.x - ally.x;
       const ady = this.y - ally.y;
       const aDistSq = adx * adx + ady * ady;
+      const aDist = Math.sqrt(aDistSq);
+      if (aDist < minAllyDist) minAllyDist = aDist;
 
       if (aDistSq < desiredSepSq && aDistSq > 0.001) {
-        const aDist = Math.sqrt(aDistSq);
         const force = (desiredSep - aDist) / desiredSep;
         sepX += (adx / aDist) * force;
         sepY += (ady / aDist) * force;
@@ -425,155 +711,364 @@ export class EnemyUnit {
 
       // Meat shield check for ranged drones
       if (this.archetypeKey === 'ranged' && ally.archetypeKey === 'heavy') {
-        const hDist = Math.sqrt(aDistSq);
-        if (hDist < closestHeavyDist) {
-          closestHeavyDist = hDist;
+        if (aDist < closestHeavyDist) {
+          closestHeavyDist = aDist;
           friendlyHeavy = ally;
         }
       }
     }
 
-    // 3. ARCHETYPE-SPECIFIC TACTICAL MOVEMENT & COORDINATION
+    // 3. ARCHETYPE-SPECIFIC ADAPTIVE TACTICAL MOVEMENT & STRATEGIES
     let dirX = 0;
     let dirY = 0;
     let targetWaypointX = player.x;
     let targetWaypointY = player.y;
 
+    const playerMaxHp = player.maxHp || (CONFIG.PLAYER ? CONFIG.PLAYER.baseMaxHp : 50) || 50;
+    const playerHpRatio = Math.max(0, player.hp / playerMaxHp);
+    const isPlayerWounded = playerHpRatio < ((this.config.ai && this.config.ai.frenzyHpThreshold) || 0.38);
+    const myHpRatio = Math.max(0, this.hp / this.maxHp);
+    const isLowHealth = myHpRatio < 0.35;
+
+    const playerFacing = (player.angle !== undefined) ? player.angle : Math.atan2(pVy, pVx);
+    const angleToMe = Math.atan2(this.y - player.y, this.x - player.x);
+    const aimDiffWithPlayer = Math.abs(Math.atan2(Math.sin(angleToMe - playerFacing), Math.cos(angleToMe - playerFacing)));
+    const isInPlayerFiringCone = (aimDiffWithPlayer < 0.52 && dist < 480);
+
+    // Continuous Dynamic Morale Evaluation (Numbers, Lineup, Strategic Positioning & Condition)
+    let moraleRate = 0;
+
+    // Numbers influence
+    if (livingAlliesTotal >= 5) {
+      moraleRate += 1.2; // Numerical superiority
+    } else if (livingAlliesTotal >= 3) {
+      moraleRate += 0.5; // Good lineup numbers
+    } else if (livingAlliesTotal === 1) {
+      moraleRate -= 1.0; // Dwindling numbers
+    } else if (livingAlliesTotal === 0) {
+      moraleRate -= 3.2; // Lone survivor despair
+    }
+
+    // Lineup strength influence
+    if (hasLivingHeavy) {
+      moraleRate += 0.5; // Armored Hex vanguard anchor
+    } else if (allEnemies.length > 2 && this.archetypeKey !== 'heavy') {
+      moraleRate -= 0.3; // Lost heavy vanguard
+    }
+
+    // Strategic positioning influence
+    const isFlankingPlayer = aimDiffWithPlayer > 1.8;
+    const isShieldedByHeavy = friendlyHeavy && closestHeavyDist < 180 && (dist > closestHeavyDist);
+    const isStranded = (livingAlliesTotal > 0 && minAllyDist > 420);
+    const isExposedInKillzone = (isInPlayerFiringCone && dist < 175);
+
+    if (isShieldedByHeavy) moraleRate += 0.8;
+    if (isFlankingPlayer) moraleRate += 0.6;
+    if (isStranded) moraleRate -= 2.0; // Poor positioning / isolated
+    if (isExposedInKillzone) moraleRate -= 2.4; // Trapped directly down the barrel
+    if (isPlayerWounded) moraleRate += 1.0; // Blood in the water
+    if (isLowHealth) moraleRate -= 1.4; // Hull critical
+
+    this.addMorale(moraleRate * dt);
+
+    // Dynamic Morale Dialogue Triggers
+    this.moraleCommentCooldown -= dt;
+    if (this.moraleCommentCooldown <= 0) {
+      this.moraleCommentCooldown = 2.5 + Math.random() * 3.5;
+      if (this.moraleState === 'HIGH') {
+        const cat = Math.random() < 0.65 ? 'TAUNT' : 'CHEER';
+        EnemyCommunicationSystem.tryBroadcast(this, cat);
+      } else if (this.moraleState === 'LOW') {
+        const cat = Math.random() < 0.60 ? 'ORDER_BACK_UP' : 'JEER';
+        EnemyCommunicationSystem.tryBroadcast(this, cat);
+      } else if (this.moraleState === 'TERRIFIED') {
+        EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
+      }
+    }
+
     if (this.archetypeKey === 'chaser') {
-      // SWARMER: Pure nose-pointing forward movement (NO strafing)
+      // SWARMER: Nose-pointing forward movement with dynamic squad tactics, blind-spot exploitation & morale adaptation
       const aiCfg = this.config.ai || {};
-      const swarmerRank = squadRank;
 
-      const playerFacing = (player.angle !== undefined) ? player.angle : Math.atan2(pVy, pVx);
-      const angleToMe = Math.atan2(this.y - player.y, this.x - player.x);
-      const aimDiffWithPlayer = Math.abs(Math.atan2(Math.sin(angleToMe - playerFacing), Math.cos(angleToMe - playerFacing)));
-      const isUnderPlayerAim = (aimDiffWithPlayer < 0.65 && dist < 480);
+      if (this.moraleState === 'TERRIFIED') {
+        // TERRIFIED: Complete panic! Flees directly away from the player
+        targetWaypointX = this.x - (dx / dist) * 450;
+        targetWaypointY = this.y - (dy / dist) * 450;
+        if (Math.random() < 0.10) {
+          EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
+        }
+      } else if (this.moraleState === 'LOW') {
+        // CAUTIOUS: Less engaging, hangs back at safe standoff buffer, avoids rushing into fire
+        this.cautiousOrbitTimer -= dt;
+        if (this.cautiousOrbitTimer <= 0) {
+          this.cautiousOrbitDir *= -1;
+          this.cautiousOrbitTimer = 1.5 + Math.random() * 2.5;
+        }
 
-      const isFlankingManeuver = (swarmerRank % 2 === 1) || isUnderPlayerAim;
-
-      if (isFlankingManeuver) {
-        // FLANKING: Sweeps along a wide curved arc toward player's flank
+        if (dist < 260) {
+          // Too close, back away from player!
+          targetWaypointX = this.x - (dx / dist) * 190;
+          targetWaypointY = this.y - (dy / dist) * 190;
+          if (Math.random() < 0.08) {
+            EnemyCommunicationSystem.tryBroadcast(this, 'ORDER_BACK_UP');
+          }
+        } else if (isStranded && minAllyDist < 9000) {
+          // Stranded swarmer pulls back toward closest teammate to regroup
+          let closestAllyX = player.x;
+          let closestAllyY = player.y;
+          for (let i = 0; i < allEnemies.length; i++) {
+            const a = allEnemies[i];
+            if (a !== this && !a.dead && !a.destroyed) {
+              closestAllyX = a.x;
+              closestAllyY = a.y;
+              break;
+            }
+          }
+          targetWaypointX = closestAllyX;
+          targetWaypointY = closestAllyY;
+          if (Math.random() < 0.07) {
+            EnemyCommunicationSystem.tryBroadcast(this, 'ORDER_BACK_UP');
+          }
+        } else {
+          // Cautious standoff orbit (280px radius)
+          const orbitAngle = directAngle + this.cautiousOrbitDir * 1.35;
+          targetWaypointX = player.x + Math.cos(orbitAngle) * 280;
+          targetWaypointY = player.y + Math.sin(orbitAngle) * 280;
+        }
+      } else if (isPlayerWounded || this.moraleState === 'HIGH') {
+        // TACTIC: BLOOD IN THE WATER / HIGH MORALE (Frenzy Converge)
+        const leadMultiplier = (this.moraleState === 'HIGH') ? 0.95 : (aiCfg.leadInterception || 0.85);
+        const leadSeconds = Math.min(dist / 320, 0.65) * leadMultiplier;
+        targetWaypointX = player.x + pVx * leadSeconds;
+        targetWaypointY = player.y + pVy * leadSeconds;
+        if (Math.random() < 0.10) {
+          EnemyCommunicationSystem.tryBroadcast(this, (this.moraleState === 'HIGH') ? 'TAUNT' : 'FRENZY_PUSH');
+        }
+      } else if (isInPlayerFiringCone && aiCfg.blindSpotExploit && dist > 140) {
+        // TACTIC: BLIND SPOT SWOOP (Avoid Feeding Down the Barrel)
         const flankSign = (this.unitId % 2 === 0) ? 1 : -1;
-        const flankAngle = directAngle + flankSign * (aiCfg.flankSpreadAngle || (Math.PI * 0.45));
-        
-        const arcRadius = Math.max(120, dist * 0.65);
-        targetWaypointX = player.x + Math.cos(flankAngle) * arcRadius + pVx * 0.5;
-        targetWaypointY = player.y + Math.sin(flankAngle) * arcRadius + pVy * 0.5;
-
-        if (dist < 130 || (aimDiffWithPlayer > 1.8 && dist < 260)) {
-          targetWaypointX = player.x;
-          targetWaypointY = player.y;
+        const flankAngle = playerFacing + flankSign * (Math.PI * 0.58);
+        const arcRadius = Math.max(150, dist * 0.70);
+        targetWaypointX = player.x + Math.cos(flankAngle) * arcRadius + pVx * 0.4;
+        targetWaypointY = player.y + Math.sin(flankAngle) * arcRadius + pVy * 0.4;
+        if (Math.random() < 0.12) {
+          EnemyCommunicationSystem.tryBroadcast(this, 'FLANK');
+        }
+      } else if (friendlyHeavy && closestHeavyDist < 250 && dist > 190) {
+        // TACTIC: HEAVY VANGUARD DRAFT (Living Shield)
+        const hAngle = Math.atan2(player.y - friendlyHeavy.y, player.x - friendlyHeavy.x);
+        const draftOffset = (squadRank % 2 === 0) ? 35 : -35;
+        targetWaypointX = friendlyHeavy.x - Math.cos(hAngle) * 45 + Math.cos(hAngle + Math.PI / 2) * draftOffset;
+        targetWaypointY = friendlyHeavy.y - Math.sin(hAngle) * 45 + Math.sin(hAngle + Math.PI / 2) * draftOffset;
+        if (Math.random() < 0.14) {
+          EnemyCommunicationSystem.tryBroadcast(this, 'COVER_BEHIND_HEX');
+        }
+      } else if (totalSquadCount >= 3) {
+        // TACTIC: SQUAD ENCIRCLEMENT NET
+        const spreadStep = Math.PI * 0.38;
+        const flankOffset = ((squadRank % 5) - 2) * spreadStep;
+        const encircleAngle = directAngle + flankOffset;
+        const encircleRadius = Math.max(110, dist * 0.62);
+        targetWaypointX = player.x + Math.cos(encircleAngle) * encircleRadius + pVx * 0.5;
+        targetWaypointY = player.y + Math.sin(encircleAngle) * encircleRadius + pVy * 0.5;
+        if (Math.random() < 0.08) {
+          EnemyCommunicationSystem.tryBroadcast(this, 'ENCIRCLE');
         }
       } else {
-        // FRONTAL PINCER: Intercept player's future escape trajectory
+        // Standard predictive interception
         const leadSeconds = Math.min(dist / 380, 0.85) * (aiCfg.leadInterception || 0.85);
         targetWaypointX = player.x + pVx * leadSeconds;
         targetWaypointY = player.y + pVy * leadSeconds;
       }
 
-      // Add gentle separation offset so swarmers don't bunch into a single line
+      // Add gentle flocking separation offset so swarmers don't bunch into a single line
       targetWaypointX += sepX * 25;
       targetWaypointY += sepY * 25;
     } else if (this.archetypeKey === 'ranged') {
-      // DRONE: Clean Vanilla Kiting Distance-Keeping & Squad Formations (Front vs Crossfire Flanks)
+      // DRONE: Adaptive Kiting, Crossfire Angles, Cover-Seeking & Morale Dynamics
       const aiCfg = this.config.ai || {};
-      const kitingDist = aiCfg.kitingDistance || 350;
-      const buffer = aiCfg.kitingBuffer || 40;
-      const droneRank = squadRank;
-      const totalDrones = totalSquadCount;
+      let kitingDist = aiCfg.kitingDistance || 350;
 
-      // Check for a friendly Heavy to use as cover first
-      let takingCoverBehindHeavy = false;
-      if (aiCfg.meatShieldSeeking && friendlyHeavy) {
-        const hToPlayer = Math.atan2(player.y - friendlyHeavy.y, player.x - friendlyHeavy.x);
-        const coverX = friendlyHeavy.x - Math.cos(hToPlayer) * (friendlyHeavy.radius + 70);
-        const coverY = friendlyHeavy.y - Math.sin(hToPlayer) * (friendlyHeavy.radius + 70);
-        const distToCover = Math.hypot(coverX - this.x, coverY - this.y);
-        if (distToCover > 25) {
-          dirX = (coverX - this.x) / distToCover;
-          dirY = (coverY - this.y) / distToCover;
-          takingCoverBehindHeavy = true;
+      if (this.moraleState === 'TERRIFIED') {
+        // TERRIFIED: Flees directly away from player in sheer panic!
+        dirX = -dx / dist;
+        dirY = -dy / dist;
+        if (Math.random() < 0.12) {
+          EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
         }
-      }
-
-      if (!takingCoverBehindHeavy) {
-        // Pure vanilla standoff distance regulation
-        let radialX = 0;
-        let radialY = 0;
-
-        if (dist < kitingDist - buffer) {
-          // Player is closer than standoff distance: back away smoothly
-          radialX = -dx / dist;
-          radialY = -dy / dist;
-        } else if (dist > kitingDist + buffer) {
-          // Player is further: move toward player
-          radialX = dx / dist;
-          radialY = dy / dist;
+      } else if (this.moraleState === 'LOW') {
+        // CAUTIOUS: Less engaging, backs up significantly (480px standoff)
+        kitingDist = 480;
+        if (dist < 430) {
+          dirX = -dx / dist;
+          dirY = -dy / dist;
+          if (Math.random() < 0.09) {
+            EnemyCommunicationSystem.tryBroadcast(this, 'ORDER_BACK_UP');
+          }
+        } else {
+          this.orbitTimer -= dt;
+          if (this.orbitTimer <= 0) {
+            this.orbitDir *= -1;
+            this.orbitTimer = 2.0 + Math.random() * 2.5;
+          }
+          const tangentX = -Math.sin(directAngle) * this.orbitDir * 0.75;
+          const tangentY = Math.cos(directAngle) * this.orbitDir * 0.75;
+          dirX = tangentX;
+          dirY = tangentY;
+        }
+      } else {
+        if (this.moraleState === 'HIGH') {
+          // HIGH MORALE: Aggressive pressure (closing distance to 240px)
+          kitingDist = 240;
+        } else if (isPlayerWounded) {
+          kitingDist = aiCfg.frenzyKitingDist || 250;
+        } else if (isLowHealth) {
+          kitingDist = 420;
         }
 
-        // Squad crossfire positioning (Frontal Suppressor vs Side Crossfire)
-        let assignedAngleOffset = 0;
-        if (totalDrones >= 2) {
-          if (droneRank === 0) {
-            assignedAngleOffset = 0; // Front
-          } else if (droneRank === 1) {
-            assignedAngleOffset = aiCfg.crossfireAngle || (Math.PI * 0.48); // Right side
-          } else if (droneRank === 2) {
-            assignedAngleOffset = -(aiCfg.crossfireAngle || (Math.PI * 0.48)); // Left side
-          } else {
-            assignedAngleOffset = (droneRank % 2 === 1) ? Math.PI * 0.75 : -Math.PI * 0.75;
+        const buffer = aiCfg.kitingBuffer || 40;
+        const droneRank = squadRank;
+        const totalDrones = totalSquadCount;
+
+        // Check for a friendly Heavy to use as cover
+        let takingCoverBehindHeavy = false;
+        if (aiCfg.meatShieldSeeking && friendlyHeavy && (isLowHealth || closestHeavyDist < 300)) {
+          const hToPlayer = Math.atan2(player.y - friendlyHeavy.y, player.x - friendlyHeavy.x);
+          const coverX = friendlyHeavy.x - Math.cos(hToPlayer) * (friendlyHeavy.radius + 75);
+          const coverY = friendlyHeavy.y - Math.sin(hToPlayer) * (friendlyHeavy.radius + 75);
+          const distToCover = Math.hypot(coverX - this.x, coverY - this.y);
+          if (distToCover > 20) {
+            dirX = (coverX - this.x) / distToCover;
+            dirY = (coverY - this.y) / distToCover;
+            takingCoverBehindHeavy = true;
+            if (Math.random() < 0.12) {
+              EnemyCommunicationSystem.tryBroadcast(this, 'COVER_BEHIND_HEX');
+            }
           }
         }
 
-        this.orbitTimer -= dt;
-        if (this.orbitTimer <= 0) {
-          this.orbitDir *= -1;
-          this.orbitTimer = 2.0 + Math.random() * 2.5;
+        if (!takingCoverBehindHeavy) {
+          // Standoff distance regulation
+          let radialX = 0;
+          let radialY = 0;
+
+          if (dist < kitingDist - buffer) {
+            radialX = -dx / dist;
+            radialY = -dy / dist;
+          } else if (dist > kitingDist + buffer) {
+            radialX = dx / dist;
+            radialY = dy / dist;
+          }
+
+          // TACTIC: CROSSFIRE TRIANGULATION
+          let assignedAngleOffset = 0;
+          if (totalDrones >= 2) {
+            if (droneRank === 0) {
+              assignedAngleOffset = 0; // Front anchor
+            } else if (droneRank === 1) {
+              assignedAngleOffset = aiCfg.crossfireAngle || (Math.PI * 0.48); // Right flank
+            } else if (droneRank === 2) {
+              assignedAngleOffset = -(aiCfg.crossfireAngle || (Math.PI * 0.48)); // Left flank
+            } else {
+              assignedAngleOffset = (droneRank % 2 === 1) ? Math.PI * 0.75 : -Math.PI * 0.75;
+            }
+
+            if (Math.random() < 0.08) {
+              EnemyCommunicationSystem.tryBroadcast(this, 'CROSSFIRE');
+            }
+          }
+
+          this.orbitTimer -= dt;
+          if (this.orbitTimer <= 0) {
+            this.orbitDir *= -1;
+            this.orbitTimer = 2.0 + Math.random() * 2.5;
+          }
+
+          const orbitSpeed = (this.moraleState === 'HIGH') ? (aiCfg.orbitSpeed || 0.85) * 1.25 : (aiCfg.orbitSpeed || 0.85);
+          const tangentX = -Math.sin(directAngle + assignedAngleOffset) * this.orbitDir * orbitSpeed;
+          const tangentY = Math.cos(directAngle + assignedAngleOffset) * this.orbitDir * orbitSpeed;
+
+          dirX = radialX + tangentX;
+          dirY = radialY + tangentY;
+          const mag = Math.hypot(dirX, dirY) || 1;
+          dirX /= mag;
+          dirY /= mag;
         }
-
-        // Smooth tangential strafing around player
-        const orbitSpeed = aiCfg.orbitSpeed || 0.85;
-        const tangentX = -Math.sin(directAngle + assignedAngleOffset) * this.orbitDir * orbitSpeed;
-        const tangentY = Math.cos(directAngle + assignedAngleOffset) * this.orbitDir * orbitSpeed;
-
-        dirX = radialX + tangentX;
-        dirY = radialY + tangentY;
-        const mag = Math.hypot(dirX, dirY) || 1;
-        dirX /= mag;
-        dirY /= mag;
       }
     } else if (this.archetypeKey === 'heavy') {
-      // HEAVY: Vanguard tank collapsing the player's perimeter
-      dirX = dx / dist;
-      dirY = dy / dist;
+      // HEAVY: Vanguard tank collapsing player's perimeter with smart charge & morale effects
+      if (this.moraleState === 'TERRIFIED') {
+        // TERRIFIED: Backs away from player in alarm
+        dirX = -dx / dist;
+        dirY = -dy / dist;
+        if (Math.random() < 0.08) {
+          EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
+        }
+      } else if (this.moraleState === 'LOW') {
+        // CAUTIOUS: Advances slowly, shielding allies, holding boost in reserve
+        dirX = dx / dist;
+        dirY = dy / dist;
+      } else {
+        dirX = dx / dist;
+        dirY = dy / dist;
 
-      // Smart Charge: Boosts when aligned with the player in effective charge distance
-      if (this.config.boostAbility) {
-        this.boostTimer += dt;
-        const aiCfg = this.config.ai || {};
-        const minBoostDist = aiCfg.boostMinDistance || 160;
-        const maxBoostDist = aiCfg.boostMaxDistance || 500;
-        const angleDiff = Math.abs(Math.atan2(Math.sin(this.angle - directAngle), Math.cos(this.angle - directAngle)));
+        if (this.config.boostAbility) {
+          const boostChargeRate = (this.moraleState === 'HIGH') ? 1.30 : 1.0;
+          this.boostTimer += dt * boostChargeRate;
+          const aiCfg = this.config.ai || {};
+          const minBoostDist = aiCfg.boostMinDistance || 160;
+          const maxBoostDist = (this.moraleState === 'HIGH') ? 550 : (aiCfg.boostMaxDistance || 500);
+          const angleDiff = Math.abs(Math.atan2(Math.sin(this.angle - directAngle), Math.cos(this.angle - directAngle)));
 
-        if (this.boostTimer >= this.config.boostAbility.cooldown && dist >= minBoostDist && dist <= maxBoostDist && angleDiff < 0.6) {
-          this.boostTimer = 0;
-          this.vx += Math.cos(this.angle) * this.config.boostAbility.force;
-          this.vy += Math.sin(this.angle) * this.config.boostAbility.force;
+          const boostReady = this.boostTimer >= this.config.boostAbility.cooldown;
+          const shouldCharge = boostReady && dist >= minBoostDist && dist <= maxBoostDist && (angleDiff < 0.65 || (isPlayerWounded && dist < 360));
+
+          if (shouldCharge) {
+            this.boostTimer = 0;
+            this.isBoosting = true;
+            this.boostDurationTimer = 0.55;
+            const force = this.config.boostAbility.force;
+            this.vx += Math.cos(this.angle) * force;
+            this.vy += Math.sin(this.angle) * force;
+            EnemyCommunicationSystem.tryBroadcast(this, (this.moraleState === 'HIGH') ? 'TAUNT' : 'HEX_CHARGE', true);
+          }
+        }
+
+        // TACTIC: STEERABLE BOOST ADJUSTMENT
+        if (this.isBoosting) {
+          this.boostDurationTimer -= dt;
+          if (this.boostDurationTimer <= 0) {
+            this.isBoosting = false;
+          } else {
+            const steerRate = 2.2 * dt;
+            const boostTargetAngle = directAngle;
+            const bAngleDiff = Math.atan2(Math.sin(boostTargetAngle - this.angle), Math.cos(boostTargetAngle - this.angle));
+            this.angle += Math.sign(bAngleDiff) * Math.min(Math.abs(bAngleDiff), steerRate);
+            const steerPush = 220 * dt;
+            this.vx += Math.cos(this.angle) * steerPush;
+            this.vy += Math.sin(this.angle) * steerPush;
+          }
         }
       }
     }
 
-    // 4. BULLET EVASION (dodging incoming player projectiles AWAY from trajectory)
+    // 4. BULLET EVASION (dodging incoming player projectiles with smooth banking)
     let evadeX = 0;
     let evadeY = 0;
     let shouldEvade = false;
+
+    if (this.evadeThreatTimer > 0) {
+      this.evadeThreatTimer -= dt;
+      if (this.evadeThreatTimer <= 0) {
+        this.evadeCommitSide = 0;
+      }
+    }
 
     if (this.config.ai && this.config.ai.evasion && playerProjectiles && playerProjectiles.length > 0) {
       const maxThreatDist = (this.archetypeKey === 'ranged')
         ? (this.config.ai.evasionDangerDist || 210)
         : 180;
 
-      // Drones have human-like reaction limits so they aren't omniscient dodge-bots
       const canAttemptDodge = (this.archetypeKey !== 'ranged') || this.isEvading || (this.dodgeCooldown <= 0);
 
       if (canAttemptDodge) {
@@ -583,7 +1078,7 @@ export class EnemyUnit {
         for (let i = 0; i < playerProjectiles.length; i++) {
           const proj = playerProjectiles[i];
           if (proj.dead || proj.destroyed) continue;
-          const evade = getBulletEvasionVector(this.x, this.y, this.radius, proj, this.vx, this.vy, maxThreatDist);
+          const evade = getBulletEvasionVector(this.x, this.y, this.radius, proj, this.vx, this.vy, maxThreatDist, this.evadeCommitSide);
           if (evade && evade.timeToImpact < minTimeToImpact) {
             minTimeToImpact = evade.timeToImpact;
             bestEvade = evade;
@@ -597,45 +1092,88 @@ export class EnemyUnit {
               evadeX = bestEvade.x;
               evadeY = bestEvade.y;
             } else {
-              // Imperfect reaction roll (e.g. 65% chance to react in time, 35% miss/slip-through)
-              const evadeChance = (this.config.ai.evasionChance !== undefined) ? this.config.ai.evasionChance : 0.65;
+              const evadeChance = (this.config.ai.evasionChance !== undefined) ? this.config.ai.evasionChance : 0.68;
               if (Math.random() <= evadeChance) {
                 shouldEvade = true;
                 this.isEvading = true;
-                this.evadeTimer = 0.28; // 280ms committed dodge burst
-                this.dodgeCooldown = this.config.ai.evasionCooldown || 0.45; // Window before drone can dodge next bullet
+                this.evadeTimer = 0.28;
+                this.dodgeCooldown = this.config.ai.evasionCooldown || 0.45;
                 evadeX = bestEvade.x;
                 evadeY = bestEvade.y;
+                if (Math.random() < 0.12) {
+                  EnemyCommunicationSystem.tryBroadcast(this, 'EVADING');
+                }
               } else {
-                // Hesitation window: drone fails to dodge, leaving it open to direct hits
                 this.dodgeCooldown = 0.35;
               }
             }
           } else {
+            // SWARMER EVASION: Lock commit side so dodging does not flip-flop or jerk
             shouldEvade = true;
             evadeX = bestEvade.x;
             evadeY = bestEvade.y;
+
+            if (this.evadeCommitSide === 0) {
+              // Lock commit side relative to trajectory
+              const pVxNorm = bestEvade.x;
+              const pVyNorm = bestEvade.y;
+              this.evadeCommitSide = (pVxNorm >= 0) ? 1 : -1;
+            }
+            this.evadeThreatTimer = 0.35;
+
+            // Swarmer: Smooth damped evasion acceleration
+            const urgency = Math.max(0.6, Math.min(1.4, 1.0 - (bestEvade.timeToImpact / 0.85)));
+            const targetEvadeX = bestEvade.x * urgency;
+            const targetEvadeY = bestEvade.y * urgency;
+            const blendSpeed = (this.config.ai && this.config.ai.evadeBlendRate) ? this.config.ai.evadeBlendRate : 4.5;
+            this.smoothEvadeX += (targetEvadeX - this.smoothEvadeX) * Math.min(1.0, blendSpeed * dt);
+            this.smoothEvadeY += (targetEvadeY - this.smoothEvadeY) * Math.min(1.0, blendSpeed * dt);
+            this.evadeInfluence += (1.0 - this.evadeInfluence) * Math.min(1.0, blendSpeed * dt);
+
+            if (Math.random() < 0.08) {
+              EnemyCommunicationSystem.tryBroadcast(this, 'EVADING');
+            }
           }
         }
       }
     }
 
-    if (this.archetypeKey === 'chaser') {
-      // SWARMER: Turn body towards destination/evade and thrust purely along pointing direction (NO STRAFING)
-      let desiredAngle = Math.atan2(targetWaypointY - this.y, targetWaypointX - this.x);
-      if (shouldEvade) {
-        desiredAngle = Math.atan2(evadeY, evadeX);
+    if (!shouldEvade && this.archetypeKey === 'chaser') {
+      const decaySpeed = 3.5;
+      this.smoothEvadeX += (0 - this.smoothEvadeX) * Math.min(1.0, decaySpeed * dt);
+      this.smoothEvadeY += (0 - this.smoothEvadeY) * Math.min(1.0, decaySpeed * dt);
+      this.evadeInfluence += (0 - this.evadeInfluence) * Math.min(1.0, decaySpeed * dt);
+      if (this.evadeInfluence < 0.05) {
+        this.evadeCommitSide = 0;
       }
-      const angleDiff = Math.atan2(Math.sin(desiredAngle - this.angle), Math.cos(desiredAngle - this.angle));
-      const bodyTurnRate = 10.0; // rad/sec
-      this.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), bodyTurnRate * dt);
+    }
 
-      // Pure pointing-direction propulsion: strictly forward along body angle (zero strafing)
+    if (this.archetypeKey === 'chaser') {
+      // SWARMER: Seamlessly blend chase waypoint vector with smooth aerodynamic evasion curve
+      const toWpX = targetWaypointX - this.x;
+      const toWpY = targetWaypointY - this.y;
+      const wpDist = Math.hypot(toWpX, toWpY) || 1;
+      const chaseDirX = toWpX / wpDist;
+      const chaseDirY = toWpY / wpDist;
+
+      // Evasion creates an organic, smooth banking deflection curve around the projectile
+      const evadeWeight = 1.25 * this.evadeInfluence;
+      const blendedX = chaseDirX + this.smoothEvadeX * evadeWeight;
+      const blendedY = chaseDirY + this.smoothEvadeY * evadeWeight;
+      const desiredAngle = Math.atan2(blendedY, blendedX);
+
+      // Smooth angular turning with natural banking rate (no abrupt snapping or twitching)
+      const angleDiff = Math.atan2(Math.sin(desiredAngle - this.angle), Math.cos(desiredAngle - this.angle));
+      const turnSpeed = (this.config.ai && this.config.ai.smoothTurnRate) ? this.config.ai.smoothTurnRate : 4.8;
+      const maxTurn = turnSpeed * dt;
+      this.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), maxTurn);
+
+      // Pure pointing-direction propulsion: strictly forward along body angle
       dirX = Math.cos(this.angle);
       dirY = Math.sin(this.angle);
     } else {
       if (shouldEvade) {
-        // Drone bullet evasion: smooth steering away from bullet ray, blended with standoff distance
+        // Drone bullet evasion: smooth steering away from bullet ray
         const kitingDist = this.config.ai?.kitingDistance || 350;
         if (dist < kitingDist) {
           dirX = evadeX * 0.70 + (-dx / dist) * 0.35;
@@ -660,14 +1198,24 @@ export class EnemyUnit {
       dirY /= finalMag;
     }
 
-    let accel = (typeof this.config.acceleration === 'number') ? this.config.acceleration : (this.config.acceleration || 500);
-    if (this.archetypeKey === 'chaser') {
-      const speedBonusFactor = 1.0 + (playerMoveSpeedStat * CONFIG.PLAYER.statIncrements.moveSpeedMult * 0.70);
+    // Enemies derive main base speed/acceleration from player config, scaled by speedMultiplier
+    const basePlayerSpeed = (CONFIG.PLAYER && CONFIG.PLAYER.acceleration) ? CONFIG.PLAYER.acceleration : 500;
+    const speedMult = (this.speedMultiplier !== undefined) ? this.speedMultiplier : (this.config.speedMultiplier || 1.0);
+    let accel = basePlayerSpeed * speedMult;
+
+    if (this.archetypeKey === 'chaser' || this.archetypeKey === 'ranged') {
+      const statInc = (CONFIG.PLAYER && CONFIG.PLAYER.statIncrements) ? CONFIG.PLAYER.statIncrements.moveSpeedMult : 0.07;
+      const speedBonusFactor = 1.0 + (playerMoveSpeedStat * statInc * 0.70);
       accel *= speedBonusFactor;
-    } else if (this.archetypeKey === 'ranged') {
-      // Drones move faster based on player base speed and scale with player Move Speed stat
-      const speedBonusFactor = 1.0 + (playerMoveSpeedStat * CONFIG.PLAYER.statIncrements.moveSpeedMult * 0.70);
-      accel *= speedBonusFactor;
+    }
+
+    // Dynamic Morale Speed Scaling
+    if (this.moraleState === 'HIGH') {
+      accel *= 1.20; // Aggressive, confident push
+    } else if (this.moraleState === 'LOW') {
+      accel *= 0.88; // Hesitant, cautious movements
+    } else if (this.moraleState === 'TERRIFIED') {
+      accel *= (dist < 320 ? 1.25 : 1.05); // Panicked escape sprint
     }
 
     const drag = this.config.drag || 4.0;
@@ -688,7 +1236,17 @@ export class EnemyUnit {
     // 5. WEAPON DISCHARGE
     if (this.archetypeKey === 'ranged' && this.config.weapon) {
       const wCfg = this.config.weapon;
-      this.fireTimer += dt;
+
+      // Morale influences fire readiness
+      let fireRateMultiplier = 1.0;
+      if (this.moraleState === 'HIGH') {
+        fireRateMultiplier = 1.25; // Eager, aggressive shooting
+      } else if (this.moraleState === 'LOW') {
+        fireRateMultiplier = 0.80; // Hesitant shooting
+      } else if (this.moraleState === 'TERRIFIED') {
+        fireRateMultiplier = 0.60; // Wild panic shooting
+      }
+      this.fireTimer += dt * fireRateMultiplier;
       
       const fireRateSec = wCfg.fireRateSec || 2.0;
       if (this.fireTimer >= fireRateSec) {
@@ -724,6 +1282,7 @@ export class EnemyUnit {
   takeDamage(amount) {
     if (this.dead) return;
     this.hp -= amount;
+    this.addMorale(-3.5);
     if (this.hp <= 0) {
       this.kill();
     }
@@ -775,6 +1334,137 @@ export class EnemyUnit {
     if (!this.isDying && this.hp < this.maxHp) {
       this.drawHealthBar(canvasMgr.ctx);
     }
+
+    if (this.chatText && this.chatTimer > 0) {
+      this.drawSpeechBubble(canvasMgr.ctx);
+    }
+  }
+
+  drawSpeechBubble(ctx) {
+    if (!this.chatText || this.chatTimer <= 0) return;
+
+    const totalDuration = this.chatDuration || 2.2;
+    const remaining = this.chatTimer;
+    const elapsed = totalDuration - remaining;
+    const fadeInDuration = 0.22;
+    const fadeOutDuration = 0.45;
+
+    let alpha = 1.0;
+    let scale = 1.0;
+    let yOffset = 0;
+
+    if (elapsed < fadeInDuration) {
+      // Smooth pop-in and fade-in with elastic spring bounce
+      const p = Math.max(0, Math.min(1.0, elapsed / fadeInDuration));
+      alpha = p;
+      scale = 0.55 + 0.45 * (1 - Math.pow(1 - p, 3)) + 0.10 * Math.sin(p * Math.PI);
+      yOffset = (1 - p) * 10;
+    } else if (remaining < fadeOutDuration) {
+      // Smooth fade-out and gentle upward float
+      const p = Math.max(0, remaining / fadeOutDuration);
+      alpha = p;
+      scale = 0.94 + 0.06 * p;
+      yOffset = (1 - p) * -10;
+    }
+
+    if (alpha <= 0.005 || scale <= 0.005) return;
+
+    ctx.save();
+
+    // Position above unit and health bar
+    const bubbleX = this.x;
+    let jitterX = 0;
+    let jitterY = 0;
+    if (this.moraleState === 'TERRIFIED') {
+      jitterX = Math.sin(performance.now() * 0.045) * 1.8;
+      jitterY = Math.cos(performance.now() * 0.035) * 1.0;
+    }
+    const bubbleY = this.y - this.radius - 28 + yOffset;
+
+    ctx.translate(bubbleX + jitterX, bubbleY + jitterY);
+    ctx.scale(scale, scale);
+
+    const unitDeathAlpha = this.isDying ? Math.max(0, 1.0 - (this.deathTimer / this.deathDuration)) : 1.0;
+    ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha * unitDeathAlpha));
+
+    ctx.font = 'bold 11px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const textWidth = ctx.measureText(this.chatText).width;
+    const bubbleWidth = Math.max(68, textWidth + 26);
+    const bubbleHeight = 22;
+    const radius = 7;
+
+    const halfW = bubbleWidth / 2;
+    const halfH = bubbleHeight / 2;
+
+    // Draw integrated speech bubble with bottom notch pointing down at the unit
+    ctx.beginPath();
+    ctx.moveTo(-halfW + radius, -halfH);
+    ctx.lineTo(halfW - radius, -halfH);
+    ctx.arcTo(halfW, -halfH, halfW, -halfH + radius, radius);
+    ctx.lineTo(halfW, halfH - radius);
+    ctx.arcTo(halfW, halfH, halfW - radius, halfH, radius);
+    ctx.lineTo(5, halfH);
+    ctx.lineTo(0, halfH + 6);
+    ctx.lineTo(-5, halfH);
+    ctx.lineTo(-halfW + radius, halfH);
+    ctx.arcTo(-halfW, halfH, -halfW, halfH - radius, radius);
+    ctx.lineTo(-halfW, -halfH + radius);
+    ctx.arcTo(-halfW, -halfH, -halfW + radius, -halfH, radius);
+    ctx.closePath();
+
+    // Drop shadow reflecting morale state
+    ctx.shadowColor = (this.moraleState === 'HIGH') ? 'rgba(34, 197, 94, 0.45)'
+                    : (this.moraleState === 'TERRIFIED') ? 'rgba(239, 68, 68, 0.45)'
+                    : (this.moraleState === 'LOW') ? 'rgba(245, 158, 11, 0.35)'
+                    : 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = (this.moraleState === 'HIGH' || this.moraleState === 'TERRIFIED') ? 8 : 6;
+    ctx.shadowOffsetY = 2;
+
+    // Background styling
+    let bubbleBg = 'rgba(20, 22, 28, 0.94)';
+    let bubbleStroke = this.stroke || '#f14e54';
+    let bubblePip = this.color || '#f14e54';
+
+    if (this.moraleState === 'HIGH') {
+      bubbleBg = 'rgba(16, 28, 20, 0.96)';
+      bubbleStroke = '#22c55e'; // Confident green
+      bubblePip = '#eab308'; // Victorious gold pip
+    } else if (this.moraleState === 'LOW') {
+      bubbleBg = 'rgba(28, 24, 18, 0.96)';
+      bubbleStroke = '#f59e0b'; // Cautious amber
+      bubblePip = '#f59e0b';
+    } else if (this.moraleState === 'TERRIFIED') {
+      bubbleBg = 'rgba(34, 14, 18, 0.96)';
+      bubbleStroke = '#ef4444'; // Alarm crimson
+      bubblePip = '#ef4444';
+    }
+
+    ctx.fillStyle = bubbleBg;
+    ctx.fill();
+
+    // Clear shadow for crisp outline
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Tactical stroke matching morale / unit archetype
+    ctx.lineWidth = 2.0;
+    ctx.strokeStyle = bubbleStroke;
+    ctx.stroke();
+
+    // Archetype / Morale color pip on the left
+    ctx.beginPath();
+    ctx.arc(-halfW + 11, 0, 3.2, 0, Math.PI * 2);
+    ctx.fillStyle = bubblePip;
+    ctx.fill();
+
+    // High contrast crisp white text
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(this.chatText, 4, 0.5);
+
+    ctx.restore();
   }
 
   drawHealthBar(ctx) {

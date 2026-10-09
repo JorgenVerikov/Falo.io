@@ -217,7 +217,7 @@ function solveBallisticIntercept(shooterX, shooterY, targetX, targetY, targetVx,
  * Calculates a verified perpendicular evasion unit vector that is guaranteed
  * to steer the enemy AWAY from an incoming projectile's trajectory ray.
  */
-function getBulletEvasionVector(enemyX, enemyY, enemyRadius, proj, enemyVx = 0, enemyVy = 0, maxThreatDist = 210) {
+function getBulletEvasionVector(enemyX, enemyY, enemyRadius, proj, enemyVx = 0, enemyVy = 0, maxThreatDist = 210, preferredSide = 0) {
   const pSpeedSq = proj.vx * proj.vx + proj.vy * proj.vy;
   if (pSpeedSq <= 1) return null;
   const pSpeed = Math.sqrt(pSpeedSq);
@@ -236,23 +236,35 @@ function getBulletEvasionVector(enemyX, enemyY, enemyRadius, proj, enemyVx = 0, 
   const perpY = relY - proj.vy * tClosest;
   const perpDistSq = perpX * perpX + perpY * perpY;
 
-  const dangerRadius = enemyRadius + (proj.radius || 9) + 22;
+  const dangerRadius = enemyRadius + (proj.radius || 9) + 26;
   if (perpDistSq >= dangerRadius * dangerRadius) return null;
 
   let evadeDirX = 0;
   let evadeDirY = 0;
 
+  // Trajectory normal (perpendicular vector to bullet velocity)
+  const normX = -proj.vy / pSpeed;
+  const normY = proj.vx / pSpeed;
+
   if (perpDistSq > 0.0001) {
     const perpDist = Math.sqrt(perpDistSq);
-    evadeDirX = perpX / perpDist;
-    evadeDirY = perpY / perpDist;
+    let px = perpX / perpDist;
+    let py = perpY / perpDist;
+
+    // If unit already committed to a dodge side, prevent flip-flopping across the center line
+    if (preferredSide !== 0) {
+      const dot = px * normX + py * normY;
+      if (Math.sign(dot) !== Math.sign(preferredSide)) {
+        px = normX * preferredSide;
+        py = normY * preferredSide;
+      }
+    }
+    evadeDirX = px;
+    evadeDirY = py;
   } else {
-    // Exactly centered on trajectory: pick perpendicular normal
-    const normX = -proj.vy / pSpeed;
-    const normY = proj.vx / pSpeed;
-    // Align with enemy's current momentum if moving, otherwise default positive
+    // Exactly centered on trajectory: pick perpendicular normal matching preferred side or momentum
     const dot = normX * enemyVx + normY * enemyVy;
-    const side = (dot < 0) ? -1 : 1;
+    const side = (preferredSide !== 0) ? preferredSide : ((dot < 0) ? -1 : 1);
     evadeDirX = normX * side;
     evadeDirY = normY * side;
   }
@@ -303,6 +315,9 @@ export class EnemyUnit {
     this.fireTimer = 0;
     this.boostTimer = 0;
 
+    // Speed multiplier reading from archetype configuration
+    this.speedMultiplier = (this.config && this.config.speedMultiplier !== undefined) ? this.config.speedMultiplier : 1.0;
+
     // AI Tactical Coordination & Movement properties
     this.orbitDir = (Math.random() < 0.5) ? 1 : -1;
     this.orbitTimer = 1.5 + Math.random() * 2.0;
@@ -310,8 +325,15 @@ export class EnemyUnit {
     this.dodgeCooldown = 0;
     this.isEvading = false;
     this.evadeTimer = 0;
+    this.evadeCommitSide = 0;
+    this.evadeThreatTimer = 0;
+    this.isBoosting = false;
+    this.boostDurationTimer = 0;
     this.smoothTargetVx = 0;
     this.smoothTargetVy = 0;
+    this.smoothEvadeX = 0;
+    this.smoothEvadeY = 0;
+    this.evadeInfluence = 0;
 
     this.barrelRecoilOffsets = (this.config.turrets || []).map(() => 0);
   }
@@ -433,63 +455,94 @@ export class EnemyUnit {
       }
     }
 
-    // 3. ARCHETYPE-SPECIFIC TACTICAL MOVEMENT & COORDINATION
+    // 3. ARCHETYPE-SPECIFIC ADAPTIVE TACTICAL MOVEMENT & STRATEGIES
     let dirX = 0;
     let dirY = 0;
     let targetWaypointX = player.x;
     let targetWaypointY = player.y;
 
+    const playerMaxHp = player.maxHp || (CONFIG.PLAYER ? CONFIG.PLAYER.baseMaxHp : 50) || 50;
+    const playerHpRatio = Math.max(0, player.hp / playerMaxHp);
+    const isPlayerWounded = playerHpRatio < ((this.config.ai && this.config.ai.frenzyHpThreshold) || 0.38);
+    const myHpRatio = Math.max(0, this.hp / this.maxHp);
+    const isLowHealth = myHpRatio < 0.35;
+
+    const playerFacing = (player.angle !== undefined) ? player.angle : Math.atan2(pVy, pVx);
+    const angleToMe = Math.atan2(this.y - player.y, this.x - player.x);
+    const aimDiffWithPlayer = Math.abs(Math.atan2(Math.sin(angleToMe - playerFacing), Math.cos(angleToMe - playerFacing)));
+    const isInPlayerFiringCone = (aimDiffWithPlayer < 0.52 && dist < 480);
+
     if (this.archetypeKey === 'chaser') {
-      // SWARMER: Pure nose-pointing forward movement (NO strafing)
+      // SWARMER: Nose-pointing forward movement with dynamic squad tactics & blind-spot exploitation
       const aiCfg = this.config.ai || {};
-      const swarmerRank = squadRank;
 
-      const playerFacing = (player.angle !== undefined) ? player.angle : Math.atan2(pVy, pVx);
-      const angleToMe = Math.atan2(this.y - player.y, this.x - player.x);
-      const aimDiffWithPlayer = Math.abs(Math.atan2(Math.sin(angleToMe - playerFacing), Math.cos(angleToMe - playerFacing)));
-      const isUnderPlayerAim = (aimDiffWithPlayer < 0.65 && dist < 480);
-
-      const isFlankingManeuver = (swarmerRank % 2 === 1) || isUnderPlayerAim;
-
-      if (isFlankingManeuver) {
-        // FLANKING: Sweeps along a wide curved arc toward player's flank
+      if (isPlayerWounded) {
+        // TACTIC: BLOOD IN THE WATER (Frenzy Converge)
+        // When player is critically wounded (<38% HP), swarmers abandon wide arcs and aggressively converge
+        const leadSeconds = Math.min(dist / 340, 0.65) * (aiCfg.leadInterception || 0.85);
+        targetWaypointX = player.x + pVx * leadSeconds;
+        targetWaypointY = player.y + pVy * leadSeconds;
+      } else if (isInPlayerFiringCone && aiCfg.blindSpotExploit && dist > 140) {
+        // TACTIC: BLIND SPOT SWOOP (Avoid Feeding Down the Barrel)
+        // If in player's direct firing cone, sweep wide toward flanks/rear instead of suicidal charges
         const flankSign = (this.unitId % 2 === 0) ? 1 : -1;
-        const flankAngle = directAngle + flankSign * (aiCfg.flankSpreadAngle || (Math.PI * 0.45));
-        
-        const arcRadius = Math.max(120, dist * 0.65);
-        targetWaypointX = player.x + Math.cos(flankAngle) * arcRadius + pVx * 0.5;
-        targetWaypointY = player.y + Math.sin(flankAngle) * arcRadius + pVy * 0.5;
-
-        if (dist < 130 || (aimDiffWithPlayer > 1.8 && dist < 260)) {
-          targetWaypointX = player.x;
-          targetWaypointY = player.y;
-        }
+        const flankAngle = playerFacing + flankSign * (Math.PI * 0.58);
+        const arcRadius = Math.max(150, dist * 0.70);
+        targetWaypointX = player.x + Math.cos(flankAngle) * arcRadius + pVx * 0.4;
+        targetWaypointY = player.y + Math.sin(flankAngle) * arcRadius + pVy * 0.4;
+      } else if (friendlyHeavy && closestHeavyDist < 250 && dist > 190) {
+        // TACTIC: HEAVY VANGUARD DRAFT (Living Shield)
+        // Swarmers trail slightly behind an advancing Armored Hex, using it to absorb frontal fire
+        const hAngle = Math.atan2(player.y - friendlyHeavy.y, player.x - friendlyHeavy.x);
+        const draftOffset = (squadRank % 2 === 0) ? 35 : -35;
+        targetWaypointX = friendlyHeavy.x - Math.cos(hAngle) * 45 + Math.cos(hAngle + Math.PI / 2) * draftOffset;
+        targetWaypointY = friendlyHeavy.y - Math.sin(hAngle) * 45 + Math.sin(hAngle + Math.PI / 2) * draftOffset;
+      } else if (totalSquadCount >= 3) {
+        // TACTIC: SQUAD ENCIRCLEMENT NET
+        // Distribute swarmers in a surrounding crescent around the player to block escape routes
+        const spreadStep = Math.PI * 0.38;
+        const flankOffset = ((squadRank % 5) - 2) * spreadStep;
+        const encircleAngle = directAngle + flankOffset;
+        const encircleRadius = Math.max(110, dist * 0.62);
+        targetWaypointX = player.x + Math.cos(encircleAngle) * encircleRadius + pVx * 0.5;
+        targetWaypointY = player.y + Math.sin(encircleAngle) * encircleRadius + pVy * 0.5;
       } else {
-        // FRONTAL PINCER: Intercept player's future escape trajectory
+        // Standard predictive interception
         const leadSeconds = Math.min(dist / 380, 0.85) * (aiCfg.leadInterception || 0.85);
         targetWaypointX = player.x + pVx * leadSeconds;
         targetWaypointY = player.y + pVy * leadSeconds;
       }
 
-      // Add gentle separation offset so swarmers don't bunch into a single line
+      // Add gentle flocking separation offset so swarmers don't bunch into a single line
       targetWaypointX += sepX * 25;
       targetWaypointY += sepY * 25;
     } else if (this.archetypeKey === 'ranged') {
-      // DRONE: Clean Vanilla Kiting Distance-Keeping & Squad Formations (Front vs Crossfire Flanks)
+      // DRONE: Adaptive Kiting, Crossfire Angles & Cover-Seeking
       const aiCfg = this.config.ai || {};
-      const kitingDist = aiCfg.kitingDistance || 350;
+      let kitingDist = aiCfg.kitingDistance || 350;
+
+      if (isPlayerWounded) {
+        // TACTIC: AGGRESSIVE EXECUTION
+        // Shrink standoff distance to press damage when player is weak
+        kitingDist = aiCfg.frenzyKitingDist || 250;
+      } else if (isLowHealth) {
+        // TACTIC: SKIRMISHER SELF-PRESERVATION
+        // Wounded drone maintains longer range and uses allies as cover
+        kitingDist = 420;
+      }
+
       const buffer = aiCfg.kitingBuffer || 40;
       const droneRank = squadRank;
       const totalDrones = totalSquadCount;
 
-      // Check for a friendly Heavy to use as cover first
+      // Check for a friendly Heavy to use as cover
       let takingCoverBehindHeavy = false;
-      if (aiCfg.meatShieldSeeking && friendlyHeavy) {
+      if (aiCfg.meatShieldSeeking && friendlyHeavy && (isLowHealth || closestHeavyDist < 300)) {
         const hToPlayer = Math.atan2(player.y - friendlyHeavy.y, player.x - friendlyHeavy.x);
-        const coverX = friendlyHeavy.x - Math.cos(hToPlayer) * (friendlyHeavy.radius + 70);
-        const coverY = friendlyHeavy.y - Math.sin(hToPlayer) * (friendlyHeavy.radius + 70);
+        const coverX = friendlyHeavy.x - Math.cos(hToPlayer) * (friendlyHeavy.radius + 75);
+        const coverY = friendlyHeavy.y - Math.sin(hToPlayer) * (friendlyHeavy.radius + 75);
         const distToCover = Math.hypot(coverX - this.x, coverY - this.y);
-        if (distToCover > 25) {
+        if (distToCover > 20) {
           dirX = (coverX - this.x) / distToCover;
           dirY = (coverY - this.y) / distToCover;
           takingCoverBehindHeavy = true;
@@ -497,29 +550,28 @@ export class EnemyUnit {
       }
 
       if (!takingCoverBehindHeavy) {
-        // Pure vanilla standoff distance regulation
+        // Standoff distance regulation
         let radialX = 0;
         let radialY = 0;
 
         if (dist < kitingDist - buffer) {
-          // Player is closer than standoff distance: back away smoothly
           radialX = -dx / dist;
           radialY = -dy / dist;
         } else if (dist > kitingDist + buffer) {
-          // Player is further: move toward player
           radialX = dx / dist;
           radialY = dy / dist;
         }
 
-        // Squad crossfire positioning (Frontal Suppressor vs Side Crossfire)
+        // TACTIC: CROSSFIRE TRIANGULATION
+        // Position orthogonal to player's facing to strike from player's flanks
         let assignedAngleOffset = 0;
         if (totalDrones >= 2) {
           if (droneRank === 0) {
-            assignedAngleOffset = 0; // Front
+            assignedAngleOffset = 0; // Front anchor
           } else if (droneRank === 1) {
-            assignedAngleOffset = aiCfg.crossfireAngle || (Math.PI * 0.48); // Right side
+            assignedAngleOffset = aiCfg.crossfireAngle || (Math.PI * 0.48); // Right flank
           } else if (droneRank === 2) {
-            assignedAngleOffset = -(aiCfg.crossfireAngle || (Math.PI * 0.48)); // Left side
+            assignedAngleOffset = -(aiCfg.crossfireAngle || (Math.PI * 0.48)); // Left flank
           } else {
             assignedAngleOffset = (droneRank % 2 === 1) ? Math.PI * 0.75 : -Math.PI * 0.75;
           }
@@ -543,11 +595,10 @@ export class EnemyUnit {
         dirY /= mag;
       }
     } else if (this.archetypeKey === 'heavy') {
-      // HEAVY: Vanguard tank collapsing the player's perimeter
+      // HEAVY: Vanguard tank collapsing player's perimeter with smart charge
       dirX = dx / dist;
       dirY = dy / dist;
 
-      // Smart Charge: Boosts when aligned with the player in effective charge distance
       if (this.config.boostAbility) {
         this.boostTimer += dt;
         const aiCfg = this.config.ai || {};
@@ -555,25 +606,54 @@ export class EnemyUnit {
         const maxBoostDist = aiCfg.boostMaxDistance || 500;
         const angleDiff = Math.abs(Math.atan2(Math.sin(this.angle - directAngle), Math.cos(this.angle - directAngle)));
 
-        if (this.boostTimer >= this.config.boostAbility.cooldown && dist >= minBoostDist && dist <= maxBoostDist && angleDiff < 0.6) {
+        const boostReady = this.boostTimer >= this.config.boostAbility.cooldown;
+        const shouldCharge = boostReady && dist >= minBoostDist && dist <= maxBoostDist && (angleDiff < 0.65 || (isPlayerWounded && dist < 360));
+
+        if (shouldCharge) {
           this.boostTimer = 0;
-          this.vx += Math.cos(this.angle) * this.config.boostAbility.force;
-          this.vy += Math.sin(this.angle) * this.config.boostAbility.force;
+          this.isBoosting = true;
+          this.boostDurationTimer = 0.55;
+          const force = this.config.boostAbility.force;
+          this.vx += Math.cos(this.angle) * force;
+          this.vy += Math.sin(this.angle) * force;
+        }
+      }
+
+      // TACTIC: STEERABLE BOOST ADJUSTMENT
+      // If actively boosting and player dodges sideways, gently guide momentum toward player
+      if (this.isBoosting) {
+        this.boostDurationTimer -= dt;
+        if (this.boostDurationTimer <= 0) {
+          this.isBoosting = false;
+        } else {
+          const steerRate = 2.2 * dt;
+          const boostTargetAngle = directAngle;
+          const bAngleDiff = Math.atan2(Math.sin(boostTargetAngle - this.angle), Math.cos(boostTargetAngle - this.angle));
+          this.angle += Math.sign(bAngleDiff) * Math.min(Math.abs(bAngleDiff), steerRate);
+          const steerPush = 220 * dt;
+          this.vx += Math.cos(this.angle) * steerPush;
+          this.vy += Math.sin(this.angle) * steerPush;
         }
       }
     }
 
-    // 4. BULLET EVASION (dodging incoming player projectiles AWAY from trajectory)
+    // 4. BULLET EVASION (dodging incoming player projectiles with smooth banking)
     let evadeX = 0;
     let evadeY = 0;
     let shouldEvade = false;
+
+    if (this.evadeThreatTimer > 0) {
+      this.evadeThreatTimer -= dt;
+      if (this.evadeThreatTimer <= 0) {
+        this.evadeCommitSide = 0;
+      }
+    }
 
     if (this.config.ai && this.config.ai.evasion && playerProjectiles && playerProjectiles.length > 0) {
       const maxThreatDist = (this.archetypeKey === 'ranged')
         ? (this.config.ai.evasionDangerDist || 210)
         : 180;
 
-      // Drones have human-like reaction limits so they aren't omniscient dodge-bots
       const canAttemptDodge = (this.archetypeKey !== 'ranged') || this.isEvading || (this.dodgeCooldown <= 0);
 
       if (canAttemptDodge) {
@@ -583,7 +663,7 @@ export class EnemyUnit {
         for (let i = 0; i < playerProjectiles.length; i++) {
           const proj = playerProjectiles[i];
           if (proj.dead || proj.destroyed) continue;
-          const evade = getBulletEvasionVector(this.x, this.y, this.radius, proj, this.vx, this.vy, maxThreatDist);
+          const evade = getBulletEvasionVector(this.x, this.y, this.radius, proj, this.vx, this.vy, maxThreatDist, this.evadeCommitSide);
           if (evade && evade.timeToImpact < minTimeToImpact) {
             minTimeToImpact = evade.timeToImpact;
             bestEvade = evade;
@@ -597,45 +677,81 @@ export class EnemyUnit {
               evadeX = bestEvade.x;
               evadeY = bestEvade.y;
             } else {
-              // Imperfect reaction roll (e.g. 65% chance to react in time, 35% miss/slip-through)
-              const evadeChance = (this.config.ai.evasionChance !== undefined) ? this.config.ai.evasionChance : 0.65;
+              const evadeChance = (this.config.ai.evasionChance !== undefined) ? this.config.ai.evasionChance : 0.68;
               if (Math.random() <= evadeChance) {
                 shouldEvade = true;
                 this.isEvading = true;
-                this.evadeTimer = 0.28; // 280ms committed dodge burst
-                this.dodgeCooldown = this.config.ai.evasionCooldown || 0.45; // Window before drone can dodge next bullet
+                this.evadeTimer = 0.28;
+                this.dodgeCooldown = this.config.ai.evasionCooldown || 0.45;
                 evadeX = bestEvade.x;
                 evadeY = bestEvade.y;
               } else {
-                // Hesitation window: drone fails to dodge, leaving it open to direct hits
                 this.dodgeCooldown = 0.35;
               }
             }
           } else {
+            // SWARMER EVASION: Lock commit side so dodging does not flip-flop or jerk
             shouldEvade = true;
             evadeX = bestEvade.x;
             evadeY = bestEvade.y;
+
+            if (this.evadeCommitSide === 0) {
+              // Lock commit side relative to trajectory
+              const pVxNorm = bestEvade.x;
+              const pVyNorm = bestEvade.y;
+              this.evadeCommitSide = (pVxNorm >= 0) ? 1 : -1;
+            }
+            this.evadeThreatTimer = 0.35;
+
+            // Swarmer: Smooth damped evasion acceleration
+            const urgency = Math.max(0.6, Math.min(1.4, 1.0 - (bestEvade.timeToImpact / 0.85)));
+            const targetEvadeX = bestEvade.x * urgency;
+            const targetEvadeY = bestEvade.y * urgency;
+            const blendSpeed = (this.config.ai && this.config.ai.evadeBlendRate) ? this.config.ai.evadeBlendRate : 4.5;
+            this.smoothEvadeX += (targetEvadeX - this.smoothEvadeX) * Math.min(1.0, blendSpeed * dt);
+            this.smoothEvadeY += (targetEvadeY - this.smoothEvadeY) * Math.min(1.0, blendSpeed * dt);
+            this.evadeInfluence += (1.0 - this.evadeInfluence) * Math.min(1.0, blendSpeed * dt);
           }
         }
       }
     }
 
-    if (this.archetypeKey === 'chaser') {
-      // SWARMER: Turn body towards destination/evade and thrust purely along pointing direction (NO STRAFING)
-      let desiredAngle = Math.atan2(targetWaypointY - this.y, targetWaypointX - this.x);
-      if (shouldEvade) {
-        desiredAngle = Math.atan2(evadeY, evadeX);
+    if (!shouldEvade && this.archetypeKey === 'chaser') {
+      const decaySpeed = 3.5;
+      this.smoothEvadeX += (0 - this.smoothEvadeX) * Math.min(1.0, decaySpeed * dt);
+      this.smoothEvadeY += (0 - this.smoothEvadeY) * Math.min(1.0, decaySpeed * dt);
+      this.evadeInfluence += (0 - this.evadeInfluence) * Math.min(1.0, decaySpeed * dt);
+      if (this.evadeInfluence < 0.05) {
+        this.evadeCommitSide = 0;
       }
-      const angleDiff = Math.atan2(Math.sin(desiredAngle - this.angle), Math.cos(desiredAngle - this.angle));
-      const bodyTurnRate = 10.0; // rad/sec
-      this.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), bodyTurnRate * dt);
+    }
 
-      // Pure pointing-direction propulsion: strictly forward along body angle (zero strafing)
+    if (this.archetypeKey === 'chaser') {
+      // SWARMER: Seamlessly blend chase waypoint vector with smooth aerodynamic evasion curve
+      const toWpX = targetWaypointX - this.x;
+      const toWpY = targetWaypointY - this.y;
+      const wpDist = Math.hypot(toWpX, toWpY) || 1;
+      const chaseDirX = toWpX / wpDist;
+      const chaseDirY = toWpY / wpDist;
+
+      // Evasion creates an organic, smooth banking deflection curve around the projectile
+      const evadeWeight = 1.25 * this.evadeInfluence;
+      const blendedX = chaseDirX + this.smoothEvadeX * evadeWeight;
+      const blendedY = chaseDirY + this.smoothEvadeY * evadeWeight;
+      const desiredAngle = Math.atan2(blendedY, blendedX);
+
+      // Smooth angular turning with natural banking rate (no abrupt snapping or twitching)
+      const angleDiff = Math.atan2(Math.sin(desiredAngle - this.angle), Math.cos(desiredAngle - this.angle));
+      const turnSpeed = (this.config.ai && this.config.ai.smoothTurnRate) ? this.config.ai.smoothTurnRate : 4.8;
+      const maxTurn = turnSpeed * dt;
+      this.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), maxTurn);
+
+      // Pure pointing-direction propulsion: strictly forward along body angle
       dirX = Math.cos(this.angle);
       dirY = Math.sin(this.angle);
     } else {
       if (shouldEvade) {
-        // Drone bullet evasion: smooth steering away from bullet ray, blended with standoff distance
+        // Drone bullet evasion: smooth steering away from bullet ray
         const kitingDist = this.config.ai?.kitingDistance || 350;
         if (dist < kitingDist) {
           dirX = evadeX * 0.70 + (-dx / dist) * 0.35;
@@ -660,13 +776,14 @@ export class EnemyUnit {
       dirY /= finalMag;
     }
 
-    let accel = (typeof this.config.acceleration === 'number') ? this.config.acceleration : (this.config.acceleration || 500);
-    if (this.archetypeKey === 'chaser') {
-      const speedBonusFactor = 1.0 + (playerMoveSpeedStat * CONFIG.PLAYER.statIncrements.moveSpeedMult * 0.70);
-      accel *= speedBonusFactor;
-    } else if (this.archetypeKey === 'ranged') {
-      // Drones move faster based on player base speed and scale with player Move Speed stat
-      const speedBonusFactor = 1.0 + (playerMoveSpeedStat * CONFIG.PLAYER.statIncrements.moveSpeedMult * 0.70);
+    // Enemies derive main base speed/acceleration from player config, scaled by speedMultiplier
+    const basePlayerSpeed = (CONFIG.PLAYER && CONFIG.PLAYER.acceleration) ? CONFIG.PLAYER.acceleration : 500;
+    const speedMult = (this.speedMultiplier !== undefined) ? this.speedMultiplier : (this.config.speedMultiplier || 1.0);
+    let accel = basePlayerSpeed * speedMult;
+
+    if (this.archetypeKey === 'chaser' || this.archetypeKey === 'ranged') {
+      const statInc = (CONFIG.PLAYER && CONFIG.PLAYER.statIncrements) ? CONFIG.PLAYER.statIncrements.moveSpeedMult : 0.07;
+      const speedBonusFactor = 1.0 + (playerMoveSpeedStat * statInc * 0.70);
       accel *= speedBonusFactor;
     }
 

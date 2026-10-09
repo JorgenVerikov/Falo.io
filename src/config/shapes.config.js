@@ -52,6 +52,17 @@ export const SHAPES_CONFIG = {
       spawnWeight: 0.005,
       color: '#35c5db',
       stroke: '#2894a4'
+    },
+    heptagon: {
+      sides: 7,
+      radius: 55,
+      hp: 2000,
+      xp: 2000,
+      ramDamage: 30,
+      weight: 18.0,
+      spawnWeight: 0.0025,
+      color: '#DE78AE',
+      stroke: '#D24795'
     }
   }
 };

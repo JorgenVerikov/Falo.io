@@ -36,8 +36,12 @@ export class WaveManager {
     this.enemyQueue = [];
     this.spawnTimer = 0;
 
-    if (waveNum === 1) {
-      this.graceTimer = 20.0;
+    const graceInterval = (CONFIG.WAVE && CONFIG.WAVE.graceInterval) ? CONFIG.WAVE.graceInterval : 5;
+    const graceDuration = (CONFIG.WAVE && CONFIG.WAVE.graceDuration) ? CONFIG.WAVE.graceDuration : 20.0;
+    const isGraceWave = (waveNum === 1) || (waveNum % graceInterval === 0);
+
+    if (isGraceWave) {
+      this.graceTimer = graceDuration;
     } else {
       this.graceTimer = 0;
     }

@@ -69,6 +69,7 @@ const state = {
   statPoints: 0,
   lastEvolvedMilestone: 0,
   ignoredMilestone: 0,
+  lastAnnouncedGraceWave: 0,
   stats: {
     maxHp: 0,
     regenRate: 0,
@@ -220,6 +221,7 @@ function restartRun() {
   setActiveChassis('basic');
 
   waveMgr.score = 0;
+  state.lastAnnouncedGraceWave = 0;
   waveMgr.startWave(1);
 
   applyCrewAndStatModifiers();
@@ -443,6 +445,17 @@ function applyCrewAndStatModifiers() {
     turret.heatPerShot = (baseW.heatPerShot || 6) / (1.0 + (reloadStat * (rCfg.thermalHeatReductionStatScaling || 0.05)));
     turret.rechargeRate = (baseW.rechargeRate || 20) * (1.0 + (reloadStat * (rCfg.energyRechargeStatScaling || 0.10))) / loaderCrewMult;
   });
+
+  // Base ability scaling for turretless chassis (e.g. Smasher)
+  if (weaponSys.turrets.length === 0 && (weaponSys.type === WEAPON_TYPE.COOLDOWN || weaponSys.type === WEAPON_TYPE.ENERGY)) {
+    const chassis = CONFIG.CHASSIS[state.activeChassis];
+    const baseW = (chassis && chassis.weapon) ? chassis.weapon : {};
+
+    const cooldownTicks = baseW.cooldownTicks || baseW.baseReloadTicks || 100;
+    const baseCooldownSec = (baseW.cooldownSec !== undefined) ? baseW.cooldownSec : (cooldownTicks / 60);
+    weaponSys.cooldownDurationSec = Math.max(0.4, baseCooldownSec * loaderCrewMult);
+    weaponSys.fireIntervalSec = weaponSys.cooldownDurationSec;
+  }
 }
 
 function toggleAutoFire() {
@@ -831,7 +844,7 @@ function updatePlayer(dt) {
   player.vx += dirX * accel * dt;
   player.vy += dirY * accel * dt;
 
-  const isFiring = input.mouse.isDown || state.autoFire;
+  const isFiring = input.mouse.isDown || input.mouse.isRightDown || (input.keys && input.keys[' ']) || state.autoFire;
   const recoilImpulse = weaponSys.update(dt, player, isFiring);
   player.vx += recoilImpulse.x;
   player.vy += recoilImpulse.y;
@@ -931,7 +944,16 @@ function renderPlayerChassis() {
     canvasMgr.drawPlayerHealthBar(x, y, player.hp, player.maxHp, radius);
 
     if (player.dashTimer > 0) {
-      canvasMgr.drawDebugCircle(x, y, radius * 1.6, '#00ffff');
+      const dashProgress = Math.max(0, player.dashTimer / (CONFIG.WEAPONS.smasherDashDuration || 0.45));
+      const ringRadius = radius * (1.15 + (1.0 - dashProgress) * 0.7);
+      ctx.save();
+      ctx.globalAlpha = dashProgress * 0.85;
+      ctx.strokeStyle = '#00ffff';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
     }
 
     if (state.debugMode) {
@@ -983,9 +1005,15 @@ function updateHUD() {
   const waveTimerText = document.getElementById('wave-timer-text');
 
   if (waveMgr.graceTimer > 0) {
-    waveStatus.textContent = `WAVE 1 (PREPARATION)`;
+    waveStatus.textContent = `WAVE ${waveMgr.waveNumber} (GRACE PERIOD)`;
     waveStatus.style.color = '#e9b439';
     waveTimerText.textContent = `ENEMIES SPAWN IN: ${Math.ceil(waveMgr.graceTimer)}s`;
+    if (state.lastAnnouncedGraceWave !== waveMgr.waveNumber && !state.inMenu && !state.isGameOver) {
+      state.lastAnnouncedGraceWave = waveMgr.waveNumber;
+      if (uiMgr) {
+        uiMgr.showToast(`WAVE ${waveMgr.waveNumber}: 20s GRACE PERIOD ACTIVE!`);
+      }
+    }
   } else if (waveMgr.isBreak) {
     waveStatus.textContent = `WAVE ${waveMgr.waveNumber} CLEARED`;
     waveStatus.style.color = '#57a857';
@@ -1004,8 +1032,30 @@ function updateHUD() {
   const overheatBanner = document.getElementById('overheat-banner');
 
   const hasShootingTurrets = weaponSys.turrets && weaponSys.turrets.some(t => t.shootsBullet);
+  const isSmasherAbility = (state.activeChassis === 'smasher') || (!hasShootingTurrets && (weaponSys.type === WEAPON_TYPE.COOLDOWN || weaponSys.type === WEAPON_TYPE.ENERGY));
 
-  if (!hasShootingTurrets) {
+  if (isSmasherAbility) {
+    titleElem.textContent = 'KINETIC SURGE DASH';
+    rackContainer.classList.add('hidden');
+    barWrapper.classList.remove('hidden');
+    overheatBanner.classList.add('hidden');
+
+    const cooldown = weaponSys.cooldownTimer || 0;
+    const maxCooldown = weaponSys.cooldownDurationSec || 1.67;
+
+    if (cooldown > 0) {
+      const cdPct = Math.max(0, Math.min(100, (1.0 - (cooldown / maxCooldown)) * 100));
+      barFill.style.width = `${cdPct}%`;
+      barFill.className = 'gauge-bar-fill cooldown';
+      barFill.style.background = '#475569';
+      barText.textContent = `COOLDOWN: ${cooldown.toFixed(1)}s`;
+    } else {
+      barFill.style.width = '100%';
+      barFill.className = 'gauge-bar-fill ready';
+      barFill.style.background = '#00e5ff';
+      barText.textContent = 'READY';
+    }
+  } else if (!hasShootingTurrets) {
     titleElem.textContent = 'NO TURRETS AVAILABLE';
     rackContainer.classList.add('hidden');
     barWrapper.classList.add('hidden');
@@ -1056,10 +1106,12 @@ function updateHUD() {
     overheatBanner.classList.add('hidden');
 
     const energy = Math.round(weaponSys.energy);
-    barFill.style.width = `${energy}%`;
+    const maxE = weaponSys.maxEnergy || 100;
+    const pct = Math.max(0, Math.min(100, (weaponSys.energy / maxE) * 100));
+    barFill.style.width = `${pct}%`;
     barFill.className = 'gauge-bar-fill energy';
     barFill.style.background = player.fillColor;
-    barText.textContent = `${energy} / 100 PWR`;
+    barText.textContent = `${energy} / ${maxE} PWR`;
   }
 }
 

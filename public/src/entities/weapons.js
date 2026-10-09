@@ -4,6 +4,7 @@ export const WEAPON_TYPE = {
   READY_RACK: 'READY_RACK',
   THERMAL: 'THERMAL',
   ENERGY: 'ENERGY',
+  COOLDOWN: 'COOLDOWN',
   NONE: 'NONE'
 };
 
@@ -217,8 +218,33 @@ export class WeaponSystem {
       this.reloadTimer = 0;
       this.heat = 0;
       this.isOverheated = false;
+      this.overheatLockoutTimer = 0;
+      this.coolRate = pTurret.coolRate || 16;
+      this.overheatLockoutTime = pTurret.overheatLockoutTime || 2.0;
       this.energy = pTurret.maxEnergy;
       this.maxEnergy = pTurret.maxEnergy;
+      this.costPerShot = pTurret.costPerShot;
+      this.rechargeRate = pTurret.rechargeRate;
+      this.cooldownTimer = 0;
+      this.fireIntervalSec = pTurret.fireIntervalSec;
+    } else if (chassis.weapon) {
+      // Base ability / chassis-level weapon for turretless tanks (e.g. Smasher)
+      this.type = chassis.weapon.type || WEAPON_TYPE.COOLDOWN;
+      this.maxRack = 0;
+      this.currentRack = 0;
+      this.reloadTimer = 0;
+      this.heat = 0;
+      this.isOverheated = false;
+      this.maxEnergy = chassis.weapon.maxEnergy || 0;
+      this.energy = this.maxEnergy;
+      this.costPerShot = chassis.weapon.costPerShot || 0;
+      this.rechargeRate = chassis.weapon.rechargeRate || 0;
+
+      const cooldownTicks = chassis.weapon.cooldownTicks || chassis.weapon.baseReloadTicks || 100;
+      const baseCooldownSec = (chassis.weapon.cooldownSec !== undefined) ? chassis.weapon.cooldownSec : (cooldownTicks / 60);
+      this.cooldownDurationSec = Math.max(0.4, baseCooldownSec);
+      this.fireIntervalSec = this.cooldownDurationSec;
+      this.cooldownTimer = 0;
     } else {
       this.type = WEAPON_TYPE.NONE;
       this.maxRack = 0;
@@ -228,6 +254,9 @@ export class WeaponSystem {
       this.isOverheated = false;
       this.energy = 0;
       this.maxEnergy = 0;
+      this.costPerShot = 0;
+      this.rechargeRate = 0;
+      this.cooldownTimer = 0;
     }
   }
 
@@ -264,17 +293,7 @@ export class WeaponSystem {
         }
 
       } else if (turret.type === WEAPON_TYPE.THERMAL) {
-        if (state.isOverheated) {
-          state.overheatLockoutTimer -= dt;
-          state.heat = Math.max(0, (state.overheatLockoutTimer / turret.overheatLockoutTime) * 100);
-          if (state.overheatLockoutTimer <= 0) {
-            state.isOverheated = false;
-            state.heat = 0;
-          }
-        } else if (!isFiring) {
-          state.heat = Math.max(0, state.heat - turret.coolRate * dt);
-        }
-
+        // Individual thermal cooling is managed tank-wide below
       } else if (turret.type === WEAPON_TYPE.ENERGY) {
         if (!isFiring) {
           state.energy = Math.min(turret.maxEnergy, state.energy + turret.rechargeRate * dt);
@@ -285,6 +304,34 @@ export class WeaponSystem {
     const shootingTurrets = this.turrets.filter(t => t.shootsBullet);
     const hasDelayTurrets = shootingTurrets.some(t => (t.fireDelay || 0) > 0);
     const isAlternating = this.firingMode === 'alternating' || hasDelayTurrets;
+
+    // Tank-wide Thermal Cooling & Lockout update
+    const primaryThermal = shootingTurrets.find(t => t.type === WEAPON_TYPE.THERMAL);
+    if (primaryThermal) {
+      const coolRate = primaryThermal.coolRate || this.coolRate || 16;
+      const lockoutTime = primaryThermal.overheatLockoutTime || this.overheatLockoutTime || 2.0;
+
+      if (this.isOverheated) {
+        this.overheatLockoutTimer -= dt;
+        this.heat = Math.max(0, (this.overheatLockoutTimer / lockoutTime) * 100);
+        if (this.overheatLockoutTimer <= 0) {
+          this.isOverheated = false;
+          this.heat = 0;
+        }
+      } else if (!isFiring) {
+        this.heat = Math.max(0, this.heat - coolRate * dt);
+      }
+
+      // Sync state to all thermal turrets
+      shootingTurrets.forEach(t => {
+        if (t.type === WEAPON_TYPE.THERMAL) {
+          const s = this.turretStates[t.index];
+          s.heat = this.heat;
+          s.isOverheated = this.isOverheated;
+          s.overheatLockoutTimer = this.overheatLockoutTimer;
+        }
+      });
+    }
 
     // 3. Firing Execution
     // When beginning to fire from idle in alternating mode, offset delayed turrets by their fireDelay phase
@@ -309,13 +356,24 @@ export class WeaponSystem {
         if (turret.type === WEAPON_TYPE.READY_RACK && state.currentRack > 0) {
           state.currentRack--;
           canFire = true;
-        } else if (turret.type === WEAPON_TYPE.THERMAL && !state.isOverheated) {
-          state.heat += turret.heatPerShot;
-          if (state.heat >= 100) {
-            state.heat = 100;
-            state.isOverheated = true;
-            state.overheatLockoutTimer = turret.overheatLockoutTime;
+        } else if (turret.type === WEAPON_TYPE.THERMAL && !this.isOverheated) {
+          // Heat is accumulated whenever EACH individual turret fires
+          this.heat = Math.min(100, this.heat + (turret.heatPerShot || 5.0));
+          if (this.heat >= 100) {
+            this.heat = 100;
+            this.isOverheated = true;
+            this.overheatLockoutTimer = turret.overheatLockoutTime || 2.0;
           }
+
+          // Instantly sync to all thermal turrets so both are locked out if overheated
+          shootingTurrets.forEach(t => {
+            if (t.type === WEAPON_TYPE.THERMAL) {
+              const s = this.turretStates[t.index];
+              s.heat = this.heat;
+              s.isOverheated = this.isOverheated;
+              s.overheatLockoutTimer = this.overheatLockoutTimer;
+            }
+          });
           canFire = true;
         } else if (turret.type === WEAPON_TYPE.ENERGY && state.energy >= turret.costPerShot) {
           state.energy -= turret.costPerShot;
@@ -342,30 +400,41 @@ export class WeaponSystem {
       this.currentRack = pState.currentRack;
       this.reloadTimer = pState.reloadTimer;
 
-      if (isAlternating) {
-        let maxHeat = 0;
-        let anyOverheated = false;
-        shootingTurrets.forEach(t => {
-          const s = this.turretStates[t.index];
-          if (s.heat > maxHeat) maxHeat = s.heat;
-          if (s.isOverheated) anyOverheated = true;
-        });
-        this.heat = maxHeat;
-        this.isOverheated = anyOverheated;
-      } else {
-        this.heat = pState.heat;
-        this.isOverheated = pState.isOverheated;
+      if (!primaryThermal) {
+        if (isAlternating) {
+          let maxHeat = 0;
+          let anyOverheated = false;
+          shootingTurrets.forEach(t => {
+            const s = this.turretStates[t.index];
+            if (s.heat > maxHeat) maxHeat = s.heat;
+            if (s.isOverheated) anyOverheated = true;
+          });
+          this.heat = maxHeat;
+          this.isOverheated = anyOverheated;
+        } else {
+          this.heat = pState.heat;
+          this.isOverheated = pState.isOverheated;
+        }
       }
 
       this.energy = pState.energy;
       this.maxEnergy = pTurret.maxEnergy;
     }
 
-    // Process Smasher energy dash if active
-    if (this.chassisKey === 'smasher' && isFiring) {
-      if (player.dashTimer <= 0) {
-        player.dashTimer = CONFIG.WEAPONS.smasherDashDuration;
-        const surgeForce = CONFIG.WEAPONS.smasherDashForce;
+    // Process Smasher kinetic dash cooldown ability
+    if (this.chassisKey === 'smasher' || (this.turrets.length === 0 && (this.type === WEAPON_TYPE.COOLDOWN || this.type === WEAPON_TYPE.ENERGY))) {
+      if (this.cooldownTimer > 0) {
+        this.cooldownTimer -= dt;
+        if (this.cooldownTimer < 0) this.cooldownTimer = 0;
+      }
+
+      const cooldownDuration = this.cooldownDurationSec || 1.67;
+
+      if (isFiring && this.cooldownTimer <= 0 && player.dashTimer <= 0) {
+        // Trigger dash surge and enforce cooldown lockout
+        this.cooldownTimer = cooldownDuration;
+        player.dashTimer = CONFIG.WEAPONS.smasherDashDuration || 0.45;
+        const surgeForce = CONFIG.WEAPONS.smasherDashForce || 450;
         totalRecoilImpulse.x += Math.cos(player.angle) * surgeForce;
         totalRecoilImpulse.y += Math.sin(player.angle) * surgeForce;
       }

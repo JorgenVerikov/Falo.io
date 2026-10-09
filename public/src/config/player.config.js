@@ -124,12 +124,12 @@ export const CHASSIS_CONFIG = {
     firingMode: 'alternating',
     turrets: [
       createBarrelTurret(
-        { width: 19, length: 48, frontWidth: 19, angleOffset: 0, xOffset: 0, yOffset: -10 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: -13 },
         { damage: 0.65, penetration: 0.90, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0.25, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0 },
         { type: 'THERMAL', heatPerShot: 5.0, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 19, length: 48, frontWidth: 19, angleOffset: 0, xOffset: 0, yOffset: 10 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 13 },
         { damage: 0.65, penetration: 0.90, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0.25, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0.5 },
         { type: 'THERMAL', heatPerShot: 5.0, coolRate: 16, overheatLockoutTime: 2.0 }
       )
@@ -191,7 +191,7 @@ export const CHASSIS_CONFIG = {
       createBarrelTurret(
         { width: 20, length: 46, frontWidth: 32, angleOffset: 0, xOffset: 0, yOffset: 0 },
         { damage: 0.70, penetration: 1.0, bulletSpeed: 1, bulletSize: 0.85, reload: 0.50, spread: 5.5, recoil: 0.65, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0 },
-        { type: 'THERMAL', heatPerShot: 4.5, coolRate: 18, overheatLockoutTime: 2.2 }
+        { type: 'THERMAL', heatPerShot: 4.5, coolRate: 15, overheatLockoutTime: 2.5 }
       )
     ]
   },
@@ -217,18 +217,9 @@ export const CHASSIS_CONFIG = {
     },
     turrets: [],
     weapon: {
-      type: 'ENERGY',
-      maxEnergy: 100,
-      costPerShot: 25,
-      rechargeRate: 5,
-      baseReloadTicks: 45,
-      fireRateTicks: 50,
-      shellSpeed: 0,
-      penetration: 0,
-      damage: 0,
-      recoil: 0,
-      shellRadius: 0,
-      spread: 0
+      type: 'COOLDOWN',
+      baseReloadTicks: 50,
+      cooldownSec: 4
     }
   },
 

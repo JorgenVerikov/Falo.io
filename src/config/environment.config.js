@@ -22,7 +22,9 @@ export const WAVE_CONFIG = {
   breakDuration: 10,
   baseEnemyCount: 4,
   growthFactor: 1.25,
-  spawnInterval: 1.1
+  spawnInterval: 1.1,
+  graceDuration: 20,    // 20 seconds grace period
+  graceInterval: 5      // Grace period occurs every 5 waves (Wave 1, 5, 10, 15, etc.)
 };
 
 export const VFX_CONFIG = {
