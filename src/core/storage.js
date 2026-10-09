@@ -8,6 +8,7 @@ const DEFAULT_DATA = {
   highScore: 0,
   maxWave: 1,
   unlockedChassis: ['basic'],
+  activeChassis: 'basic',
   unlockedColors: ['default'],
   unlockedColorWheel: false,
   customColor: '#00b2e1',
@@ -53,6 +54,7 @@ export class StorageManager {
       ...data,
       settings: { ...DEFAULT_DATA.settings, ...(data.settings || {}) },
       unlockedChassis: Array.from(new Set(['basic', ...(data.unlockedChassis || [])])),
+      activeChassis: data.activeChassis || 'basic',
       unlockedColors: Array.from(new Set(['default', ...(data.unlockedColors || [])])),
       crewLevels: { ...DEFAULT_DATA.crewLevels, ...(data.crewLevels || {}) }
     };
@@ -206,6 +208,16 @@ export class StorageManager {
     if (this.data.coins >= cost && !this.data.unlockedChassis.includes(chassisKey)) {
       this.data.coins -= cost;
       this.data.unlockedChassis.push(chassisKey);
+      this.data.activeChassis = chassisKey;
+      this.save();
+      return true;
+    }
+    return false;
+  }
+
+  setActiveChassis(chassisKey) {
+    if (this.data.unlockedChassis.includes(chassisKey)) {
+      this.data.activeChassis = chassisKey;
       this.save();
       return true;
     }

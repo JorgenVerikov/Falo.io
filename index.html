@@ -218,6 +218,18 @@
         
         <button id="adm-toggle-pause" class="admin-btn">TOGGLE WAVE PAUSE</button>
         <button id="adm-clear-all" class="admin-btn alert">CLEAR ALL ENTITIES</button>
+
+        <div class="setting-row" style="grid-column: span 2; margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15);">
+          <label>SPAWN SHAPE:</label>
+          <div style="display: flex; gap: 8px; width: 100%;">
+            <select id="adm-shape-select" class="setting-input" style="flex: 1;">
+              <!-- Populated dynamically from CONFIG.SHAPES.types -->
+            </select>
+            <input id="adm-shape-count" type="number" min="1" max="50" value="1" class="setting-input" style="width: 70px; text-align: center;" title="Spawn Count">
+          </div>
+        </div>
+        <button id="adm-spawn-shape" class="admin-btn" style="background-color: #22c55e; border-color: #16a34a;">SPAWN SHAPE(S)</button>
+        <button id="adm-clear-shapes" class="admin-btn alert">CLEAR SHAPES ONLY</button>
       </div>
 
       <div class="admin-checkbox-row" style="margin-top: 10px;">
@@ -236,23 +248,40 @@
     </div>
   </div>
 
-  <!-- Armory & Shop Modal -->
+  <!-- Armory & Shop Modal (Diep.io Style) -->
   <div id="armory-modal" class="modal-overlay hidden">
-    <div class="modal-box wide">
-      <h1 class="modal-title">ARMORY</h1>
-      <div class="armory-currency">AVAILABLE COINS: <span id="armory-coins-display" class="gold">0</span></div>
-      
-      <div class="shop-tabs">
-        <button id="tab-tanks-btn" class="shop-tab-btn active">TANK UNLOCKS</button>
-        <button id="tab-crew-btn" class="shop-tab-btn">CREW BARRACKS</button>
-        <button id="tab-colors-btn" class="shop-tab-btn">COLOR THEMES</button>
+    <div class="diep-shop-window">
+      <!-- Top Header Navigation Bar -->
+      <div class="diep-shop-header">
+        <div class="diep-shop-header-left">
+          <div class="diep-shop-logo">
+            <span class="diep-shop-logo-icon">🏪</span> SHOP
+          </div>
+          <div class="diep-shop-tabs">
+            <button id="tab-tanks-btn" class="diep-shop-tab active" data-tab="tanks">
+              <span class="tab-icon">🛡️</span> Tanks
+            </button>
+            <button id="tab-crew-btn" class="diep-shop-tab" data-tab="crew">
+              <span class="tab-icon">👥</span> Crew Barracks
+            </button>
+            <button id="tab-colors-btn" class="diep-shop-tab" data-tab="colors">
+              <span class="tab-icon">🎨</span> Color Themes
+            </button>
+          </div>
+        </div>
+
+        <div class="diep-shop-header-right">
+          <div class="diep-coins-chip">
+            <span class="chip-coin-icon">🪙</span>
+            <span id="armory-coins-display" class="chip-coins-amount">0</span>
+            <span class="chip-coin-label">COINS</span>
+          </div>
+          <button id="close-armory-btn" class="diep-shop-close-btn" title="Close Shop">✕</button>
+        </div>
       </div>
 
-      <div id="shop-content-grid" class="shop-grid"></div>
-
-      <div class="modal-actions" style="margin-top: 18px;">
-        <button id="close-armory-btn" class="modal-btn primary">CLOSE ARMORY</button>
-      </div>
+      <!-- Scrollable Shop Content Area -->
+      <div id="shop-content-grid" class="diep-shop-scroll-area"></div>
     </div>
   </div>
 

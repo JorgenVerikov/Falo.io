@@ -64,7 +64,9 @@ export class PhysicsSystem {
         shape.vy += ny * baseRepulsion * shapePushFactor * dt;
 
         shape.takeDamage(ramDmgShape * pCol.shapeRamDamageMultiplier * dt);
-        player.takeDamage(shape.ramDamage, activeChassisKey);
+        if (shape.ramDamage > 0) {
+          player.takeDamage(shape.ramDamage, activeChassisKey);
+        }
 
         if (Math.random() < 0.3) {
           waveMgr.spawnShatterParticles(shape.x - nx * shape.radius * 0.5, shape.y - ny * shape.radius * 0.5, shape.color, 2);
@@ -188,10 +190,12 @@ export class PhysicsSystem {
           const dmg = proj.damage;
           shape.takeDamage(dmg);
 
-          const shapePenDrain = CONFIG.WEAPONS.shapePenetrationDrain || 2.0;
-          proj.takePenetrationDamage(shapePenDrain);
-
-          proj.applyCenterRepulsion(shape.x, shape.y, dt, CONFIG.WEAPONS.repelStrength);
+          const noDrain = shape.config && shape.config.noBulletDrain;
+          if (!noDrain) {
+            const shapePenDrain = CONFIG.WEAPONS.shapePenetrationDrain || 2.0;
+            proj.takePenetrationDamage(shapePenDrain);
+            proj.applyCenterRepulsion(shape.x, shape.y, dt, CONFIG.WEAPONS.repelStrength);
+          }
 
           if (Math.random() < 0.35) {
             waveMgr.spawnShatterParticles(proj.x, proj.y, shape.color, CONFIG.VFX.impactParticleCount);
@@ -290,8 +294,12 @@ export class PhysicsSystem {
 
         if (dx * dx + dy * dy < minDist * minDist) {
           shape.takeDamage(bullet.damage);
-          bullet.takePenetrationDamage(CONFIG.WEAPONS.shapePenetrationDrain || 2.0);
-          bullet.applyCenterRepulsion(shape.x, shape.y, dt, CONFIG.WEAPONS.repelStrength);
+
+          const noDrain = shape.config && shape.config.noBulletDrain;
+          if (!noDrain) {
+            bullet.takePenetrationDamage(CONFIG.WEAPONS.shapePenetrationDrain || 2.0);
+            bullet.applyCenterRepulsion(shape.x, shape.y, dt, CONFIG.WEAPONS.repelStrength);
+          }
 
           if (Math.random() < 0.3) {
             waveMgr.spawnShatterParticles(bullet.x, bullet.y, shape.color, 2);

@@ -30,6 +30,20 @@ export class WaveManager {
     this.enemyQueue = [];
   }
 
+  clearShapes() {
+    this.shapes = [];
+  }
+
+  spawnShape(player, shapeType = 'square', count = 1, nearPlayer = true) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = nearPlayer ? (60 + Math.random() * 140) : (CONFIG.SHAPES.minSpawnDist + Math.random() * 200);
+      const x = (player ? player.x : 0) + Math.cos(angle) * dist;
+      const y = (player ? player.y : 0) + Math.sin(angle) * dist;
+      this.shapes.push(new ResourceShape(x, y, shapeType));
+    }
+  }
+
   startWave(waveNum) {
     this.waveNumber = waveNum;
     this.isBreak = false;
@@ -107,7 +121,7 @@ export class WaveManager {
     this.maintainShapes(player);
 
     const playerProjectiles = (playerWeapon && playerWeapon.projectiles) ? playerWeapon.projectiles : [];
-    for (const s of this.shapes) s.update(dt);
+    for (const s of this.shapes) s.update(dt, this);
     const totalRemainingEnemies = this.getRemainingEnemyCount();
     for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerStats.moveSpeed || 0, this.enemies, playerProjectiles, totalRemainingEnemies);
     for (const b of this.enemyBullets) b.update(dt);
@@ -224,8 +238,28 @@ export class WaveManager {
         rand -= w;
       }
 
-      this.shapes.push(new ResourceShape(x, y, selectedType));
-      activeShapesCount++;
+      const typeCfg = CONFIG.SHAPES.types[selectedType] || {};
+      if (typeCfg.groupSpawn || selectedType === 'egg') {
+        let groupCount;
+        if (Array.isArray(typeCfg.groupSizes) && typeCfg.groupSizes.length > 0) {
+          groupCount = typeCfg.groupSizes[Math.floor(Math.random() * typeCfg.groupSizes.length)];
+        } else {
+          const gMin = typeCfg.groupSizeMin || 5;
+          const gMax = typeCfg.groupSizeMax || 7;
+          groupCount = Math.floor(gMin + Math.random() * (gMax - gMin + 1));
+        }
+        for (let g = 0; g < groupCount && activeShapesCount < CONFIG.SHAPES.maxCount; g++) {
+          const spreadDist = (g === 0) ? 0 : (16 + Math.random() * 45);
+          const spreadAngle = Math.random() * Math.PI * 2;
+          const eggX = x + Math.cos(spreadAngle) * spreadDist;
+          const eggY = y + Math.sin(spreadAngle) * spreadDist;
+          this.shapes.push(new ResourceShape(eggX, eggY, selectedType));
+          activeShapesCount++;
+        }
+      } else {
+        this.shapes.push(new ResourceShape(x, y, selectedType));
+        activeShapesCount++;
+      }
     }
   }
 

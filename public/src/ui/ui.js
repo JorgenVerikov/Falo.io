@@ -65,6 +65,9 @@ export class UIManager {
 
     this.playerNameInput = document.getElementById('player-name-input');
 
+    this.shopFilter = 'all';
+    this.shopSort = 'featured';
+
     this.bindEvents();
   }
 
@@ -784,177 +787,554 @@ export class UIManager {
 
   renderShopContent() {
     const coinsEl = document.getElementById('armory-coins-display');
-    coinsEl.textContent = this.storage.data.coins;
+    if (coinsEl) coinsEl.textContent = (this.storage.data.coins || 0).toLocaleString();
 
     const tabTanksBtn = document.getElementById('tab-tanks-btn');
     const tabCrewBtn = document.getElementById('tab-crew-btn');
     const tabColorsBtn = document.getElementById('tab-colors-btn');
     const shopContainer = document.getElementById('shop-content-grid');
+    if (!shopContainer) return;
     shopContainer.innerHTML = '';
 
-    [tabTanksBtn, tabCrewBtn, tabColorsBtn].forEach(btn => btn.classList.remove('active'));
+    [tabTanksBtn, tabCrewBtn, tabColorsBtn].forEach(btn => btn?.classList.remove('active'));
 
     if (this.activeShopTab === 'tanks') {
-      tabTanksBtn.classList.add('active');
-
-      Object.keys(CONFIG.CHASSIS).forEach(key => {
-        if (key === 'basic') return;
-
-        const chassis = CONFIG.CHASSIS[key];
-        const isUnlocked = this.storage.data.unlockedChassis.includes(key);
-
-        const card = document.createElement('div');
-        card.className = 'shop-card';
-        card.style.borderColor = '#359bb5';
-
-        card.innerHTML = `
-          <div class="shop-title" style="color: #359bb5">${chassis.name.toUpperCase()}</div>
-          <div class="shop-desc">Requires LVL ${chassis.reqLevel} in-run to evolve.</div>
-          ${isUnlocked 
-            ? `<div class="shop-status unlocked">UNLOCKED</div>`
-            : `<button class="shop-buy-btn ${this.storage.data.coins >= chassis.shopCost ? '' : 'disabled'}">
-                UNLOCK (${chassis.shopCost} COINS)
-               </button>`
-          }
-        `;
-
-        if (!isUnlocked) {
-          card.querySelector('.shop-buy-btn').addEventListener('click', () => {
-            if (this.storage.unlockChassis(key, chassis.shopCost)) {
-              console.log(`[SHOP] Unlocked ${chassis.name.toUpperCase()} for ${chassis.shopCost} coins`);
-              this.renderShopContent();
-            }
-          });
-        }
-
-        shopContainer.appendChild(card);
-      });
-
+      tabTanksBtn?.classList.add('active');
+      this.renderTanksShop(shopContainer);
     } else if (this.activeShopTab === 'crew') {
-      tabCrewBtn.classList.add('active');
-
-      const crewData = [
-        { key: 'loader', name: 'Loader', desc: '-5% Weapon Reload & Cooling Time per Lvl', color: '#c2a02c' },
-        { key: 'gunner', name: 'Gunner', desc: '+5% Velocity, Damage & Penetration per Lvl', color: '#c4702b' },
-        { key: 'driver', name: 'Driver', desc: '+5% Top Movement Speed per Lvl', color: '#389e67' },
-        { key: 'commander', name: 'Commander', desc: '+10% Bonus XP & Coin Earnings per Lvl', color: '#308ba6' }
-      ];
-
-      crewData.forEach(c => {
-        const level = this.storage.data.crewLevels[c.key] || 0;
-        const cost = Math.floor(CONFIG.CREW.baseUpgradeCost * Math.pow(CONFIG.CREW.costMultiplier, level));
-
-        const card = document.createElement('div');
-        card.className = 'shop-card';
-        card.style.borderColor = c.color;
-
-        card.innerHTML = `
-          <div class="shop-title" style="color: ${c.color}">${c.name.toUpperCase()} (LVL ${level})</div>
-          <div class="shop-desc">${c.desc}</div>
-          <button class="shop-buy-btn ${this.storage.data.coins >= cost ? '' : 'disabled'}">
-            UPGRADE (${cost} COINS)
-          </button>
-        `;
-
-        card.querySelector('.shop-buy-btn').addEventListener('click', () => {
-          if (this.storage.upgradeCrew(c.key, cost)) {
-            console.log(`[SHOP] Upgraded CREW: ${c.name.toUpperCase()} to Level ${level + 1}`);
-            this.renderShopContent();
-          }
-        });
-
-        shopContainer.appendChild(card);
-      });
-
+      tabCrewBtn?.classList.add('active');
+      this.renderCrewShop(shopContainer);
     } else if (this.activeShopTab === 'colors') {
-      tabColorsBtn.classList.add('active');
+      tabColorsBtn?.classList.add('active');
+      this.renderColorsShop(shopContainer);
+    }
+  }
 
-      const isWheelUnlocked = this.storage.data.unlockedColorWheel;
-      const isWheelActive = this.storage.data.activeColor === 'custom';
-
-      const wheelCard = document.createElement('div');
-      wheelCard.className = 'shop-card custom-wheel-card';
-      wheelCard.style.borderColor = '#359bb5';
-
-      wheelCard.innerHTML = `
-        <div style="flex:1;">
-          <div class="shop-title" style="color: #359bb5;">CUSTOM RGB COLOR WHEEL</div>
-          <div class="shop-desc">Pick any custom hex color for your tank!</div>
-        </div>
-        ${isWheelUnlocked
-          ? `<div style="display:flex; align-items:center; gap:8px;">
-               <input type="color" id="rgb-color-picker" value="${this.storage.data.customColor || '#00b2e1'}">
-               <button class="shop-buy-btn ${isWheelActive ? 'active-equip' : ''}" id="equip-wheel-btn">
-                 ${isWheelActive ? 'EQUIPPED' : 'EQUIP'}
-               </button>
-             </div>`
-          : `<button class="shop-buy-btn ${this.storage.data.coins >= CONFIG.META.colorWheelCost ? '' : 'disabled'}" id="buy-wheel-btn">
-              UNLOCK (${CONFIG.META.colorWheelCost} COINS)
-             </button>`
-        }
-      `;
-
-      if (isWheelUnlocked) {
-        wheelCard.querySelector('#rgb-color-picker').addEventListener('input', (e) => {
-          this.storage.setCustomColor(e.target.value);
-        });
-
-        wheelCard.querySelector('#equip-wheel-btn').addEventListener('click', () => {
-          this.storage.setActiveColor('custom');
-          console.log(`[SHOP] Equipped Custom RGB Paint Job: ${this.storage.data.customColor}`);
-          this.renderShopContent();
-        });
-      } else {
-        wheelCard.querySelector('#buy-wheel-btn').addEventListener('click', () => {
-          if (this.storage.unlockColorWheel(CONFIG.META.colorWheelCost)) {
-            console.log(`[SHOP] Unlocked Custom RGB Color Wheel!`);
-            this.renderShopContent();
-          }
-        });
-      }
-
-      shopContainer.appendChild(wheelCard);
-
-      Object.keys(CONFIG.COLOR_THEMES).forEach(cKey => {
-        const theme = CONFIG.COLOR_THEMES[cKey];
-        const isUnlocked = this.storage.data.unlockedColors.includes(cKey);
-        const isActive = this.storage.data.activeColor === cKey;
-
-        const card = document.createElement('div');
-        card.className = 'shop-card';
-        card.style.borderColor = theme.color;
-
-        card.innerHTML = `
-          <div class="shop-title" style="color: ${theme.color}">${theme.name.toUpperCase()}</div>
-          <div class="shop-desc">Tank Paint Job Theme</div>
-          ${isActive 
-            ? `<div class="shop-status unlocked">EQUIPPED</div>`
-            : isUnlocked
-              ? `<button class="shop-buy-btn active-equip">EQUIP</button>`
-              : `<button class="shop-buy-btn ${this.storage.data.coins >= theme.cost ? '' : 'disabled'}">
-                  UNLOCK (${theme.cost} COINS)
-                 </button>`
-          }
-        `;
-
-        if (isActive) {
-        } else if (isUnlocked) {
-          card.querySelector('.shop-buy-btn').addEventListener('click', () => {
-            this.storage.setActiveColor(cKey);
-            console.log(`[SHOP] Equipped Paint Theme: ${theme.name}`);
-            this.renderShopContent();
-          });
-        } else {
-          card.querySelector('.shop-buy-btn').addEventListener('click', () => {
-            if (this.storage.unlockColor(cKey, theme.cost)) {
-              console.log(`[SHOP] Unlocked Paint Theme: ${theme.name}`);
-              this.renderShopContent();
-            }
-          });
-        }
-
-        shopContainer.appendChild(card);
+  sortShopItems(items) {
+    if (this.shopSort === 'price-low') {
+      items.sort((a, b) => (a.cost || 0) - (b.cost || 0));
+    } else if (this.shopSort === 'price-high') {
+      items.sort((a, b) => (b.cost || 0) - (a.cost || 0));
+    } else if (this.shopSort === 'name') {
+      items.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      // Featured / Rarity Priority
+      const rarityRank = { 'Legendary': 4, 'Epic': 3, 'Rare': 2, 'Common': 1 };
+      items.sort((a, b) => {
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
+        return (rarityRank[b.rarity] || 0) - (rarityRank[a.rarity] || 0);
       });
     }
+  }
+
+  generateTankSvg(chassisKey, color = '#00b2e1', size = 110) {
+    const cfg = CONFIG.CHASSIS[chassisKey] || CONFIG.CHASSIS.basic;
+    const center = size / 2;
+    const scale = size / 100;
+    const bodyRadius = 20 * (cfg.radiusMultiplier || 1.0) * scale;
+    
+    // Facing upwards (-90 degrees) for classic Diep.io shop presentation
+    const baseAngle = -90;
+
+    let turretsSvg = '';
+    if (cfg.turrets && cfg.turrets.length > 0) {
+      cfg.turrets.forEach(t => {
+        const angle = baseAngle + (((t.angleOffset || 0) * 180) / Math.PI);
+        const tLen = (t.length || 48) * 0.82 * scale;
+        const tWidth = (t.width || 20) * 0.82 * scale;
+        const tFront = (t.frontWidth || t.width || 20) * 0.82 * scale;
+        const xOff = (t.xOffset || 0) * 0.82 * scale;
+        const yOff = (t.yOffset || 0) * 0.82 * scale;
+
+        const p1 = `${xOff},${yOff - tWidth / 2}`;
+        const p2 = `${xOff + tLen},${yOff - tFront / 2}`;
+        const p3 = `${xOff + tLen},${yOff + tFront / 2}`;
+        const p4 = `${xOff},${yOff + tWidth / 2}`;
+        turretsSvg += `<g transform="translate(${center}, ${center}) rotate(${angle})">
+          <polygon points="${p1} ${p2} ${p3} ${p4}" fill="#999999" stroke="#555555" stroke-width="2.5" stroke-linejoin="miter"/>
+        </g>`;
+      });
+    }
+
+    let armorSvg = '';
+    if (cfg.outerArmor) {
+      const sides = cfg.outerArmor.sides || 6;
+      const r = bodyRadius * (cfg.outerArmor.radiusMultiplier || 1.6);
+      const pts = [];
+      for (let i = 0; i < sides; i++) {
+        const a = (i * 2 * Math.PI) / sides;
+        pts.push(`${center + r * Math.cos(a)},${center + r * Math.sin(a)}`);
+      }
+      armorSvg = `<polygon points="${pts.join(' ')}" fill="${cfg.outerArmor.color || '#343444'}" stroke="${cfg.outerArmor.stroke || '#20202c'}" stroke-width="3.5" stroke-linejoin="miter"/>`;
+    }
+
+    let bodySvg = '';
+    const strokeColor = '#007a9e';
+    if (cfg.sides && cfg.sides > 0) {
+      const pts = [];
+      for (let i = 0; i < cfg.sides; i++) {
+        const a = (baseAngle * (Math.PI / 180)) + ((i * 2 * Math.PI) / cfg.sides);
+        pts.push(`${center + bodyRadius * Math.cos(a)},${center + bodyRadius * Math.sin(a)}`);
+      }
+      bodySvg = `<polygon points="${pts.join(' ')}" fill="${color}" stroke="${strokeColor}" stroke-width="3" stroke-linejoin="miter"/>`;
+    } else {
+      bodySvg = `<circle cx="${center}" cy="${center}" r="${bodyRadius}" fill="${color}" stroke="${strokeColor}" stroke-width="3"/>`;
+    }
+
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.3)); display: block; margin: auto;">
+      ${armorSvg}
+      ${turretsSvg}
+      ${bodySvg}
+    </svg>`;
+  }
+
+  generateCrewSvg(crewKey, size = 110) {
+    const center = size / 2;
+    const scale = size / 100;
+    let graphic = '';
+    if (crewKey === 'commander') {
+      graphic = `
+        <circle cx="${center}" cy="${center}" r="${32 * scale}" fill="#f59e0b" stroke="#b45309" stroke-width="3"/>
+        <polygon points="${center},${center - 20 * scale} ${center + 6 * scale},${center - 6 * scale} ${center + 21 * scale},${center - 5 * scale} ${center + 10 * scale},${center + 5 * scale} ${center + 14 * scale},${center + 20 * scale} ${center},${center + 11 * scale} ${center - 14 * scale},${center + 20 * scale} ${center - 10 * scale},${center + 5 * scale} ${center - 21 * scale},${center - 5 * scale} ${center - 6 * scale},${center - 6 * scale}" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+      `;
+    } else if (crewKey === 'gunner') {
+      graphic = `
+        <circle cx="${center}" cy="${center}" r="${32 * scale}" fill="#a855f7" stroke="#7e22ce" stroke-width="3"/>
+        <circle cx="${center}" cy="${center}" r="${18 * scale}" fill="none" stroke="#f3e8ff" stroke-width="2.5" stroke-dasharray="6,4"/>
+        <circle cx="${center}" cy="${center}" r="${6 * scale}" fill="#ef4444" stroke="#b91c1c" stroke-width="2"/>
+        <line x1="${center}" y1="${center - 24 * scale}" x2="${center}" y2="${center + 24 * scale}" stroke="#f3e8ff" stroke-width="2.5"/>
+        <line x1="${center - 24 * scale}" y1="${center}" x2="${center + 24 * scale}" y2="${center}" stroke="#f3e8ff" stroke-width="2.5"/>
+      `;
+    } else if (crewKey === 'driver') {
+      graphic = `
+        <circle cx="${center}" cy="${center}" r="${32 * scale}" fill="#3b82f6" stroke="#1d4ed8" stroke-width="3"/>
+        <polygon points="${center - 14 * scale},${center + 14 * scale} ${center},${center - 4 * scale} ${center + 14 * scale},${center + 14 * scale} ${center + 8 * scale},${center + 18 * scale} ${center},${center + 8 * scale} ${center - 8 * scale},${center + 18 * scale}" fill="#dbeafe" stroke="#1e40af" stroke-width="2"/>
+        <polygon points="${center - 14 * scale},${center} ${center},${center - 18 * scale} ${center + 14 * scale},${center} ${center + 8 * scale},${center + 4 * scale} ${center},${center - 6 * scale} ${center - 8 * scale},${center + 4 * scale}" fill="#ffffff" stroke="#1e40af" stroke-width="2"/>
+      `;
+    } else {
+      graphic = `
+        <circle cx="${center}" cy="${center}" r="${32 * scale}" fill="#10b981" stroke="#047857" stroke-width="3"/>
+        <rect x="${center - 14 * scale}" y="${center - 18 * scale}" width="${7 * scale}" height="${36 * scale}" rx="${3 * scale}" fill="#fef08a" stroke="#ca8a04" stroke-width="2"/>
+        <rect x="${center - 3.5 * scale}" y="${center - 18 * scale}" width="${7 * scale}" height="${36 * scale}" rx="${3 * scale}" fill="#fef08a" stroke="#ca8a04" stroke-width="2"/>
+        <rect x="${center + 7 * scale}" y="${center - 18 * scale}" width="${7 * scale}" height="${36 * scale}" rx="${3 * scale}" fill="#fef08a" stroke="#ca8a04" stroke-width="2"/>
+      `;
+    }
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3)); display: block; margin: auto;">${graphic}</svg>`;
+  }
+
+  renderTanksShop(container) {
+    const coins = this.storage.data.coins;
+    const unlocked = this.storage.data.unlockedChassis || ['basic'];
+    const playerPaintColor = (this.storage.data.activeColor === 'custom')
+      ? (this.storage.data.customColor || '#00b2e1')
+      : (CONFIG.COLOR_THEMES[this.storage.data.activeColor]?.color || '#00b2e1');
+
+    const tanks = [
+      { key: 'tesla', name: 'Tesla Surge', rarity: 'Legendary', cost: 500, reqLvl: 30, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
+      { key: 'smasher', name: 'Smasher', rarity: 'Epic', cost: 300, reqLvl: 30, desc: 'Heavy ramming chassis with spinning hexagonal armor.' },
+      { key: 'sniper', name: 'Sniper', rarity: 'Rare', cost: 250, reqLvl: 15, desc: 'High-velocity long barrel cannon with wide vision.' },
+      { key: 'machinegun', name: 'Machine Gun', rarity: 'Rare', cost: 220, reqLvl: 15, desc: 'Rapid spread-cone spray cannon with high fire-rate.' },
+      { key: 'twin', name: 'Twin', rarity: 'Common', cost: 200, reqLvl: 15, desc: 'Dual-barrel chassis with high cyclic rate-of-fire.' },
+      { key: 'flank', name: 'Flank Guard', rarity: 'Common', cost: 200, reqLvl: 15, desc: 'Front and rear guns providing omnidirectional defense.' },
+      { key: 'basic', name: 'Basic Tank', rarity: 'Common', cost: 0, reqLvl: 1, desc: 'Reliable all-around starter chassis with standard cannon.' }
+    ];
+
+    // Single Clean Grid (No Featured)
+    const allSection = document.createElement('div');
+    allSection.className = 'diep-shop-section';
+    allSection.innerHTML = `
+      <div class="diep-section-header">
+        <div class="diep-section-title">ALL TANKS</div>
+        <div class="diep-filter-sort-bar">
+          <div class="diep-rarity-filter-dots">
+            <button class="diep-filter-dot dot-all ${this.shopFilter === 'all' ? 'active' : ''}" data-rarity="all">ALL</button>
+            <button class="diep-filter-dot dot-common ${this.shopFilter === 'Common' ? 'active' : ''}" data-rarity="Common" title="Common"></button>
+            <button class="diep-filter-dot dot-rare ${this.shopFilter === 'Rare' ? 'active' : ''}" data-rarity="Rare" title="Rare"></button>
+            <button class="diep-filter-dot dot-epic ${this.shopFilter === 'Epic' ? 'active' : ''}" data-rarity="Epic" title="Epic"></button>
+            <button class="diep-filter-dot dot-legendary ${this.shopFilter === 'Legendary' ? 'active' : ''}" data-rarity="Legendary" title="Legendary"></button>
+          </div>
+          <select id="diep-shop-sort-select" class="diep-sort-select">
+            <option value="featured" ${this.shopSort === 'featured' ? 'selected' : ''}>Rarity Tier</option>
+            <option value="price-low" ${this.shopSort === 'price-low' ? 'selected' : ''}>Price: Low to High</option>
+            <option value="price-high" ${this.shopSort === 'price-high' ? 'selected' : ''}>Price: High to Low</option>
+            <option value="name" ${this.shopSort === 'name' ? 'selected' : ''}>Alphabetical</option>
+          </select>
+        </div>
+      </div>
+      <div class="diep-items-grid" id="all-tanks-grid"></div>
+    `;
+
+    allSection.querySelectorAll('.diep-filter-dot').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.shopFilter = btn.dataset.rarity;
+        this.renderShopContent();
+      });
+    });
+    const sortSelect = allSection.querySelector('#diep-shop-sort-select');
+    sortSelect.addEventListener('change', (e) => {
+      this.shopSort = e.target.value;
+      this.renderShopContent();
+    });
+
+    const allGrid = allSection.querySelector('#all-tanks-grid');
+    let displayTanks = [...tanks];
+    if (this.shopFilter !== 'all') {
+      displayTanks = displayTanks.filter(t => t.rarity === this.shopFilter);
+    }
+    this.sortShopItems(displayTanks);
+
+    displayTanks.forEach(tank => {
+      allGrid.appendChild(this.createTankCard(tank, coins, unlocked, playerPaintColor));
+    });
+    container.appendChild(allSection);
+  }
+
+  createTankCard(tank, coins, unlocked, playerPaintColor) {
+    const card = document.createElement('div');
+    const rarityClass = `rarity-${tank.rarity.toLowerCase()}`;
+    card.className = `diep-card ${rarityClass}`;
+
+    const isUnlocked = unlocked.includes(tank.key);
+    const canAfford = coins >= tank.cost;
+
+    card.innerHTML = `
+      <div class="diep-card-preview-stage">
+        ${this.generateTankSvg(tank.key, playerPaintColor, 105)}
+      </div>
+      <div class="diep-card-footer">
+        <div class="diep-card-details-row">
+          <span class="diep-card-title">${tank.name}</span>
+          <span class="diep-card-rarity-label">${tank.rarity}</span>
+        </div>
+        <div class="diep-card-subdesc">${tank.desc}</div>
+        ${isUnlocked
+          ? `<button class="diep-card-action-btn" style="background-color: #10b981; border-color: #059669; cursor: default;">✓ UNLOCKED</button>`
+          : `<button class="diep-card-action-btn ${canAfford ? '' : 'disabled'}" data-action="buy">
+              🪙 ${tank.cost.toLocaleString()}
+             </button>`
+        }
+      </div>
+    `;
+
+    const btn = card.querySelector('.diep-card-action-btn[data-action="buy"]');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if (!isUnlocked) {
+          if (canAfford) {
+            if (this.storage.unlockChassis(tank.key, tank.cost)) {
+              this.showToast(`UNLOCKED ${tank.name.toUpperCase()} FOR IN-GAME EVOLUTIONS!`);
+              this.renderShopContent();
+            }
+          } else {
+            this.showToast(`NEED ${(tank.cost - coins).toLocaleString()} MORE COINS`);
+          }
+        }
+      });
+    }
+
+    return card;
+  }
+
+  renderCrewShop(container) {
+    const coins = this.storage.data.coins;
+    const levels = this.storage.data.crewLevels || {};
+
+    const crewList = [
+      { key: 'commander', name: 'Commander', rarity: 'Legendary', baseCost: 300, desc: '+10% Bonus XP & Coin earnings per level' },
+      { key: 'gunner', name: 'Gunner', rarity: 'Epic', baseCost: 200, desc: '+5% Velocity, Damage & Penetration per level' },
+      { key: 'driver', name: 'Driver', rarity: 'Rare', baseCost: 150, desc: '+5% Top Movement Speed per level' },
+      { key: 'loader', name: 'Loader', rarity: 'Rare', baseCost: 150, desc: '-5% Weapon Reload & Cooling Time per level' }
+    ];
+
+    // Single Clean Grid (No Featured)
+    const allSection = document.createElement('div');
+    allSection.className = 'diep-shop-section';
+    allSection.innerHTML = `
+      <div class="diep-section-header">
+        <div class="diep-section-title">ALL CREW BARRACKS</div>
+        <div class="diep-filter-sort-bar">
+          <div class="diep-rarity-filter-dots">
+            <button class="diep-filter-dot dot-all ${this.shopFilter === 'all' ? 'active' : ''}" data-rarity="all">ALL</button>
+            <button class="diep-filter-dot dot-rare ${this.shopFilter === 'Rare' ? 'active' : ''}" data-rarity="Rare" title="Rare"></button>
+            <button class="diep-filter-dot dot-epic ${this.shopFilter === 'Epic' ? 'active' : ''}" data-rarity="Epic" title="Epic"></button>
+            <button class="diep-filter-dot dot-legendary ${this.shopFilter === 'Legendary' ? 'active' : ''}" data-rarity="Legendary" title="Legendary"></button>
+          </div>
+          <select id="diep-crew-sort-select" class="diep-sort-select">
+            <option value="featured" ${this.shopSort === 'featured' ? 'selected' : ''}>Rarity Tier</option>
+            <option value="price-low" ${this.shopSort === 'price-low' ? 'selected' : ''}>Cost: Low to High</option>
+            <option value="price-high" ${this.shopSort === 'price-high' ? 'selected' : ''}>Cost: High to Low</option>
+            <option value="name" ${this.shopSort === 'name' ? 'selected' : ''}>Alphabetical</option>
+          </select>
+        </div>
+      </div>
+      <div class="diep-items-grid" id="all-crew-grid"></div>
+    `;
+
+    allSection.querySelectorAll('.diep-filter-dot').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.shopFilter = btn.dataset.rarity;
+        this.renderShopContent();
+      });
+    });
+    const sortSelect = allSection.querySelector('#diep-crew-sort-select');
+    sortSelect.addEventListener('change', (e) => {
+      this.shopSort = e.target.value;
+      this.renderShopContent();
+    });
+
+    const allGrid = allSection.querySelector('#all-crew-grid');
+    let displayCrew = [...crewList];
+    if (this.shopFilter !== 'all') {
+      displayCrew = displayCrew.filter(c => c.rarity === this.shopFilter);
+    }
+    this.sortShopItems(displayCrew);
+
+    displayCrew.forEach(c => {
+      allGrid.appendChild(this.createCrewCard(c, coins, levels));
+    });
+    container.appendChild(allSection);
+  }
+
+  createCrewCard(crew, coins, levels) {
+    const card = document.createElement('div');
+    const rarityClass = `rarity-${crew.rarity.toLowerCase()}`;
+    card.className = `diep-card ${rarityClass}`;
+
+    const level = levels[crew.key] || 0;
+    const isMax = level >= 10;
+    const finalCost = Math.floor(crew.baseCost * Math.pow(CONFIG.CREW.costMultiplier || 1.35, level));
+    const canAfford = coins >= finalCost;
+
+    card.innerHTML = `
+      <div class="diep-card-preview-stage">
+        ${this.generateCrewSvg(crew.key, 105)}
+      </div>
+      <div class="diep-card-footer">
+        <div class="diep-card-details-row">
+          <span class="diep-card-title">${crew.name}</span>
+          <span class="diep-card-rarity-label">LVL ${level}/10</span>
+        </div>
+        <div class="diep-card-subdesc">${crew.desc}</div>
+        ${isMax
+          ? `<button class="diep-card-action-btn equipped">MAX LEVEL</button>`
+          : `<button class="diep-card-action-btn ${canAfford ? '' : 'disabled'}">
+              UPGRADE 🪙 ${finalCost.toLocaleString()}
+             </button>`
+        }
+      </div>
+    `;
+
+    const btn = card.querySelector('.diep-card-action-btn');
+    if (btn && !isMax) {
+      btn.addEventListener('click', () => {
+        if (canAfford) {
+          if (this.storage.upgradeCrew(crew.key, finalCost)) {
+            this.showToast(`UPGRADED ${crew.name.toUpperCase()} TO LEVEL ${level + 1}`);
+            this.renderShopContent();
+          }
+        } else {
+          this.showToast(`NEED ${(finalCost - coins).toLocaleString()} MORE COINS`);
+        }
+      });
+    }
+
+    return card;
+  }
+
+  renderColorsShop(container) {
+    const coins = this.storage.data.coins;
+    const unlockedColors = this.storage.data.unlockedColors || ['default'];
+    const activeColor = this.storage.data.activeColor || 'default';
+    const unlockedWheel = Boolean(this.storage.data.unlockedColorWheel);
+
+    const themes = Object.keys(CONFIG.COLOR_THEMES).map(key => {
+      const t = CONFIG.COLOR_THEMES[key];
+      return {
+        key,
+        name: t.name,
+        color: t.color,
+        stroke: t.stroke,
+        cost: t.cost,
+        rarity: t.rarity || 'Common',
+        desc: t.desc || 'Tank paint coating.'
+      };
+    });
+
+    // 1. CUSTOM RGB COLOR WHEEL CARD
+    const customSection = document.createElement('div');
+    customSection.className = 'diep-shop-section';
+    customSection.innerHTML = `
+      <div class="diep-section-header">
+        <div class="diep-section-title">CUSTOM RGB PALETTE WHEEL</div>
+      </div>
+      <div class="diep-card" style="padding: 14px; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 14px; border: 3px solid #f59e0b; background-color: #fefce8; background-image: linear-gradient(to right, rgba(245, 158, 11, 0.25) 1px, transparent 1px), linear-gradient(to bottom, rgba(245, 158, 11, 0.25) 1px, transparent 1px); background-size: 16px 16px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <input type="color" id="diep-rgb-picker" value="${this.storage.data.customColor || '#00b2e1'}" style="width: 54px; height: 54px; border: 2.5px solid #d97706; border-radius: 8px; cursor: pointer; background: transparent; padding: 2px;">
+          <div>
+            <div class="diep-card-title" style="font-size: 16px;">FULL SPECTRUM RGB WHEEL</div>
+            <div class="diep-card-subdesc" style="font-size: 12px;">Choose ANY custom hex color code for your tank!</div>
+          </div>
+        </div>
+        <div>
+          ${unlockedWheel
+            ? (activeColor === 'custom'
+                ? `<button class="diep-card-action-btn equipped" style="width: 140px;">EQUIPPED</button>`
+                : `<button class="diep-card-action-btn equip-ready" id="equip-wheel-btn" style="width: 140px;">EQUIP CUSTOM</button>`)
+            : `<button class="diep-card-action-btn ${coins >= 500 ? '' : 'disabled'}" id="buy-wheel-btn" style="width: 160px;">
+                UNLOCK 🪙 500
+               </button>`
+          }
+        </div>
+      </div>
+    `;
+
+    const picker = customSection.querySelector('#diep-rgb-picker');
+    if (picker) {
+      picker.addEventListener('input', (e) => {
+        this.storage.setCustomColor(e.target.value);
+        if (this.storage.data.activeColor === 'custom') {
+          if (this.onColorChangeCallback) this.onColorChangeCallback();
+          this.renderShopContent();
+        }
+      });
+    }
+    const equipWheelBtn = customSection.querySelector('#equip-wheel-btn');
+    if (equipWheelBtn) {
+      equipWheelBtn.addEventListener('click', () => {
+        this.storage.setActiveColor('custom');
+        if (this.onColorChangeCallback) this.onColorChangeCallback();
+        this.showToast("EQUIPPED CUSTOM RGB TANK COLOR");
+        this.renderShopContent();
+      });
+    }
+    const buyWheelBtn = customSection.querySelector('#buy-wheel-btn');
+    if (buyWheelBtn) {
+      buyWheelBtn.addEventListener('click', () => {
+        if (this.storage.unlockColorWheel(500)) {
+          if (this.onColorChangeCallback) this.onColorChangeCallback();
+          this.showToast("UNLOCKED CUSTOM RGB COLOR WHEEL!");
+          this.renderShopContent();
+        } else {
+          this.showToast("NEED MORE COINS FOR COLOR WHEEL");
+        }
+      });
+    }
+    container.appendChild(customSection);
+
+    // 2. ALL COLOR THEMES SECTION
+    const allSection = document.createElement('div');
+    allSection.className = 'diep-shop-section';
+    allSection.innerHTML = `
+      <div class="diep-section-header">
+        <div class="diep-section-title">ALL COLOR THEMES</div>
+        <div class="diep-filter-sort-bar">
+          <div class="diep-rarity-filter-dots">
+            <button class="diep-filter-dot dot-all ${this.shopFilter === 'all' ? 'active' : ''}" data-rarity="all">ALL</button>
+            <button class="diep-filter-dot dot-common ${this.shopFilter === 'Common' ? 'active' : ''}" data-rarity="Common" title="Common"></button>
+            <button class="diep-filter-dot dot-rare ${this.shopFilter === 'Rare' ? 'active' : ''}" data-rarity="Rare" title="Rare"></button>
+            <button class="diep-filter-dot dot-epic ${this.shopFilter === 'Epic' ? 'active' : ''}" data-rarity="Epic" title="Epic"></button>
+            <button class="diep-filter-dot dot-legendary ${this.shopFilter === 'Legendary' ? 'active' : ''}" data-rarity="Legendary" title="Legendary"></button>
+          </div>
+          <select id="diep-theme-sort-select" class="diep-sort-select">
+            <option value="featured" ${this.shopSort === 'featured' ? 'selected' : ''}>Rarity Tier</option>
+            <option value="price-low" ${this.shopSort === 'price-low' ? 'selected' : ''}>Price: Low to High</option>
+            <option value="price-high" ${this.shopSort === 'price-high' ? 'selected' : ''}>Price: High to Low</option>
+            <option value="name" ${this.shopSort === 'name' ? 'selected' : ''}>Alphabetical</option>
+          </select>
+        </div>
+      </div>
+      <div class="diep-items-grid" id="all-colors-grid"></div>
+    `;
+
+    allSection.querySelectorAll('.diep-filter-dot').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.shopFilter = btn.dataset.rarity;
+        this.renderShopContent();
+      });
+    });
+    const sortSelect = allSection.querySelector('#diep-theme-sort-select');
+    sortSelect.addEventListener('change', (e) => {
+      this.shopSort = e.target.value;
+      this.renderShopContent();
+    });
+
+    const allGrid = allSection.querySelector('#all-colors-grid');
+    let displayThemes = [...themes];
+    if (this.shopFilter !== 'all') {
+      displayThemes = displayThemes.filter(t => t.rarity === this.shopFilter);
+    }
+    this.sortShopItems(displayThemes);
+
+    displayThemes.forEach(t => {
+      allGrid.appendChild(this.createColorCard(t, coins, unlockedColors, activeColor));
+    });
+    container.appendChild(allSection);
+  }
+
+  createColorCard(theme, coins, unlockedColors, activeColor) {
+    const card = document.createElement('div');
+    card.className = 'diep-card';
+    
+    // Explicit theme color border and matching tinted graph grid
+    card.style.borderColor = theme.color;
+    card.style.borderWidth = '3px';
+    card.style.backgroundColor = '#f8fafc';
+    card.style.backgroundImage = `
+      linear-gradient(to right, ${theme.color}2e 1px, transparent 1px),
+      linear-gradient(to bottom, ${theme.color}2e 1px, transparent 1px)
+    `;
+    card.style.backgroundSize = '16px 16px';
+
+    const isUnlocked = unlockedColors.includes(theme.key);
+    const isActive = activeColor === theme.key;
+    const canAfford = coins >= theme.cost;
+
+    card.innerHTML = `
+      <div class="diep-card-preview-stage">
+        ${this.generateTankSvg('basic', theme.color, 105)}
+      </div>
+      <div class="diep-card-footer">
+        <div class="diep-card-details-row">
+          <span class="diep-card-title">${theme.name}</span>
+          <span class="diep-card-rarity-label" style="color: ${theme.color}; font-weight: 900;">${theme.rarity}</span>
+        </div>
+        <div class="diep-card-subdesc">${theme.desc}</div>
+        ${isUnlocked
+          ? (isActive
+              ? `<button class="diep-card-action-btn equipped">EQUIPPED</button>`
+              : `<button class="diep-card-action-btn equip-ready">EQUIP</button>`)
+          : `<button class="diep-card-action-btn ${canAfford ? '' : 'disabled'}">
+              🪙 ${theme.cost.toLocaleString()}
+             </button>`
+        }
+      </div>
+    `;
+
+    const btn = card.querySelector('.diep-card-action-btn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if (isUnlocked) {
+          if (!isActive) {
+            this.storage.setActiveColor(theme.key);
+            if (this.onColorChangeCallback) this.onColorChangeCallback();
+            this.showToast(`EQUIPPED ${theme.name.toUpperCase()} PAINT THEME`);
+            this.renderShopContent();
+          }
+        } else {
+          if (canAfford) {
+            if (this.storage.unlockColor(theme.key, theme.cost)) {
+              if (this.onColorChangeCallback) this.onColorChangeCallback();
+              this.showToast(`UNLOCKED ${theme.name.toUpperCase()} PAINT THEME!`);
+              this.renderShopContent();
+            }
+          } else {
+            this.showToast(`NEED ${(theme.cost - coins).toLocaleString()} MORE COINS`);
+          }
+        }
+      });
+    }
+
+    return card;
   }
 }

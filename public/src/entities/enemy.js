@@ -74,6 +74,35 @@ export class ResourceShape {
     this.deathDuration = 0.28;
     this.destroyed = false;
     this.flashTimer = 0;
+
+    // Egg evolution / maturation timer
+    this.age = 0;
+    const evoMin = (this.config && this.config.evolutionTimeMin) ? this.config.evolutionTimeMin : 45;
+    const evoMax = (this.config && this.config.evolutionTimeMax) ? this.config.evolutionTimeMax : 65;
+    this.evolutionDuration = evoMin + Math.random() * (evoMax - evoMin);
+    this.floatNudgeTimer = 1.2 + Math.random() * 2.0;
+  }
+
+  evolve(targetType, waveMgr = null) {
+    const targetCfg = CONFIG.SHAPES.types[targetType];
+    if (!targetCfg) return;
+
+    this.type = targetType;
+    this.config = targetCfg;
+    this.sides = targetCfg.sides;
+    this.baseRadius = targetCfg.radius;
+    this.radius = targetCfg.radius;
+    this.hp = targetCfg.hp;
+    this.maxHp = targetCfg.hp;
+    this.xp = targetCfg.xp;
+    this.ramDamage = targetCfg.ramDamage;
+    this.color = targetCfg.color;
+    this.stroke = targetCfg.stroke;
+    this.flashTimer = 0.28;
+
+    if (waveMgr && typeof waveMgr.spawnShatterParticles === 'function') {
+      waveMgr.spawnShatterParticles(this.x, this.y, targetCfg.color, 8);
+    }
   }
 
   kill() {
@@ -83,7 +112,7 @@ export class ResourceShape {
     this.deathTimer = 0;
   }
 
-  update(dt) {
+  update(dt, waveMgr = null) {
     const cfg = CONFIG.SHAPES.types[this.type];
     if (cfg) {
       this.config = cfg;
@@ -96,6 +125,26 @@ export class ResourceShape {
       this.stroke = cfg.stroke;
       this.ramDamage = cfg.ramDamage;
       this.xp = cfg.xp;
+    }
+
+    // Evolution check: eggs evolve into a square after a long time
+    if (!this.isDying && this.config && this.config.evolveInto) {
+      this.age += dt;
+      if (this.age >= this.evolutionDuration) {
+        this.evolve(this.config.evolveInto, waveMgr);
+      }
+    }
+
+    // Active drift nudge for fast-floating shapes like eggs
+    if (!this.isDying && this.config && this.config.minFloatSpeed && this.config.minFloatSpeed > 45) {
+      this.floatNudgeTimer -= dt;
+      if (this.floatNudgeTimer <= 0) {
+        this.floatNudgeTimer = 1.8 + Math.random() * 2.5;
+        const nudgeAngle = Math.random() * Math.PI * 2;
+        const nudgeSpeed = this.config.minFloatSpeed + Math.random() * (this.config.maxFloatSpeed - this.config.minFloatSpeed);
+        this.vx += Math.cos(nudgeAngle) * nudgeSpeed * 0.40;
+        this.vy += Math.sin(nudgeAngle) * nudgeSpeed * 0.40;
+      }
     }
 
     if (this.flashTimer > 0) {
@@ -121,7 +170,9 @@ export class ResourceShape {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    const damping = (CONFIG.SHAPES && CONFIG.SHAPES.floatDamping !== undefined) ? CONFIG.SHAPES.floatDamping : 0.95;
+    const damping = (this.config && this.config.floatDamping !== undefined)
+      ? this.config.floatDamping
+      : ((CONFIG.SHAPES && CONFIG.SHAPES.floatDamping !== undefined) ? CONFIG.SHAPES.floatDamping : 0.95);
     this.vx *= damping;
     this.vy *= damping;
 
@@ -462,7 +513,7 @@ export class EnemyCommunicationSystem {
     if (!allEnemies || allEnemies.length === 0) return;
 
     const isHeavy = deadUnit.archetypeKey === 'heavy';
-    const moraleHit = isHeavy ? 24 : 14;
+    const moraleHit = isHeavy ? 8 : 4;
 
     let livingCount = 0;
     let closestAlly = null;
@@ -484,7 +535,7 @@ export class EnemyCommunicationSystem {
     }
 
     if (livingCount === 1 && closestAlly) {
-      closestAlly.addMorale(-16);
+      closestAlly.addMorale(-5);
       closestAlly.decideDesperationState(1);
       return;
     }
@@ -622,11 +673,11 @@ export class EnemyUnit {
   }
 
   updateMoraleState() {
-    if (this.morale >= 70) {
+    if (this.morale >= 65) {
       this.moraleState = 'HIGH';
-    } else if (this.morale < 20) {
+    } else if (this.morale < 10) {
       this.moraleState = 'TERRIFIED';
-    } else if (this.morale < 40) {
+    } else if (this.morale < 25) {
       this.moraleState = 'LOW';
     } else {
       this.moraleState = 'NORMAL';
@@ -806,22 +857,27 @@ export class EnemyUnit {
     // Continuous Dynamic Morale Evaluation (Numbers, Lineup, Strategic Positioning & Condition)
     let moraleRate = 0;
 
+    // Passive combat resolve: steadily recovers towards baseline 65
+    if (this.morale < 65) {
+      moraleRate += 0.8;
+    }
+
     // Numbers influence
     if (livingAlliesTotal >= 5) {
-      moraleRate += 1.2; // Numerical superiority
+      moraleRate += 1.4; // Numerical superiority
     } else if (livingAlliesTotal >= 3) {
-      moraleRate += 0.5; // Good lineup numbers
+      moraleRate += 0.6; // Good lineup numbers
     } else if (livingAlliesTotal === 1) {
-      moraleRate -= 0.6; // Dwindling numbers
+      moraleRate -= 0.2; // Dwindling numbers (gentle reduction)
     } else if (livingAlliesTotal === 0) {
-      moraleRate -= 1.4; // Lone survivor despair
+      moraleRate -= 0.5; // Lone survivor despair (gentle reduction)
     }
 
     // Lineup strength influence
     if (hasLivingHeavy) {
-      moraleRate += 0.5; // Armored Hex vanguard anchor
+      moraleRate += 0.6; // Armored Hex vanguard anchor
     } else if (allEnemies.length > 2 && this.archetypeKey !== 'heavy') {
-      moraleRate -= 0.3; // Lost heavy vanguard
+      moraleRate -= 0.15; // Lost heavy vanguard
     }
 
     // Strategic positioning influence
@@ -832,10 +888,10 @@ export class EnemyUnit {
 
     if (isShieldedByHeavy) moraleRate += 0.8;
     if (isFlankingPlayer) moraleRate += 0.6;
-    if (isStranded) moraleRate -= 2.0; // Poor positioning / isolated
-    if (isExposedInKillzone) moraleRate -= 2.4; // Trapped directly down the barrel
-    if (isPlayerWounded) moraleRate += 1.0; // Blood in the water
-    if (isLowHealth) moraleRate -= 1.4; // Hull critical
+    if (isStranded) moraleRate -= 0.5; // Mild isolation penalty
+    if (isExposedInKillzone) moraleRate -= 0.6; // In player line of fire
+    if (isPlayerWounded) moraleRate += 1.2; // Blood in the water
+    if (isLowHealth) moraleRate -= 0.5; // Mild hull damage penalty
 
     this.addMorale(moraleRate * dt);
 
@@ -1374,7 +1430,7 @@ export class EnemyUnit {
   takeDamage(amount) {
     if (this.dead) return;
     this.hp -= amount;
-    this.addMorale(-3.5);
+    this.addMorale(-0.5); // Drastically reduced penalty per hit to preserve morale
     if (this.hp <= 0) {
       this.kill();
     }

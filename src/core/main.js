@@ -169,7 +169,9 @@ async function initGame() {
 
   setupInputs();
   populateAdminChassisSelect();
+  populateAdminShapeSelect();
   setupAdminPanelListeners();
+  uiMgr.onColorChangeCallback = () => applyCrewAndStatModifiers();
   uiMgr.showMainMenu();
   requestAnimationFrame(gameLoop);
 }
@@ -184,6 +186,23 @@ function populateAdminChassisSelect() {
     const opt = document.createElement('option');
     opt.value = key;
     opt.textContent = chassis.name.toUpperCase();
+    select.appendChild(opt);
+  });
+}
+
+function populateAdminShapeSelect() {
+  const select = document.getElementById('adm-shape-select');
+  if (!select) return;
+  select.innerHTML = '';
+
+  const shapeTypes = CONFIG.SHAPES && CONFIG.SHAPES.types ? Object.keys(CONFIG.SHAPES.types) : [];
+  shapeTypes.forEach(key => {
+    const shapeCfg = CONFIG.SHAPES.types[key];
+    const opt = document.createElement('option');
+    opt.value = key;
+    const shapeName = shapeCfg.name || (key.charAt(0).toUpperCase() + key.slice(1));
+    const sidesText = shapeCfg.sides === 0 ? 'CIRCLE' : `${shapeCfg.sides}-SIDED`;
+    opt.textContent = `${shapeName.toUpperCase()} (${sidesText})`;
     select.appendChild(opt);
   });
 }
@@ -768,6 +787,27 @@ function setupAdminPanelListeners() {
   document.getElementById('adm-debug-overlay').addEventListener('change', (e) => {
     state.debugMode = e.target.checked;
   });
+
+  const spawnShapeBtn = document.getElementById('adm-spawn-shape');
+  if (spawnShapeBtn) {
+    spawnShapeBtn.addEventListener('click', () => {
+      const select = document.getElementById('adm-shape-select');
+      const countInput = document.getElementById('adm-shape-count');
+      const shapeType = select ? select.value : 'square';
+      const count = Math.max(1, Math.min(50, parseInt(countInput ? countInput.value : 1, 10) || 1));
+      waveMgr.spawnShape(player, shapeType, count, true);
+      const shapeName = CONFIG.SHAPES.types[shapeType]?.name || shapeType.toUpperCase();
+      uiMgr.showToast(`ADMIN: SPAWNED ${count}x ${shapeName.toUpperCase()}`);
+    });
+  }
+
+  const clearShapesBtn = document.getElementById('adm-clear-shapes');
+  if (clearShapesBtn) {
+    clearShapesBtn.addEventListener('click', () => {
+      waveMgr.clearShapes();
+      uiMgr.showToast("ADMIN: ALL SHAPES CLEARED");
+    });
+  }
 }
 
 function updatePlayer(dt) {
