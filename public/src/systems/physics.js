@@ -1,4 +1,5 @@
 import { CONFIG } from '../core/config.js';
+import { EnemyCommunicationSystem } from '../entities/enemy.js';
 
 export class PhysicsSystem {
   static resolveCircleOverlap(a, b, pushRatioA = 0.5, pushRatioB = 0.5) {
@@ -106,6 +107,7 @@ export class PhysicsSystem {
 
         player.takeDamage(enemy.damage, activeChassisKey);
         enemy.takeDamage(playerRamDamage * pCol.enemyRamDamageMultiplier * dt);
+        EnemyCommunicationSystem.onPlayerDamaged(waveMgr.enemies, enemy, true);
 
         if (Math.random() < 0.35) {
           waveMgr.spawnShatterParticles(enemy.x - nx * enemy.radius * 0.5, enemy.y - ny * enemy.radius * 0.5, enemy.color, 3);
@@ -273,6 +275,7 @@ export class PhysicsSystem {
       if (pdx * pdx + pdy * pdy < pMinDist * pMinDist) {
         bullet.kill();
         player.takeDamage(bullet.damage, activeChassisKey);
+        EnemyCommunicationSystem.onPlayerDamaged(waveMgr.enemies, null, false);
         waveMgr.spawnShatterParticles(player.x, player.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
         continue;
       }

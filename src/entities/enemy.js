@@ -49,11 +49,23 @@ export class ResourceShape {
     this.color = this.config.color;
     this.stroke = this.config.stroke;
 
+    const shapesGlobalCfg = CONFIG.SHAPES || {};
+    const rotRange = (this.config && this.config.rotSpeedRange !== undefined)
+      ? this.config.rotSpeedRange
+      : (shapesGlobalCfg.rotSpeedRange !== undefined ? shapesGlobalCfg.rotSpeedRange : 1.2);
+
     this.angle = Math.random() * Math.PI * 2;
-    this.rotSpeed = (Math.random() - 0.5) * 1.2;
+    this.rotSpeed = (Math.random() - 0.5) * rotRange;
 
     const moveAngle = Math.random() * Math.PI * 2;
-    const speed = 8 + Math.random() * 15;
+    const minSpeed = (this.config && this.config.minFloatSpeed !== undefined)
+      ? this.config.minFloatSpeed
+      : (shapesGlobalCfg.minFloatSpeed !== undefined ? shapesGlobalCfg.minFloatSpeed : 8);
+    const maxSpeed = (this.config && this.config.maxFloatSpeed !== undefined)
+      ? this.config.maxFloatSpeed
+      : (shapesGlobalCfg.maxFloatSpeed !== undefined ? shapesGlobalCfg.maxFloatSpeed : 23);
+
+    const speed = minSpeed + Math.random() * Math.max(0, maxSpeed - minSpeed);
     this.vx = Math.cos(moveAngle) * speed;
     this.vy = Math.sin(moveAngle) * speed;
     this.dead = false;
@@ -109,8 +121,9 @@ export class ResourceShape {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    this.vx *= 0.95;
-    this.vy *= 0.95;
+    const damping = (CONFIG.SHAPES && CONFIG.SHAPES.floatDamping !== undefined) ? CONFIG.SHAPES.floatDamping : 0.95;
+    this.vx *= damping;
+    this.vy *= damping;
 
     this.angle += this.rotSpeed * dt;
   }
@@ -345,6 +358,15 @@ export const ENEMY_CHAT_CALLOUTS = {
     "Stay away from me!",
     "We never stood a chance!"
   ],
+  LAST_STAND: [
+    "I'm taking you down with me!",
+    "No surrender! Fight to the end!",
+    "I'll drag you with me!",
+    "To the bitter end!",
+    "You won't leave here alive either!",
+    "Last stand! All power to weapons!",
+    "Come and get me!"
+  ],
   FLANK: [
     "Flank them!",
     "Move it!",
@@ -462,9 +484,8 @@ export class EnemyCommunicationSystem {
     }
 
     if (livingCount === 1 && closestAlly) {
-      closestAlly.morale = Math.min(closestAlly.morale, 12);
-      closestAlly.updateMoraleState();
-      EnemyCommunicationSystem.tryBroadcast(closestAlly, 'TERRIFIED', true, 2.5);
+      closestAlly.addMorale(-16);
+      closestAlly.decideDesperationState(1);
       return;
     }
 
@@ -553,6 +574,46 @@ export class EnemyUnit {
     this.cautiousOrbitTimer = 1.5 + Math.random() * 2.0;
 
     this.barrelRecoilOffsets = (this.config.turrets || []).map(() => 0);
+
+    // Morale, Desperation & Retreat State
+    this.isRetreating = false;
+    this.isLastStand = false;
+    this.despawned = false;
+  }
+
+  decideDesperationState(remainingInWave = 99) {
+    if (this.isRetreating || this.isLastStand) return;
+
+    // Last stand can ONLY be triggered when there's only one or two enemies left in the wave!
+    if (remainingInWave <= 2) {
+      // With only 1 or 2 enemies left in the wave, decide between Last Stand or Retreat
+      const retreatChance = (this.archetypeKey === 'heavy') ? 0.08
+                          : (this.archetypeKey === 'chaser') ? 0.20
+                          : 0.25;
+
+      if (Math.random() < retreatChance) {
+        this.isRetreating = true;
+        this.isLastStand = false;
+        EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED', true, 2.2);
+      } else {
+        this.isLastStand = true;
+        this.isRetreating = false;
+        EnemyCommunicationSystem.tryBroadcast(this, 'LAST_STAND', true, 2.4);
+      }
+    } else {
+      // More than 2 enemies in wave: Last stand is NEVER triggered
+      // Enemies retreat less: only rare retreat when morale is critically low (< 15)
+      if (this.morale < 15) {
+        const retreatChance = (this.archetypeKey === 'heavy') ? 0.03
+                            : (this.archetypeKey === 'chaser') ? 0.12
+                            : 0.15;
+        if (Math.random() < retreatChance) {
+          this.isRetreating = true;
+          this.isLastStand = false;
+          EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED', true, 2.2);
+        }
+      }
+    }
   }
 
   addMorale(delta) {
@@ -579,6 +640,13 @@ export class EnemyUnit {
     this.chatCooldown = 4.5 + Math.random() * 3.5;
   }
 
+  despawn() {
+    if (this.dead || this.destroyed) return;
+    this.dead = true;
+    this.destroyed = true;
+    this.despawned = true;
+  }
+
   kill() {
     if (this.dead) return;
     this.dead = true;
@@ -589,7 +657,7 @@ export class EnemyUnit {
     }
   }
 
-  update(dt, player, enemyBullets, playerMoveSpeedStat = 0, allEnemies = [], playerProjectiles = []) {
+  update(dt, player, enemyBullets, playerMoveSpeedStat = 0, allEnemies = [], playerProjectiles = [], remainingWaveEnemies = null) {
     this.allEnemiesRef = allEnemies;
 
     if (this.chatCooldown > 0) {
@@ -744,9 +812,9 @@ export class EnemyUnit {
     } else if (livingAlliesTotal >= 3) {
       moraleRate += 0.5; // Good lineup numbers
     } else if (livingAlliesTotal === 1) {
-      moraleRate -= 1.0; // Dwindling numbers
+      moraleRate -= 0.6; // Dwindling numbers
     } else if (livingAlliesTotal === 0) {
-      moraleRate -= 3.2; // Lone survivor despair
+      moraleRate -= 1.4; // Lone survivor despair
     }
 
     // Lineup strength influence
@@ -775,14 +843,30 @@ export class EnemyUnit {
     this.moraleCommentCooldown -= dt;
     if (this.moraleCommentCooldown <= 0) {
       this.moraleCommentCooldown = 2.5 + Math.random() * 3.5;
-      if (this.moraleState === 'HIGH') {
+      if (this.isLastStand) {
+        EnemyCommunicationSystem.tryBroadcast(this, 'LAST_STAND');
+      } else if (this.isRetreating || this.moraleState === 'TERRIFIED') {
+        EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
+      } else if (this.moraleState === 'HIGH') {
         const cat = Math.random() < 0.65 ? 'TAUNT' : 'CHEER';
         EnemyCommunicationSystem.tryBroadcast(this, cat);
       } else if (this.moraleState === 'LOW') {
         const cat = Math.random() < 0.60 ? 'ORDER_BACK_UP' : 'JEER';
         EnemyCommunicationSystem.tryBroadcast(this, cat);
-      } else if (this.moraleState === 'TERRIFIED') {
-        EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
+      }
+    }
+
+    // Desperation Check:
+    // Last stand can ONLY be triggered when there's only one or two enemies left in the wave, not when morale is down.
+    const remainingEnemiesTotal = (remainingWaveEnemies !== null && remainingWaveEnemies !== undefined)
+      ? remainingWaveEnemies
+      : (livingAlliesTotal + 1);
+
+    if (!this.isRetreating && !this.isLastStand) {
+      if (remainingEnemiesTotal <= 2) {
+        this.decideDesperationState(remainingEnemiesTotal);
+      } else if (this.moraleState === 'TERRIFIED' && this.morale < 15) {
+        this.decideDesperationState(remainingEnemiesTotal);
       }
     }
 
@@ -790,12 +874,19 @@ export class EnemyUnit {
       // SWARMER: Nose-pointing forward movement with dynamic squad tactics, blind-spot exploitation & morale adaptation
       const aiCfg = this.config.ai || {};
 
-      if (this.moraleState === 'TERRIFIED') {
-        // TERRIFIED: Complete panic! Flees directly away from the player
-        targetWaypointX = this.x - (dx / dist) * 450;
-        targetWaypointY = this.y - (dy / dist) * 450;
-        if (Math.random() < 0.10) {
+      if (this.isRetreating) {
+        // RETREATING: Flees directly away from the player
+        targetWaypointX = this.x - (dx / dist) * 500;
+        targetWaypointY = this.y - (dy / dist) * 500;
+        if (Math.random() < 0.08) {
           EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
+        }
+      } else if (this.isLastStand) {
+        // LAST STAND: Reckless suicidal charge straight at the player!
+        targetWaypointX = player.x + pVx * 0.35;
+        targetWaypointY = player.y + pVy * 0.35;
+        if (Math.random() < 0.09) {
+          EnemyCommunicationSystem.tryBroadcast(this, 'LAST_STAND');
         }
       } else if (this.moraleState === 'LOW') {
         // CAUTIOUS: Less engaging, hangs back at safe standoff buffer, avoids rushing into fire
@@ -889,12 +980,26 @@ export class EnemyUnit {
       const aiCfg = this.config.ai || {};
       let kitingDist = aiCfg.kitingDistance || 350;
 
-      if (this.moraleState === 'TERRIFIED') {
-        // TERRIFIED: Flees directly away from player in sheer panic!
+      if (this.isRetreating) {
+        // RETREATING: Flees directly away from player
         dirX = -dx / dist;
         dirY = -dy / dist;
-        if (Math.random() < 0.12) {
+        if (Math.random() < 0.08) {
           EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
+        }
+      } else if (this.isLastStand) {
+        // LAST STAND: Closes in aggressively to 190px point-blank range with relentless fire!
+        if (dist > 190) {
+          dirX = dx / dist;
+          dirY = dy / dist;
+        } else {
+          const tangentX = -Math.sin(directAngle) * this.orbitDir;
+          const tangentY = Math.cos(directAngle) * this.orbitDir;
+          dirX = tangentX;
+          dirY = tangentY;
+        }
+        if (Math.random() < 0.09) {
+          EnemyCommunicationSystem.tryBroadcast(this, 'LAST_STAND');
         }
       } else if (this.moraleState === 'LOW') {
         // CAUTIOUS: Less engaging, backs up significantly (480px standoff)
@@ -984,7 +1089,7 @@ export class EnemyUnit {
             this.orbitTimer = 2.0 + Math.random() * 2.5;
           }
 
-          const orbitSpeed = (this.moraleState === 'HIGH') ? (aiCfg.orbitSpeed || 0.85) * 1.25 : (aiCfg.orbitSpeed || 0.85);
+          const orbitSpeed = aiCfg.orbitSpeed || 0.85;
           const tangentX = -Math.sin(directAngle + assignedAngleOffset) * this.orbitDir * orbitSpeed;
           const tangentY = Math.cos(directAngle + assignedAngleOffset) * this.orbitDir * orbitSpeed;
 
@@ -997,12 +1102,19 @@ export class EnemyUnit {
       }
     } else if (this.archetypeKey === 'heavy') {
       // HEAVY: Vanguard tank collapsing player's perimeter with smart charge & morale effects
-      if (this.moraleState === 'TERRIFIED') {
-        // TERRIFIED: Backs away from player in alarm
+      if (this.isRetreating) {
+        // RETREATING: Backs away from player
         dirX = -dx / dist;
         dirY = -dy / dist;
         if (Math.random() < 0.08) {
           EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
+        }
+      } else if (this.isLastStand) {
+        // LAST STAND: Rampage charging straight into the player!
+        dirX = dx / dist;
+        dirY = dy / dist;
+        if (Math.random() < 0.09) {
+          EnemyCommunicationSystem.tryBroadcast(this, 'LAST_STAND');
         }
       } else if (this.moraleState === 'LOW') {
         // CAUTIOUS: Advances slowly, shielding allies, holding boost in reserve
@@ -1013,11 +1125,10 @@ export class EnemyUnit {
         dirY = dy / dist;
 
         if (this.config.boostAbility) {
-          const boostChargeRate = (this.moraleState === 'HIGH') ? 1.30 : 1.0;
-          this.boostTimer += dt * boostChargeRate;
+          this.boostTimer += dt;
           const aiCfg = this.config.ai || {};
           const minBoostDist = aiCfg.boostMinDistance || 160;
-          const maxBoostDist = (this.moraleState === 'HIGH') ? 550 : (aiCfg.boostMaxDistance || 500);
+          const maxBoostDist = aiCfg.boostMaxDistance || 500;
           const angleDiff = Math.abs(Math.atan2(Math.sin(this.angle - directAngle), Math.cos(this.angle - directAngle)));
 
           const boostReady = this.boostTimer >= this.config.boostAbility.cooldown;
@@ -1030,7 +1141,7 @@ export class EnemyUnit {
             const force = this.config.boostAbility.force;
             this.vx += Math.cos(this.angle) * force;
             this.vy += Math.sin(this.angle) * force;
-            EnemyCommunicationSystem.tryBroadcast(this, (this.moraleState === 'HIGH') ? 'TAUNT' : 'HEX_CHARGE', true);
+            EnemyCommunicationSystem.tryBroadcast(this, (this.isLastStand ? 'LAST_STAND' : (this.moraleState === 'HIGH' ? 'TAUNT' : 'HEX_CHARGE')), true);
           }
         }
 
@@ -1209,15 +1320,6 @@ export class EnemyUnit {
       accel *= speedBonusFactor;
     }
 
-    // Dynamic Morale Speed Scaling
-    if (this.moraleState === 'HIGH') {
-      accel *= 1.20; // Aggressive, confident push
-    } else if (this.moraleState === 'LOW') {
-      accel *= 0.88; // Hesitant, cautious movements
-    } else if (this.moraleState === 'TERRIFIED') {
-      accel *= (dist < 320 ? 1.25 : 1.05); // Panicked escape sprint
-    }
-
     const drag = this.config.drag || 4.0;
 
     // Standard directional acceleration without boosts (vanilla movement)
@@ -1236,17 +1338,7 @@ export class EnemyUnit {
     // 5. WEAPON DISCHARGE
     if (this.archetypeKey === 'ranged' && this.config.weapon) {
       const wCfg = this.config.weapon;
-
-      // Morale influences fire readiness
-      let fireRateMultiplier = 1.0;
-      if (this.moraleState === 'HIGH') {
-        fireRateMultiplier = 1.25; // Eager, aggressive shooting
-      } else if (this.moraleState === 'LOW') {
-        fireRateMultiplier = 0.80; // Hesitant shooting
-      } else if (this.moraleState === 'TERRIFIED') {
-        fireRateMultiplier = 0.60; // Wild panic shooting
-      }
-      this.fireTimer += dt * fireRateMultiplier;
+      this.fireTimer += dt;
       
       const fireRateSec = wCfg.fireRateSec || 2.0;
       if (this.fireTimer >= fireRateSec) {
@@ -1375,7 +1467,7 @@ export class EnemyUnit {
     const bubbleX = this.x;
     let jitterX = 0;
     let jitterY = 0;
-    if (this.moraleState === 'TERRIFIED') {
+    if (this.moraleState === 'TERRIFIED' || this.isRetreating || this.isLastStand) {
       jitterX = Math.sin(performance.now() * 0.045) * 1.8;
       jitterY = Math.cos(performance.now() * 0.035) * 1.0;
     }

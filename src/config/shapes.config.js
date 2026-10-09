@@ -8,6 +8,11 @@ export const SHAPES_CONFIG = {
   minSpawnDist: 400,
   maxSpawnDist: 850,
   despawnRadius: 1400,
+  // Floating drift & rotation speed configurations
+  minFloatSpeed: 30,      // Minimum initial floating drift velocity
+  maxFloatSpeed: 42,     // Maximum initial floating drift velocity
+  rotSpeedRange: 2,    // Rotation speed range: spins between -(rotSpeedRange/2) and +(rotSpeedRange/2) rad/sec
+  floatDamping: 0.95,    // Damping factor per frame for drift inertia
   types: {
     square: {
       sides: 4,

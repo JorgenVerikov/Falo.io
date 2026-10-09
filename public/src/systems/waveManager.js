@@ -108,8 +108,23 @@ export class WaveManager {
 
     const playerProjectiles = (playerWeapon && playerWeapon.projectiles) ? playerWeapon.projectiles : [];
     for (const s of this.shapes) s.update(dt);
-    for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerStats.moveSpeed || 0, this.enemies, playerProjectiles);
+    const totalRemainingEnemies = this.getRemainingEnemyCount();
+    for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerStats.moveSpeed || 0, this.enemies, playerProjectiles, totalRemainingEnemies);
     for (const b of this.enemyBullets) b.update(dt);
+
+    // Despawn retreating enemies when they reach or exceed distance threshold from the player so wave does not get stuck
+    const retreatThreshold = (CONFIG.WAVE && CONFIG.WAVE.retreatDespawnThreshold) ? CONFIG.WAVE.retreatDespawnThreshold : 1200;
+    const retreatThresholdSq = retreatThreshold * retreatThreshold;
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      if (!e.dead && !e.destroyed && e.isRetreating) {
+        const edx = e.x - player.x;
+        const edy = e.y - player.y;
+        if (edx * edx + edy * edy >= retreatThresholdSq) {
+          e.despawn();
+        }
+      }
+    }
 
     // High performance in-place compaction for particles
     let pWrite = 0;
@@ -125,6 +140,12 @@ export class WaveManager {
     PhysicsSystem.resolvePhysicalCollisions(this, dt, player, playerWeapon, activeChassisKey, playerStats);
 
     this.compactDestroyedEntities();
+
+    // Immediate check if wave cleared after despawns and collisions
+    if (!this.isBreak && this.graceTimer <= 0 && this.enemyQueue.length === 0 && this.enemies.filter(e => !e.dead).length === 0) {
+      this.isBreak = true;
+      this.breakTimer = CONFIG.WAVE.breakDuration;
+    }
   }
 
   compactDestroyedEntities() {

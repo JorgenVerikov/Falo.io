@@ -24,7 +24,8 @@ export const WAVE_CONFIG = {
   growthFactor: 1.25,
   spawnInterval: 1.1,
   graceDuration: 20,    // 20 seconds grace period
-  graceInterval: 5      // Grace period occurs every 5 waves (Wave 1, 5, 10, 15, etc.)
+  graceInterval: 5,     // Grace period occurs every 5 waves (Wave 1, 5, 10, 15, etc.)
+  retreatDespawnThreshold: 1200 // Distance from player where retreating enemies despawn so wave doesn't get stuck
 };
 
 export const VFX_CONFIG = {

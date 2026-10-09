@@ -8,6 +8,11 @@ export const SHAPES_CONFIG = {
   minSpawnDist: 400,
   maxSpawnDist: 850,
   despawnRadius: 1400,
+  // Floating drift & rotation speed configurations
+  minFloatSpeed: 8,      // Minimum initial floating drift velocity
+  maxFloatSpeed: 23,     // Maximum initial floating drift velocity
+  rotSpeedRange: 1.2,    // Rotation speed range: spins between -(rotSpeedRange/2) and +(rotSpeedRange/2) rad/sec
+  floatDamping: 0.95,    // Damping factor per frame for drift inertia
   types: {
     square: {
       sides: 4,
@@ -52,6 +57,17 @@ export const SHAPES_CONFIG = {
       spawnWeight: 0.005,
       color: '#35c5db',
       stroke: '#2894a4'
+    },
+    heptagon: {
+      sides: 7,
+      radius: 55,
+      hp: 2000,
+      xp: 2000,
+      ramDamage: 30,
+      weight: 18.0,
+      spawnWeight: 0.0025,
+      color: '#DE78AE',
+      stroke: '#D24795'
     }
   }
 };
