@@ -3,6 +3,9 @@ import { CONFIG } from './config.js';
 export class CanvasManager {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
+    if (this.canvas) {
+      this.canvas.classList.remove('hidden');
+    }
     this.ctx = this.canvas.getContext('2d');
     this.dpr = window.devicePixelRatio || 1;
     

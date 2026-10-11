@@ -65,6 +65,8 @@ export class UIManager {
     this.armoryModal = document.getElementById('armory-modal');
     this.settingsModal = document.getElementById('settings-modal');
     this.adminModal = document.getElementById('admin-panel-modal');
+    this.adminPassModal = document.getElementById('admin-pass-modal');
+    this.adminUserDataModal = document.getElementById('admin-user-data-modal');
 
     this.playerNameInput = document.getElementById('player-name-input');
 
@@ -72,6 +74,7 @@ export class UIManager {
     this.shopSort = 'featured';
 
     this.bindEvents();
+    this.initAdminMenuUI();
   }
 
   initAuthUI() {
@@ -110,7 +113,9 @@ export class UIManager {
     this.authLogoutBtn?.addEventListener('click', async () => {
       try {
         await signOut();
-        this.showToast('LOGGED OUT. RETURNED TO GUEST PROFILE.');
+        await this.storage.handleLogout();
+        this.refreshAllUIFromStorage();
+        this.showToast('LOGGED OUT. RESTORED GUEST PROFILE.');
       } catch (err) {
         this.showToast(`LOGOUT ERROR: ${err.message}`);
       }
@@ -121,18 +126,21 @@ export class UIManager {
       if (session?.user) {
         this.updateAuthStatusDisplay(session.user.email);
         await this.storage.loadSaveData();
-        this.applySettings();
+        this.refreshAllUIFromStorage();
       } else {
-        this.updateAuthStatusDisplay(null);
+        await this.storage.handleLogout();
+        this.refreshAllUIFromStorage();
       }
     });
 
-    getUser().then(user => {
+    getUser().then(async user => {
       if (user) {
         this.updateAuthStatusDisplay(user.email);
-        this.storage.loadSaveData().then(() => this.applySettings());
+        await this.storage.loadSaveData();
+        this.refreshAllUIFromStorage();
       } else {
-        this.updateAuthStatusDisplay(null);
+        await this.storage.handleLogout();
+        this.refreshAllUIFromStorage();
       }
     });
   }
@@ -184,6 +192,32 @@ export class UIManager {
       this.authStatusLabel.textContent = 'PROFILE: GUEST MODE';
       this.authOpenBtn.classList.remove('hidden');
       this.authLogoutBtn.classList.add('hidden');
+    }
+  }
+
+  refreshAllUIFromStorage() {
+    this.applySettings();
+    if (this.playerNameInput) {
+      this.playerNameInput.value = this.storage.data.playerName || 'Player';
+    }
+    const hudPlayerName = document.getElementById('player-name-display');
+    if (hudPlayerName) {
+      hudPlayerName.textContent = this.storage.data.playerName || 'Tank';
+    }
+    const coinsEl = document.getElementById('armory-coins-display');
+    if (coinsEl) {
+      coinsEl.textContent = (this.storage.data.coins || 0).toLocaleString();
+    }
+    if (this.armoryModal && !this.armoryModal.classList.contains('hidden')) {
+      this.renderShopContent();
+    }
+    const userEmail = this.storage.currentUser ? this.storage.currentUser.email : null;
+    this.updateAuthStatusDisplay(userEmail);
+    if (this.onChassisSelect && this.storage.data.activeChassis) {
+      this.onChassisSelect(this.storage.data.activeChassis);
+    }
+    if (this.onColorChangeCallback) {
+      this.onColorChangeCallback();
     }
   }
 
@@ -372,6 +406,58 @@ export class UIManager {
       this.hideSettings();
     });
 
+    // Settings Navigation Tabs
+    const settingsTabs = [
+      { btnId: 'tab-settings-display-btn', paneId: 'settings-tab-display' },
+      { btnId: 'tab-settings-controls-btn', paneId: 'settings-tab-controls' },
+      { btnId: 'tab-settings-admin-btn', paneId: 'settings-tab-admin' }
+    ];
+
+    settingsTabs.forEach(({ btnId, paneId }) => {
+      const btn = document.getElementById(btnId);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          settingsTabs.forEach(t => {
+            document.getElementById(t.btnId)?.classList.remove('active');
+            document.getElementById(t.paneId)?.classList.add('hidden');
+          });
+          btn.classList.add('active');
+          document.getElementById(paneId)?.classList.remove('hidden');
+        });
+      }
+    });
+
+    // Theme Selection Cards
+    const selectTheme = (themeName) => {
+      const currentScale = parseFloat(this.storage.data.settings?.uiScale || 1.0);
+      this.storage.saveSettings(themeName, currentScale);
+      this.applySettings();
+      this.showToast(`THEME APPLIED: ${themeName === 'light' ? 'CLASSIC LIGHT' : 'DARK SLATE'}`);
+    };
+
+    document.getElementById('select-theme-light-btn')?.addEventListener('click', () => selectTheme('light'));
+    document.getElementById('theme-card-light')?.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'BUTTON') selectTheme('light');
+    });
+
+    document.getElementById('select-theme-dark-btn')?.addEventListener('click', () => selectTheme('dark'));
+    document.getElementById('theme-card-dark')?.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'BUTTON') selectTheme('dark');
+    });
+
+    // Scale Chips
+    document.querySelectorAll('.scale-chip-btn').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        const scaleVal = parseFloat(e.currentTarget.getAttribute('data-scale'));
+        if (!isNaN(scaleVal)) {
+          const currentTheme = this.storage.data.settings?.theme || 'light';
+          this.storage.saveSettings(currentTheme, scaleVal);
+          this.applySettings();
+          this.showToast(`UI SCALE SET TO ${Math.round(scaleVal * 100)}%`);
+        }
+      });
+    });
+
     if (this.playerNameInput) {
       this.playerNameInput.addEventListener('input', (e) => {
         this.storage.setPlayerName(e.target.value);
@@ -385,13 +471,13 @@ export class UIManager {
       });
     }
 
-    document.getElementById('theme-select').addEventListener('change', (e) => {
-      this.storage.saveSettings(e.target.value, parseFloat(document.getElementById('ui-scale-select').value));
+    document.getElementById('theme-select')?.addEventListener('change', (e) => {
+      this.storage.saveSettings(e.target.value, parseFloat(document.getElementById('ui-scale-select')?.value || 1.0));
       this.applySettings();
     });
 
-    document.getElementById('ui-scale-select').addEventListener('change', (e) => {
-      this.storage.saveSettings(document.getElementById('theme-select').value, parseFloat(e.target.value));
+    document.getElementById('ui-scale-select')?.addEventListener('change', (e) => {
+      this.storage.saveSettings(document.getElementById('theme-select')?.value || 'light', parseFloat(e.target.value));
       this.applySettings();
     });
 
@@ -427,12 +513,57 @@ export class UIManager {
       document.body.classList.remove('theme-light');
     }
 
+    // Sync Settings Window Theme Cards
+    const lightCard = document.getElementById('theme-card-light');
+    const darkCard = document.getElementById('theme-card-dark');
+    const lightBtn = document.getElementById('select-theme-light-btn');
+    const darkBtn = document.getElementById('select-theme-dark-btn');
+
+    if (theme === 'light') {
+      lightCard?.classList.add('active');
+      darkCard?.classList.remove('active');
+      if (lightBtn) {
+        lightBtn.textContent = 'EQUIPPED';
+        lightBtn.className = 'diep-card-action-btn equipped';
+      }
+      if (darkBtn) {
+        darkBtn.textContent = 'EQUIP';
+        darkBtn.className = 'diep-card-action-btn equip-ready';
+      }
+    } else {
+      darkCard?.classList.add('active');
+      lightCard?.classList.remove('active');
+      if (darkBtn) {
+        darkBtn.textContent = 'EQUIPPED';
+        darkBtn.className = 'diep-card-action-btn equipped';
+      }
+      if (lightBtn) {
+        lightBtn.textContent = 'EQUIP';
+        lightBtn.className = 'diep-card-action-btn equip-ready';
+      }
+    }
+
+    // Sync Scale Chips
+    const numScale = parseFloat(scale) || 1.0;
+    const scaleBadge = document.getElementById('current-scale-badge');
+    if (scaleBadge) {
+      scaleBadge.textContent = `${Math.round(numScale * 100)}% (${numScale === 1.0 ? 'Default' : numScale < 1.0 ? 'Compact' : 'Large'})`;
+    }
+
+    document.querySelectorAll('.scale-chip-btn').forEach(chip => {
+      const chipVal = parseFloat(chip.getAttribute('data-scale'));
+      if (Math.abs(chipVal - numScale) < 0.05) {
+        chip.classList.add('active');
+      } else {
+        chip.classList.remove('active');
+      }
+    });
+
     const themeSelect = document.getElementById('theme-select');
     if (themeSelect) themeSelect.value = theme;
 
     const scaleSelect = document.getElementById('ui-scale-select');
     if (scaleSelect) {
-      const numScale = parseFloat(scale) || 1.0;
       let matched = false;
       for (let i = 0; i < scaleSelect.options.length; i++) {
         if (Math.abs(parseFloat(scaleSelect.options[i].value) - numScale) < 0.05) {
@@ -513,29 +644,66 @@ export class UIManager {
     this.mainMenuModal.classList.add('hidden');
   }
 
+  openModal(modal) {
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    void modal.offsetWidth; // Force reflow to trigger smooth transition
+    modal.classList.add('active');
+  }
+
+  closeModal(modal, callback) {
+    if (!modal) return;
+    modal.classList.remove('active');
+    setTimeout(() => {
+      if (!modal.classList.contains('active')) {
+        modal.classList.add('hidden');
+        if (callback) callback();
+      }
+    }, 240);
+  }
+
   showSettings() {
     this.applySettings();
-    this.settingsModal.classList.remove('hidden');
+    this.openModal(this.settingsModal);
   }
 
   hideSettings() {
-    this.settingsModal.classList.add('hidden');
+    this.closeModal(this.settingsModal);
   }
 
-  toggleAdminPanel() {
-    if (this.adminModal.classList.contains('hidden')) {
-      this.showAdminPanel();
+  toggleAdminPanel(initialTab = 'battle') {
+    if (!this.adminModal.classList.contains('active') && this.adminModal.classList.contains('hidden')) {
+      this.showAdminPanel(initialTab);
     } else {
       this.hideAdminPanel();
     }
   }
 
-  showAdminPanel() {
-    this.adminModal.classList.remove('hidden');
+  showAdminPanel(tab = 'battle') {
+    this.populateAdminUserDataForm();
+    this.switchAdminTab(tab);
+    this.openModal(this.adminModal);
   }
 
   hideAdminPanel() {
-    this.adminModal.classList.add('hidden');
+    this.closeModal(this.adminModal);
+  }
+
+  switchAdminTab(tabKey) {
+    const tabs = [
+      { key: 'userdata', btnId: 'tab-adm-userdata-btn', paneId: 'adm-tab-pane-userdata' },
+      { key: 'crew', btnId: 'tab-adm-crew-btn', paneId: 'adm-tab-pane-crew' },
+      { key: 'battle', btnId: 'tab-adm-battle-btn', paneId: 'adm-tab-pane-battle' },
+      { key: 'telemetry', btnId: 'tab-adm-telemetry-btn', paneId: 'adm-tab-pane-telemetry' }
+    ];
+
+    tabs.forEach(t => {
+      const btn = document.getElementById(t.btnId);
+      const pane = document.getElementById(t.paneId);
+      const isActive = t.key === tabKey;
+      if (btn) btn.classList.toggle('active', isActive);
+      if (pane) pane.classList.toggle('hidden', !isActive);
+    });
   }
 
   showToast(message) {
@@ -835,18 +1003,11 @@ export class UIManager {
 
   showArmory() {
     this.renderShopContent();
-    this.armoryModal.classList.remove('hidden');
-    void this.armoryModal.offsetWidth;
-    this.armoryModal.classList.add('active');
+    this.openModal(this.armoryModal);
   }
 
   hideArmory() {
-    this.armoryModal.classList.remove('active');
-    setTimeout(() => {
-      if (!this.armoryModal.classList.contains('active')) {
-        this.armoryModal.classList.add('hidden');
-      }
-    }, 280);
+    this.closeModal(this.armoryModal);
   }
 
   renderShopContent() {
@@ -1478,5 +1639,423 @@ export class UIManager {
     }
 
     return card;
+  }
+
+  // --- Admin Menu & User Data Modifier UI ---
+
+  initAdminMenuUI() {
+    this.adminSecretPass = '180807';
+
+    const openAdminBtn = document.getElementById('open-admin-btn');
+    const passModal = document.getElementById('admin-pass-modal');
+    const passInput = document.getElementById('admin-pass-input');
+    const passError = document.getElementById('admin-pass-error');
+    const passSubmitBtn = document.getElementById('admin-pass-submit-btn');
+    const passCancelBtn = document.getElementById('admin-pass-cancel-btn');
+
+    const userDataModal = document.getElementById('admin-user-data-modal');
+    const closeUserDataBtn = document.getElementById('close-admin-user-data-btn');
+
+    if (openAdminBtn) {
+      openAdminBtn.addEventListener('click', () => {
+        // Open password prompt
+        this.showAdminPassModal();
+      });
+    }
+
+    if (passCancelBtn) {
+      passCancelBtn.addEventListener('click', () => {
+        this.hideAdminPassModal();
+      });
+    }
+
+    const verifyAndUnlock = () => {
+      const entered = passInput ? passInput.value.trim() : '';
+      if (entered === this.adminSecretPass) {
+        if (passError) passError.classList.add('hidden');
+        if (passInput) {
+          passInput.value = '';
+          passInput.type = 'password';
+        }
+        this.hideAdminPassModal();
+        this.hideSettings();
+        this.showAdminPanel('userdata');
+        this.showToast('ADMIN ACCESS GRANTED: CONSOLE UNLOCKED');
+      } else {
+        if (passError) {
+          passError.textContent = 'ACCESS DENIED: INCORRECT SECRET PASSWORD';
+          passError.classList.remove('hidden');
+        }
+        if (passInput) {
+          passInput.focus();
+          passInput.select();
+        }
+      }
+    };
+
+    const togglePassBtn = document.getElementById('toggle-admin-pass-visibility');
+    if (togglePassBtn && passInput) {
+      togglePassBtn.addEventListener('click', () => {
+        const isPassword = passInput.type === 'password';
+        passInput.type = isPassword ? 'text' : 'password';
+        togglePassBtn.textContent = isPassword ? '🔒' : '👁️';
+        togglePassBtn.title = isPassword ? 'Hide password' : 'Show password';
+      });
+    }
+
+    if (passSubmitBtn) {
+      passSubmitBtn.addEventListener('click', verifyAndUnlock);
+    }
+
+    if (passInput) {
+      passInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          verifyAndUnlock();
+        }
+      });
+    }
+
+    if (closeUserDataBtn) {
+      closeUserDataBtn.addEventListener('click', () => {
+        this.hideAdminPanel();
+      });
+    }
+
+    const closeAdminBtn = document.getElementById('close-admin-btn');
+    if (closeAdminBtn) {
+      closeAdminBtn.addEventListener('click', () => {
+        this.hideAdminPanel();
+      });
+    }
+
+    // Admin Navigation Tabs
+    ['userdata', 'crew', 'battle', 'telemetry'].forEach(tabKey => {
+      const tabBtn = document.getElementById(`tab-adm-${tabKey}-btn`);
+      if (tabBtn) {
+        tabBtn.addEventListener('click', () => {
+          this.switchAdminTab(tabKey);
+        });
+      }
+    });
+
+    // Clear telemetry console
+    const clearTelemetryBtn = document.getElementById('adm-clear-telemetry-btn');
+    if (clearTelemetryBtn) {
+      clearTelemetryBtn.addEventListener('click', () => {
+        const consoleEl = document.getElementById('debug-log-console');
+        if (consoleEl) consoleEl.innerHTML = '';
+        this.showToast('ADMIN: TELEMETRY LOG CLEARED');
+      });
+    }
+
+    // Hook up Data Modification actions
+    this.setupAdminDataActions();
+  }
+
+  showAdminPassModal() {
+    const passModal = document.getElementById('admin-pass-modal');
+    const passInput = document.getElementById('admin-pass-input');
+    const passError = document.getElementById('admin-pass-error');
+    const togglePassBtn = document.getElementById('toggle-admin-pass-visibility');
+    if (passError) passError.classList.add('hidden');
+    if (passInput) {
+      passInput.value = '';
+      passInput.type = 'password';
+    }
+    if (togglePassBtn) {
+      togglePassBtn.textContent = '👁️';
+      togglePassBtn.title = 'Show password';
+    }
+    this.openModal(passModal);
+    setTimeout(() => passInput?.focus(), 80);
+  }
+
+  hideAdminPassModal() {
+    const passModal = document.getElementById('admin-pass-modal');
+    const passInput = document.getElementById('admin-pass-input');
+    const togglePassBtn = document.getElementById('toggle-admin-pass-visibility');
+    if (passInput) {
+      passInput.value = '';
+      passInput.type = 'password';
+    }
+    if (togglePassBtn) {
+      togglePassBtn.textContent = '👁️';
+      togglePassBtn.title = 'Show password';
+    }
+    this.closeModal(passModal);
+  }
+
+  showAdminUserDataModal() {
+    this.showAdminPanel('userdata');
+  }
+
+  hideAdminUserDataModal() {
+    this.hideAdminPanel();
+  }
+
+  populateAdminUserDataForm() {
+    const data = this.storage.data;
+    const isUser = !!this.storage.currentUser;
+
+    const badge = document.getElementById('admin-active-profile-badge');
+    if (badge) {
+      badge.textContent = isUser 
+        ? `LOGGED IN: ${this.storage.currentUser.email || 'USER ACCOUNT'}` 
+        : 'ACTIVE PROFILE: LOCAL GUEST PROGRESS';
+      badge.style.color = isUser ? '#22c55e' : '#38bdf8';
+    }
+
+    const coinsInput = document.getElementById('adm-input-coins');
+    const highscoreInput = document.getElementById('adm-input-highscore');
+    const maxwaveInput = document.getElementById('adm-input-maxwave');
+    const pilotnameInput = document.getElementById('adm-input-pilotname');
+
+    if (coinsInput) coinsInput.value = data.coins || 0;
+    if (highscoreInput) highscoreInput.value = data.highScore || 0;
+    if (maxwaveInput) maxwaveInput.value = data.maxWave || 1;
+    if (pilotnameInput) pilotnameInput.value = data.playerName || 'Player';
+
+    // Crew levels
+    const crew = data.crewLevels || {};
+    const loaderInput = document.getElementById('adm-crew-loader');
+    const gunnerInput = document.getElementById('adm-crew-gunner');
+    const driverInput = document.getElementById('adm-crew-driver');
+    const commanderInput = document.getElementById('adm-crew-commander');
+
+    if (loaderInput) loaderInput.value = crew.loader || 0;
+    if (gunnerInput) gunnerInput.value = crew.gunner || 0;
+    if (driverInput) driverInput.value = crew.driver || 0;
+    if (commanderInput) commanderInput.value = crew.commander || 0;
+
+    // Chassis pills
+    this.renderAdminChassisPills();
+  }
+
+  renderAdminChassisPills() {
+    const container = document.getElementById('adm-chassis-pills');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const allChassis = ['basic', 'twin', 'sniper', 'flank', 'machinegun', 'smasher', 'tesla'];
+    const unlocked = this.storage.data.unlockedChassis || ['basic'];
+
+    allChassis.forEach(key => {
+      const pill = document.createElement('div');
+      const isUnlocked = unlocked.includes(key);
+      pill.className = `admin-toggle-pill ${isUnlocked ? 'active' : ''}`;
+      pill.textContent = `${key.toUpperCase()} ${isUnlocked ? '✓' : '🔒'}`;
+      
+      pill.addEventListener('click', () => {
+        let current = [...(this.storage.data.unlockedChassis || ['basic'])];
+        if (key === 'basic') return; // Cannot lock basic
+        if (current.includes(key)) {
+          current = current.filter(c => c !== key);
+          this.showToast(`ADMIN: LOCKED ${key.toUpperCase()}`);
+        } else {
+          current.push(key);
+          this.showToast(`ADMIN: UNLOCKED ${key.toUpperCase()}`);
+        }
+        this.storage.updateUserData({ unlockedChassis: current });
+        this.refreshAllUIFromStorage();
+        this.renderAdminChassisPills();
+      });
+
+      container.appendChild(pill);
+    });
+  }
+
+  setupAdminDataActions() {
+    // Single Set buttons
+    document.getElementById('adm-set-coins-btn')?.addEventListener('click', () => {
+      const val = parseInt(document.getElementById('adm-input-coins')?.value, 10);
+      if (!isNaN(val)) {
+        this.storage.updateUserData({ coins: val });
+        this.refreshAllUIFromStorage();
+        this.showToast(`ADMIN: COINS SET TO ${val.toLocaleString()}`);
+      }
+    });
+
+    document.getElementById('adm-set-highscore-btn')?.addEventListener('click', () => {
+      const val = parseInt(document.getElementById('adm-input-highscore')?.value, 10);
+      if (!isNaN(val)) {
+        this.storage.updateUserData({ highScore: val });
+        this.refreshAllUIFromStorage();
+        this.showToast(`ADMIN: HIGH SCORE SET TO ${val.toLocaleString()}`);
+      }
+    });
+
+    document.getElementById('adm-set-maxwave-btn')?.addEventListener('click', () => {
+      const val = parseInt(document.getElementById('adm-input-maxwave')?.value, 10);
+      if (!isNaN(val)) {
+        this.storage.updateUserData({ maxWave: val });
+        this.refreshAllUIFromStorage();
+        this.showToast(`ADMIN: MAX WAVE SET TO ${val}`);
+      }
+    });
+
+    document.getElementById('adm-set-pilotname-btn')?.addEventListener('click', () => {
+      const val = document.getElementById('adm-input-pilotname')?.value;
+      if (val) {
+        this.storage.updateUserData({ playerName: val });
+        this.refreshAllUIFromStorage();
+        this.showToast(`ADMIN: PILOT NAME SET TO ${val}`);
+      }
+    });
+
+    // Crew save buttons
+    document.querySelectorAll('.adm-save-crew-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const crewKey = e.currentTarget.getAttribute('data-crew');
+        const input = document.getElementById(`adm-crew-${crewKey}`);
+        const lvl = parseInt(input?.value, 10);
+        if (!isNaN(lvl) && crewKey) {
+          const crewUpdates = {};
+          crewUpdates[crewKey] = lvl;
+          this.storage.updateUserData({ crewLevels: crewUpdates });
+          this.refreshAllUIFromStorage();
+          if (this.onColorChangeCallback) this.onColorChangeCallback();
+          this.showToast(`ADMIN: ${crewKey.toUpperCase()} LEVEL SET TO ${lvl}`);
+        }
+      });
+    });
+
+    // Presets
+    document.getElementById('adm-preset-rich')?.addEventListener('click', () => {
+      const newCoins = (this.storage.data.coins || 0) + 50000;
+      this.storage.updateUserData({ coins: newCoins });
+      this.populateAdminUserDataForm();
+      this.refreshAllUIFromStorage();
+      this.showToast('ADMIN: +50,000 COINS ADDED');
+    });
+
+    document.getElementById('adm-preset-million')?.addEventListener('click', () => {
+      const newCoins = (this.storage.data.coins || 0) + 1000000;
+      this.storage.updateUserData({ coins: newCoins });
+      this.populateAdminUserDataForm();
+      this.refreshAllUIFromStorage();
+      this.showToast('ADMIN: +1,000,000 COINS ADDED');
+    });
+
+    document.getElementById('adm-preset-max-crew')?.addEventListener('click', () => {
+      this.storage.updateUserData({
+        crewLevels: { loader: 50, gunner: 50, driver: 50, commander: 50 }
+      });
+      this.populateAdminUserDataForm();
+      this.refreshAllUIFromStorage();
+      if (this.onColorChangeCallback) this.onColorChangeCallback();
+      this.showToast('ADMIN: ALL CREW MAXED TO LEVEL 50');
+    });
+
+    document.getElementById('adm-preset-unlock-all')?.addEventListener('click', () => {
+      const allTanks = ['basic', 'twin', 'sniper', 'flank', 'machinegun', 'smasher', 'tesla'];
+      const allColors = ['default', 'cyan', 'crimson', 'lime', 'dark', 'neon', 'matrix', 'gold', 'pastel'];
+      this.storage.updateUserData({
+        unlockedChassis: allTanks,
+        unlockedColors: allColors,
+        unlockedColorWheel: true
+      });
+      this.populateAdminUserDataForm();
+      this.refreshAllUIFromStorage();
+      this.showToast('ADMIN: ALL TANKS, COLOR THEMES & PALETTES UNLOCKED');
+    });
+
+    document.getElementById('adm-preset-reset')?.addEventListener('click', () => {
+      if (window.confirm('Reset this profile back to default starter progress?')) {
+        this.storage.updateUserData({
+          coins: 0,
+          highScore: 0,
+          maxWave: 1,
+          crewLevels: { loader: 0, gunner: 0, driver: 0, commander: 0 },
+          unlockedChassis: ['basic'],
+          unlockedColors: ['default', 'cyan'],
+          unlockedColorWheel: false,
+          activeChassis: 'basic',
+          activeColor: 'default'
+        });
+        this.populateAdminUserDataForm();
+        this.refreshAllUIFromStorage();
+        if (this.onColorChangeCallback) this.onColorChangeCallback();
+        this.showToast('ADMIN: PROFILE RESET TO STARTER DEFAULTS');
+      }
+    });
+
+    // Unlocks section
+    document.getElementById('adm-unlock-all-tanks-btn')?.addEventListener('click', () => {
+      const allTanks = ['basic', 'twin', 'sniper', 'flank', 'machinegun', 'smasher', 'tesla'];
+      this.storage.updateUserData({ unlockedChassis: allTanks });
+      this.populateAdminUserDataForm();
+      this.refreshAllUIFromStorage();
+      this.showToast('ADMIN: ALL 7 TANKS UNLOCKED');
+    });
+
+    document.getElementById('adm-unlock-colorwheel-btn')?.addEventListener('click', () => {
+      this.storage.updateUserData({ unlockedColorWheel: true });
+      this.populateAdminUserDataForm();
+      this.refreshAllUIFromStorage();
+      this.showToast('ADMIN: RGB COLOR WHEEL UNLOCKED');
+    });
+
+    document.getElementById('adm-unlock-all-colors-btn')?.addEventListener('click', () => {
+      const allColors = ['default', 'cyan', 'crimson', 'lime', 'dark', 'neon', 'matrix', 'gold', 'pastel'];
+      this.storage.updateUserData({ unlockedColors: allColors });
+      this.populateAdminUserDataForm();
+      this.refreshAllUIFromStorage();
+      this.showToast('ADMIN: ALL COLOR PALETTES UNLOCKED');
+    });
+
+    // In-game battle testing tools
+    document.getElementById('adm-open-battle-console-btn')?.addEventListener('click', () => {
+      this.hideAdminUserDataModal();
+      this.showAdminPanel();
+    });
+
+    document.getElementById('adm-give-level150-btn')?.addEventListener('click', () => {
+      const maxLvlBtn = document.getElementById('adm-lvl-max');
+      if (maxLvlBtn) {
+        maxLvlBtn.click();
+      } else {
+        this.showToast('ADMIN: IN-RUN ONLY (START A RUN TO GRANT LEVEL)');
+      }
+    });
+
+    document.getElementById('adm-toggle-godmode-btn')?.addEventListener('click', () => {
+      const godToggle = document.getElementById('adm-godmode-toggle');
+      if (godToggle) {
+        godToggle.checked = !godToggle.checked;
+        godToggle.dispatchEvent(new Event('change'));
+      }
+    });
+
+    // Save All Changes button
+    document.getElementById('adm-save-all-btn')?.addEventListener('click', () => {
+      const coins = parseInt(document.getElementById('adm-input-coins')?.value, 10);
+      const highScore = parseInt(document.getElementById('adm-input-highscore')?.value, 10);
+      const maxWave = parseInt(document.getElementById('adm-input-maxwave')?.value, 10);
+      const playerName = document.getElementById('adm-input-pilotname')?.value;
+
+      const loader = parseInt(document.getElementById('adm-crew-loader')?.value, 10);
+      const gunner = parseInt(document.getElementById('adm-crew-gunner')?.value, 10);
+      const driver = parseInt(document.getElementById('adm-crew-driver')?.value, 10);
+      const commander = parseInt(document.getElementById('adm-crew-commander')?.value, 10);
+
+      this.storage.updateUserData({
+        coins: isNaN(coins) ? undefined : coins,
+        highScore: isNaN(highScore) ? undefined : highScore,
+        maxWave: isNaN(maxWave) ? undefined : maxWave,
+        playerName: playerName || undefined,
+        crewLevels: {
+          loader: isNaN(loader) ? 0 : loader,
+          gunner: isNaN(gunner) ? 0 : gunner,
+          driver: isNaN(driver) ? 0 : driver,
+          commander: isNaN(commander) ? 0 : commander
+        }
+      });
+
+      this.populateAdminUserDataForm();
+      this.refreshAllUIFromStorage();
+      if (this.onColorChangeCallback) this.onColorChangeCallback();
+      this.showToast('ADMIN: ALL USER DATA CHANGES SAVED TO PROFILE');
+    });
   }
 }

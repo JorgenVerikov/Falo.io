@@ -109,6 +109,28 @@ html, body {
   font-weight: bold;
 }
 
+.enemy-upgrade-pill {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: calc(10.5px * var(--ui-scale));
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.14);
+  border: 1px solid rgba(255, 107, 107, 0.45);
+  border-radius: 4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+}
+
+body.theme-light .enemy-upgrade-pill {
+  color: #c92a2a;
+  background: rgba(201, 42, 42, 0.12);
+  border-color: rgba(201, 42, 42, 0.35);
+  text-shadow: none;
+}
+
 /* Falo Evolution Upgrade Panel */
 #falo-upgrade-panel {
   position: fixed;
@@ -1276,34 +1298,309 @@ body.theme-light #main-menu-overlay.modal-overlay {
   z-index: 125;
 }
 
-#settings-modal .modal-box {
-  min-width: calc(360px * var(--ui-scale));
-  max-width: 90vw;
-  box-sizing: border-box;
+#admin-panel-modal {
+  z-index: 130;
 }
 
-#settings-modal .setting-row {
-  margin-bottom: calc(16px * var(--ui-scale));
+/* Settings Window Styled Cleanly Like Shop/Armory Window */
+.diep-settings-window {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+}
+
+.diep-settings-scroll-area {
+  padding: calc(20px * var(--ui-scale)) calc(30px * var(--ui-scale));
+}
+
+.settings-tab-pane {
+  display: flex;
+  flex-direction: column;
+  gap: calc(20px * var(--ui-scale));
+}
+
+.settings-cards-grid {
+  grid-template-columns: repeat(auto-fit, minmax(calc(240px * var(--ui-scale)), 1fr));
+  max-width: calc(640px * var(--ui-scale));
+}
+
+.settings-option-card {
+  padding: calc(14px * var(--ui-scale));
+  cursor: pointer;
+}
+
+.settings-option-card.active {
+  border-width: calc(3px * var(--ui-scale));
+  box-shadow: 0 0 16px rgba(0, 178, 225, 0.45);
+}
+
+.settings-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  margin-bottom: calc(10px * var(--ui-scale));
 }
 
-#settings-modal .setting-row label {
-  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
-  font-size: calc(13px * var(--ui-scale));
-  font-weight: 800;
+.settings-card-badge {
+  font-size: calc(9.5px * var(--ui-scale));
+  font-weight: 900;
+  color: #64748b;
   letter-spacing: 0.8px;
-  white-space: nowrap;
 }
 
-#settings-modal .setting-input {
-  min-width: 145px;
-  padding: calc(7px * var(--ui-scale)) calc(12px * var(--ui-scale));
+.settings-active-check {
+  font-size: calc(10px * var(--ui-scale));
+  font-weight: 900;
+  color: #059669;
+  background: rgba(16, 185, 129, 0.16);
+  padding: 2px 7px;
+  border-radius: 9999px;
+  display: none;
+}
+
+.settings-option-card.active .settings-active-check {
+  display: block;
+}
+
+.settings-preview-box {
+  position: relative;
+  width: 100%;
+  height: calc(105px * var(--ui-scale));
+  border-radius: calc(6px * var(--ui-scale));
+  border: calc(1.8px * var(--ui-scale)) solid rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: calc(12px * var(--ui-scale));
+  overflow: hidden;
+}
+
+.settings-preview-box.light-preview {
+  background-color: #cdcdcd;
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.settings-preview-box.dark-preview {
+  background-color: #1a1c23;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.preview-tank-dot {
+  width: calc(34px * var(--ui-scale));
+  height: calc(34px * var(--ui-scale));
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.preview-tank-dot.cyan {
+  background: #00b2e1;
+  border: calc(3px * var(--ui-scale)) solid #007a9e;
+}
+
+.preview-tank-dot.violet {
+  background: #b524e6;
+  border: calc(3px * var(--ui-scale)) solid #7e16ad;
+}
+
+.settings-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(6px * var(--ui-scale));
+}
+
+.settings-card-body .diep-card-action-btn {
+  margin-top: calc(8px * var(--ui-scale));
+}
+
+/* Scaling Bar Container */
+.settings-scale-bar-container {
+  max-width: calc(640px * var(--ui-scale));
+  padding: calc(16px * var(--ui-scale));
+  display: flex;
+  flex-direction: column;
+  gap: calc(14px * var(--ui-scale));
+}
+
+.scale-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settings-scale-chip {
+  background: #00b2e1;
+  border: calc(2px * var(--ui-scale)) solid #007a9e;
+  color: #ffffff;
+  padding: calc(5px * var(--ui-scale)) calc(12px * var(--ui-scale));
+  border-radius: calc(6px * var(--ui-scale));
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 900;
+  text-shadow: -1px -1px 0 #222, 1px -1px 0 #222, -1px 1px 0 #222, 1px 1px 0 #222;
+}
+
+.scale-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(8px * var(--ui-scale));
+}
+
+.scale-chip-btn {
+  flex: 1;
+  min-width: calc(90px * var(--ui-scale));
+  padding: calc(9px * var(--ui-scale)) calc(12px * var(--ui-scale));
+  background-color: #8c929a;
+  background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%);
+  border: calc(2.4px * var(--ui-scale)) solid #525659;
+  border-radius: calc(6px * var(--ui-scale));
+  color: #ffffff;
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-size: calc(11.5px * var(--ui-scale));
+  font-weight: 900;
+  cursor: pointer;
+  text-shadow: -1px -1px 0 #222, 1px -1px 0 #222, -1px 1px 0 #222, 1px 1px 0 #222;
+  transition: filter 0.12s ease;
+}
+
+.scale-chip-btn:hover {
+  filter: brightness(1.15);
+}
+
+.scale-chip-btn.active {
+  background-color: #00b2e1;
+  border-color: #007a9e;
+}
+
+/* Controls Grid */
+.settings-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(220px * var(--ui-scale)), 1fr));
+  gap: calc(12px * var(--ui-scale));
+  max-width: calc(820px * var(--ui-scale));
+}
+
+.control-key-card {
+  padding: calc(12px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  display: flex;
+  align-items: center;
+  gap: calc(12px * var(--ui-scale));
+}
+
+.key-badge {
+  background: #1f2026;
+  border: calc(2px * var(--ui-scale)) solid #374151;
+  color: #f3f4f6;
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-weight: 900;
+  font-size: calc(11px * var(--ui-scale));
+  padding: calc(6px * var(--ui-scale)) calc(10px * var(--ui-scale));
+  border-radius: calc(6px * var(--ui-scale));
+  white-space: nowrap;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.key-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.key-title {
   font-size: calc(12px * var(--ui-scale));
-  font-weight: 700;
-  border-radius: 5px;
+  font-weight: 900;
+  color: #111827;
+}
+
+body:not(.theme-light) .key-title {
+  color: #f1f5f9;
+}
+
+.key-desc {
+  font-size: calc(10px * var(--ui-scale));
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Admin Hero Banner */
+.settings-admin-hero {
+  max-width: calc(720px * var(--ui-scale));
+  padding: calc(22px * var(--ui-scale));
+  display: flex;
+  flex-direction: column;
+  gap: calc(16px * var(--ui-scale));
+  border-color: #8b5cf6 !important;
+}
+
+.admin-hero-content {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(16px * var(--ui-scale));
+}
+
+.admin-hero-icon {
+  font-size: calc(36px * var(--ui-scale));
+}
+
+.admin-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(6px * var(--ui-scale));
+}
+
+.admin-hero-title {
+  font-size: calc(16px * var(--ui-scale));
+  font-weight: 900;
+  color: #7c3aed;
+  letter-spacing: 0.8px;
+}
+
+.admin-hero-desc {
+  font-size: calc(12px * var(--ui-scale));
+  color: #475569;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+body:not(.theme-light) .admin-hero-desc {
+  color: #94a3b8;
+}
+
+.admin-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(8px * var(--ui-scale));
+  margin-top: 4px;
+}
+
+.security-lock-badge {
+  font-size: calc(9.5px * var(--ui-scale));
+  font-weight: 900;
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.security-status-badge {
+  font-size: calc(9.5px * var(--ui-scale));
+  font-weight: 900;
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.admin-hero-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .setting-input {
@@ -1396,6 +1693,195 @@ select.setting-input option {
   color: #dbdee1;
 }
 
+/* Admin User Data Modal Styling */
+.admin-data-box {
+  max-width: calc(640px * var(--ui-scale));
+  width: 95vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding: calc(18px * var(--ui-scale));
+  box-sizing: border-box;
+}
+
+.admin-data-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 8px;
+}
+
+.admin-data-scroll {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-section {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.admin-section-title {
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 900;
+  color: #38bdf8;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(220px * var(--ui-scale)), 1fr));
+  gap: calc(12px * var(--ui-scale));
+}
+
+.admin-field-card {
+  padding: calc(14px * var(--ui-scale));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-card-label {
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-size: calc(10.5px * var(--ui-scale));
+  font-weight: 900;
+  color: #38bdf8;
+  letter-spacing: 0.8px;
+}
+
+.admin-num-control {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-num-control input {
+  flex: 1;
+  padding: calc(7px * var(--ui-scale)) calc(10px * var(--ui-scale));
+  font-size: calc(13px * var(--ui-scale));
+  font-weight: 900;
+  border: calc(2px * var(--ui-scale)) solid #359bb5;
+  border-radius: calc(5px * var(--ui-scale));
+  background: rgba(18, 19, 23, 0.90);
+  color: #ffffff;
+}
+
+/* Crew Barracks Cards in Admin */
+.admin-crew-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(260px * var(--ui-scale)), 1fr));
+  gap: calc(14px * var(--ui-scale));
+}
+
+.admin-crew-card-full {
+  padding: calc(14px * var(--ui-scale));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-crew-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.admin-crew-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-crew-title-wrap .crew-icon {
+  font-size: calc(24px * var(--ui-scale));
+}
+
+.admin-crew-badge {
+  font-size: calc(9.5px * var(--ui-scale));
+  font-weight: 900;
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  letter-spacing: 0.8px;
+}
+
+.admin-crew-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: calc(11.5px * var(--ui-scale));
+  font-weight: 900;
+  color: #cbd5e1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-checkbox-label input[type="checkbox"] {
+  width: calc(16px * var(--ui-scale));
+  height: calc(16px * var(--ui-scale));
+  cursor: pointer;
+  accent-color: #00b2e1;
+}
+
+.admin-pills-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-toggle-pill {
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 900;
+  padding: calc(6px * var(--ui-scale)) calc(12px * var(--ui-scale));
+  border-radius: calc(5px * var(--ui-scale));
+  cursor: pointer;
+  background: #2b2d31;
+  color: #949ba4;
+  border: calc(2px * var(--ui-scale)) solid #404249;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.admin-toggle-pill:hover {
+  border-color: #00b2e1;
+  color: #ffffff;
+}
+
+.admin-toggle-pill.active {
+  background: #00b2e1;
+  color: #ffffff;
+  border-color: #007a9e;
+  text-shadow: -1px -1px 0 #222, 1px -1px 0 #222, -1px 1px 0 #222, 1px 1px 0 #222;
+}
+
 input[type="color"] {
   appearance: none;
   border: 2px solid #359bb5;
@@ -1463,27 +1949,65 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
    DIEP.IO AUTHENTIC SHOP UI
    ======================================================== */
 
-#armory-modal.modal-overlay {
+#armory-modal.modal-overlay,
+#settings-modal.modal-overlay,
+#admin-panel-modal.modal-overlay,
+#admin-user-data-modal.modal-overlay {
   padding: 0;
   margin: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.40);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  background: rgba(10, 12, 16, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: stretch;
   justify-content: stretch;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.28s ease, visibility 0.28s ease;
+  transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.24s ease;
 }
 
-#armory-modal.modal-overlay.active {
+#armory-modal.modal-overlay.active,
+#settings-modal.modal-overlay.active,
+#admin-panel-modal.modal-overlay.active,
+#admin-user-data-modal.modal-overlay.active {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
+}
+
+/* Admin Pass Dialog Overlay & Pop-in */
+#admin-pass-modal.modal-overlay {
+  z-index: 145;
+  background: rgba(10, 12, 16, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.22s ease, visibility 0.22s ease;
+}
+
+#admin-pass-modal.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#admin-pass-modal .modal-box {
+  transform: scale(0.92) translateY(8px);
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  border: calc(3px * var(--ui-scale)) solid #00b2e1;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.75), 0 0 30px rgba(0, 178, 225, 0.3);
+}
+
+#admin-pass-modal.modal-overlay.active .modal-box {
+  transform: scale(1) translateY(0);
 }
 
 .diep-shop-window {
@@ -1491,9 +2015,9 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   max-width: 100vw;
   height: 100vh;
   max-height: 100vh;
-  background-color: rgba(17, 18, 22, 0.65);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background-color: rgba(17, 18, 22, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: 0;
   box-shadow: none;
   display: flex;
@@ -1502,12 +2026,14 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   border: none;
   font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif;
   user-select: none;
-  transform: scale(0.97);
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: scale(0.978);
+  opacity: 0.82;
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s ease;
 }
 
-#armory-modal.modal-overlay.active .diep-shop-window {
+.modal-overlay.active .diep-shop-window {
   transform: scale(1);
+  opacity: 1;
 }
 
 /* Header Bar */
@@ -2276,8 +2802,10 @@ body.theme-light #close-armory-btn:hover {
 }
 
 /* Authentic Diep Light/Classic Theme Shop Overrides */
-body.theme-light #armory-modal.modal-overlay {
-  background: rgba(180, 184, 188, 0.30);
+body.theme-light #armory-modal.modal-overlay,
+body.theme-light #settings-modal.modal-overlay,
+body.theme-light #admin-panel-modal.modal-overlay {
+  background: rgba(180, 184, 188, 0.40);
 }
 
 body.theme-light .diep-shop-window {

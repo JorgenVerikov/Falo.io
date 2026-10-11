@@ -1,6 +1,8 @@
 import { getSupabase, getUser } from './auth.js';
 
-const STORAGE_KEY = 'DIEP_SURVIVAL_SAVE_DATA_V6';
+const GUEST_STORAGE_KEY = 'DIEP_GUEST_SAVE_DATA_V1';
+const LEGACY_STORAGE_KEY = 'DIEP_SURVIVAL_SAVE_DATA_V6';
+const USER_CACHE_PREFIX = 'DIEP_USER_CACHE_';
 
 const DEFAULT_DATA = {
   playerName: 'Player',
@@ -28,24 +30,43 @@ const DEFAULT_DATA = {
 
 export class StorageManager {
   constructor() {
-    this.data = this.loadLocal();
     this.currentUser = null;
+    this.data = this.loadGuestData();
     this.isSyncing = false;
     this.syncDebounceTimer = null;
+    this.onDataChanged = null;
   }
 
   /**
-   * Loads cached state from LocalStorage immediately
+   * Loads guest state from LocalStorage
+   * Checks legacy save key if guest key does not yet exist for smooth migration
    */
-  loadLocal() {
+  loadGuestData() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      let raw = localStorage.getItem(GUEST_STORAGE_KEY);
+      if (!raw) {
+        raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+        if (raw) {
+          localStorage.setItem(GUEST_STORAGE_KEY, raw);
+        }
+      }
       if (!raw) return { ...DEFAULT_DATA };
       const parsed = JSON.parse(raw);
       return this.mergeWithDefaults(parsed);
     } catch (e) {
-      console.warn('[STORAGE] Failed to load local save data, fallback to defaults:', e);
+      console.warn('[STORAGE] Failed to load guest save data, fallback to defaults:', e);
       return { ...DEFAULT_DATA };
+    }
+  }
+
+  /**
+   * Saves guest data to LocalStorage
+   */
+  saveGuestData(data) {
+    try {
+      localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error('[STORAGE] Failed to save guest data:', e);
     }
   }
 
@@ -68,94 +89,109 @@ export class StorageManager {
   }
 
   /**
-   * Fetches cloud save if authenticated, auto-creates initial save if row does not exist,
-   * or merges cloud data with any offline local progress.
+   * Fetches cloud save if authenticated, or loads guest data if not.
+   * Keeps user account save separate from guest profile.
    */
   async loadSaveData() {
     this.currentUser = await getUser();
 
     if (!this.currentUser) {
-      this.data = this.loadLocal();
-      console.log('[STORAGE] Guest mode active: Using LocalStorage.');
+      this.data = this.loadGuestData();
+      console.log('[STORAGE] Guest mode active: Using guest LocalStorage.');
+      if (this.onDataChanged) {
+        this.onDataChanged(this.data, false);
+      }
       return this.data;
     }
 
     const client = getSupabase();
-    if (!client) {
-      this.data = this.loadLocal();
-      return this.data;
-    }
+    let userSave = null;
 
+    // Check local cache for this user
     try {
-      const { data: cloudRow, error } = await client
-        .from('player_saves')
-        .select('save_data')
-        .eq('user_id', this.currentUser.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('[STORAGE] Error fetching cloud save:', error);
-        return this.data;
+      const cached = localStorage.getItem(USER_CACHE_PREFIX + this.currentUser.id);
+      if (cached) {
+        userSave = JSON.parse(cached);
       }
-
-      if (!cloudRow) {
-        // First-time login: create initial cloud save with existing local progress
-        console.log('[STORAGE] No cloud save found. Uploading initial save profile...');
-        await this.syncToCloud(this.data);
-      } else {
-        // Cloud save exists: Merge and update local storage
-        const mergedData = this.mergeSaveStates(this.data, cloudRow.save_data);
-        this.data = this.mergeWithDefaults(mergedData);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
-        console.log('[STORAGE] Cloud save loaded and synchronized successfully.');
-      }
-    } catch (err) {
-      console.error('[STORAGE] Cloud save synchronization exception:', err);
+    } catch (e) {
+      console.warn('[STORAGE] Failed to read user cache:', e);
     }
 
+    if (client) {
+      try {
+        const { data: cloudRow, error } = await client
+          .from('player_saves')
+          .select('save_data')
+          .eq('user_id', this.currentUser.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('[STORAGE] Error fetching cloud save:', error);
+        } else if (cloudRow && cloudRow.save_data) {
+          userSave = cloudRow.save_data;
+          console.log('[STORAGE] Cloud save loaded for authenticated user.');
+        } else {
+          // Brand new user in cloud: create initial cloud save profile
+          console.log('[STORAGE] First-time cloud login: Creating initial cloud profile...');
+          const initialUserData = userSave ? this.mergeWithDefaults(userSave) : { ...DEFAULT_DATA };
+          await this.syncToCloud(initialUserData);
+          userSave = initialUserData;
+        }
+      } catch (err) {
+        console.error('[STORAGE] Cloud save synchronization exception:', err);
+      }
+    }
+
+    this.data = this.mergeWithDefaults(userSave || DEFAULT_DATA);
+    try {
+      localStorage.setItem(USER_CACHE_PREFIX + this.currentUser.id, JSON.stringify(this.data));
+    } catch (e) {
+      console.error('[STORAGE] Failed to cache user save:', e);
+    }
+
+    console.log('[STORAGE] User save active.');
+    if (this.onDataChanged) {
+      this.onDataChanged(this.data, true);
+    }
     return this.data;
   }
 
   /**
-   * Intelligently merges local and cloud progress (favors higher scores, union of unlocks, max crew levels)
+   * Handles user logout:
+   * Flushes any pending cloud sync, clears currentUser, and restores guest profile immediately.
    */
-  mergeSaveStates(local, cloud) {
-    if (!cloud) return local;
-    return {
-      playerName: cloud.playerName || local.playerName || 'Player',
-      coins: Math.max(local.coins || 0, cloud.coins || 0),
-      highScore: Math.max(local.highScore || 0, cloud.highScore || 0),
-      maxWave: Math.max(local.maxWave || 1, cloud.maxWave || 1),
-      unlockedChassis: Array.from(new Set([...(local.unlockedChassis || []), ...(cloud.unlockedChassis || [])])),
-      unlockedColors: Array.from(new Set([...(local.unlockedColors || []), ...(cloud.unlockedColors || [])])),
-      unlockedColorWheel: Boolean(local.unlockedColorWheel || cloud.unlockedColorWheel),
-      customColor: cloud.customColor || local.customColor || '#00b2e1',
-      activeColor: cloud.activeColor || local.activeColor || 'default',
-      settings: {
-        theme: (cloud.settings?._explicitTheme ? cloud.settings?.theme : null) || (local.settings?._explicitTheme ? local.settings?.theme : null) || 'light',
-        uiScale: cloud.settings?.uiScale || local.settings?.uiScale || 1.0,
-        _explicitTheme: Boolean(cloud.settings?._explicitTheme || local.settings?._explicitTheme)
-      },
-      crewLevels: {
-        loader: Math.max(local.crewLevels?.loader || 0, cloud.crewLevels?.loader || 0),
-        gunner: Math.max(local.crewLevels?.gunner || 0, cloud.crewLevels?.gunner || 0),
-        driver: Math.max(local.crewLevels?.driver || 0, cloud.crewLevels?.driver || 0),
-        commander: Math.max(local.crewLevels?.commander || 0, cloud.crewLevels?.commander || 0)
-      }
-    };
+  async handleLogout() {
+    if (this.currentUser && this.syncDebounceTimer) {
+      clearTimeout(this.syncDebounceTimer);
+      this.syncDebounceTimer = null;
+      await this.syncToCloud(this.data);
+    }
+
+    this.currentUser = null;
+    this.data = this.loadGuestData();
+    console.log('[STORAGE] User signed out. Restored guest profile data.');
+
+    if (this.onDataChanged) {
+      this.onDataChanged(this.data, false);
+    }
+    return this.data;
   }
 
   /**
-   * Saves data locally immediately and schedules an asynchronous cloud sync
+   * Saves data:
+   * If in guest mode, writes exclusively to GUEST_STORAGE_KEY.
+   * If logged in, writes to user cache and debounces cloud sync.
    */
   save() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
-    } catch (e) {
-      console.error('[STORAGE] Failed to write to localStorage:', e);
-    }
+    if (!this.currentUser) {
+      this.saveGuestData(this.data);
+    } else {
+      try {
+        localStorage.setItem(USER_CACHE_PREFIX + this.currentUser.id, JSON.stringify(this.data));
+      } catch (e) {
+        console.error('[STORAGE] Failed to write user cache:', e);
+      }
 
-    if (this.currentUser) {
       clearTimeout(this.syncDebounceTimer);
       this.syncDebounceTimer = setTimeout(() => {
         this.syncToCloud(this.data);
@@ -289,5 +325,51 @@ export class StorageManager {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Admin modification of persistent user data (crew upgrades, coins, stats, unlocks)
+   */
+  updateUserData(updates = {}) {
+    if (typeof updates.coins === 'number') {
+      this.data.coins = Math.max(0, Math.floor(updates.coins));
+    }
+    if (typeof updates.highScore === 'number') {
+      this.data.highScore = Math.max(0, Math.floor(updates.highScore));
+    }
+    if (typeof updates.maxWave === 'number') {
+      this.data.maxWave = Math.max(1, Math.floor(updates.maxWave));
+    }
+    if (typeof updates.playerName === 'string' && updates.playerName.trim()) {
+      this.data.playerName = updates.playerName.trim().slice(0, 20);
+    }
+    if (updates.crewLevels && typeof updates.crewLevels === 'object') {
+      this.data.crewLevels = {
+        ...this.data.crewLevels,
+        ...updates.crewLevels
+      };
+      // Ensure positive integers
+      Object.keys(this.data.crewLevels).forEach(key => {
+        this.data.crewLevels[key] = Math.max(0, Math.floor(this.data.crewLevels[key] || 0));
+      });
+    }
+    if (Array.isArray(updates.unlockedChassis)) {
+      this.data.unlockedChassis = Array.from(new Set(['basic', ...updates.unlockedChassis]));
+    }
+    if (Array.isArray(updates.unlockedColors)) {
+      this.data.unlockedColors = Array.from(new Set(['default', 'cyan', ...updates.unlockedColors]));
+    }
+    if (typeof updates.unlockedColorWheel === 'boolean') {
+      this.data.unlockedColorWheel = updates.unlockedColorWheel;
+    }
+    if (updates.activeChassis && this.data.unlockedChassis.includes(updates.activeChassis)) {
+      this.data.activeChassis = updates.activeChassis;
+    }
+    if (updates.activeColor) {
+      this.data.activeColor = updates.activeColor;
+    }
+
+    this.save();
+    return this.data;
   }
 }

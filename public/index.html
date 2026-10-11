@@ -25,6 +25,7 @@
     <div id="wave-banner" class="hud-panel center-top">
       <div id="wave-status" class="wave-title">WAVE 1</div>
       <div id="wave-timer-text" class="wave-timer">ENEMIES REMAINING: 4</div>
+      <div id="enemy-upgrade-pill" class="enemy-upgrade-pill hidden"></div>
     </div>
 
     <!-- Falo Evolution Upgrade Panel -->
@@ -155,100 +156,636 @@
         <div class="stat-box"><span class="lbl">WAVE REACHED</span><span id="final-wave" class="val">1</span></div>
         <div class="stat-box"><span class="lbl">CURRENCY</span><span id="coins-earned" class="val gold">+0 COINS</span></div>
       </div>
-      <div class="modal-actions">
-        <button id="restart-btn" class="modal-btn primary">REDEPLOY</button>
-        <button id="open-armory-btn" class="modal-btn secondary">ARMORY</button>
-        <button id="game-over-menu-btn" class="modal-btn secondary">MAIN MENU</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Settings Modal -->
-  <div id="settings-modal" class="modal-overlay hidden">
-    <div class="modal-box">
-      <h1 class="modal-title">SETTINGS</h1>
-      
-      <div class="setting-row">
-        <label>ARENA THEME</label>
-        <select id="theme-select" class="setting-input">
-          <option value="light" selected>CLASSIC</option>
-          <option value="dark">DARK SLATE</option>
-        </select>
-      </div>
-
-      <div class="setting-row">
-        <label>UI SCALE</label>
-        <select id="ui-scale-select" class="setting-input">
-          <option value="0.75">75% (Compact)</option>
-          <option value="0.85">85%</option>
-          <option value="1.0" selected>100% (Default)</option>
-          <option value="1.15">115%</option>
-          <option value="1.25">125% (Large)</option>
-        </select>
-      </div>
-
-      <div class="modal-actions" style="margin-top: 20px;">
-        <button id="close-settings-btn" class="modal-btn primary">SAVE & CLOSE</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Admin Panel & Debug Modal -->
-  <div id="admin-panel-modal" class="modal-overlay hidden">
-    <div class="modal-box wide">
-      <h1 class="modal-title alert">ADMIN PANEL (` OR F2 TOGGLE)</h1>
-      
-      <div class="admin-grid">
-        <div class="setting-row" style="grid-column: span 2;">
-          <label>SELECT TANK CLASS:</label>
-          <select id="adm-chassis-select" class="setting-input">
-            <option value="basic">BASIC TANK</option>
-            <option value="twin">TWIN</option>
-            <option value="sniper">SNIPER</option>
-            <option value="flank">FLANK GUARD</option>
-            <option value="machinegun">MACHINE GUN</option>
-            <option value="smasher">SMASHER</option>
-            <option value="tesla">TESLA</option>
-          </select>
+      <div class="game-over-actions">
+        <button id="restart-btn" class="modal-btn primary redeploy-btn">REDEPLOY</button>
+        <div class="game-over-sub-actions">
+          <button id="open-armory-btn" class="modal-btn secondary">ARMORY</button>
+          <button id="game-over-menu-btn" class="modal-btn secondary">MAIN MENU</button>
         </div>
+      </div>
+    </div>
+  </div>
 
-        <button id="adm-lvl-10" class="admin-btn">+10 LEVELS</button>
-        <button id="adm-lvl-max" class="admin-btn">SET MAX LEVEL 150</button>
-        
-        <button id="adm-spawn-swarmer" class="admin-btn">+5 SWARMERS</button>
-        <button id="adm-spawn-sniper" class="admin-btn">+5 SNIPER DRONES</button>
-        <button id="adm-spawn-heavy" class="admin-btn">+3 HEAVY HEXES</button>
-        
-        <button id="adm-toggle-pause" class="admin-btn">TOGGLE WAVE PAUSE</button>
-        <button id="adm-clear-all" class="admin-btn alert">CLEAR ALL ENTITIES</button>
-        <button id="adm-wave-prev" class="admin-btn">PREV WAVE (-1)</button>
-        <button id="adm-wave-next" class="admin-btn">+1 WAVE (ADVANCE)</button>
-
-        <div class="setting-row" style="grid-column: span 2; margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15);">
-          <label>SPAWN SHAPE:</label>
-          <div style="display: flex; gap: 8px; width: 100%;">
-            <select id="adm-shape-select" class="setting-input" style="flex: 1;">
-              <!-- Populated dynamically from CONFIG.SHAPES.types -->
-            </select>
-            <input id="adm-shape-count" type="number" min="1" max="50" value="1" class="setting-input" style="width: 70px; text-align: center;" title="Spawn Count">
+  <!-- Settings Modal (Clean Armory / Shop Window Style) -->
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="diep-shop-window diep-settings-window">
+      <!-- Top Header Bar -->
+      <div class="diep-shop-header">
+        <div class="diep-shop-header-left">
+          <div class="diep-shop-logo">
+            <span class="diep-shop-logo-icon">⚙️</span> SETTINGS
+          </div>
+          <div class="diep-shop-tabs">
+            <button id="tab-settings-display-btn" class="diep-shop-tab active" data-tab="display">
+              <span class="tab-icon">🖥️</span> Display & Audio
+            </button>
+            <button id="tab-settings-controls-btn" class="diep-shop-tab" data-tab="controls">
+              <span class="tab-icon">🎮</span> Controls & Hotkeys
+            </button>
+            <button id="tab-settings-admin-btn" class="diep-shop-tab" data-tab="admin">
+              <span class="tab-icon">🛡️</span> Developer Admin
+            </button>
           </div>
         </div>
-        <button id="adm-spawn-shape" class="admin-btn" style="background-color: #22c55e; border-color: #16a34a;">SPAWN SHAPE(S)</button>
-        <button id="adm-clear-shapes" class="admin-btn alert">CLEAR SHAPES ONLY</button>
+
+        <div class="diep-shop-header-right">
+          <button id="close-settings-btn" class="diep-shop-close-btn" title="Close Settings">✕</button>
+        </div>
       </div>
 
-      <div class="admin-checkbox-row" style="margin-top: 10px;">
-        <label><input type="checkbox" id="adm-godmode-toggle"> God Mode (Infinite Health)</label>
+      <!-- Scrollable Settings Content Area -->
+      <div class="diep-shop-scroll-area diep-settings-scroll-area">
+        
+        <!-- Tab 1: Display & Visuals -->
+        <div id="settings-tab-display" class="settings-tab-pane">
+          <div class="diep-shop-section">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>🎨</span> ARENA VISUALS & THEME
+                </div>
+              </div>
+            </div>
+
+            <!-- Theme Cards Grid -->
+            <div class="diep-items-grid settings-cards-grid">
+              <!-- Classic Light Theme Card -->
+              <div id="theme-card-light" class="diep-card rarity-common settings-option-card active">
+                <div class="settings-card-header">
+                  <div class="settings-card-badge">THEME</div>
+                  <div class="settings-active-check">✓ ACTIVE</div>
+                </div>
+                <div class="settings-preview-box light-preview">
+                  <div class="preview-grid-pattern"></div>
+                  <div class="preview-tank-dot cyan"></div>
+                </div>
+                <div class="settings-card-body">
+                  <div class="diep-card-title">CLASSIC LIGHT</div>
+                  <div class="diep-card-subdesc">Iconic Diep.io paper graph grid with crisp tactical contrast.</div>
+                  <button id="select-theme-light-btn" class="diep-card-action-btn equipped">EQUIPPED</button>
+                </div>
+              </div>
+
+              <!-- Dark Slate Theme Card -->
+              <div id="theme-card-dark" class="diep-card rarity-rare settings-option-card">
+                <div class="settings-card-header">
+                  <div class="settings-card-badge">THEME</div>
+                  <div class="settings-active-check">✓ ACTIVE</div>
+                </div>
+                <div class="settings-preview-box dark-preview">
+                  <div class="preview-grid-pattern"></div>
+                  <div class="preview-tank-dot violet"></div>
+                </div>
+                <div class="settings-card-body">
+                  <div class="diep-card-title">DARK SLATE</div>
+                  <div class="diep-card-subdesc">Sleek midnight dark grid with low eye strain and vibrant glow.</div>
+                  <button id="select-theme-dark-btn" class="diep-card-action-btn equip-ready">EQUIP</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- UI Scale Section -->
+          <div class="diep-shop-section" style="margin-top: 18px;">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>🔍</span> INTERFACE & HUD SCALE
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-scale-bar-container diep-card rarity-common">
+              <div class="scale-bar-header">
+                <div>
+                  <div class="diep-card-title" style="margin: 0;">VIEWPORT HUD SCALING</div>
+                  <div class="diep-card-subdesc" style="margin: 2px 0 0 0;">Adjust in-game stats, leaderboards, and UI text dimensions.</div>
+                </div>
+                <div id="current-scale-badge" class="settings-scale-chip">100% (Default)</div>
+              </div>
+
+              <div class="scale-chips-row">
+                <button class="scale-chip-btn" data-scale="0.75">75% (Compact)</button>
+                <button class="scale-chip-btn" data-scale="0.85">85%</button>
+                <button class="scale-chip-btn active" data-scale="1.0">100% (Standard)</button>
+                <button class="scale-chip-btn" data-scale="1.15">115%</button>
+                <button class="scale-chip-btn" data-scale="1.25">125% (Large)</button>
+              </div>
+
+              <!-- Hidden select for compatibility -->
+              <select id="theme-select" class="hidden">
+                <option value="light">light</option>
+                <option value="dark">dark</option>
+              </select>
+              <select id="ui-scale-select" class="hidden">
+                <option value="0.75">0.75</option>
+                <option value="0.85">0.85</option>
+                <option value="1.0">1.0</option>
+                <option value="1.15">1.15</option>
+                <option value="1.25">1.25</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Controls & Hotkeys -->
+        <div id="settings-tab-controls" class="settings-tab-pane hidden">
+          <div class="diep-shop-section">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>🎮</span> TACTICAL KEYBOARD CONTROLS
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-controls-grid">
+              <div class="control-key-card diep-card rarity-common">
+                <div class="key-badge">W A S D / ARROWS</div>
+                <div class="key-info">
+                  <div class="key-title">Tank Movement</div>
+                  <div class="key-desc">Maneuver and strafe through arena hazards</div>
+                </div>
+              </div>
+
+              <div class="control-key-card diep-card rarity-common">
+                <div class="key-badge">LEFT CLICK / SPACE</div>
+                <div class="key-info">
+                  <div class="key-title">Fire Cannons</div>
+                  <div class="key-desc">Discharge shells and cannons toward mouse cursor</div>
+                </div>
+              </div>
+
+              <div class="control-key-card diep-card rarity-common">
+                <div class="key-badge">E</div>
+                <div class="key-info">
+                  <div class="key-title">Auto-Fire Toggle</div>
+                  <div class="key-desc">Locks weapons on continuous cyclical barrage</div>
+                </div>
+              </div>
+
+              <div class="control-key-card diep-card rarity-common">
+                <div class="key-badge">C</div>
+                <div class="key-info">
+                  <div class="key-title">Auto-Spin Toggle</div>
+                  <div class="key-desc">Spins chassis turret automatically for 360° coverage</div>
+                </div>
+              </div>
+
+              <div class="control-key-card diep-card rarity-common">
+                <div class="key-badge">1 - 8 / NUMPAD</div>
+                <div class="key-info">
+                  <div class="key-title">Stat Point Upgrades</div>
+                  <div class="key-desc">Quickly invest earned points into stats without clicking</div>
+                </div>
+              </div>
+
+              <div class="control-key-card diep-card rarity-common">
+                <div class="key-badge">O</div>
+                <div class="key-info">
+                  <div class="key-title">Self-Destruct</div>
+                  <div class="key-desc">Detonates chassis instantly for tactical redeploy</div>
+                </div>
+              </div>
+
+              <div class="control-key-card diep-card rarity-common">
+                <div class="key-badge">` / F2</div>
+                <div class="key-info">
+                  <div class="key-title">Battle Console</div>
+                  <div class="key-desc">In-game wave debug spawner and godmode console</div>
+                </div>
+              </div>
+
+              <div class="control-key-card diep-card rarity-common">
+                <div class="key-badge">ESC</div>
+                <div class="key-info">
+                  <div class="key-title">Close Modals</div>
+                  <div class="key-desc">Exits Settings, Shop, or Admin overlays instantly</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Admin & Developer -->
+        <div id="settings-tab-admin" class="settings-tab-pane hidden">
+          <div class="diep-shop-section">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>🛡️</span> DEVELOPER ADMIN AUTHORIZATION
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-admin-hero diep-card rarity-epic">
+              <div class="admin-hero-content">
+                <div class="admin-hero-icon">🔐</div>
+                <div class="admin-hero-text">
+                  <div class="admin-hero-title">ADMINISTRATOR DATA SUITE</div>
+                  <div class="admin-hero-desc">
+                    Authorized administrators can modify persistent user profiles, crew upgrades (Loader, Gunner, Driver, Commander), coins, high scores, unlock chassis, and trigger battlefield cheats.
+                  </div>
+                  <div class="admin-hero-meta">
+                    <span class="security-lock-badge">PROTECTED WITH SECRET PASSWORD</span>
+                    <span class="security-status-badge">PASSKEY REQUIRED</span>
+                  </div>
+                </div>
+              </div>
+              <div class="admin-hero-actions">
+                <button id="open-admin-btn" class="diep-card-action-btn equip-ready" style="font-size: 13px; padding: 12px 28px;">
+                  UNLOCK ADMIN MENU
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
-      <div class="admin-checkbox-row">
-        <label><input type="checkbox" id="adm-debug-overlay"> Wireframe Hitbox Overlay</label>
+    </div>
+  </div>
+
+  <!-- Admin Secret Password Modal (Clean Diep Dialog) -->
+  <div id="admin-pass-modal" class="modal-overlay hidden">
+    <div class="modal-box diep-auth-dialog" style="max-width: 420px; width: 90vw; padding: 24px; text-align: center;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px;">
+        <span style="font-size: 26px;">🔐</span>
+        <h1 class="modal-title alert" style="margin: 0; font-size: 18px; letter-spacing: 1.5px;">ADMIN AUTHORIZATION</h1>
+      </div>
+      <p style="font-size: 12px; color: #949ba4; margin-bottom: 18px; line-height: 1.4;">
+        Enter administrator passkey to access persistent database overrides, crew barracks, and combat telemetry.
+      </p>
+      
+      <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+        <label style="font-size: 11px; color: #cbd5e1; font-weight: 800; letter-spacing: 0.8px; text-align: left;">SECRET PASSKEY:</label>
+        <div style="position: relative; width: 100%;">
+          <input type="password" id="admin-pass-input" class="setting-input" placeholder="••••••" autocomplete="off" style="text-align: center; font-size: 18px; letter-spacing: 4px; font-weight: 900; padding: 10px 42px 10px 14px; border: 2px solid #359bb5; border-radius: 6px; background: rgba(18, 19, 23, 0.95); color: #00b2e1; width: 100%; box-sizing: border-box;">
+          <button type="button" id="toggle-admin-pass-visibility" title="Toggle password visibility" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; font-size: 16px; opacity: 0.75; color: #949ba4; transition: opacity 0.2s;">👁️</button>
+        </div>
       </div>
 
-      <div class="admin-log-title">REAL-TIME DEBUG LOG CONSOLE</div>
-      <div id="debug-log-console" class="debug-log-console"></div>
+      <div id="admin-pass-error" class="hidden" style="color: #f14e54; font-size: 11px; font-weight: 900; margin-top: 10px; background: rgba(241, 78, 84, 0.15); padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(241, 78, 84, 0.3);"></div>
 
-      <div class="modal-actions" style="margin-top: 18px;">
-        <button id="close-admin-btn" class="modal-btn secondary">EXIT CONSOLE</button>
+      <div class="modal-actions" style="margin-top: 20px; display: flex; gap: 10px;">
+        <button id="admin-pass-submit-btn" class="diep-card-action-btn equip-ready" style="flex: 1; padding: 10px 14px; font-size: 12px;">UNLOCK SUITE</button>
+        <button id="admin-pass-cancel-btn" class="diep-shop-tab" style="flex: 1; padding: 10px 14px; font-size: 12px; justify-content: center;">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compatibility stub for admin-user-data-modal -->
+  <div id="admin-user-data-modal" class="hidden">
+    <button id="close-admin-user-data-btn" class="hidden"></button>
+    <button id="adm-open-battle-console-btn" class="hidden"></button>
+  </div>
+
+  <!-- Admin Panel & Developer Suite (Armory / Shop Window Style) -->
+  <div id="admin-panel-modal" class="modal-overlay hidden">
+    <div class="diep-shop-window diep-admin-window">
+      <!-- Top Header Navigation Bar -->
+      <div class="diep-shop-header">
+        <div class="diep-shop-header-left">
+          <div class="diep-shop-logo" style="color: #f14e54; text-shadow: -1.5px -1.5px 0 #222, 1.5px -1.5px 0 #222, -1.5px 1.5px 0 #222, 1.5px 1.5px 0 #222;">
+            <span class="diep-shop-logo-icon">🛠️</span> ADMIN
+          </div>
+          <div class="diep-shop-tabs">
+            <button id="tab-adm-userdata-btn" class="diep-shop-tab active" data-tab="userdata">
+              <span class="tab-icon">👤</span> User Data
+            </button>
+            <button id="tab-adm-crew-btn" class="diep-shop-tab" data-tab="crew">
+              <span class="tab-icon">👥</span> Crew Barracks
+            </button>
+            <button id="tab-adm-battle-btn" class="diep-shop-tab" data-tab="battle">
+              <span class="tab-icon">⚡</span> Cheats & Spawner
+            </button>
+            <button id="tab-adm-telemetry-btn" class="diep-shop-tab" data-tab="telemetry">
+              <span class="tab-icon">📜</span> Telemetry
+            </button>
+          </div>
+        </div>
+
+        <div class="diep-shop-header-right">
+          <div class="diep-coins-chip" style="border-color: rgba(241, 78, 84, 0.4);">
+            <span class="chip-coin-icon">🛡️</span>
+            <span id="admin-active-profile-badge" style="font-size: 11px; font-weight: 900; color: #38bdf8; letter-spacing: 0.5px;">ACTIVE PROFILE: GUEST</span>
+          </div>
+          <button id="close-admin-btn" class="diep-shop-close-btn" title="Exit Admin Console">✕</button>
+        </div>
+      </div>
+
+      <!-- Scrollable Admin Content Area -->
+      <div class="diep-shop-scroll-area diep-admin-scroll-area">
+        
+        <!-- Tab 1: User Data & Economy -->
+        <div id="adm-tab-pane-userdata" class="settings-tab-pane">
+          <!-- Quick Presets Section -->
+          <div class="diep-shop-section">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>⚡</span> ONE-CLICK PROGRESSION PRESETS
+                </div>
+                <div class="diep-section-subtitle">Instantly configure user wealth, unlocks, or restart progression</div>
+              </div>
+            </div>
+
+            <div class="admin-btn-row">
+              <button id="adm-preset-rich" class="admin-btn">+50,000 COINS</button>
+              <button id="adm-preset-million" class="admin-btn" style="background-color: #00e16e; border-color: #00a852;">+1,000,000 COINS</button>
+              <button id="adm-preset-max-crew" class="admin-btn" style="background-color: #8b5cf6; border-color: #7c3aed;">MAX ALL CREW (LV 50)</button>
+              <button id="adm-preset-unlock-all" class="admin-btn" style="background-color: #ff8b00; border-color: #d97706;">UNLOCK ALL TANKS & SKINS</button>
+              <button id="adm-preset-reset" class="admin-btn alert">RESET TO STARTER DEFAULTS</button>
+            </div>
+          </div>
+
+          <!-- Economy & Pilot Record -->
+          <div class="diep-shop-section" style="margin-top: 14px;">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>🪙</span> ECONOMY & PILOT RECORDS
+                </div>
+                <div class="diep-section-subtitle">Modify profile treasury, personal high score, and pilot identity</div>
+              </div>
+            </div>
+
+            <div class="admin-fields-grid">
+              <div class="admin-field-card diep-card rarity-common">
+                <div class="field-card-label">COINS BALANCE</div>
+                <div class="admin-num-control">
+                  <input type="number" id="adm-input-coins" min="0" step="100" class="setting-input">
+                  <button id="adm-set-coins-btn" class="diep-card-action-btn equip-ready" style="padding: 6px 14px; font-size: 11px;">SET</button>
+                </div>
+              </div>
+
+              <div class="admin-field-card diep-card rarity-common">
+                <div class="field-card-label">ALL-TIME HIGH SCORE</div>
+                <div class="admin-num-control">
+                  <input type="number" id="adm-input-highscore" min="0" step="1000" class="setting-input">
+                  <button id="adm-set-highscore-btn" class="diep-card-action-btn equip-ready" style="padding: 6px 14px; font-size: 11px;">SET</button>
+                </div>
+              </div>
+
+              <div class="admin-field-card diep-card rarity-common">
+                <div class="field-card-label">MAX WAVE SURVIVED</div>
+                <div class="admin-num-control">
+                  <input type="number" id="adm-input-maxwave" min="1" step="1" class="setting-input">
+                  <button id="adm-set-maxwave-btn" class="diep-card-action-btn equip-ready" style="padding: 6px 14px; font-size: 11px;">SET</button>
+                </div>
+              </div>
+
+              <div class="admin-field-card diep-card rarity-common">
+                <div class="field-card-label">PILOT CALLSIGN</div>
+                <div class="admin-num-control">
+                  <input type="text" id="adm-input-pilotname" maxlength="20" class="setting-input">
+                  <button id="adm-set-pilotname-btn" class="diep-card-action-btn equip-ready" style="padding: 6px 14px; font-size: 11px;">SET</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tank Unlocks & Paint Finishes -->
+          <div class="diep-shop-section" style="margin-top: 14px;">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>🎨</span> CHASSIS & COSMETICS UNLOCKS
+                </div>
+                <div class="diep-section-subtitle">Toggle chassis licensing and premium armory paint finishes</div>
+              </div>
+            </div>
+
+            <div class="admin-btn-row">
+              <button id="adm-unlock-all-tanks-btn" class="admin-btn">UNLOCK ALL 7 TANKS</button>
+              <button id="adm-unlock-colorwheel-btn" class="admin-btn">UNLOCK RGB COLOR WHEEL</button>
+              <button id="adm-unlock-all-colors-btn" class="admin-btn">UNLOCK ALL COLOR THEMES</button>
+            </div>
+            <div id="adm-chassis-pills" class="admin-pills-wrap" style="margin-top: 10px;"></div>
+          </div>
+
+          <!-- Bottom Actions -->
+          <div style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px; display: flex; justify-content: flex-end;">
+            <button id="adm-save-all-btn" class="diep-card-action-btn equip-ready" style="padding: 10px 24px; font-size: 12px;">SAVE ALL DATA OVERRIDES</button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Crew Barracks -->
+        <div id="adm-tab-pane-crew" class="settings-tab-pane hidden">
+          <div class="diep-shop-section">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>👥</span> CREW UPGRADES & PASSIVE STAT BOOSTS
+                </div>
+                <div class="diep-section-subtitle">Fine-tune individual crew specialists (Loader, Gunner, Driver, Commander)</div>
+              </div>
+            </div>
+
+            <div class="admin-crew-cards-grid">
+              <!-- Loader Card -->
+              <div class="diep-card rarity-rare admin-crew-card-full">
+                <div class="admin-crew-card-header">
+                  <div class="admin-crew-title-wrap">
+                    <span class="crew-icon">⚡</span>
+                    <div>
+                      <div class="diep-card-title">LOADER SPECIALIST</div>
+                      <div class="diep-card-subdesc">Decreases cannon reload interval (cyclic firerate)</div>
+                    </div>
+                  </div>
+                  <div class="admin-crew-badge">RELOAD</div>
+                </div>
+                <div class="admin-crew-card-body">
+                  <div class="admin-num-control">
+                    <input type="number" id="adm-crew-loader" min="0" max="999" class="setting-input" style="font-size: 16px; font-weight: 900; text-align: center;">
+                    <button data-crew="loader" class="adm-save-crew-btn diep-card-action-btn equip-ready" style="padding: 6px 14px; font-size: 11px;">SET LEVEL</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Gunner Card -->
+              <div class="diep-card rarity-rare admin-crew-card-full">
+                <div class="admin-crew-card-header">
+                  <div class="admin-crew-title-wrap">
+                    <span class="crew-icon">🎯</span>
+                    <div>
+                      <div class="diep-card-title">GUNNER SPECIALIST</div>
+                      <div class="diep-card-subdesc">Amplifies kinetic projectile damage across all barrels</div>
+                    </div>
+                  </div>
+                  <div class="admin-crew-badge">DAMAGE</div>
+                </div>
+                <div class="admin-crew-card-body">
+                  <div class="admin-num-control">
+                    <input type="number" id="adm-crew-gunner" min="0" max="999" class="setting-input" style="font-size: 16px; font-weight: 900; text-align: center;">
+                    <button data-crew="gunner" class="adm-save-crew-btn diep-card-action-btn equip-ready" style="padding: 6px 14px; font-size: 11px;">SET LEVEL</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Driver Card -->
+              <div class="diep-card rarity-rare admin-crew-card-full">
+                <div class="admin-crew-card-header">
+                  <div class="admin-crew-title-wrap">
+                    <span class="crew-icon">🏎️</span>
+                    <div>
+                      <div class="diep-card-title">DRIVER SPECIALIST</div>
+                      <div class="diep-card-subdesc">Increases chassis engine horsepower and top maneuvering speed</div>
+                    </div>
+                  </div>
+                  <div class="admin-crew-badge">MOBILITY</div>
+                </div>
+                <div class="admin-crew-card-body">
+                  <div class="admin-num-control">
+                    <input type="number" id="adm-crew-driver" min="0" max="999" class="setting-input" style="font-size: 16px; font-weight: 900; text-align: center;">
+                    <button data-crew="driver" class="adm-save-crew-btn diep-card-action-btn equip-ready" style="padding: 6px 14px; font-size: 11px;">SET LEVEL</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Commander Card -->
+              <div class="diep-card rarity-rare admin-crew-card-full">
+                <div class="admin-crew-card-header">
+                  <div class="admin-crew-title-wrap">
+                    <span class="crew-icon">⭐</span>
+                    <div>
+                      <div class="diep-card-title">COMMANDER SPECIALIST</div>
+                      <div class="diep-card-subdesc">Yields bonus experience multipliers and extra arena coin bounties</div>
+                    </div>
+                  </div>
+                  <div class="admin-crew-badge">MULTIPLIER</div>
+                </div>
+                <div class="admin-crew-card-body">
+                  <div class="admin-num-control">
+                    <input type="number" id="adm-crew-commander" min="0" max="999" class="setting-input" style="font-size: 16px; font-weight: 900; text-align: center;">
+                    <button data-crew="commander" class="adm-save-crew-btn diep-card-action-btn equip-ready" style="padding: 6px 14px; font-size: 11px;">SET LEVEL</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Combat Cheats & Spawner -->
+        <div id="adm-tab-pane-battle" class="settings-tab-pane hidden">
+          <!-- Class & Level Controls -->
+          <div class="diep-shop-section">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>🎮</span> CHASSIS CLASS & LEVEL OVERRIDES
+                </div>
+                <div class="diep-section-subtitle">Hot-swap tank chassis on the fly and adjust pilot experience</div>
+              </div>
+            </div>
+
+            <div class="admin-grid" style="grid-template-columns: repeat(auto-fit, minmax(calc(180px * var(--ui-scale)), 1fr));">
+              <div class="setting-row" style="grid-column: 1 / -1; margin-bottom: 6px;">
+                <label style="font-weight: 900; color: #cbd5e1; font-size: 11px;">SWITCH ACTIVE TANK CLASS:</label>
+                <select id="adm-chassis-select" class="setting-input" style="font-weight: 900; font-size: 13px;">
+                  <option value="basic">BASIC TANK</option>
+                  <option value="twin">TWIN</option>
+                  <option value="sniper">SNIPER</option>
+                  <option value="flank">FLANK GUARD</option>
+                  <option value="machinegun">MACHINE GUN</option>
+                  <option value="smasher">SMASHER</option>
+                  <option value="tesla">TESLA</option>
+                </select>
+              </div>
+
+              <button id="adm-lvl-10" class="admin-btn">+10 PILOT LEVELS</button>
+              <button id="adm-lvl-max" class="admin-btn" style="background-color: #00e16e; border-color: #00a852;">MAX LEVEL 150</button>
+              <button id="adm-give-level150-btn" class="admin-btn" style="background-color: #8b5cf6; border-color: #7c3aed;">GRANT ALL STAT POINTS</button>
+            </div>
+          </div>
+
+          <!-- Wave & Entity Controls -->
+          <div class="diep-shop-section" style="margin-top: 14px;">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>🌊</span> WAVE PACE & ARENA ENTITIES
+                </div>
+                <div class="diep-section-subtitle">Manipulate enemy wave progression, pause timers, or wipe entities</div>
+              </div>
+            </div>
+
+            <div class="admin-btn-row">
+              <button id="adm-toggle-pause" class="admin-btn">TOGGLE WAVE PAUSE</button>
+              <button id="adm-wave-prev" class="admin-btn">PREV WAVE (-1)</button>
+              <button id="adm-wave-next" class="admin-btn">+1 WAVE (ADVANCE)</button>
+              <button id="adm-clear-all" class="admin-btn alert">CLEAR ALL ENTITIES</button>
+            </div>
+
+            <div class="admin-checkboxes-row" style="display: flex; gap: 20px; margin-top: 10px; align-items: center;">
+              <label class="admin-checkbox-label">
+                <input type="checkbox" id="adm-godmode-toggle">
+                <span>🛡️ GOD MODE (INFINITE HEALTH)</span>
+              </label>
+              <label class="admin-checkbox-label">
+                <input type="checkbox" id="adm-debug-overlay">
+                <span>📐 WIREFRAME HITBOX OVERLAY</span>
+              </label>
+              <button id="adm-toggle-godmode-btn" class="hidden"></button>
+            </div>
+          </div>
+
+          <!-- Shape Spawner -->
+          <div class="diep-shop-section" style="margin-top: 14px;">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>🔷</span> SHAPE SPAWNER
+                </div>
+                <div class="diep-section-subtitle">Spawn polygons, pentagons, crashers, and alpha bosses</div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <select id="adm-shape-select" class="setting-input" style="flex: 2; min-width: 160px; font-weight: 800; font-size: 13px;">
+                <!-- Populated dynamically from CONFIG.SHAPES.types -->
+              </select>
+              <input id="adm-shape-count" type="number" min="1" max="50" value="1" class="setting-input" style="width: 80px; text-align: center; font-weight: 900;" title="Spawn Count">
+              <button id="adm-spawn-shape" class="admin-btn" style="background-color: #22c55e; border-color: #16a34a; flex: 1; min-width: 140px;">SPAWN SHAPES</button>
+              <button id="adm-clear-shapes" class="admin-btn alert" style="flex: 1; min-width: 140px;">CLEAR SHAPES ONLY</button>
+            </div>
+          </div>
+
+          <!-- Enemy Drone Spawner -->
+          <div class="diep-shop-section" style="margin-top: 14px;">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>👾</span> ENEMY DRONE SPAWNER
+                </div>
+                <div class="diep-section-subtitle">Spawn aggressive combat drones for battle stress testing</div>
+              </div>
+            </div>
+
+            <div class="admin-btn-row">
+              <button id="adm-spawn-swarmer" class="admin-btn">+5 SWARMERS (CHASERS)</button>
+              <button id="adm-spawn-sniper" class="admin-btn">+5 SNIPER DRONES</button>
+              <button id="adm-spawn-heavy" class="admin-btn">+3 HEAVY HEXES</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Telemetry & Logs -->
+        <div id="adm-tab-pane-telemetry" class="settings-tab-pane hidden">
+          <div class="diep-shop-section" style="height: 100%; display: flex; flex-direction: column;">
+            <div class="diep-section-header">
+              <div class="diep-section-title-wrap">
+                <div class="diep-section-title">
+                  <span>📜</span> REAL-TIME COMBAT TELEMETRY LOG
+                </div>
+                <div class="diep-section-subtitle">Live events, damage ticks, entity counts, and system status</div>
+              </div>
+              <button id="adm-clear-telemetry-btn" class="diep-card-action-btn" style="padding: 4px 12px; font-size: 10px; background: #374151;">CLEAR CONSOLE</button>
+            </div>
+
+            <div id="debug-log-console" class="debug-log-console" style="flex: 1; min-height: 280px; height: auto;"></div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>

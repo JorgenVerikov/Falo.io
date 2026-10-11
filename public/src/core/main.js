@@ -3,7 +3,7 @@ import { WeaponSystem, WEAPON_TYPE } from '../entities/weapons.js';
 import { WaveManager } from '../systems/waveManager.js';
 import { StorageManager } from './storage.js';
 import { UIManager } from '../ui/ui.js';
-import { CONFIG, getXPRequiredForLevel, getTotalXPForLevel } from './config.js';
+import { CONFIG, getXPRequiredForLevel, getTotalXPForLevel, getEnemyUpgradesForWave } from './config.js';
 
 export { getXPRequiredForLevel, getTotalXPForLevel };
 
@@ -177,6 +177,17 @@ async function initGame() {
   populateAdminShapeSelect();
   setupAdminPanelListeners();
   uiMgr.onColorChangeCallback = () => applyCrewAndStatModifiers();
+
+  storageMgr.onDataChanged = (newData, isUser) => {
+    applyCrewAndStatModifiers();
+    if (newData && newData.activeChassis) {
+      setActiveChassis(newData.activeChassis);
+    }
+    if (uiMgr) {
+      uiMgr.refreshAllUIFromStorage();
+    }
+  };
+
   uiMgr.showMainMenu();
   requestAnimationFrame(gameLoop);
 }
@@ -260,6 +271,9 @@ function restartRun() {
 }
 
 function loadAndStartGame() {
+  if (canvasMgr && canvasMgr.canvas) {
+    canvasMgr.canvas.classList.remove('hidden');
+  }
   state.inMenu = false;
   state.isPlaying = true;
   state.isGameOver = false;
@@ -587,6 +601,10 @@ function setupInputs() {
     }
 
     if (e.key === 'Escape') {
+      if (uiMgr.adminPassModal && !uiMgr.adminPassModal.classList.contains('hidden')) {
+        uiMgr.hideAdminPassModal();
+        return;
+      }
       if (uiMgr.adminModal && !uiMgr.adminModal.classList.contains('hidden')) {
         uiMgr.hideAdminPanel();
         return;
@@ -1190,6 +1208,31 @@ function updateHUD() {
     waveStatus.textContent = `WAVE ${waveMgr.waveNumber}`;
     waveStatus.style.color = '#359bb5';
     waveTimerText.textContent = `ENEMIES REMAINING: ${waveMgr.getRemainingEnemyCount()}${upgradeLabel}`;
+  }
+
+  const enemyUpgradePill = document.getElementById('enemy-upgrade-pill');
+  if (enemyUpgradePill) {
+    if (upgradePoints > 0) {
+      enemyUpgradePill.classList.remove('hidden');
+      const chaserUpg = getEnemyUpgradesForWave('chaser', waveMgr.waveNumber).stats;
+      const rangedUpg = getEnemyUpgradesForWave('ranged', waveMgr.waveNumber).stats;
+      const heavyUpg = getEnemyUpgradesForWave('heavy', waveMgr.waveNumber).stats;
+
+      const buffs = [];
+      const topHp = Math.max(chaserUpg.maxHp, rangedUpg.maxHp, heavyUpg.maxHp);
+      if (topHp > 0) buffs.push(`HP +${topHp}`);
+      const topSpd = Math.max(chaserUpg.moveSpeed, rangedUpg.moveSpeed, heavyUpg.moveSpeed);
+      if (topSpd > 0) buffs.push(`SPD +${topSpd}`);
+      const topBdm = Math.max(chaserUpg.bodyDamage, heavyUpg.bodyDamage);
+      if (topBdm > 0) buffs.push(`BDMG +${topBdm}`);
+      if (rangedUpg.bulletDamage > 0) buffs.push(`DMG +${rangedUpg.bulletDamage}`);
+      if (rangedUpg.bulletSpeed > 0) buffs.push(`BSPD +${rangedUpg.bulletSpeed}`);
+      if (rangedUpg.reloadSpeed > 0) buffs.push(`RLD +${rangedUpg.reloadSpeed}`);
+
+      enemyUpgradePill.textContent = `ENEMY STATS: ${buffs.join(' • ')}`;
+    } else {
+      enemyUpgradePill.classList.add('hidden');
+    }
   }
 
   const titleElem = document.getElementById('weapon-title');
