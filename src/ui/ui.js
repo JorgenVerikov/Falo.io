@@ -1104,20 +1104,31 @@ export class UIManager {
     let g = parseInt(c.substring(2, 4), 16);
     let b = parseInt(c.substring(4, 6), 16);
 
-    const HALF = 127.5;
+    const THRESHOLD = 40;
     const OFFSET = 30;
 
-    const adjust = (val) => {
-      if (val < HALF) {
-        return Math.min(255, val + OFFSET);
-      } else {
-        return Math.max(0, val - OFFSET);
-      }
-    };
+    // If the color overall is near-black, brighten slightly so stroke is visible
+    if (r < THRESHOLD && g < THRESHOLD && b < THRESHOLD) {
+      r = Math.min(255, r + OFFSET);
+      g = Math.min(255, g + OFFSET);
+      b = Math.min(255, b + OFFSET);
+    } else {
+      const adjust = (val) => {
+        if (val === 0) return 0;
+        if (val < THRESHOLD) {
+          return Math.min(255, val + OFFSET);
+        } else {
+          return Math.max(0, val - OFFSET);
+        }
+      };
+      r = adjust(r);
+      g = adjust(g);
+      b = adjust(b);
+    }
 
-    const rStr = adjust(r).toString(16).padStart(2, '0');
-    const gStr = adjust(g).toString(16).padStart(2, '0');
-    const bStr = adjust(b).toString(16).padStart(2, '0');
+    const rStr = r.toString(16).padStart(2, '0');
+    const gStr = g.toString(16).padStart(2, '0');
+    const bStr = b.toString(16).padStart(2, '0');
 
     return `#${rStr}${gStr}${bStr}`;
   }
@@ -1456,73 +1467,7 @@ export class UIManager {
     });
     container.appendChild(featuredSection);
 
-    // 2. CUSTOM RGB COLOR WHEEL CARD
-    const customSection = document.createElement('div');
-    customSection.className = 'diep-shop-section';
-    customSection.innerHTML = `
-      <div class="diep-section-header">
-        <div class="diep-section-title">CUSTOM RGB PALETTE WHEEL</div>
-      </div>
-      <div class="diep-card" style="padding: 14px; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 14px; border: 3px solid #f59e0b; background-color: #fefce8; background-image: linear-gradient(to right, rgba(245, 158, 11, 0.25) 1px, transparent 1px), linear-gradient(to bottom, rgba(245, 158, 11, 0.25) 1px, transparent 1px); background-size: 16px 16px;">
-        <div style="display: flex; align-items: center; gap: 14px;">
-          <input type="color" id="diep-rgb-picker" value="${this.storage.data.customColor || '#00b2e1'}" style="width: 54px; height: 54px; border: 2.5px solid #d97706; border-radius: 8px; cursor: pointer; background: transparent; padding: 2px;">
-          <div>
-            <div class="diep-card-title" style="font-size: 16px;">FULL SPECTRUM</div>
-            <div class="diep-card-subdesc" style="font-size: 12px;">Choose ANY custom color</div>
-          </div>
-        </div>
-        <div>
-          ${unlockedWheel
-            ? (activeColor === 'custom'
-                ? `<button class="diep-card-action-btn equipped" style="width: 140px;">EQUIPPED</button>`
-                : `<button class="diep-card-action-btn equip-ready" id="equip-wheel-btn" style="width: 140px;">EQUIP CUSTOM</button>`)
-            : `<button class="diep-card-action-btn ${coins >= 500 ? '' : 'disabled'}" id="buy-wheel-btn" style="width: 160px;">
-                UNLOCK <span class="diep-coin-icon"></span>500
-               </button>`
-          }
-        </div>
-      </div>
-    `;
-
-    const picker = customSection.querySelector('#diep-rgb-picker');
-    if (picker) {
-      picker.addEventListener('input', (e) => {
-        this.storage.setCustomColor(e.target.value);
-        if (this.storage.data.activeColor === 'custom') {
-          if (this.onColorChangeCallback) this.onColorChangeCallback();
-        }
-      });
-      picker.addEventListener('change', (e) => {
-        this.storage.setCustomColor(e.target.value);
-        if (this.storage.data.activeColor === 'custom') {
-          if (this.onColorChangeCallback) this.onColorChangeCallback();
-        }
-      });
-    }
-    const equipWheelBtn = customSection.querySelector('#equip-wheel-btn');
-    if (equipWheelBtn) {
-      equipWheelBtn.addEventListener('click', () => {
-        this.storage.setActiveColor('custom');
-        if (this.onColorChangeCallback) this.onColorChangeCallback();
-        this.showToast("EQUIPPED CUSTOM RGB TANK COLOR");
-        this.renderShopContent();
-      });
-    }
-    const buyWheelBtn = customSection.querySelector('#buy-wheel-btn');
-    if (buyWheelBtn) {
-      buyWheelBtn.addEventListener('click', () => {
-        if (this.storage.unlockColorWheel(500)) {
-          if (this.onColorChangeCallback) this.onColorChangeCallback();
-          this.showToast("UNLOCKED CUSTOM RGB COLOR WHEEL!");
-          this.renderShopContent();
-        } else {
-          this.showToast("NEED MORE COINS FOR COLOR WHEEL");
-        }
-      });
-    }
-    container.appendChild(customSection);
-
-    // 3. ALL COLOR THEMES SECTION
+    // 2. ALL COLOR THEMES SECTION
     const allSection = document.createElement('div');
     allSection.className = 'diep-shop-section';
     allSection.innerHTML = `
@@ -1859,7 +1804,7 @@ export class UIManager {
       badge.textContent = isUser 
         ? `LOGGED IN: ${this.storage.currentUser.email || 'USER ACCOUNT'}` 
         : 'ACTIVE PROFILE: LOCAL GUEST PROGRESS';
-      badge.style.color = isUser ? '#22c55e' : '#38bdf8';
+      badge.style.color = '#38bdf8';
     }
 
     const coinsInput = document.getElementById('adm-input-coins');
@@ -1883,6 +1828,30 @@ export class UIManager {
     if (gunnerInput) gunnerInput.value = crew.gunner || 0;
     if (driverInput) driverInput.value = crew.driver || 0;
     if (commanderInput) commanderInput.value = crew.commander || 0;
+
+    // Custom Tank Color (Developer Exclusive)
+    const customPicker = document.getElementById('adm-custom-color-picker');
+    const customHexInput = document.getElementById('adm-custom-color-hex');
+    const customStatus = document.getElementById('adm-custom-color-status');
+    const customPreview = document.getElementById('adm-custom-color-preview-box');
+
+    const curColor = data.customColor || '#00b2e1';
+    if (customPicker) customPicker.value = curColor;
+    if (customHexInput) customHexInput.value = curColor.toUpperCase();
+
+    const isCustomActive = (data.activeColor === 'custom');
+    if (customStatus) {
+      customStatus.textContent = isCustomActive ? 'ACTIVE: EQUIPPED' : 'INACTIVE';
+      customStatus.style.background = isCustomActive ? '#e0f2fe' : '#f1f5f9';
+      customStatus.style.color = isCustomActive ? '#0284c7' : '#64748b';
+      customStatus.style.borderColor = isCustomActive ? '#00b2e1' : '#cbd5e1';
+    }
+
+    if (customPreview) {
+      const strokeColor = this.computeStrokeColor(curColor);
+      customPreview.style.backgroundColor = curColor;
+      customPreview.style.borderColor = strokeColor;
+    }
 
     // Chassis pills
     this.renderAdminChassisPills();
@@ -2045,19 +2014,75 @@ export class UIManager {
       this.showToast('ADMIN: ALL 7 TANKS UNLOCKED');
     });
 
-    document.getElementById('adm-unlock-colorwheel-btn')?.addEventListener('click', () => {
-      this.storage.updateUserData({ unlockedColorWheel: true });
-      this.populateAdminUserDataForm();
-      this.refreshAllUIFromStorage();
-      this.showToast('ADMIN: RGB COLOR WHEEL UNLOCKED');
-    });
-
     document.getElementById('adm-unlock-all-colors-btn')?.addEventListener('click', () => {
-      const allColors = ['default', 'cyan', 'crimson', 'lime', 'dark', 'neon', 'matrix', 'gold', 'pastel'];
+      const allColors = Object.keys(CONFIG.COLOR_THEMES);
       this.storage.updateUserData({ unlockedColors: allColors });
       this.populateAdminUserDataForm();
       this.refreshAllUIFromStorage();
       this.showToast('ADMIN: ALL COLOR PALETTES UNLOCKED');
+    });
+
+    // Developer Exclusive Custom Tank Color Actions
+    const admPicker = document.getElementById('adm-custom-color-picker');
+    const admHex = document.getElementById('adm-custom-color-hex');
+    const admPreview = document.getElementById('adm-custom-color-preview-box');
+
+    const syncColorInputs = (hex) => {
+      if (!hex) return;
+      if (admPicker) admPicker.value = hex;
+      if (admHex) admHex.value = hex.toUpperCase();
+      if (admPreview) {
+        admPreview.style.backgroundColor = hex;
+        admPreview.style.borderColor = this.computeStrokeColor(hex);
+      }
+    };
+
+    if (admPicker) {
+      admPicker.addEventListener('input', (e) => {
+        syncColorInputs(e.target.value);
+      });
+    }
+
+    if (admHex) {
+      admHex.addEventListener('input', (e) => {
+        let val = e.target.value.trim();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+          syncColorInputs(val);
+        }
+      });
+      admHex.addEventListener('blur', () => {
+        let val = admHex.value.trim();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (!/^#[0-9A-Fa-f]{6}$/.test(val)) {
+          syncColorInputs(admPicker ? admPicker.value : '#00b2e1');
+        } else {
+          syncColorInputs(val);
+        }
+      });
+    }
+
+    document.getElementById('adm-equip-custom-color-btn')?.addEventListener('click', () => {
+      let val = admHex ? admHex.value.trim() : (admPicker ? admPicker.value : '#00b2e1');
+      if (!val.startsWith('#')) val = '#' + val;
+      if (!/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        val = admPicker ? admPicker.value : '#00b2e1';
+      }
+      this.storage.setCustomColor(val);
+      this.storage.updateUserData({ activeColor: 'custom', customColor: val, unlockedColorWheel: true });
+      this.populateAdminUserDataForm();
+      this.refreshAllUIFromStorage();
+      if (this.onColorChangeCallback) this.onColorChangeCallback();
+      this.showToast(`ADMIN: CUSTOM COLOR ${val.toUpperCase()} EQUIPPED`);
+    });
+
+    document.getElementById('adm-revert-custom-color-btn')?.addEventListener('click', () => {
+      this.storage.setActiveColor('default');
+      this.storage.updateUserData({ activeColor: 'default' });
+      this.populateAdminUserDataForm();
+      this.refreshAllUIFromStorage();
+      if (this.onColorChangeCallback) this.onColorChangeCallback();
+      this.showToast('ADMIN: REVERTED TO CLASSIC PRESET COLOR');
     });
 
     // In-game battle testing tools

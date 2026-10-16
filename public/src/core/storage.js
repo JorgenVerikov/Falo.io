@@ -281,6 +281,7 @@ export class StorageManager {
 
   setCustomColor(hexColor) {
     this.data.customColor = hexColor;
+    this.data.unlockedColorWheel = true;
     this.data.activeColor = 'custom';
     this.save();
   }
@@ -297,7 +298,8 @@ export class StorageManager {
   }
 
   setActiveColor(colorKey) {
-    if (colorKey === 'custom' && this.data.unlockedColorWheel) {
+    if (colorKey === 'custom') {
+      this.data.unlockedColorWheel = true;
       this.data.activeColor = 'custom';
       this.save();
       return true;

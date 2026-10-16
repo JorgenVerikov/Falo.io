@@ -7,7 +7,8 @@ import { CONFIG, getXPRequiredForLevel, getTotalXPForLevel, getEnemyUpgradesForW
 
 export { getXPRequiredForLevel, getTotalXPForLevel };
 
-// Calculates secondary (stroke) color by shifting each channel by 30 based on 127.5 threshold
+// Calculates secondary (stroke) color by shifting channels down by 30 for colors above threshold (40)
+// so bright and pastel colors (like Pastel Dream and Neon Violet) stay vibrant and saturated instead of muted.
 export function computeStrokeColor(hex) {
   if (!hex) return '#101018';
   let c = hex.replace('#', '');
@@ -20,20 +21,31 @@ export function computeStrokeColor(hex) {
   let g = parseInt(c.substring(2, 4), 16);
   let b = parseInt(c.substring(4, 6), 16);
 
-  const HALF = 127.5;
+  const THRESHOLD = 40;
   const OFFSET = 30;
 
-  const adjust = (val) => {
-    if (val < HALF) {
-      return Math.min(255, val + OFFSET);
-    } else {
-      return Math.max(0, val - OFFSET);
-    }
-  };
+  // If the color overall is near-black, brighten slightly so stroke is visible
+  if (r < THRESHOLD && g < THRESHOLD && b < THRESHOLD) {
+    r = Math.min(255, r + OFFSET);
+    g = Math.min(255, g + OFFSET);
+    b = Math.min(255, b + OFFSET);
+  } else {
+    const adjust = (val) => {
+      if (val === 0) return 0;
+      if (val < THRESHOLD) {
+        return Math.min(255, val + OFFSET);
+      } else {
+        return Math.max(0, val - OFFSET);
+      }
+    };
+    r = adjust(r);
+    g = adjust(g);
+    b = adjust(b);
+  }
 
-  const rStr = adjust(r).toString(16).padStart(2, '0');
-  const gStr = adjust(g).toString(16).padStart(2, '0');
-  const bStr = adjust(b).toString(16).padStart(2, '0');
+  const rStr = r.toString(16).padStart(2, '0');
+  const gStr = g.toString(16).padStart(2, '0');
+  const bStr = b.toString(16).padStart(2, '0');
 
   return `#${rStr}${gStr}${bStr}`;
 }
@@ -176,6 +188,7 @@ async function initGame() {
   populateAdminChassisSelect();
   populateAdminShapeSelect();
   setupAdminPanelListeners();
+  uiMgr.getIsGameActive = () => (state.isPlaying && !state.inMenu);
   uiMgr.onColorChangeCallback = () => applyCrewAndStatModifiers();
 
   storageMgr.onDataChanged = (newData, isUser) => {
@@ -249,6 +262,13 @@ function unloadGame() {
   camera.y = 0;
   camera.zoom = CONFIG.CAMERA.defaultZoom;
   camera.targetZoom = CONFIG.CAMERA.defaultZoom;
+
+  if (canvasMgr) {
+    if (canvasMgr.canvas) {
+      canvasMgr.canvas.classList.add('hidden');
+    }
+    canvasMgr.clear();
+  }
 
   if (uiMgr) {
     uiMgr.hideInGameHUD();
@@ -399,7 +419,7 @@ function applyCrewAndStatModifiers() {
 
   const activeColorKey = storageMgr.data.activeColor || 'default';
 
-  if (activeColorKey === 'custom' && storageMgr.data.unlockedColorWheel) {
+  if (activeColorKey === 'custom') {
     player.fillColor = storageMgr.data.customColor || '#00b2e1';
     player.strokeColor = computeStrokeColor(player.fillColor);
   } else if (CONFIG.COLOR_THEMES[activeColorKey]) {
@@ -1346,10 +1366,10 @@ function gameLoop(timestamp) {
     uiMgr.updatePreviewSpin(dt, player.fillColor, player.strokeColor);
   }
 
-  canvasMgr.clear();
-  canvasMgr.drawGrid(camera, CONFIG.ARENA.gridSize);
-
   if (state.isPlaying && !state.inMenu) {
+    canvasMgr.clear();
+    canvasMgr.drawGrid(camera, CONFIG.ARENA.gridSize);
+
     canvasMgr.beginCamera(camera);
     waveMgr.draw(canvasMgr);
     weaponSys.draw(canvasMgr.ctx);

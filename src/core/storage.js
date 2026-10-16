@@ -11,9 +11,9 @@ const DEFAULT_DATA = {
   maxWave: 1,
   unlockedChassis: ['basic'],
   activeChassis: 'basic',
-  unlockedColors: ['default', 'cyan'],
+  unlockedColors: ['default'],
   unlockedColorWheel: false,
-  customColor: '#ffffff',
+  customColor: '#00b2e1',
   activeColor: 'default',
   settings: {
     theme: 'light',
@@ -83,7 +83,7 @@ export class StorageManager {
       },
       unlockedChassis: Array.from(new Set(['basic', ...(data.unlockedChassis || [])])),
       activeChassis: data.activeChassis || 'basic',
-      unlockedColors: Array.from(new Set(['default', 'cyan', ...(data.unlockedColors || [])])),
+      unlockedColors: Array.from(new Set(['default', ...(data.unlockedColors || [])])),
       crewLevels: { ...DEFAULT_DATA.crewLevels, ...(data.crewLevels || {}) }
     };
   }
@@ -281,6 +281,7 @@ export class StorageManager {
 
   setCustomColor(hexColor) {
     this.data.customColor = hexColor;
+    this.data.unlockedColorWheel = true;
     this.data.activeColor = 'custom';
     this.save();
   }
@@ -297,7 +298,8 @@ export class StorageManager {
   }
 
   setActiveColor(colorKey) {
-    if (colorKey === 'custom' && this.data.unlockedColorWheel) {
+    if (colorKey === 'custom') {
+      this.data.unlockedColorWheel = true;
       this.data.activeColor = 'custom';
       this.save();
       return true;

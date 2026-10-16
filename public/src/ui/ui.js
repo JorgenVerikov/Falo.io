@@ -409,8 +409,7 @@ export class UIManager {
     // Settings Navigation Tabs
     const settingsTabs = [
       { btnId: 'tab-settings-display-btn', paneId: 'settings-tab-display' },
-      { btnId: 'tab-settings-controls-btn', paneId: 'settings-tab-controls' },
-      { btnId: 'tab-settings-admin-btn', paneId: 'settings-tab-admin' }
+      { btnId: 'tab-settings-controls-btn', paneId: 'settings-tab-controls' }
     ];
 
     settingsTabs.forEach(({ btnId, paneId }) => {
@@ -671,17 +670,49 @@ export class UIManager {
     this.closeModal(this.settingsModal);
   }
 
-  toggleAdminPanel(initialTab = 'battle') {
+  isGameActive() {
+    if (typeof this.getIsGameActive === 'function') {
+      return this.getIsGameActive();
+    }
+    return !this.mainMenuModal || this.mainMenuModal.classList.contains('hidden');
+  }
+
+  toggleAdminPanel(initialTab) {
     if (!this.adminModal.classList.contains('active') && this.adminModal.classList.contains('hidden')) {
-      this.showAdminPanel(initialTab);
+      const isIngame = this.isGameActive();
+      const defaultTab = initialTab || (isIngame ? 'battle' : 'userdata');
+      this.showAdminPanel(defaultTab);
     } else {
       this.hideAdminPanel();
     }
   }
 
-  showAdminPanel(tab = 'battle') {
+  showAdminPanel(tab) {
+    const isIngame = this.isGameActive();
+    const battleTabBtn = document.getElementById('tab-adm-battle-btn');
+    const battlePane = document.getElementById('adm-tab-pane-battle');
+
+    if (battleTabBtn) {
+      if (isIngame) {
+        battleTabBtn.classList.remove('hidden');
+      } else {
+        battleTabBtn.classList.add('hidden');
+      }
+    }
+
+    let targetTab = tab;
+    if (!targetTab) {
+      targetTab = isIngame ? 'battle' : 'userdata';
+    } else if (!isIngame && targetTab === 'battle') {
+      targetTab = 'userdata';
+    }
+
+    if (!isIngame && battlePane) {
+      battlePane.classList.add('hidden');
+    }
+
     this.populateAdminUserDataForm();
-    this.switchAdminTab(tab);
+    this.switchAdminTab(targetTab);
     this.openModal(this.adminModal);
   }
 
@@ -690,6 +721,12 @@ export class UIManager {
   }
 
   switchAdminTab(tabKey) {
+    const isIngame = this.isGameActive();
+    let targetKey = tabKey;
+    if (!isIngame && targetKey === 'battle') {
+      targetKey = 'userdata';
+    }
+
     const tabs = [
       { key: 'userdata', btnId: 'tab-adm-userdata-btn', paneId: 'adm-tab-pane-userdata' },
       { key: 'crew', btnId: 'tab-adm-crew-btn', paneId: 'adm-tab-pane-crew' },
@@ -700,7 +737,7 @@ export class UIManager {
     tabs.forEach(t => {
       const btn = document.getElementById(t.btnId);
       const pane = document.getElementById(t.paneId);
-      const isActive = t.key === tabKey;
+      const isActive = t.key === targetKey;
       if (btn) btn.classList.toggle('active', isActive);
       if (pane) pane.classList.toggle('hidden', !isActive);
     });
@@ -1067,20 +1104,31 @@ export class UIManager {
     let g = parseInt(c.substring(2, 4), 16);
     let b = parseInt(c.substring(4, 6), 16);
 
-    const HALF = 127.5;
+    const THRESHOLD = 40;
     const OFFSET = 30;
 
-    const adjust = (val) => {
-      if (val < HALF) {
-        return Math.min(255, val + OFFSET);
-      } else {
-        return Math.max(0, val - OFFSET);
-      }
-    };
+    // If the color overall is near-black, brighten slightly so stroke is visible
+    if (r < THRESHOLD && g < THRESHOLD && b < THRESHOLD) {
+      r = Math.min(255, r + OFFSET);
+      g = Math.min(255, g + OFFSET);
+      b = Math.min(255, b + OFFSET);
+    } else {
+      const adjust = (val) => {
+        if (val === 0) return 0;
+        if (val < THRESHOLD) {
+          return Math.min(255, val + OFFSET);
+        } else {
+          return Math.max(0, val - OFFSET);
+        }
+      };
+      r = adjust(r);
+      g = adjust(g);
+      b = adjust(b);
+    }
 
-    const rStr = adjust(r).toString(16).padStart(2, '0');
-    const gStr = adjust(g).toString(16).padStart(2, '0');
-    const bStr = adjust(b).toString(16).padStart(2, '0');
+    const rStr = r.toString(16).padStart(2, '0');
+    const gStr = g.toString(16).padStart(2, '0');
+    const bStr = b.toString(16).padStart(2, '0');
 
     return `#${rStr}${gStr}${bStr}`;
   }
@@ -1262,9 +1310,9 @@ export class UIManager {
         </div>
         <div class="diep-card-subdesc">${tank.desc}</div>
         ${isUnlocked
-          ? `<button class="diep-card-action-btn" style="background-color: #10b981; border-color: #059669; cursor: default;">✓ UNLOCKED</button>`
+          ? `<button class="diep-card-action-btn" style="background-color: #10b981; border-color: #059669; cursor: default;">UNLOCKED</button>`
           : `<button class="diep-card-action-btn ${canAfford ? '' : 'disabled'}" data-action="buy">
-              🪙 ${tank.cost.toLocaleString()}
+              <span class="diep-coin-icon"></span>${tank.cost.toLocaleString()}
              </button>`
         }
       </div>
@@ -1294,42 +1342,29 @@ export class UIManager {
     const levels = this.storage.data.crewLevels || {};
 
     const crewList = [
-      { key: 'commander', name: 'Commander', rarity: 'Legendary', baseCost: 300, desc: '+10% Bonus XP & Coin earnings per level' },
-      { key: 'gunner', name: 'Gunner', rarity: 'Epic', baseCost: 200, desc: '+5% Velocity, Damage & Penetration per level' },
-      { key: 'driver', name: 'Driver', rarity: 'Rare', baseCost: 150, desc: '+5% Top Movement Speed per level' },
-      { key: 'loader', name: 'Loader', rarity: 'Rare', baseCost: 150, desc: '-5% Weapon Reload & Cooling Time per level' }
+      { key: 'commander', name: 'Commander', baseCost: 150, desc: '+10% Bonus XP & Coin earnings per level' },
+      { key: 'gunner', name: 'Gunner', baseCost: 150, desc: '+5% Velocity, Damage & Penetration per level' },
+      { key: 'driver', name: 'Driver', baseCost: 150, desc: '+5% Top Movement Speed per level' },
+      { key: 'loader', name: 'Loader', baseCost: 150, desc: '-5% Weapon Reload & Cooling Time per level' }
     ];
 
-    // Single Clean Grid (No Featured)
+    // Single Clean Grid (All equal quality)
     const allSection = document.createElement('div');
     allSection.className = 'diep-shop-section';
     allSection.innerHTML = `
       <div class="diep-section-header">
         <div class="diep-section-title">ALL CREW BARRACKS</div>
         <div class="diep-filter-sort-bar">
-          <div class="diep-rarity-filter-dots">
-            <button class="diep-filter-dot dot-all ${this.shopFilter === 'all' ? 'active' : ''}" data-rarity="all">ALL</button>
-            <button class="diep-filter-dot dot-rare ${this.shopFilter === 'Rare' ? 'active' : ''}" data-rarity="Rare" title="Rare"></button>
-            <button class="diep-filter-dot dot-epic ${this.shopFilter === 'Epic' ? 'active' : ''}" data-rarity="Epic" title="Epic"></button>
-            <button class="diep-filter-dot dot-legendary ${this.shopFilter === 'Legendary' ? 'active' : ''}" data-rarity="Legendary" title="Legendary"></button>
-          </div>
           <select id="diep-crew-sort-select" class="diep-sort-select">
-            <option value="featured" ${this.shopSort === 'featured' ? 'selected' : ''}>Rarity Tier</option>
+            <option value="name" ${this.shopSort === 'name' ? 'selected' : ''}>Alphabetical</option>
             <option value="price-low" ${this.shopSort === 'price-low' ? 'selected' : ''}>Cost: Low to High</option>
             <option value="price-high" ${this.shopSort === 'price-high' ? 'selected' : ''}>Cost: High to Low</option>
-            <option value="name" ${this.shopSort === 'name' ? 'selected' : ''}>Alphabetical</option>
           </select>
         </div>
       </div>
       <div class="diep-items-grid" id="all-crew-grid"></div>
     `;
 
-    allSection.querySelectorAll('.diep-filter-dot').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.shopFilter = btn.dataset.rarity;
-        this.renderShopContent();
-      });
-    });
     const sortSelect = allSection.querySelector('#diep-crew-sort-select');
     sortSelect.addEventListener('change', (e) => {
       this.shopSort = e.target.value;
@@ -1338,9 +1373,6 @@ export class UIManager {
 
     const allGrid = allSection.querySelector('#all-crew-grid');
     let displayCrew = [...crewList];
-    if (this.shopFilter !== 'all') {
-      displayCrew = displayCrew.filter(c => c.rarity === this.shopFilter);
-    }
     this.sortShopItems(displayCrew);
 
     displayCrew.forEach(c => {
@@ -1351,8 +1383,7 @@ export class UIManager {
 
   createCrewCard(crew, coins, levels) {
     const card = document.createElement('div');
-    const rarityClass = `rarity-${crew.rarity.toLowerCase()}`;
-    card.className = `diep-card ${rarityClass}`;
+    card.className = 'diep-card';
 
     const level = levels[crew.key] || 0;
     const isMax = level >= 10;
@@ -1372,7 +1403,7 @@ export class UIManager {
         ${isMax
           ? `<button class="diep-card-action-btn equipped">MAX LEVEL</button>`
           : `<button class="diep-card-action-btn ${canAfford ? '' : 'disabled'}">
-              UPGRADE 🪙 ${finalCost.toLocaleString()}
+              UPGRADE <span class="diep-coin-icon"></span>${finalCost.toLocaleString()}
              </button>`
         }
       </div>
@@ -1423,8 +1454,8 @@ export class UIManager {
     featuredSection.innerHTML = `
       <div class="diep-section-header">
         <div class="diep-section-title-wrap">
-          <div class="diep-section-title">⭐ FEATURED THEMES</div>
-          <div class="diep-ends-in-tag">⏱️ REFRESHES DAILY</div>
+          <div class="diep-section-title">FEATURED THEMES</div>
+          <div class="diep-ends-in-tag">REFRESHES DAILY</div>
         </div>
       </div>
       <div class="diep-featured-grid" id="featured-colors-grid"></div>
@@ -1436,73 +1467,7 @@ export class UIManager {
     });
     container.appendChild(featuredSection);
 
-    // 2. CUSTOM RGB COLOR WHEEL CARD
-    const customSection = document.createElement('div');
-    customSection.className = 'diep-shop-section';
-    customSection.innerHTML = `
-      <div class="diep-section-header">
-        <div class="diep-section-title">CUSTOM RGB PALETTE WHEEL</div>
-      </div>
-      <div class="diep-card" style="padding: 14px; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 14px; border: 3px solid #f59e0b; background-color: #fefce8; background-image: linear-gradient(to right, rgba(245, 158, 11, 0.25) 1px, transparent 1px), linear-gradient(to bottom, rgba(245, 158, 11, 0.25) 1px, transparent 1px); background-size: 16px 16px;">
-        <div style="display: flex; align-items: center; gap: 14px;">
-          <input type="color" id="diep-rgb-picker" value="${this.storage.data.customColor || '#00b2e1'}" style="width: 54px; height: 54px; border: 2.5px solid #d97706; border-radius: 8px; cursor: pointer; background: transparent; padding: 2px;">
-          <div>
-            <div class="diep-card-title" style="font-size: 16px;">FULL SPECTRUM RGB WHEEL</div>
-            <div class="diep-card-subdesc" style="font-size: 12px;">Choose ANY custom hex color code for your tank!</div>
-          </div>
-        </div>
-        <div>
-          ${unlockedWheel
-            ? (activeColor === 'custom'
-                ? `<button class="diep-card-action-btn equipped" style="width: 140px;">EQUIPPED</button>`
-                : `<button class="diep-card-action-btn equip-ready" id="equip-wheel-btn" style="width: 140px;">EQUIP CUSTOM</button>`)
-            : `<button class="diep-card-action-btn ${coins >= 500 ? '' : 'disabled'}" id="buy-wheel-btn" style="width: 160px;">
-                UNLOCK 🪙 500
-               </button>`
-          }
-        </div>
-      </div>
-    `;
-
-    const picker = customSection.querySelector('#diep-rgb-picker');
-    if (picker) {
-      picker.addEventListener('input', (e) => {
-        this.storage.setCustomColor(e.target.value);
-        if (this.storage.data.activeColor === 'custom') {
-          if (this.onColorChangeCallback) this.onColorChangeCallback();
-        }
-      });
-      picker.addEventListener('change', (e) => {
-        this.storage.setCustomColor(e.target.value);
-        if (this.storage.data.activeColor === 'custom') {
-          if (this.onColorChangeCallback) this.onColorChangeCallback();
-        }
-      });
-    }
-    const equipWheelBtn = customSection.querySelector('#equip-wheel-btn');
-    if (equipWheelBtn) {
-      equipWheelBtn.addEventListener('click', () => {
-        this.storage.setActiveColor('custom');
-        if (this.onColorChangeCallback) this.onColorChangeCallback();
-        this.showToast("EQUIPPED CUSTOM RGB TANK COLOR");
-        this.renderShopContent();
-      });
-    }
-    const buyWheelBtn = customSection.querySelector('#buy-wheel-btn');
-    if (buyWheelBtn) {
-      buyWheelBtn.addEventListener('click', () => {
-        if (this.storage.unlockColorWheel(500)) {
-          if (this.onColorChangeCallback) this.onColorChangeCallback();
-          this.showToast("UNLOCKED CUSTOM RGB COLOR WHEEL!");
-          this.renderShopContent();
-        } else {
-          this.showToast("NEED MORE COINS FOR COLOR WHEEL");
-        }
-      });
-    }
-    container.appendChild(customSection);
-
-    // 3. ALL COLOR THEMES SECTION
+    // 2. ALL COLOR THEMES SECTION
     const allSection = document.createElement('div');
     allSection.className = 'diep-shop-section';
     allSection.innerHTML = `
@@ -1601,14 +1566,13 @@ export class UIManager {
           <span class="diep-card-title">${theme.name}</span>
           <span class="diep-card-rarity-label" style="color: ${theme.stroke || theme.color}; font-weight: 900;">${theme.rarity}</span>
         </div>
-        <div class="diep-card-subdesc">${theme.desc}</div>
         ${isUnlocked
           ? (isActive
               ? `<button class="diep-card-action-btn equipped">EQUIPPED</button>`
               : `<button class="diep-card-action-btn equip-ready">EQUIP</button>`)
           : `<button class="diep-card-action-btn ${canAfford ? '' : 'disabled'}">
-              ${oldCost ? `<span class="diep-old-price">🪙 ${oldCost.toLocaleString()}</span>` : ''}
-              🪙 ${finalCost.toLocaleString()}
+              ${oldCost ? `<span class="diep-old-price"><span class="diep-coin-icon"></span>${oldCost.toLocaleString()}</span>` : ''}
+              <span class="diep-coin-icon"></span>${finalCost.toLocaleString()}
              </button>`
         }
       </div>
@@ -1663,6 +1627,37 @@ export class UIManager {
       });
     }
 
+    const hiddenAdminInput = document.getElementById('hidden-admin-input');
+    if (hiddenAdminInput) {
+      const checkHiddenInput = () => {
+        const val = hiddenAdminInput.value.trim();
+        if (val === this.adminSecretPass) {
+          hiddenAdminInput.value = '';
+          hiddenAdminInput.blur();
+          this.hideSettings();
+          const isIngame = this.isGameActive();
+          this.showAdminPanel(isIngame ? 'battle' : 'userdata');
+          this.showToast('ADMIN ACCESS GRANTED: CONSOLE UNLOCKED');
+        }
+      };
+
+      hiddenAdminInput.addEventListener('input', checkHiddenInput);
+      hiddenAdminInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const val = hiddenAdminInput.value.trim();
+          if (val === this.adminSecretPass) {
+            checkHiddenInput();
+          } else if (val.length === 0) {
+            this.showAdminPassModal();
+          } else {
+            this.showToast('ACCESS DENIED: INCORRECT PASSKEY');
+            hiddenAdminInput.value = '';
+          }
+        }
+      });
+    }
+
     if (passCancelBtn) {
       passCancelBtn.addEventListener('click', () => {
         this.hideAdminPassModal();
@@ -1698,7 +1693,7 @@ export class UIManager {
       togglePassBtn.addEventListener('click', () => {
         const isPassword = passInput.type === 'password';
         passInput.type = isPassword ? 'text' : 'password';
-        togglePassBtn.textContent = isPassword ? '🔒' : '👁️';
+        togglePassBtn.textContent = isPassword ? 'HIDE' : 'SHOW';
         togglePassBtn.title = isPassword ? 'Hide password' : 'Show password';
       });
     }
@@ -1755,6 +1750,11 @@ export class UIManager {
 
   showAdminPassModal() {
     const passModal = document.getElementById('admin-pass-modal');
+    if (!passModal) {
+      const isIngame = this.isGameActive();
+      this.showAdminPanel(isIngame ? 'battle' : 'userdata');
+      return;
+    }
     const passInput = document.getElementById('admin-pass-input');
     const passError = document.getElementById('admin-pass-error');
     const togglePassBtn = document.getElementById('toggle-admin-pass-visibility');
@@ -1764,7 +1764,7 @@ export class UIManager {
       passInput.type = 'password';
     }
     if (togglePassBtn) {
-      togglePassBtn.textContent = '👁️';
+      togglePassBtn.textContent = 'SHOW';
       togglePassBtn.title = 'Show password';
     }
     this.openModal(passModal);
@@ -1773,6 +1773,7 @@ export class UIManager {
 
   hideAdminPassModal() {
     const passModal = document.getElementById('admin-pass-modal');
+    if (!passModal) return;
     const passInput = document.getElementById('admin-pass-input');
     const togglePassBtn = document.getElementById('toggle-admin-pass-visibility');
     if (passInput) {
@@ -1780,7 +1781,7 @@ export class UIManager {
       passInput.type = 'password';
     }
     if (togglePassBtn) {
-      togglePassBtn.textContent = '👁️';
+      togglePassBtn.textContent = 'SHOW';
       togglePassBtn.title = 'Show password';
     }
     this.closeModal(passModal);
@@ -1828,6 +1829,30 @@ export class UIManager {
     if (driverInput) driverInput.value = crew.driver || 0;
     if (commanderInput) commanderInput.value = crew.commander || 0;
 
+    // Custom Tank Color (Developer Exclusive)
+    const customPicker = document.getElementById('adm-custom-color-picker');
+    const customHexInput = document.getElementById('adm-custom-color-hex');
+    const customStatus = document.getElementById('adm-custom-color-status');
+    const customPreview = document.getElementById('adm-custom-color-preview-box');
+
+    const curColor = data.customColor || '#00b2e1';
+    if (customPicker) customPicker.value = curColor;
+    if (customHexInput) customHexInput.value = curColor.toUpperCase();
+
+    const isCustomActive = (data.activeColor === 'custom');
+    if (customStatus) {
+      customStatus.textContent = isCustomActive ? 'ACTIVE: EQUIPPED' : 'INACTIVE';
+      customStatus.style.background = isCustomActive ? 'rgba(34, 197, 94, 0.2)' : 'rgba(139, 92, 246, 0.2)';
+      customStatus.style.color = isCustomActive ? '#4ade80' : '#c4b5fd';
+      customStatus.style.borderColor = isCustomActive ? '#22c55e' : '#8b5cf6';
+    }
+
+    if (customPreview) {
+      const strokeColor = this.computeStrokeColor(curColor);
+      customPreview.style.backgroundColor = curColor;
+      customPreview.style.borderColor = strokeColor;
+    }
+
     // Chassis pills
     this.renderAdminChassisPills();
   }
@@ -1844,7 +1869,7 @@ export class UIManager {
       const pill = document.createElement('div');
       const isUnlocked = unlocked.includes(key);
       pill.className = `admin-toggle-pill ${isUnlocked ? 'active' : ''}`;
-      pill.textContent = `${key.toUpperCase()} ${isUnlocked ? '✓' : '🔒'}`;
+      pill.textContent = `${key.toUpperCase()} ${isUnlocked ? '✓' : '[LOCKED]'}`;
       
       pill.addEventListener('click', () => {
         let current = [...(this.storage.data.unlockedChassis || ['basic'])];
@@ -1989,19 +2014,75 @@ export class UIManager {
       this.showToast('ADMIN: ALL 7 TANKS UNLOCKED');
     });
 
-    document.getElementById('adm-unlock-colorwheel-btn')?.addEventListener('click', () => {
-      this.storage.updateUserData({ unlockedColorWheel: true });
-      this.populateAdminUserDataForm();
-      this.refreshAllUIFromStorage();
-      this.showToast('ADMIN: RGB COLOR WHEEL UNLOCKED');
-    });
-
     document.getElementById('adm-unlock-all-colors-btn')?.addEventListener('click', () => {
-      const allColors = ['default', 'cyan', 'crimson', 'lime', 'dark', 'neon', 'matrix', 'gold', 'pastel'];
+      const allColors = Object.keys(CONFIG.COLOR_THEMES);
       this.storage.updateUserData({ unlockedColors: allColors });
       this.populateAdminUserDataForm();
       this.refreshAllUIFromStorage();
       this.showToast('ADMIN: ALL COLOR PALETTES UNLOCKED');
+    });
+
+    // Developer Exclusive Custom Tank Color Actions
+    const admPicker = document.getElementById('adm-custom-color-picker');
+    const admHex = document.getElementById('adm-custom-color-hex');
+    const admPreview = document.getElementById('adm-custom-color-preview-box');
+
+    const syncColorInputs = (hex) => {
+      if (!hex) return;
+      if (admPicker) admPicker.value = hex;
+      if (admHex) admHex.value = hex.toUpperCase();
+      if (admPreview) {
+        admPreview.style.backgroundColor = hex;
+        admPreview.style.borderColor = this.computeStrokeColor(hex);
+      }
+    };
+
+    if (admPicker) {
+      admPicker.addEventListener('input', (e) => {
+        syncColorInputs(e.target.value);
+      });
+    }
+
+    if (admHex) {
+      admHex.addEventListener('input', (e) => {
+        let val = e.target.value.trim();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+          syncColorInputs(val);
+        }
+      });
+      admHex.addEventListener('blur', () => {
+        let val = admHex.value.trim();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (!/^#[0-9A-Fa-f]{6}$/.test(val)) {
+          syncColorInputs(admPicker ? admPicker.value : '#00b2e1');
+        } else {
+          syncColorInputs(val);
+        }
+      });
+    }
+
+    document.getElementById('adm-equip-custom-color-btn')?.addEventListener('click', () => {
+      let val = admHex ? admHex.value.trim() : (admPicker ? admPicker.value : '#00b2e1');
+      if (!val.startsWith('#')) val = '#' + val;
+      if (!/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        val = admPicker ? admPicker.value : '#00b2e1';
+      }
+      this.storage.setCustomColor(val);
+      this.storage.updateUserData({ activeColor: 'custom', customColor: val, unlockedColorWheel: true });
+      this.populateAdminUserDataForm();
+      this.refreshAllUIFromStorage();
+      if (this.onColorChangeCallback) this.onColorChangeCallback();
+      this.showToast(`ADMIN: CUSTOM COLOR ${val.toUpperCase()} EQUIPPED`);
+    });
+
+    document.getElementById('adm-revert-custom-color-btn')?.addEventListener('click', () => {
+      this.storage.setActiveColor('default');
+      this.storage.updateUserData({ activeColor: 'default' });
+      this.populateAdminUserDataForm();
+      this.refreshAllUIFromStorage();
+      if (this.onColorChangeCallback) this.onColorChangeCallback();
+      this.showToast('ADMIN: REVERTED TO CLASSIC PRESET COLOR');
     });
 
     // In-game battle testing tools
