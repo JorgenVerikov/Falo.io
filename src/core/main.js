@@ -176,6 +176,7 @@ async function initGame() {
   populateAdminChassisSelect();
   populateAdminShapeSelect();
   setupAdminPanelListeners();
+  uiMgr.getIsGameActive = () => (state.isPlaying && !state.inMenu);
   uiMgr.onColorChangeCallback = () => applyCrewAndStatModifiers();
 
   storageMgr.onDataChanged = (newData, isUser) => {
@@ -249,6 +250,13 @@ function unloadGame() {
   camera.y = 0;
   camera.zoom = CONFIG.CAMERA.defaultZoom;
   camera.targetZoom = CONFIG.CAMERA.defaultZoom;
+
+  if (canvasMgr) {
+    if (canvasMgr.canvas) {
+      canvasMgr.canvas.classList.add('hidden');
+    }
+    canvasMgr.clear();
+  }
 
   if (uiMgr) {
     uiMgr.hideInGameHUD();
@@ -1346,10 +1354,10 @@ function gameLoop(timestamp) {
     uiMgr.updatePreviewSpin(dt, player.fillColor, player.strokeColor);
   }
 
-  canvasMgr.clear();
-  canvasMgr.drawGrid(camera, CONFIG.ARENA.gridSize);
-
   if (state.isPlaying && !state.inMenu) {
+    canvasMgr.clear();
+    canvasMgr.drawGrid(camera, CONFIG.ARENA.gridSize);
+
     canvasMgr.beginCamera(camera);
     waveMgr.draw(canvasMgr);
     weaponSys.draw(canvasMgr.ctx);

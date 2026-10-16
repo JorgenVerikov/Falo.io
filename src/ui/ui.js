@@ -409,8 +409,7 @@ export class UIManager {
     // Settings Navigation Tabs
     const settingsTabs = [
       { btnId: 'tab-settings-display-btn', paneId: 'settings-tab-display' },
-      { btnId: 'tab-settings-controls-btn', paneId: 'settings-tab-controls' },
-      { btnId: 'tab-settings-admin-btn', paneId: 'settings-tab-admin' }
+      { btnId: 'tab-settings-controls-btn', paneId: 'settings-tab-controls' }
     ];
 
     settingsTabs.forEach(({ btnId, paneId }) => {
@@ -671,17 +670,49 @@ export class UIManager {
     this.closeModal(this.settingsModal);
   }
 
-  toggleAdminPanel(initialTab = 'battle') {
+  isGameActive() {
+    if (typeof this.getIsGameActive === 'function') {
+      return this.getIsGameActive();
+    }
+    return !this.mainMenuModal || this.mainMenuModal.classList.contains('hidden');
+  }
+
+  toggleAdminPanel(initialTab) {
     if (!this.adminModal.classList.contains('active') && this.adminModal.classList.contains('hidden')) {
-      this.showAdminPanel(initialTab);
+      const isIngame = this.isGameActive();
+      const defaultTab = initialTab || (isIngame ? 'battle' : 'userdata');
+      this.showAdminPanel(defaultTab);
     } else {
       this.hideAdminPanel();
     }
   }
 
-  showAdminPanel(tab = 'battle') {
+  showAdminPanel(tab) {
+    const isIngame = this.isGameActive();
+    const battleTabBtn = document.getElementById('tab-adm-battle-btn');
+    const battlePane = document.getElementById('adm-tab-pane-battle');
+
+    if (battleTabBtn) {
+      if (isIngame) {
+        battleTabBtn.classList.remove('hidden');
+      } else {
+        battleTabBtn.classList.add('hidden');
+      }
+    }
+
+    let targetTab = tab;
+    if (!targetTab) {
+      targetTab = isIngame ? 'battle' : 'userdata';
+    } else if (!isIngame && targetTab === 'battle') {
+      targetTab = 'userdata';
+    }
+
+    if (!isIngame && battlePane) {
+      battlePane.classList.add('hidden');
+    }
+
     this.populateAdminUserDataForm();
-    this.switchAdminTab(tab);
+    this.switchAdminTab(targetTab);
     this.openModal(this.adminModal);
   }
 
@@ -690,6 +721,12 @@ export class UIManager {
   }
 
   switchAdminTab(tabKey) {
+    const isIngame = this.isGameActive();
+    let targetKey = tabKey;
+    if (!isIngame && targetKey === 'battle') {
+      targetKey = 'userdata';
+    }
+
     const tabs = [
       { key: 'userdata', btnId: 'tab-adm-userdata-btn', paneId: 'adm-tab-pane-userdata' },
       { key: 'crew', btnId: 'tab-adm-crew-btn', paneId: 'adm-tab-pane-crew' },
@@ -700,7 +737,7 @@ export class UIManager {
     tabs.forEach(t => {
       const btn = document.getElementById(t.btnId);
       const pane = document.getElementById(t.paneId);
-      const isActive = t.key === tabKey;
+      const isActive = t.key === targetKey;
       if (btn) btn.classList.toggle('active', isActive);
       if (pane) pane.classList.toggle('hidden', !isActive);
     });
@@ -1262,9 +1299,9 @@ export class UIManager {
         </div>
         <div class="diep-card-subdesc">${tank.desc}</div>
         ${isUnlocked
-          ? `<button class="diep-card-action-btn" style="background-color: #10b981; border-color: #059669; cursor: default;">✓ UNLOCKED</button>`
+          ? `<button class="diep-card-action-btn" style="background-color: #10b981; border-color: #059669; cursor: default;">UNLOCKED</button>`
           : `<button class="diep-card-action-btn ${canAfford ? '' : 'disabled'}" data-action="buy">
-              🪙 ${tank.cost.toLocaleString()}
+              <span class="diep-coin-icon"></span>${tank.cost.toLocaleString()}
              </button>`
         }
       </div>
@@ -1294,42 +1331,29 @@ export class UIManager {
     const levels = this.storage.data.crewLevels || {};
 
     const crewList = [
-      { key: 'commander', name: 'Commander', rarity: 'Legendary', baseCost: 300, desc: '+10% Bonus XP & Coin earnings per level' },
-      { key: 'gunner', name: 'Gunner', rarity: 'Epic', baseCost: 200, desc: '+5% Velocity, Damage & Penetration per level' },
-      { key: 'driver', name: 'Driver', rarity: 'Rare', baseCost: 150, desc: '+5% Top Movement Speed per level' },
-      { key: 'loader', name: 'Loader', rarity: 'Rare', baseCost: 150, desc: '-5% Weapon Reload & Cooling Time per level' }
+      { key: 'commander', name: 'Commander', baseCost: 150, desc: '+10% Bonus XP & Coin earnings per level' },
+      { key: 'gunner', name: 'Gunner', baseCost: 150, desc: '+5% Velocity, Damage & Penetration per level' },
+      { key: 'driver', name: 'Driver', baseCost: 150, desc: '+5% Top Movement Speed per level' },
+      { key: 'loader', name: 'Loader', baseCost: 150, desc: '-5% Weapon Reload & Cooling Time per level' }
     ];
 
-    // Single Clean Grid (No Featured)
+    // Single Clean Grid (All equal quality)
     const allSection = document.createElement('div');
     allSection.className = 'diep-shop-section';
     allSection.innerHTML = `
       <div class="diep-section-header">
         <div class="diep-section-title">ALL CREW BARRACKS</div>
         <div class="diep-filter-sort-bar">
-          <div class="diep-rarity-filter-dots">
-            <button class="diep-filter-dot dot-all ${this.shopFilter === 'all' ? 'active' : ''}" data-rarity="all">ALL</button>
-            <button class="diep-filter-dot dot-rare ${this.shopFilter === 'Rare' ? 'active' : ''}" data-rarity="Rare" title="Rare"></button>
-            <button class="diep-filter-dot dot-epic ${this.shopFilter === 'Epic' ? 'active' : ''}" data-rarity="Epic" title="Epic"></button>
-            <button class="diep-filter-dot dot-legendary ${this.shopFilter === 'Legendary' ? 'active' : ''}" data-rarity="Legendary" title="Legendary"></button>
-          </div>
           <select id="diep-crew-sort-select" class="diep-sort-select">
-            <option value="featured" ${this.shopSort === 'featured' ? 'selected' : ''}>Rarity Tier</option>
+            <option value="name" ${this.shopSort === 'name' ? 'selected' : ''}>Alphabetical</option>
             <option value="price-low" ${this.shopSort === 'price-low' ? 'selected' : ''}>Cost: Low to High</option>
             <option value="price-high" ${this.shopSort === 'price-high' ? 'selected' : ''}>Cost: High to Low</option>
-            <option value="name" ${this.shopSort === 'name' ? 'selected' : ''}>Alphabetical</option>
           </select>
         </div>
       </div>
       <div class="diep-items-grid" id="all-crew-grid"></div>
     `;
 
-    allSection.querySelectorAll('.diep-filter-dot').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.shopFilter = btn.dataset.rarity;
-        this.renderShopContent();
-      });
-    });
     const sortSelect = allSection.querySelector('#diep-crew-sort-select');
     sortSelect.addEventListener('change', (e) => {
       this.shopSort = e.target.value;
@@ -1338,9 +1362,6 @@ export class UIManager {
 
     const allGrid = allSection.querySelector('#all-crew-grid');
     let displayCrew = [...crewList];
-    if (this.shopFilter !== 'all') {
-      displayCrew = displayCrew.filter(c => c.rarity === this.shopFilter);
-    }
     this.sortShopItems(displayCrew);
 
     displayCrew.forEach(c => {
@@ -1351,8 +1372,7 @@ export class UIManager {
 
   createCrewCard(crew, coins, levels) {
     const card = document.createElement('div');
-    const rarityClass = `rarity-${crew.rarity.toLowerCase()}`;
-    card.className = `diep-card ${rarityClass}`;
+    card.className = 'diep-card';
 
     const level = levels[crew.key] || 0;
     const isMax = level >= 10;
@@ -1372,7 +1392,7 @@ export class UIManager {
         ${isMax
           ? `<button class="diep-card-action-btn equipped">MAX LEVEL</button>`
           : `<button class="diep-card-action-btn ${canAfford ? '' : 'disabled'}">
-              UPGRADE 🪙 ${finalCost.toLocaleString()}
+              UPGRADE <span class="diep-coin-icon"></span>${finalCost.toLocaleString()}
              </button>`
         }
       </div>
@@ -1423,8 +1443,8 @@ export class UIManager {
     featuredSection.innerHTML = `
       <div class="diep-section-header">
         <div class="diep-section-title-wrap">
-          <div class="diep-section-title">⭐ FEATURED THEMES</div>
-          <div class="diep-ends-in-tag">⏱️ REFRESHES DAILY</div>
+          <div class="diep-section-title">FEATURED THEMES</div>
+          <div class="diep-ends-in-tag">REFRESHES DAILY</div>
         </div>
       </div>
       <div class="diep-featured-grid" id="featured-colors-grid"></div>
@@ -1447,8 +1467,8 @@ export class UIManager {
         <div style="display: flex; align-items: center; gap: 14px;">
           <input type="color" id="diep-rgb-picker" value="${this.storage.data.customColor || '#00b2e1'}" style="width: 54px; height: 54px; border: 2.5px solid #d97706; border-radius: 8px; cursor: pointer; background: transparent; padding: 2px;">
           <div>
-            <div class="diep-card-title" style="font-size: 16px;">FULL SPECTRUM RGB WHEEL</div>
-            <div class="diep-card-subdesc" style="font-size: 12px;">Choose ANY custom hex color code for your tank!</div>
+            <div class="diep-card-title" style="font-size: 16px;">FULL SPECTRUM</div>
+            <div class="diep-card-subdesc" style="font-size: 12px;">Choose ANY custom color</div>
           </div>
         </div>
         <div>
@@ -1457,7 +1477,7 @@ export class UIManager {
                 ? `<button class="diep-card-action-btn equipped" style="width: 140px;">EQUIPPED</button>`
                 : `<button class="diep-card-action-btn equip-ready" id="equip-wheel-btn" style="width: 140px;">EQUIP CUSTOM</button>`)
             : `<button class="diep-card-action-btn ${coins >= 500 ? '' : 'disabled'}" id="buy-wheel-btn" style="width: 160px;">
-                UNLOCK 🪙 500
+                UNLOCK <span class="diep-coin-icon"></span>500
                </button>`
           }
         </div>
@@ -1601,14 +1621,13 @@ export class UIManager {
           <span class="diep-card-title">${theme.name}</span>
           <span class="diep-card-rarity-label" style="color: ${theme.stroke || theme.color}; font-weight: 900;">${theme.rarity}</span>
         </div>
-        <div class="diep-card-subdesc">${theme.desc}</div>
         ${isUnlocked
           ? (isActive
               ? `<button class="diep-card-action-btn equipped">EQUIPPED</button>`
               : `<button class="diep-card-action-btn equip-ready">EQUIP</button>`)
           : `<button class="diep-card-action-btn ${canAfford ? '' : 'disabled'}">
-              ${oldCost ? `<span class="diep-old-price">🪙 ${oldCost.toLocaleString()}</span>` : ''}
-              🪙 ${finalCost.toLocaleString()}
+              ${oldCost ? `<span class="diep-old-price"><span class="diep-coin-icon"></span>${oldCost.toLocaleString()}</span>` : ''}
+              <span class="diep-coin-icon"></span>${finalCost.toLocaleString()}
              </button>`
         }
       </div>
@@ -1663,6 +1682,37 @@ export class UIManager {
       });
     }
 
+    const hiddenAdminInput = document.getElementById('hidden-admin-input');
+    if (hiddenAdminInput) {
+      const checkHiddenInput = () => {
+        const val = hiddenAdminInput.value.trim();
+        if (val === this.adminSecretPass) {
+          hiddenAdminInput.value = '';
+          hiddenAdminInput.blur();
+          this.hideSettings();
+          const isIngame = this.isGameActive();
+          this.showAdminPanel(isIngame ? 'battle' : 'userdata');
+          this.showToast('ADMIN ACCESS GRANTED: CONSOLE UNLOCKED');
+        }
+      };
+
+      hiddenAdminInput.addEventListener('input', checkHiddenInput);
+      hiddenAdminInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const val = hiddenAdminInput.value.trim();
+          if (val === this.adminSecretPass) {
+            checkHiddenInput();
+          } else if (val.length === 0) {
+            this.showAdminPassModal();
+          } else {
+            this.showToast('ACCESS DENIED: INCORRECT PASSKEY');
+            hiddenAdminInput.value = '';
+          }
+        }
+      });
+    }
+
     if (passCancelBtn) {
       passCancelBtn.addEventListener('click', () => {
         this.hideAdminPassModal();
@@ -1698,7 +1748,7 @@ export class UIManager {
       togglePassBtn.addEventListener('click', () => {
         const isPassword = passInput.type === 'password';
         passInput.type = isPassword ? 'text' : 'password';
-        togglePassBtn.textContent = isPassword ? '🔒' : '👁️';
+        togglePassBtn.textContent = isPassword ? 'HIDE' : 'SHOW';
         togglePassBtn.title = isPassword ? 'Hide password' : 'Show password';
       });
     }
@@ -1755,6 +1805,11 @@ export class UIManager {
 
   showAdminPassModal() {
     const passModal = document.getElementById('admin-pass-modal');
+    if (!passModal) {
+      const isIngame = this.isGameActive();
+      this.showAdminPanel(isIngame ? 'battle' : 'userdata');
+      return;
+    }
     const passInput = document.getElementById('admin-pass-input');
     const passError = document.getElementById('admin-pass-error');
     const togglePassBtn = document.getElementById('toggle-admin-pass-visibility');
@@ -1764,7 +1819,7 @@ export class UIManager {
       passInput.type = 'password';
     }
     if (togglePassBtn) {
-      togglePassBtn.textContent = '👁️';
+      togglePassBtn.textContent = 'SHOW';
       togglePassBtn.title = 'Show password';
     }
     this.openModal(passModal);
@@ -1773,6 +1828,7 @@ export class UIManager {
 
   hideAdminPassModal() {
     const passModal = document.getElementById('admin-pass-modal');
+    if (!passModal) return;
     const passInput = document.getElementById('admin-pass-input');
     const togglePassBtn = document.getElementById('toggle-admin-pass-visibility');
     if (passInput) {
@@ -1780,7 +1836,7 @@ export class UIManager {
       passInput.type = 'password';
     }
     if (togglePassBtn) {
-      togglePassBtn.textContent = '👁️';
+      togglePassBtn.textContent = 'SHOW';
       togglePassBtn.title = 'Show password';
     }
     this.closeModal(passModal);
@@ -1844,7 +1900,7 @@ export class UIManager {
       const pill = document.createElement('div');
       const isUnlocked = unlocked.includes(key);
       pill.className = `admin-toggle-pill ${isUnlocked ? 'active' : ''}`;
-      pill.textContent = `${key.toUpperCase()} ${isUnlocked ? '✓' : '🔒'}`;
+      pill.textContent = `${key.toUpperCase()} ${isUnlocked ? '✓' : '[LOCKED]'}`;
       
       pill.addEventListener('click', () => {
         let current = [...(this.storage.data.unlockedChassis || ['basic'])];

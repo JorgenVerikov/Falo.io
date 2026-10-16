@@ -860,23 +860,15 @@ body.theme-light .enemy-upgrade-pill {
 }
 
 #main-menu-overlay.modal-overlay {
-  background: transparent;
+  background: #313338;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 30px 30px;
 }
 
 body.theme-light #main-menu-overlay.modal-overlay {
-  background: transparent;
+  background: #cdcdcd;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  background-image: 
-    linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-  background-size: 30px 30px;
 }
 
 .main-menu-box {
@@ -1527,30 +1519,77 @@ body:not(.theme-light) .key-title {
   font-weight: 600;
 }
 
+/* Hidden Admin Trigger Input in Controls Tab (img 4) */
+.hidden-admin-trigger-wrap {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: calc(50px * var(--ui-scale));
+  padding: calc(10px * var(--ui-scale)) calc(12px * var(--ui-scale)) calc(16px * var(--ui-scale)) 0;
+}
+
+.hidden-admin-input {
+  width: calc(180px * var(--ui-scale));
+  height: calc(30px * var(--ui-scale));
+  background: rgba(0, 0, 0, 0.04);
+  border: 1.5px solid rgba(0, 0, 0, 0.06);
+  border-radius: 9999px;
+  padding: 0 calc(14px * var(--ui-scale));
+  font-family: inherit;
+  font-size: calc(12px * var(--ui-scale));
+  color: #4b5563;
+  outline: none;
+  transition: all 0.25s ease;
+  opacity: 0.18;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+body:not(.theme-light) .hidden-admin-input {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.07);
+  color: #9ca3af;
+}
+
+.hidden-admin-input:hover {
+  opacity: 0.55;
+  border-color: rgba(0, 178, 225, 0.35);
+}
+
+.hidden-admin-input:focus {
+  opacity: 0.95;
+  background: rgba(0, 178, 225, 0.08);
+  border-color: #00b2e1;
+  box-shadow: 0 0 10px rgba(0, 178, 225, 0.2);
+  color: #00b2e1;
+}
+
 /* Admin Hero Banner */
 .settings-admin-hero {
   max-width: calc(720px * var(--ui-scale));
-  padding: calc(22px * var(--ui-scale));
+  padding: calc(14px * var(--ui-scale)) calc(20px * var(--ui-scale));
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   gap: calc(16px * var(--ui-scale));
   border-color: #8b5cf6 !important;
 }
 
 .admin-hero-content {
   display: flex;
-  align-items: flex-start;
-  gap: calc(16px * var(--ui-scale));
+  align-items: center;
+  gap: calc(14px * var(--ui-scale));
 }
 
 .admin-hero-icon {
-  font-size: calc(36px * var(--ui-scale));
+  font-size: calc(28px * var(--ui-scale));
+  line-height: 1;
 }
 
 .admin-hero-text {
   display: flex;
   flex-direction: column;
-  gap: calc(6px * var(--ui-scale));
 }
 
 .admin-hero-title {
@@ -1560,47 +1599,36 @@ body:not(.theme-light) .key-title {
   letter-spacing: 0.8px;
 }
 
-.admin-hero-desc {
-  font-size: calc(12px * var(--ui-scale));
-  color: #475569;
-  line-height: 1.4;
-  font-weight: 600;
-}
-
-body:not(.theme-light) .admin-hero-desc {
-  color: #94a3b8;
-}
-
-.admin-hero-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(8px * var(--ui-scale));
-  margin-top: 4px;
-}
-
-.security-lock-badge {
-  font-size: calc(9.5px * var(--ui-scale));
-  font-weight: 900;
-  color: #dc2626;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  padding: 3px 8px;
-  border-radius: 4px;
-}
-
-.security-status-badge {
-  font-size: calc(9.5px * var(--ui-scale));
-  font-weight: 900;
-  color: #8b5cf6;
-  background: rgba(139, 92, 246, 0.15);
-  border: 1px solid rgba(139, 92, 246, 0.35);
-  padding: 3px 8px;
-  border-radius: 4px;
+body.theme-light .admin-hero-title {
+  color: #6d28d9;
 }
 
 .admin-hero-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+}
+
+.admin-hero-actions #open-admin-btn {
+  font-size: calc(12.5px * var(--ui-scale));
+  padding: calc(10px * var(--ui-scale)) calc(22px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .settings-admin-hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .admin-hero-actions {
+    width: 100%;
+  }
+  .admin-hero-actions #open-admin-btn {
+    width: 100%;
+  }
 }
 
 .setting-input {
@@ -2141,7 +2169,27 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 }
 
 .chip-coin-icon {
-  font-size: calc(16px * var(--ui-scale));
+  display: inline-block;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
+  border-radius: 50%;
+  background: #eab308;
+  border: calc(1.5px * var(--ui-scale)) solid #ca8a04;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.diep-coin-icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: calc(11px * var(--ui-scale));
+  height: calc(11px * var(--ui-scale));
+  border-radius: 50%;
+  background: #eab308;
+  border: calc(1.5px * var(--ui-scale)) solid #ca8a04;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  margin-right: calc(4px * var(--ui-scale));
+  position: relative;
+  top: -1px;
 }
 
 .chip-coins-amount {
