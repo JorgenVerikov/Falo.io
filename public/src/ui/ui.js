@@ -689,6 +689,17 @@ export class UIManager {
 
   showAdminPanel(tab) {
     const isIngame = this.isGameActive();
+    const adminModal = this.adminModal;
+    const titleEl = document.getElementById('admin-panel-title') || adminModal?.querySelector('.diep-shop-logo');
+
+    if (isIngame) {
+      if (adminModal) adminModal.classList.add('ingame-popup-mode');
+      if (titleEl) titleEl.textContent = 'IN-GAME CHEATS';
+    } else {
+      if (adminModal) adminModal.classList.remove('ingame-popup-mode');
+      if (titleEl) titleEl.textContent = 'ADMIN';
+    }
+
     const battleTabBtn = document.getElementById('tab-adm-battle-btn');
     const battlePane = document.getElementById('adm-tab-pane-battle');
 
@@ -701,29 +712,40 @@ export class UIManager {
     }
 
     let targetTab = tab;
-    if (!targetTab) {
-      targetTab = isIngame ? 'battle' : 'userdata';
-    } else if (!isIngame && targetTab === 'battle') {
-      targetTab = 'userdata';
+    if (isIngame) {
+      targetTab = 'battle';
+    } else {
+      if (!targetTab || targetTab === 'battle') {
+        targetTab = 'userdata';
+      }
     }
 
     if (!isIngame && battlePane) {
       battlePane.classList.add('hidden');
     }
 
-    this.populateAdminUserDataForm();
+    if (!isIngame) {
+      this.populateAdminUserDataForm();
+    }
     this.switchAdminTab(targetTab);
     this.openModal(this.adminModal);
   }
 
   hideAdminPanel() {
     this.closeModal(this.adminModal);
+    if (this.adminModal) {
+      this.adminModal.classList.remove('ingame-popup-mode');
+    }
+    const titleEl = document.getElementById('admin-panel-title') || this.adminModal?.querySelector('.diep-shop-logo');
+    if (titleEl) titleEl.textContent = 'ADMIN';
   }
 
   switchAdminTab(tabKey) {
     const isIngame = this.isGameActive();
     let targetKey = tabKey;
-    if (!isIngame && targetKey === 'battle') {
+    if (isIngame) {
+      targetKey = 'battle';
+    } else if (targetKey === 'battle') {
       targetKey = 'userdata';
     }
 
@@ -1028,14 +1050,16 @@ export class UIManager {
 
   showGameOver(score, wave, coinsEarned) {
     this.hideInGameHUD();
-    this.finalScoreEl.textContent = (score || 0).toLocaleString();
-    this.finalWaveEl.textContent = wave || 1;
-    this.coinsEarnedEl.textContent = `+${(coinsEarned || 0).toLocaleString()} COINS`;
-    this.gameOverModal.classList.remove('hidden');
+    if (this.finalScoreEl) this.finalScoreEl.textContent = (score || 0).toLocaleString();
+    if (this.finalWaveEl) this.finalWaveEl.textContent = wave || 1;
+    if (this.coinsEarnedEl) {
+      this.coinsEarnedEl.innerHTML = `<span class="chip-coin-icon" style="display: inline-block; vertical-align: middle; margin-right: 4px;"></span>+${(coinsEarned || 0).toLocaleString()} COINS`;
+    }
+    this.openModal(this.gameOverModal);
   }
 
   hideGameOver() {
-    this.gameOverModal.classList.add('hidden');
+    this.closeModal(this.gameOverModal);
   }
 
   showArmory() {
@@ -1308,7 +1332,6 @@ export class UIManager {
         <div class="diep-card-details-row">
           <span class="diep-card-title">${tank.name}</span>
         </div>
-        <div class="diep-card-subdesc">${tank.desc}</div>
         ${isUnlocked
           ? `<button class="diep-card-action-btn" style="background-color: #10b981; border-color: #059669; cursor: default;">UNLOCKED</button>`
           : `<button class="diep-card-action-btn ${canAfford ? '' : 'disabled'}" data-action="buy">
@@ -1432,18 +1455,20 @@ export class UIManager {
     const activeColor = this.storage.data.activeColor || 'default';
     const unlockedWheel = Boolean(this.storage.data.unlockedColorWheel);
 
-    const themes = Object.keys(CONFIG.COLOR_THEMES).map(key => {
-      const t = CONFIG.COLOR_THEMES[key];
-      return {
-        key,
-        name: t.name,
-        color: t.color,
-        stroke: t.stroke,
-        cost: t.cost,
-        rarity: t.rarity || 'Common',
-        desc: t.desc || 'Tank paint coating.'
-      };
-    });
+    const themes = Object.keys(CONFIG.COLOR_THEMES)
+      .filter(key => key !== 'cyan' && key !== 'classic')
+      .map(key => {
+        const t = CONFIG.COLOR_THEMES[key];
+        return {
+          key,
+          name: t.name,
+          color: t.color,
+          stroke: t.stroke,
+          cost: t.cost,
+          rarity: t.rarity || 'Common',
+          desc: t.desc || 'Tank paint coating.'
+        };
+      });
 
     // 1. FEATURED COLOR THEMES SECTION (FEATURED IS BACK FOR COLOR THEMES ONLY)
     const featuredKeys = ['gold', 'pastel', 'neon'];
@@ -1724,6 +1749,14 @@ export class UIManager {
       });
     }
 
+    if (this.adminModal) {
+      this.adminModal.addEventListener('click', (e) => {
+        if (e.target === this.adminModal) {
+          this.hideAdminPanel();
+        }
+      });
+    }
+
     // Admin Navigation Tabs
     ['userdata', 'crew', 'battle', 'telemetry'].forEach(tabKey => {
       const tabBtn = document.getElementById(`tab-adm-${tabKey}-btn`);
@@ -1804,7 +1837,7 @@ export class UIManager {
       badge.textContent = isUser 
         ? `LOGGED IN: ${this.storage.currentUser.email || 'USER ACCOUNT'}` 
         : 'ACTIVE PROFILE: LOCAL GUEST PROGRESS';
-      badge.style.color = isUser ? '#22c55e' : '#38bdf8';
+      badge.style.color = '#38bdf8';
     }
 
     const coinsInput = document.getElementById('adm-input-coins');
@@ -1842,9 +1875,9 @@ export class UIManager {
     const isCustomActive = (data.activeColor === 'custom');
     if (customStatus) {
       customStatus.textContent = isCustomActive ? 'ACTIVE: EQUIPPED' : 'INACTIVE';
-      customStatus.style.background = isCustomActive ? 'rgba(34, 197, 94, 0.2)' : 'rgba(139, 92, 246, 0.2)';
-      customStatus.style.color = isCustomActive ? '#4ade80' : '#c4b5fd';
-      customStatus.style.borderColor = isCustomActive ? '#22c55e' : '#8b5cf6';
+      customStatus.style.background = isCustomActive ? '#e0f2fe' : '#f1f5f9';
+      customStatus.style.color = isCustomActive ? '#0284c7' : '#64748b';
+      customStatus.style.borderColor = isCustomActive ? '#00b2e1' : '#cbd5e1';
     }
 
     if (customPreview) {
@@ -1993,7 +2026,7 @@ export class UIManager {
           maxWave: 1,
           crewLevels: { loader: 0, gunner: 0, driver: 0, commander: 0 },
           unlockedChassis: ['basic'],
-          unlockedColors: ['default', 'cyan'],
+          unlockedColors: ['default'],
           unlockedColorWheel: false,
           activeChassis: 'basic',
           activeColor: 'default'

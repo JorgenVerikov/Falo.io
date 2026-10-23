@@ -1654,10 +1654,6 @@ export class EnemyUnit {
 
     ctx.restore();
 
-    if (!this.isDying && this.upgradeTier > 0) {
-      this.drawUpgradeBadge(canvasMgr.ctx);
-    }
-
     if (!this.isDying && this.hp < this.maxHp) {
       this.drawHealthBar(canvasMgr.ctx);
     }
@@ -1794,34 +1790,11 @@ export class EnemyUnit {
     ctx.restore();
   }
 
-  drawUpgradeBadge(ctx) {
-    const tier = Math.min(7, this.upgradeTier);
-    if (tier <= 0) return;
-
-    ctx.save();
-    const badgeY = this.y - this.radius - 8;
-    const pipRadius = 2.2;
-    const pipSpacing = 6;
-    const totalW = (tier - 1) * pipSpacing;
-    const startX = this.x - totalW / 2;
-
-    for (let i = 0; i < tier; i++) {
-      ctx.beginPath();
-      ctx.arc(startX + i * pipSpacing, badgeY, pipRadius, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffcc00';
-      ctx.fill();
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = '#1e1f22';
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
   drawHealthBar(ctx) {
     const width = this.radius * 2.2;
     const height = 5;
     const x = this.x - width / 2;
-    const y = this.y - this.radius - (this.upgradeTier > 0 ? 16 : 12);
+    const y = this.y - this.radius - 12;
 
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.6)';

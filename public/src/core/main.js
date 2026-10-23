@@ -341,24 +341,36 @@ function loadAndStartGame() {
 }
 
 function triggerGameOver() {
+  if (state.isGameOver) return;
   state.isGameOver = true;
   state.isPlaying = false;
+  state.autoFire = false;
+  state.autoSpin = false;
   player.isDying = false;
   player.vx = 0;
   player.vy = 0;
+
+  // Capture final metrics before clearing arena state
+  const finalScore = Math.max(0, Math.floor(waveMgr.score || 0));
+  const finalWave = waveMgr.waveNumber || 1;
+
+  const commanderLvl = (storageMgr.data.crewLevels && storageMgr.data.crewLevels.commander) || 0;
+  const commanderBonus = (CONFIG.CREW && CONFIG.CREW.commanderBonus !== undefined) ? CONFIG.CREW.commanderBonus : 0.10;
+  const coinMultiplier = 1.0 + (commanderLvl * commanderBonus);
+  const ratio = (CONFIG.META && CONFIG.META.scoreToCoinRatio !== undefined) ? CONFIG.META.scoreToCoinRatio : 0.10;
+  const coinsEarned = Math.max(0, Math.floor((finalScore * ratio) * coinMultiplier));
+
+  // Save rewards and record run metrics
+  storageMgr.addCoins(coinsEarned);
+  storageMgr.recordRun(finalScore, finalWave);
+
+  // Clear arena entities now that score and wave are stored
   waveMgr.clearAll();
   weaponSys.projectiles = [];
 
-  const commanderLvl = storageMgr.data.crewLevels.commander || 0;
-  const coinMultiplier = 1.0 + (commanderLvl * CONFIG.CREW.commanderBonus);
-  const coinsEarned = Math.floor((waveMgr.score * CONFIG.META.scoreToCoinRatio) * coinMultiplier);
-
-  storageMgr.addCoins(coinsEarned);
-  storageMgr.recordRun(waveMgr.score, waveMgr.waveNumber);
-
   if (uiMgr) {
     uiMgr.hideInGameHUD();
-    uiMgr.showGameOver(waveMgr.score, waveMgr.waveNumber, coinsEarned);
+    uiMgr.showGameOver(finalScore, finalWave, coinsEarned);
   }
 }
 
@@ -921,7 +933,7 @@ function setupAdminPanelListeners() {
       const prevWave = Math.max(1, waveMgr.waveNumber - 1);
       waveMgr.clearAll();
       waveMgr.startWave(prevWave);
-      uiMgr.showToast(`ADMIN: JUMPED TO WAVE ${prevWave} (UPGRADES: +${waveMgr.getEnemyUpgradePoints()} PTS)`);
+      uiMgr.showToast(`ADMIN: JUMPED TO WAVE ${prevWave}`);
     });
   }
 
@@ -931,7 +943,7 @@ function setupAdminPanelListeners() {
       const nextWave = waveMgr.waveNumber + 1;
       waveMgr.clearAll();
       waveMgr.startWave(nextWave);
-      uiMgr.showToast(`ADMIN: JUMPED TO WAVE ${nextWave} (UPGRADES: +${waveMgr.getEnemyUpgradePoints()} PTS)`);
+      uiMgr.showToast(`ADMIN: JUMPED TO WAVE ${nextWave}`);
     });
   }
 
@@ -1195,21 +1207,10 @@ function updateHUD() {
   const waveStatus = document.getElementById('wave-status');
   const waveTimerText = document.getElementById('wave-timer-text');
 
-  const upgradePoints = waveMgr.getEnemyUpgradePoints();
-  const upgradeLabel = upgradePoints > 0 ? ` • ENEMIES: +${upgradePoints} STAT PTS` : '';
-
-  if (state.lastAnnouncedUpgradeWave !== waveMgr.waveNumber && !state.inMenu && !state.isGameOver && !waveMgr.isBreak) {
-    state.lastAnnouncedUpgradeWave = waveMgr.waveNumber;
-    if (upgradePoints > 0 && uiMgr) {
-      const isCapped = upgradePoints >= (CONFIG.ENEMY_UPGRADES?.maxTotalPoints || 24);
-      uiMgr.showToast(`WAVE ${waveMgr.waveNumber}: ENEMIES UPGRADED (+${upgradePoints} PTS${isCapped ? ' • MAX CAP' : ''})`);
-    }
-  }
-
   if (waveMgr.graceTimer > 0) {
     waveStatus.textContent = `WAVE ${waveMgr.waveNumber} (GRACE PERIOD)`;
     waveStatus.style.color = '#e9b439';
-    waveTimerText.textContent = `ENEMIES SPAWN IN: ${Math.ceil(waveMgr.graceTimer)}s${upgradeLabel}`;
+    waveTimerText.textContent = `ENEMIES SPAWN IN: ${Math.ceil(waveMgr.graceTimer)}s`;
     if (state.lastAnnouncedGraceWave !== waveMgr.waveNumber && !state.inMenu && !state.isGameOver) {
       state.lastAnnouncedGraceWave = waveMgr.waveNumber;
       if (uiMgr) {
@@ -1219,40 +1220,17 @@ function updateHUD() {
   } else if (waveMgr.isBreak) {
     waveStatus.textContent = `WAVE ${waveMgr.waveNumber} CLEARED`;
     waveStatus.style.color = '#57a857';
-    const nextWave = waveMgr.waveNumber + 1;
-    const cfg = CONFIG.ENEMY_UPGRADES;
-    const nextPoints = cfg ? Math.min(cfg.maxTotalPoints, Math.max(0, Math.floor((nextWave - cfg.startWave + 1) * cfg.pointsPerWave))) : 0;
-    const nextLabel = (nextPoints > upgradePoints) ? ` (ENEMY STATS UPGRADING)` : '';
-    waveTimerText.textContent = `NEXT WAVE IN ${Math.ceil(waveMgr.breakTimer)}s${nextLabel}`;
+    waveTimerText.textContent = `NEXT WAVE IN ${Math.ceil(waveMgr.breakTimer)}s`;
   } else {
     waveStatus.textContent = `WAVE ${waveMgr.waveNumber}`;
     waveStatus.style.color = '#359bb5';
-    waveTimerText.textContent = `ENEMIES REMAINING: ${waveMgr.getRemainingEnemyCount()}${upgradeLabel}`;
+    waveTimerText.textContent = `ENEMIES REMAINING: ${waveMgr.getRemainingEnemyCount()}`;
   }
 
   const enemyUpgradePill = document.getElementById('enemy-upgrade-pill');
   if (enemyUpgradePill) {
-    if (upgradePoints > 0) {
-      enemyUpgradePill.classList.remove('hidden');
-      const chaserUpg = getEnemyUpgradesForWave('chaser', waveMgr.waveNumber).stats;
-      const rangedUpg = getEnemyUpgradesForWave('ranged', waveMgr.waveNumber).stats;
-      const heavyUpg = getEnemyUpgradesForWave('heavy', waveMgr.waveNumber).stats;
-
-      const buffs = [];
-      const topHp = Math.max(chaserUpg.maxHp, rangedUpg.maxHp, heavyUpg.maxHp);
-      if (topHp > 0) buffs.push(`HP +${topHp}`);
-      const topSpd = Math.max(chaserUpg.moveSpeed, rangedUpg.moveSpeed, heavyUpg.moveSpeed);
-      if (topSpd > 0) buffs.push(`SPD +${topSpd}`);
-      const topBdm = Math.max(chaserUpg.bodyDamage, heavyUpg.bodyDamage);
-      if (topBdm > 0) buffs.push(`BDMG +${topBdm}`);
-      if (rangedUpg.bulletDamage > 0) buffs.push(`DMG +${rangedUpg.bulletDamage}`);
-      if (rangedUpg.bulletSpeed > 0) buffs.push(`BSPD +${rangedUpg.bulletSpeed}`);
-      if (rangedUpg.reloadSpeed > 0) buffs.push(`RLD +${rangedUpg.reloadSpeed}`);
-
-      enemyUpgradePill.textContent = `ENEMY STATS: ${buffs.join(' • ')}`;
-    } else {
-      enemyUpgradePill.classList.add('hidden');
-    }
+    enemyUpgradePill.classList.add('hidden');
+    enemyUpgradePill.textContent = '';
   }
 
   const titleElem = document.getElementById('weapon-title');

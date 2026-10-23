@@ -11,9 +11,9 @@ const DEFAULT_DATA = {
   maxWave: 1,
   unlockedChassis: ['basic'],
   activeChassis: 'basic',
-  unlockedColors: ['default', 'cyan'],
+  unlockedColors: ['default'],
   unlockedColorWheel: false,
-  customColor: '#ffffff',
+  customColor: '#00b2e1',
   activeColor: 'default',
   settings: {
     theme: 'light',
@@ -73,6 +73,18 @@ export class StorageManager {
   mergeWithDefaults(data = {}) {
     const rawSettings = data.settings || {};
     const effectiveTheme = rawSettings._explicitTheme ? (rawSettings.theme || 'light') : 'light';
+
+    const rawUnlocked = data.unlockedColors || ['default'];
+    const normalizedUnlocked = Array.from(new Set(
+      rawUnlocked.map(c => (c === 'cyan' || c === 'classic') ? 'default' : c)
+    ));
+    if (!normalizedUnlocked.includes('default')) {
+      normalizedUnlocked.unshift('default');
+    }
+
+    const rawActive = data.activeColor || 'default';
+    const activeColor = (rawActive === 'cyan' || rawActive === 'classic') ? 'default' : rawActive;
+
     return {
       ...DEFAULT_DATA,
       ...data,
@@ -83,7 +95,8 @@ export class StorageManager {
       },
       unlockedChassis: Array.from(new Set(['basic', ...(data.unlockedChassis || [])])),
       activeChassis: data.activeChassis || 'basic',
-      unlockedColors: Array.from(new Set(['default', 'cyan', ...(data.unlockedColors || [])])),
+      unlockedColors: normalizedUnlocked,
+      activeColor,
       crewLevels: { ...DEFAULT_DATA.crewLevels, ...(data.crewLevels || {}) }
     };
   }

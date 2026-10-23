@@ -2363,6 +2363,11 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 /* The Diep Card */
 .diep-card {
   position: relative;
+  background-color: #f8fafc;
+  background-image: 
+    linear-gradient(to right, rgba(156, 163, 175, 0.28) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(156, 163, 175, 0.28) 1px, transparent 1px);
+  background-size: 16px 16px;
   border-radius: calc(10px * var(--ui-scale));
   border-width: calc(2.5px * var(--ui-scale));
   border-style: solid;
@@ -2912,7 +2917,7 @@ body.theme-light .diep-rarity-filter-dots {
 }
 
 /* ========================================================
-   ADMIN PANEL TIDY UP: WHITE MODULES & UNIFIED BLUE BUTTONS
+   ADMIN PANEL TIDY UP: WHITE MODULES, BLUE/GREY BUTTONS, RED EXIT
    ======================================================== */
 
 .diep-admin-window {
@@ -2965,10 +2970,38 @@ body.theme-light .diep-admin-window {
   -webkit-text-stroke: 0.4px #222 !important;
 }
 
-.diep-admin-window .diep-shop-close-btn {
-  background-color: #00b2e1 !important;
-  border-color: #007a9e !important;
+/* Red Exit / Close Button */
+.diep-admin-window .diep-shop-close-btn,
+.diep-admin-window #close-admin-btn {
+  background-color: #f14e54 !important;
+  background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%) !important;
+  border: calc(2.5px * var(--ui-scale)) solid #b3393e !important;
+  border-radius: calc(6px * var(--ui-scale)) !important;
   color: #ffffff !important;
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif !important;
+  font-weight: 900 !important;
+  font-size: calc(18px * var(--ui-scale)) !important;
+  text-shadow: 
+    -1.5px -1.5px 0 #222,
+     1.5px -1.5px 0 #222,
+    -1.5px  1.5px 0 #222,
+     1.5px  1.5px 0 #222 !important;
+  -webkit-text-stroke: 0.4px #222 !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  transition: filter 0.12s ease !important;
+}
+
+.diep-admin-window .diep-shop-close-btn:hover,
+.diep-admin-window #close-admin-btn:hover {
+  filter: brightness(1.15) !important;
+  transform: none !important;
+}
+
+.diep-admin-window .diep-shop-close-btn:active,
+.diep-admin-window #close-admin-btn:active {
+  filter: brightness(0.92) !important;
+  transform: none !important;
 }
 
 .diep-admin-window .diep-coins-chip {
@@ -2980,28 +3013,33 @@ body.theme-light .diep-admin-window {
 /* Scroll area container */
 .diep-admin-window .diep-shop-scroll-area {
   padding: calc(20px * var(--ui-scale)) calc(24px * var(--ui-scale)) !important;
-  gap: calc(18px * var(--ui-scale)) !important;
+  gap: calc(16px * var(--ui-scale)) !important;
 }
 
-/* White Module Backgrounds for all sections, cards, and modules */
+/* White Module Backgrounds with Grid for all sections, cards, and modules */
+.diep-admin-window .admin-module-card,
 .diep-admin-window .diep-shop-section,
 .diep-admin-window .diep-card,
 .diep-admin-window .admin-field-card,
 .diep-admin-window .admin-crew-card-full {
-  background: #ffffff !important;
   background-color: #ffffff !important;
+  background-image: 
+    linear-gradient(to right, rgba(148, 163, 184, 0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.35) 1px, transparent 1px) !important;
+  background-size: 16px 16px !important;
   border: calc(2px * var(--ui-scale)) solid #cbd5e1 !important;
   border-radius: calc(8px * var(--ui-scale)) !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
 }
 
-.diep-admin-window .diep-shop-section {
+.diep-admin-window .admin-module-card {
   padding: calc(16px * var(--ui-scale)) calc(20px * var(--ui-scale)) !important;
+  margin-bottom: calc(14px * var(--ui-scale)) !important;
 }
 
 .diep-admin-window .admin-field-card,
 .diep-admin-window .admin-crew-card-full {
-  border-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
   box-shadow: none !important;
 }
 
@@ -3035,14 +3073,15 @@ body.theme-light .diep-admin-window {
 }
 
 .diep-admin-window .admin-crew-badge {
-  background: rgba(0, 178, 225, 0.12) !important;
+  background: #f1f5f9 !important;
   color: #0284c7 !important;
-  border: 1px solid rgba(0, 178, 225, 0.25) !important;
+  border: 1px solid #cbd5e1 !important;
   font-weight: 900 !important;
 }
 
 .diep-admin-window .admin-checkbox-label {
   color: #334155 !important;
+  font-weight: 800 !important;
 }
 
 /* Inputs in admin panel */
@@ -3064,7 +3103,11 @@ body.theme-light .diep-admin-window {
   box-shadow: 0 0 0 2px rgba(0, 178, 225, 0.2) !important;
 }
 
-/* ALL BUTTONS STRICTLY DIEP BLUE */
+/* ========================================================
+   ADMIN BUTTON RULES: ONLY DIEP BLUE OR GREY
+   ======================================================== */
+
+/* 1. BLUE BUTTONS (Default for primary / action buttons) */
 .diep-admin-window .admin-btn,
 .diep-admin-window .diep-card-action-btn,
 .diep-admin-window .adm-save-crew-btn,
@@ -3072,8 +3115,25 @@ body.theme-light .diep-admin-window {
 .diep-admin-window button.diep-card-action-btn,
 .diep-admin-window #adm-save-all-btn,
 .diep-admin-window #adm-equip-custom-color-btn,
-.diep-admin-window #adm-revert-custom-color-btn,
-.diep-admin-window .admin-btn.alert {
+.diep-admin-window #adm-preset-rich,
+.diep-admin-window #adm-preset-million,
+.diep-admin-window #adm-preset-max-crew,
+.diep-admin-window #adm-preset-unlock-all,
+.diep-admin-window #adm-set-coins-btn,
+.diep-admin-window #adm-set-highscore-btn,
+.diep-admin-window #adm-set-maxwave-btn,
+.diep-admin-window #adm-set-pilotname-btn,
+.diep-admin-window #adm-unlock-all-tanks-btn,
+.diep-admin-window #adm-unlock-all-colors-btn,
+.diep-admin-window #adm-lvl-10,
+.diep-admin-window #adm-lvl-max,
+.diep-admin-window #adm-give-level150-btn,
+.diep-admin-window #adm-toggle-pause,
+.diep-admin-window #adm-wave-next,
+.diep-admin-window #adm-spawn-shape,
+.diep-admin-window #adm-spawn-swarmer,
+.diep-admin-window #adm-spawn-sniper,
+.diep-admin-window #adm-spawn-heavy {
   background-color: #00b2e1 !important;
   background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%) !important;
   border: calc(2.5px * var(--ui-scale)) solid #007a9e !important;
@@ -3081,6 +3141,7 @@ body.theme-light .diep-admin-window {
   color: #ffffff !important;
   font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif !important;
   font-weight: 900 !important;
+  text-transform: uppercase !important;
   text-shadow: 
     -1.5px -1.5px 0 #222,
      1.5px -1.5px 0 #222,
@@ -3088,13 +3149,15 @@ body.theme-light .diep-admin-window {
      1.5px  1.5px 0 #222 !important;
   -webkit-text-stroke: 0.4px #222 !important;
   box-shadow: none !important;
+  cursor: pointer !important;
   transition: filter 0.12s ease !important;
 }
 
 .diep-admin-window .admin-btn:hover,
 .diep-admin-window .diep-card-action-btn:hover,
 .diep-admin-window .adm-save-crew-btn:hover,
-.diep-admin-window #adm-save-all-btn:hover {
+.diep-admin-window #adm-save-all-btn:hover,
+.diep-admin-window #adm-equip-custom-color-btn:hover {
   filter: brightness(1.16) !important;
   transform: none !important;
 }
@@ -3102,12 +3165,66 @@ body.theme-light .diep-admin-window {
 .diep-admin-window .admin-btn:active,
 .diep-admin-window .diep-card-action-btn:active,
 .diep-admin-window .adm-save-crew-btn:active,
-.diep-admin-window #adm-save-all-btn:active {
+.diep-admin-window #adm-save-all-btn:active,
+.diep-admin-window #adm-equip-custom-color-btn:active {
   filter: brightness(0.92) !important;
   transform: none !important;
 }
 
-/* Chassis Toggle Pills */
+/* 2. GREY BUTTONS (For Resets, Clears, Revert, Previous) */
+.diep-admin-window .admin-btn.btn-grey,
+.diep-admin-window .btn-grey,
+.diep-admin-window button.btn-grey,
+.diep-admin-window #adm-preset-reset,
+.diep-admin-window #adm-revert-custom-color-btn,
+.diep-admin-window #adm-wave-prev,
+.diep-admin-window #adm-clear-all,
+.diep-admin-window #adm-clear-shapes,
+.diep-admin-window #adm-clear-telemetry-btn {
+  background-color: #64748b !important;
+  background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%) !important;
+  border: calc(2.5px * var(--ui-scale)) solid #475569 !important;
+  border-radius: calc(6px * var(--ui-scale)) !important;
+  color: #ffffff !important;
+  font-family: 'Ubuntu', 'Segoe UI', Arial, sans-serif !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  text-shadow: 
+    -1.5px -1.5px 0 #222,
+     1.5px -1.5px 0 #222,
+    -1.5px  1.5px 0 #222,
+     1.5px  1.5px 0 #222 !important;
+  -webkit-text-stroke: 0.4px #222 !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  transition: filter 0.12s ease !important;
+}
+
+.diep-admin-window .admin-btn.btn-grey:hover,
+.diep-admin-window .btn-grey:hover,
+.diep-admin-window #adm-preset-reset:hover,
+.diep-admin-window #adm-revert-custom-color-btn:hover,
+.diep-admin-window #adm-wave-prev:hover,
+.diep-admin-window #adm-clear-all:hover,
+.diep-admin-window #adm-clear-shapes:hover,
+.diep-admin-window #adm-clear-telemetry-btn:hover {
+  filter: brightness(1.15) !important;
+  transform: none !important;
+}
+
+.diep-admin-window .admin-btn.btn-grey:active,
+.diep-admin-window .btn-grey:active,
+.diep-admin-window #adm-preset-reset:active,
+.diep-admin-window #adm-revert-custom-color-btn:active,
+.diep-admin-window #adm-wave-prev:active,
+.diep-admin-window #adm-clear-all:active,
+.diep-admin-window #adm-clear-shapes:active,
+.diep-admin-window #adm-clear-telemetry-btn:active {
+  filter: brightness(0.92) !important;
+  transform: none !important;
+}
+
+/* Chassis Toggle Pills (Blue when active, Grey when inactive) */
 .diep-admin-window .admin-toggle-pill {
   background: #f1f5f9 !important;
   border: calc(2px * var(--ui-scale)) solid #cbd5e1 !important;
@@ -3145,4 +3262,68 @@ body.theme-light .diep-admin-window {
   background: #f8fafc !important;
   border: 2px solid #cbd5e1 !important;
   color: #0f172a !important;
+}
+
+/* ========================================================
+   IN-GAME ADMIN CHEATS POP-UP WINDOW
+   ======================================================== */
+
+#admin-panel-modal.ingame-popup-mode {
+  align-items: center !important;
+  justify-content: center !important;
+  padding: calc(16px * var(--ui-scale)) !important;
+  background: rgba(10, 12, 16, 0.5) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+#admin-panel-modal.ingame-popup-mode .diep-admin-window {
+  width: calc(640px * var(--ui-scale)) !important;
+  max-width: 94vw !important;
+  height: auto !important;
+  max-height: 84vh !important;
+  border-radius: calc(12px * var(--ui-scale)) !important;
+  border: calc(3px * var(--ui-scale)) solid #94a3b8 !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#admin-panel-modal.ingame-popup-mode .diep-shop-header {
+  padding: calc(10px * var(--ui-scale)) calc(16px * var(--ui-scale)) !important;
+  min-height: calc(48px * var(--ui-scale)) !important;
+  flex-shrink: 0 !important;
+}
+
+#admin-panel-modal.ingame-popup-mode .diep-shop-logo {
+  font-size: calc(15px * var(--ui-scale)) !important;
+  letter-spacing: 1.2px !important;
+}
+
+#admin-panel-modal.ingame-popup-mode .diep-shop-tabs,
+#admin-panel-modal.ingame-popup-mode #tab-adm-userdata-btn,
+#admin-panel-modal.ingame-popup-mode #tab-adm-crew-btn,
+#admin-panel-modal.ingame-popup-mode #tab-adm-telemetry-btn,
+#admin-panel-modal.ingame-popup-mode #adm-tab-pane-userdata,
+#admin-panel-modal.ingame-popup-mode #adm-tab-pane-crew,
+#admin-panel-modal.ingame-popup-mode #adm-tab-pane-telemetry,
+#admin-panel-modal.ingame-popup-mode .diep-coins-chip {
+  display: none !important;
+}
+
+#admin-panel-modal.ingame-popup-mode .diep-shop-scroll-area {
+  max-height: calc(84vh - 54px) !important;
+  padding: calc(14px * var(--ui-scale)) !important;
+  overflow-y: auto !important;
+  flex: 1 1 auto !important;
+}
+
+#admin-panel-modal.ingame-popup-mode .admin-module-card {
+  margin-bottom: calc(12px * var(--ui-scale)) !important;
+  padding: calc(14px * var(--ui-scale)) !important;
+}
+
+#admin-panel-modal.ingame-popup-mode .admin-module-card:last-child {
+  margin-bottom: 0 !important;
 }

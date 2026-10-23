@@ -22,37 +22,28 @@ export const META_CONFIG = {
  * so bright and pastel colors (like Pastel Dream and Neon Violet) stay vibrant and saturated instead of muted.
  */
 export function computeStrokeColor(hex) {
-  if (!hex) return '#101018';
+  if (!hex) return '#0083a8';
   let c = hex.replace('#', '');
   if (c.length === 3) {
     c = c.split('').map(x => x + x).join('');
   }
-  if (c.length !== 6) return '#101018';
+  if (c.length !== 6) return '#0083a8';
 
   let r = parseInt(c.substring(0, 2), 16);
   let g = parseInt(c.substring(2, 4), 16);
   let b = parseInt(c.substring(4, 6), 16);
 
-  const THRESHOLD = 40;
-  const OFFSET = 30;
-
-  // If the color overall is near-black, brighten slightly so stroke is visible
-  if (r < THRESHOLD && g < THRESHOLD && b < THRESHOLD) {
-    r = Math.min(255, r + OFFSET);
-    g = Math.min(255, g + OFFSET);
-    b = Math.min(255, b + OFFSET);
+  const maxChannel = Math.max(r, g, b);
+  if (maxChannel < 40) {
+    // If the color overall is near-black, brighten slightly so stroke is visible
+    r = Math.min(255, r + 45);
+    g = Math.min(255, g + 45);
+    b = Math.min(255, b + 45);
   } else {
-    const adjust = (val) => {
-      if (val === 0) return 0;
-      if (val < THRESHOLD) {
-        return Math.min(255, val + OFFSET);
-      } else {
-        return Math.max(0, val - OFFSET);
-      }
-    };
-    r = adjust(r);
-    g = adjust(g);
-    b = adjust(b);
+    // Authentic Diep.io formula: outline stroke is ~74% of fill brightness
+    r = Math.round(r * 0.74);
+    g = Math.round(g * 0.74);
+    b = Math.round(b * 0.74);
   }
 
   const rStr = r.toString(16).padStart(2, '0');
@@ -63,11 +54,25 @@ export function computeStrokeColor(hex) {
 }
 
 export const COLOR_THEMES = {
-  default: { name: 'Classic', color: '#00b3e1', stroke: computeStrokeColor('#00b3e1'), cost: 0, rarity: 'Common' },
-  crimson: { name: 'Crimson Red', color: '#f14e54', stroke: computeStrokeColor('#f14e54'), cost: 150, rarity: 'Common' },
-  lime: { name: 'Emerald Green', color: '#00e16e', stroke: computeStrokeColor('#00e16e'), cost: 150, rarity: 'Common' },
-  neon: { name: 'Neon Violet', color: '#bf7ff5', stroke: computeStrokeColor('#bf7ff5'), cost: 150, rarity: 'Common' },
-  dark: { name: 'Stealth Obsidian', color: '#374151', stroke: computeStrokeColor('#374151'), cost: 250, rarity: 'Rare' },
-  gold: { name: 'Closer', color: '#ffe100', stroke: computeStrokeColor('#ffe100'), cost: 400, rarity: 'Legendary' },
-  pastel: { name: 'Pastel Dream', color: '#f472b6', stroke: computeStrokeColor('#f472b6'), cost: 400, rarity: 'Legendary' }
+  default: { name: 'Classic Cyan', color: '#00b2e1', stroke: '#0083a8', cost: 0, rarity: 'Common', desc: 'The iconic traditional Diep.io cyan blue hull.' },
+  crimson: { name: 'Crimson Red', color: '#f14e54', stroke: '#b3393e', cost: 500, rarity: 'Common', desc: 'Aggressive crimson combat red chassis plating.' },
+  lime: { name: 'Emerald Green', color: '#00e16e', stroke: '#00a651', cost: 500, rarity: 'Common', desc: 'Vibrant neon emerald green hull coating.' },
+  neon: { name: 'Neon Violet', color: '#bf7ff5', stroke: '#8d5eb5', cost: 500, rarity: 'Common', desc: 'High-frequency fluorescent violet paint scheme.' },
+  dark: { name: 'Stealth Obsidian', color: '#374151', stroke: '#1f2937', cost: 1200, rarity: 'Rare', desc: 'Matte dark carbon stealth radar-absorbent hull.' },
+  gold: { name: 'Closer', color: '#ffe100', stroke: '#bda600', cost: 2500, rarity: 'Legendary', desc: 'Lustrous polished 24K gold hull with radiant shine.' },
+  pastel: { name: 'Pastel Dream', color: '#f472b6', stroke: '#be4b87', cost: 2500, rarity: 'Legendary', desc: 'Soft candy pink with gentle pastel gradient tone.' }
 };
+
+// Non-enumerable aliases for backward compatibility with existing guest save states
+Object.defineProperty(COLOR_THEMES, 'cyan', {
+  value: COLOR_THEMES.default,
+  enumerable: false,
+  writable: true,
+  configurable: true
+});
+Object.defineProperty(COLOR_THEMES, 'classic', {
+  value: COLOR_THEMES.default,
+  enumerable: false,
+  writable: true,
+  configurable: true
+});

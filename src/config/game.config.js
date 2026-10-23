@@ -55,14 +55,24 @@ export function computeStrokeColor(hex) {
 
 export const COLOR_THEMES = {
   default: { name: 'Classic Cyan', color: '#00b2e1', stroke: '#0083a8', cost: 0, rarity: 'Common', desc: 'The iconic traditional Diep.io cyan blue hull.' },
-  crimson: { name: 'Crimson Red', color: '#f14e54', stroke: '#b3393e', cost: 150, rarity: 'Common', desc: 'Aggressive crimson combat red chassis plating.' },
-  lime: { name: 'Emerald Green', color: '#00e16e', stroke: '#00a651', cost: 150, rarity: 'Common', desc: 'Vibrant neon emerald green hull coating.' },
-  neon: { name: 'Neon Violet', color: '#bf7ff5', stroke: '#8d5eb5', cost: 150, rarity: 'Common', desc: 'High-frequency fluorescent violet paint scheme.' },
-  dark: { name: 'Stealth Obsidian', color: '#374151', stroke: '#1f2937', cost: 250, rarity: 'Rare', desc: 'Matte dark carbon stealth radar-absorbent hull.' },
-  gold: { name: 'Closer Gold', color: '#ffe100', stroke: '#bda600', cost: 400, rarity: 'Legendary', desc: 'Lustrous polished 24K gold hull with radiant shine.' },
-  pastel: { name: 'Pastel Dream', color: '#f472b6', stroke: '#be4b87', cost: 400, rarity: 'Legendary', desc: 'Soft candy pink with gentle pastel gradient tone.' }
+  crimson: { name: 'Crimson Red', color: '#f14e54', stroke: '#b3393e', cost: 500, rarity: 'Common', desc: 'Aggressive crimson combat red chassis plating.' },
+  lime: { name: 'Emerald Green', color: '#00e16e', stroke: '#00a651', cost: 500, rarity: 'Common', desc: 'Vibrant neon emerald green hull coating.' },
+  neon: { name: 'Neon Violet', color: '#bf7ff5', stroke: '#8d5eb5', cost: 500, rarity: 'Common', desc: 'High-frequency fluorescent violet paint scheme.' },
+  dark: { name: 'Stealth Obsidian', color: '#374151', stroke: '#1f2937', cost: 1200, rarity: 'Rare', desc: 'Matte dark carbon stealth radar-absorbent hull.' },
+  gold: { name: 'Closer', color: '#ffe100', stroke: '#bda600', cost: 2500, rarity: 'Legendary', desc: 'Lustrous polished 24K gold hull with radiant shine.' },
+  pastel: { name: 'Pastel Dream', color: '#f472b6', stroke: '#be4b87', cost: 2500, rarity: 'Legendary', desc: 'Soft candy pink with gentle pastel gradient tone.' }
 };
 
-// Aliases for backward compatibility with existing guest save states
-COLOR_THEMES.cyan = COLOR_THEMES.default;
-COLOR_THEMES.classic = COLOR_THEMES.default;
+// Non-enumerable aliases for backward compatibility with existing guest save states
+Object.defineProperty(COLOR_THEMES, 'cyan', {
+  value: COLOR_THEMES.default,
+  enumerable: false,
+  writable: true,
+  configurable: true
+});
+Object.defineProperty(COLOR_THEMES, 'classic', {
+  value: COLOR_THEMES.default,
+  enumerable: false,
+  writable: true,
+  configurable: true
+});
