@@ -726,10 +726,13 @@
               </div>
             </div>
 
-            <div class="admin-btn-row" style="margin-top: 14px;">
-              <button id="adm-spawn-swarmer" class="admin-btn">+5 SWARMERS (CHASERS)</button>
-              <button id="adm-spawn-sniper" class="admin-btn">+5 SNIPER DRONES</button>
-              <button id="adm-spawn-heavy" class="admin-btn">+3 HEAVY HEXES</button>
+            <div style="margin-top: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <select id="adm-enemy-select" class="setting-input" style="flex: 2; min-width: 160px; font-weight: 800; font-size: 13px;">
+                <!-- Populated dynamically from CONFIG.ENEMIES -->
+              </select>
+              <input id="adm-enemy-count" type="number" min="1" max="50" value="1" class="setting-input" style="width: 80px; text-align: center; font-weight: 900;" title="Spawn Count">
+              <button id="adm-spawn-enemy" class="admin-btn" style="flex: 1; min-width: 140px;">SPAWN ENEMIES</button>
+              <button id="adm-clear-enemies" class="admin-btn btn-grey" style="flex: 1; min-width: 140px;">CLEAR ENEMIES ONLY</button>
             </div>
           </div>
         </div>

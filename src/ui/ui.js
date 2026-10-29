@@ -636,6 +636,13 @@ export class UIManager {
   showMainMenu() {
     this.hideInGameHUD();
     this.hideGameOver();
+    if (this.adminModal) {
+      this.adminModal.classList.remove('active');
+      this.adminModal.classList.add('hidden');
+      this.adminModal.classList.remove('ingame-popup-mode');
+      const titleEl = document.getElementById('admin-panel-title') || this.adminModal?.querySelector('.diep-shop-logo');
+      if (titleEl) titleEl.textContent = 'ADMIN';
+    }
     this.mainMenuModal.classList.remove('hidden');
   }
 
@@ -732,12 +739,13 @@ export class UIManager {
   }
 
   hideAdminPanel() {
-    this.closeModal(this.adminModal);
-    if (this.adminModal) {
-      this.adminModal.classList.remove('ingame-popup-mode');
-    }
-    const titleEl = document.getElementById('admin-panel-title') || this.adminModal?.querySelector('.diep-shop-logo');
-    if (titleEl) titleEl.textContent = 'ADMIN';
+    this.closeModal(this.adminModal, () => {
+      if (this.adminModal && !this.isGameActive()) {
+        this.adminModal.classList.remove('ingame-popup-mode');
+        const titleEl = document.getElementById('admin-panel-title') || this.adminModal?.querySelector('.diep-shop-logo');
+        if (titleEl) titleEl.textContent = 'ADMIN';
+      }
+    });
   }
 
   switchAdminTab(tabKey) {

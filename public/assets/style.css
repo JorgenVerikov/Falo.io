@@ -3131,6 +3131,7 @@ body.theme-light .diep-admin-window {
 .diep-admin-window #adm-toggle-pause,
 .diep-admin-window #adm-wave-next,
 .diep-admin-window #adm-spawn-shape,
+.diep-admin-window #adm-spawn-enemy,
 .diep-admin-window #adm-spawn-swarmer,
 .diep-admin-window #adm-spawn-sniper,
 .diep-admin-window #adm-spawn-heavy {
@@ -3180,6 +3181,7 @@ body.theme-light .diep-admin-window {
 .diep-admin-window #adm-wave-prev,
 .diep-admin-window #adm-clear-all,
 .diep-admin-window #adm-clear-shapes,
+.diep-admin-window #adm-clear-enemies,
 .diep-admin-window #adm-clear-telemetry-btn {
   background-color: #64748b !important;
   background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%) !important;

@@ -39,6 +39,17 @@ export class WaveManager {
     this.shapes = [];
   }
 
+  clearEnemies() {
+    this.enemies = [];
+    this.enemyBullets = [];
+  }
+
+  spawnEnemy(player, archetype = 'chaser', count = 1) {
+    for (let i = 0; i < count; i++) {
+      this.spawnSingleEnemy(player, archetype);
+    }
+  }
+
   spawnShape(player, shapeType = 'square', count = 1, nearPlayer = true) {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;

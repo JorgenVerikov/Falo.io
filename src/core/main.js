@@ -187,6 +187,7 @@ async function initGame() {
   setupInputs();
   populateAdminChassisSelect();
   populateAdminShapeSelect();
+  populateAdminEnemySelect();
   setupAdminPanelListeners();
   uiMgr.getIsGameActive = () => (state.isPlaying && !state.inMenu);
   uiMgr.onColorChangeCallback = () => applyCrewAndStatModifiers();
@@ -230,8 +231,23 @@ function populateAdminShapeSelect() {
     const opt = document.createElement('option');
     opt.value = key;
     const shapeName = shapeCfg.name || (key.charAt(0).toUpperCase() + key.slice(1));
-    const sidesText = shapeCfg.sides === 0 ? 'CIRCLE' : `${shapeCfg.sides}-SIDED`;
-    opt.textContent = `${shapeName.toUpperCase()} (${sidesText})`;
+    opt.textContent = shapeName.toUpperCase();
+    select.appendChild(opt);
+  });
+}
+
+function populateAdminEnemySelect() {
+  const select = document.getElementById('adm-enemy-select');
+  if (!select) return;
+  select.innerHTML = '';
+
+  const enemyKeys = CONFIG.ENEMIES ? Object.keys(CONFIG.ENEMIES) : [];
+  enemyKeys.forEach(key => {
+    const enemyCfg = CONFIG.ENEMIES[key];
+    const opt = document.createElement('option');
+    opt.value = key;
+    const enemyName = enemyCfg.name || (key.charAt(0).toUpperCase() + key.slice(1));
+    opt.textContent = enemyName.toUpperCase();
     select.appendChild(opt);
   });
 }
@@ -272,6 +288,9 @@ function unloadGame() {
 
   if (uiMgr) {
     uiMgr.hideInGameHUD();
+    if (uiMgr.adminModal && !uiMgr.adminModal.classList.contains('hidden')) {
+      uiMgr.hideAdminPanel();
+    }
   }
 }
 
@@ -905,17 +924,26 @@ function setupAdminPanelListeners() {
     grantMaxLevel();
   });
 
-  document.getElementById('adm-spawn-swarmer').addEventListener('click', () => {
-    for (let i = 0; i < 5; i++) waveMgr.spawnSingleEnemy(player, 'chaser');
-  });
+  const spawnSwarmer = document.getElementById('adm-spawn-swarmer');
+  if (spawnSwarmer) {
+    spawnSwarmer.addEventListener('click', () => {
+      for (let i = 0; i < 5; i++) waveMgr.spawnSingleEnemy(player, 'chaser');
+    });
+  }
 
-  document.getElementById('adm-spawn-sniper').addEventListener('click', () => {
-    for (let i = 0; i < 5; i++) waveMgr.spawnSingleEnemy(player, 'ranged');
-  });
+  const spawnSniper = document.getElementById('adm-spawn-sniper');
+  if (spawnSniper) {
+    spawnSniper.addEventListener('click', () => {
+      for (let i = 0; i < 5; i++) waveMgr.spawnSingleEnemy(player, 'ranged');
+    });
+  }
 
-  document.getElementById('adm-spawn-heavy').addEventListener('click', () => {
-    for (let i = 0; i < 3; i++) waveMgr.spawnSingleEnemy(player, 'heavy');
-  });
+  const spawnHeavy = document.getElementById('adm-spawn-heavy');
+  if (spawnHeavy) {
+    spawnHeavy.addEventListener('click', () => {
+      for (let i = 0; i < 3; i++) waveMgr.spawnSingleEnemy(player, 'heavy');
+    });
+  }
 
   document.getElementById('adm-clear-all').addEventListener('click', () => {
     waveMgr.clearAll();
@@ -969,6 +997,36 @@ function setupAdminPanelListeners() {
     clearShapesBtn.addEventListener('click', () => {
       waveMgr.clearShapes();
       uiMgr.showToast("ADMIN: ALL SHAPES CLEARED");
+    });
+  }
+
+  const spawnEnemyBtn = document.getElementById('adm-spawn-enemy');
+  if (spawnEnemyBtn) {
+    spawnEnemyBtn.addEventListener('click', () => {
+      const select = document.getElementById('adm-enemy-select');
+      const countInput = document.getElementById('adm-enemy-count');
+      const enemyType = select ? select.value : 'chaser';
+      const count = Math.max(1, Math.min(50, parseInt(countInput ? countInput.value : 1, 10) || 1));
+      if (waveMgr.spawnEnemy) {
+        waveMgr.spawnEnemy(player, enemyType, count);
+      } else {
+        for (let i = 0; i < count; i++) waveMgr.spawnSingleEnemy(player, enemyType);
+      }
+      const enemyName = CONFIG.ENEMIES[enemyType]?.name || enemyType.toUpperCase();
+      uiMgr.showToast(`ADMIN: SPAWNED ${count}x ${enemyName.toUpperCase()}`);
+    });
+  }
+
+  const clearEnemiesBtn = document.getElementById('adm-clear-enemies');
+  if (clearEnemiesBtn) {
+    clearEnemiesBtn.addEventListener('click', () => {
+      if (waveMgr.clearEnemies) {
+        waveMgr.clearEnemies();
+      } else {
+        waveMgr.enemies = [];
+        waveMgr.enemyBullets = [];
+      }
+      uiMgr.showToast("ADMIN: ALL ENEMIES CLEARED");
     });
   }
 }
