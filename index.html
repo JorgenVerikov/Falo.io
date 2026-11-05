@@ -639,24 +639,27 @@
               </div>
             </div>
 
-            <div style="margin-top: 14px;">
-              <div class="setting-row" style="margin-bottom: 12px;">
-                <label style="font-weight: 900; color: #0284c7; font-size: 11px; letter-spacing: 0.8px;">SWITCH ACTIVE TANK CLASS:</label>
-                <select id="adm-chassis-select" class="setting-input" style="font-weight: 900; font-size: 13px;">
-                  <option value="basic">BASIC TANK</option>
-                  <option value="twin">TWIN</option>
-                  <option value="sniper">SNIPER</option>
-                  <option value="flank">FLANK GUARD</option>
-                  <option value="machinegun">MACHINE GUN</option>
-                  <option value="smasher">SMASHER</option>
-                  <option value="tesla">TESLA</option>
-                </select>
-              </div>
+            <div class="admin-control-with-preview" style="margin-top: 14px;">
+              <div id="adm-tank-preview-cube" class="admin-preview-cube" title="Selected Tank Preview"></div>
+              <div class="admin-control-rows">
+                <div class="setting-row" style="margin-bottom: 0;">
+                  <label style="font-weight: 900; color: #0284c7; font-size: 11px; letter-spacing: 0.8px; white-space: nowrap;">TANK CLASS:</label>
+                  <select id="adm-chassis-select" class="setting-input" style="font-weight: 900; font-size: 13px; flex: 1;">
+                    <option value="basic">BASIC TANK</option>
+                    <option value="twin">TWIN</option>
+                    <option value="sniper">SNIPER</option>
+                    <option value="flank">FLANK GUARD</option>
+                    <option value="machinegun">MACHINE GUN</option>
+                    <option value="smasher">SMASHER</option>
+                    <option value="tesla">TESLA</option>
+                  </select>
+                </div>
 
-              <div class="admin-btn-row">
-                <button id="adm-lvl-10" class="admin-btn">+10 PILOT LEVELS</button>
-                <button id="adm-lvl-max" class="admin-btn">MAX LEVEL 150</button>
-                <button id="adm-give-level150-btn" class="admin-btn">GRANT ALL STAT POINTS</button>
+                <div class="admin-btn-row">
+                  <button id="adm-lvl-10" class="admin-btn">+10 PILOT LEVELS</button>
+                  <button id="adm-lvl-max" class="admin-btn">MAX LEVEL 150</button>
+                  <button id="adm-give-level150-btn" class="admin-btn">GRANT ALL STAT POINTS</button>
+                </div>
               </div>
             </div>
           </div>
@@ -673,10 +676,14 @@
             </div>
 
             <div style="margin-top: 14px;">
-              <div class="admin-btn-row">
+              <div class="admin-btn-row" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                 <button id="adm-toggle-pause" class="admin-btn">TOGGLE WAVE PAUSE</button>
-                <button id="adm-wave-prev" class="admin-btn btn-grey">PREV WAVE (-1)</button>
-                <button id="adm-wave-next" class="admin-btn">+1 WAVE (ADVANCE)</button>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <button id="adm-wave-prev" class="admin-btn btn-grey" title="Previous Wave (-1)">PREV (-1)</button>
+                  <input type="number" id="adm-wave-input" min="1" max="999" value="1" class="setting-input" style="width: 72px; text-align: center; font-weight: 900;" title="Current Wave Number">
+                  <button id="adm-wave-set" class="admin-btn btn-grey" style="padding: 6px 12px; font-size: 11px;">SET</button>
+                  <button id="adm-wave-next" class="admin-btn" title="Advance Wave (+1)">+1 WAVE</button>
+                </div>
                 <button id="adm-clear-all" class="admin-btn btn-grey">CLEAR ALL ENTITIES</button>
               </div>
 
@@ -705,13 +712,18 @@
               </div>
             </div>
 
-            <div style="margin-top: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <select id="adm-shape-select" class="setting-input" style="flex: 2; min-width: 160px; font-weight: 800; font-size: 13px;">
-                <!-- Populated dynamically from CONFIG.SHAPES.types -->
-              </select>
-              <input id="adm-shape-count" type="number" min="1" max="50" value="1" class="setting-input" style="width: 80px; text-align: center; font-weight: 900;" title="Spawn Count">
-              <button id="adm-spawn-shape" class="admin-btn" style="flex: 1; min-width: 140px;">SPAWN SHAPES</button>
-              <button id="adm-clear-shapes" class="admin-btn btn-grey" style="flex: 1; min-width: 140px;">CLEAR SHAPES ONLY</button>
+            <div class="admin-control-with-preview" style="margin-top: 14px;">
+              <div id="adm-shape-preview-cube" class="admin-preview-cube" title="Selected Shape Preview"></div>
+              <div class="admin-control-rows">
+                <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                  <select id="adm-shape-select" class="setting-input" style="flex: 1; min-width: 140px; font-weight: 800; font-size: 13px;">
+                    <!-- Populated dynamically from CONFIG.SHAPES.types -->
+                  </select>
+                  <input id="adm-shape-count" type="number" min="1" max="50" value="1" class="setting-input" style="width: 76px; text-align: center; font-weight: 900;" title="Spawn Count">
+                  <button id="adm-spawn-shape" class="admin-btn" style="min-width: 130px;">SPAWN SHAPES</button>
+                </div>
+                <button id="adm-clear-shapes" class="admin-btn btn-grey" style="width: 100%;">CLEAR SHAPES ONLY</button>
+              </div>
             </div>
           </div>
 
@@ -726,13 +738,18 @@
               </div>
             </div>
 
-            <div style="margin-top: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <select id="adm-enemy-select" class="setting-input" style="flex: 2; min-width: 160px; font-weight: 800; font-size: 13px;">
-                <!-- Populated dynamically from CONFIG.ENEMIES -->
-              </select>
-              <input id="adm-enemy-count" type="number" min="1" max="50" value="1" class="setting-input" style="width: 80px; text-align: center; font-weight: 900;" title="Spawn Count">
-              <button id="adm-spawn-enemy" class="admin-btn" style="flex: 1; min-width: 140px;">SPAWN ENEMIES</button>
-              <button id="adm-clear-enemies" class="admin-btn btn-grey" style="flex: 1; min-width: 140px;">CLEAR ENEMIES ONLY</button>
+            <div class="admin-control-with-preview" style="margin-top: 14px;">
+              <div id="adm-enemy-preview-cube" class="admin-preview-cube" title="Selected Enemy Preview"></div>
+              <div class="admin-control-rows">
+                <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                  <select id="adm-enemy-select" class="setting-input" style="flex: 1; min-width: 140px; font-weight: 800; font-size: 13px;">
+                    <!-- Populated dynamically from CONFIG.ENEMIES -->
+                  </select>
+                  <input id="adm-enemy-count" type="number" min="1" max="50" value="1" class="setting-input" style="width: 76px; text-align: center; font-weight: 900;" title="Spawn Count">
+                  <button id="adm-spawn-enemy" class="admin-btn" style="min-width: 130px;">SPAWN ENEMIES</button>
+                </div>
+                <button id="adm-clear-enemies" class="admin-btn btn-grey" style="width: 100%;">CLEAR ENEMIES ONLY</button>
+              </div>
             </div>
           </div>
         </div>

@@ -44,6 +44,10 @@ export class WaveManager {
     this.enemyBullets = [];
   }
 
+  setWaveNumber(waveNum) {
+    this.waveNumber = Math.max(1, waveNum);
+  }
+
   spawnEnemy(player, archetype = 'chaser', count = 1) {
     for (let i = 0; i < count; i++) {
       this.spawnSingleEnemy(player, archetype);

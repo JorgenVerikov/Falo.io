@@ -190,6 +190,7 @@ async function initGame() {
   populateAdminEnemySelect();
   setupAdminPanelListeners();
   uiMgr.getIsGameActive = () => (state.isPlaying && !state.inMenu);
+  uiMgr.getCurrentWave = () => (waveMgr ? waveMgr.waveNumber : 1);
   uiMgr.onColorChangeCallback = () => applyCrewAndStatModifiers();
 
   storageMgr.onDataChanged = (newData, isUser) => {
@@ -218,6 +219,7 @@ function populateAdminChassisSelect() {
     opt.textContent = chassis.name.toUpperCase();
     select.appendChild(opt);
   });
+  if (uiMgr) uiMgr.updateAdminTankPreview(select.value);
 }
 
 function populateAdminShapeSelect() {
@@ -234,6 +236,7 @@ function populateAdminShapeSelect() {
     opt.textContent = shapeName.toUpperCase();
     select.appendChild(opt);
   });
+  if (uiMgr) uiMgr.updateAdminShapePreview(select.value);
 }
 
 function populateAdminEnemySelect() {
@@ -250,6 +253,7 @@ function populateAdminEnemySelect() {
     opt.textContent = enemyName.toUpperCase();
     select.appendChild(opt);
   });
+  if (uiMgr) uiMgr.updateAdminEnemyPreview(select.value);
 }
 
 function unloadGame() {
@@ -758,6 +762,14 @@ function setActiveChassis(chassisKey) {
   weaponSys.loadChassisConfig(chassisKey);
   applyCrewAndStatModifiers();
 
+  const chassisSelect = document.getElementById('adm-chassis-select');
+  if (chassisSelect && chassisSelect.value !== chassisKey) {
+    chassisSelect.value = chassisKey;
+  }
+  if (uiMgr) {
+    uiMgr.updateAdminTankPreview(chassisKey);
+  }
+
   checkEvolutionProgression();
   uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
 }
@@ -955,13 +967,15 @@ function setupAdminPanelListeners() {
     uiMgr.showToast(`ADMIN: WAVE ${waveMgr.isPaused ? 'PAUSED' : 'RESUMED'}`);
   });
 
+  const waveInput = document.getElementById('adm-wave-input');
+
   const wavePrevBtn = document.getElementById('adm-wave-prev');
   if (wavePrevBtn) {
     wavePrevBtn.addEventListener('click', () => {
       const prevWave = Math.max(1, waveMgr.waveNumber - 1);
-      waveMgr.clearAll();
-      waveMgr.startWave(prevWave);
-      uiMgr.showToast(`ADMIN: JUMPED TO WAVE ${prevWave}`);
+      waveMgr.setWaveNumber(prevWave);
+      if (waveInput) waveInput.value = prevWave;
+      uiMgr.showToast(`ADMIN: WAVE SET TO ${prevWave}`);
     });
   }
 
@@ -969,9 +983,31 @@ function setupAdminPanelListeners() {
   if (waveNextBtn) {
     waveNextBtn.addEventListener('click', () => {
       const nextWave = waveMgr.waveNumber + 1;
-      waveMgr.clearAll();
-      waveMgr.startWave(nextWave);
-      uiMgr.showToast(`ADMIN: JUMPED TO WAVE ${nextWave}`);
+      waveMgr.setWaveNumber(nextWave);
+      if (waveInput) waveInput.value = nextWave;
+      uiMgr.showToast(`ADMIN: WAVE SET TO ${nextWave}`);
+    });
+  }
+
+  const waveSetBtn = document.getElementById('adm-wave-set');
+  if (waveSetBtn) {
+    waveSetBtn.addEventListener('click', () => {
+      const targetWave = Math.max(1, parseInt(waveInput ? waveInput.value : 1, 10) || 1);
+      waveMgr.setWaveNumber(targetWave);
+      if (waveInput) waveInput.value = targetWave;
+      uiMgr.showToast(`ADMIN: WAVE SET TO ${targetWave}`);
+    });
+  }
+
+  if (waveInput) {
+    waveInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const targetWave = Math.max(1, parseInt(waveInput.value, 10) || 1);
+        waveMgr.setWaveNumber(targetWave);
+        waveInput.value = targetWave;
+        uiMgr.showToast(`ADMIN: WAVE SET TO ${targetWave}`);
+      }
     });
   }
 
@@ -1027,6 +1063,20 @@ function setupAdminPanelListeners() {
         waveMgr.enemyBullets = [];
       }
       uiMgr.showToast("ADMIN: ALL ENEMIES CLEARED");
+    });
+  }
+
+  const shapeSelect = document.getElementById('adm-shape-select');
+  if (shapeSelect) {
+    shapeSelect.addEventListener('change', (e) => {
+      if (uiMgr) uiMgr.updateAdminShapePreview(e.target.value);
+    });
+  }
+
+  const enemySelect = document.getElementById('adm-enemy-select');
+  if (enemySelect) {
+    enemySelect.addEventListener('change', (e) => {
+      if (uiMgr) uiMgr.updateAdminEnemyPreview(e.target.value);
     });
   }
 }

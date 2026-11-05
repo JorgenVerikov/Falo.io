@@ -734,6 +734,7 @@ export class UIManager {
     if (!isIngame) {
       this.populateAdminUserDataForm();
     }
+    this.updateAllAdminPreviews();
     this.switchAdminTab(targetTab);
     this.openModal(this.adminModal);
   }
@@ -1168,7 +1169,8 @@ export class UIManager {
   generateTankSvg(chassisKey, color = '#00b2e1', stroke = null, size = 110) {
     const cfg = CONFIG.CHASSIS[chassisKey] || CONFIG.CHASSIS.basic;
     const center = size / 2;
-    const scale = size / 100;
+    // Scale slightly down to ensure long barrels (e.g. sniper) rotate comfortably inside frame
+    const scale = (size / 100) * 0.85;
     const bodyRadius = 20 * (cfg.radiusMultiplier || 1.0) * scale;
     
     // Facing upwards (-90 degrees) for classic Diep.io shop presentation
@@ -1229,11 +1231,186 @@ export class UIManager {
       bodySvg = `<circle cx="${center}" cy="${center}" r="${bodyRadius}" fill="${color}" stroke="${strokeColor}" stroke-width="3"/>`;
     }
 
-    return `<svg class="diep-preview-tank-spin" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.3)); display: block; margin: auto;">
-      ${armorSvg}
-      ${turretsSvg}
-      ${bodySvg}
+    return `<svg class="diep-preview-tank-spin" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.3)); display: block; margin: auto; overflow: visible;">
+      <g class="diep-tank-spin-slow">
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          from="0 ${center} ${center}"
+          to="360 ${center} ${center}"
+          dur="14s"
+          repeatCount="indefinite"
+        />
+        ${armorSvg}
+        ${turretsSvg}
+        ${bodySvg}
+      </g>
     </svg>`;
+  }
+
+  generateShapeSvg(shapeKey, size = 72) {
+    const cfg = (CONFIG.SHAPES?.types && CONFIG.SHAPES.types[shapeKey]) || {
+      name: 'Square',
+      sides: 4,
+      color: '#ffe869',
+      stroke: '#caba4d'
+    };
+    const center = size / 2;
+    const color = cfg.color || '#ffe869';
+    const stroke = cfg.stroke || '#caba4d';
+    const sides = cfg.sides !== undefined ? cfg.sides : 4;
+
+    let radius = 22;
+    if (shapeKey === 'egg' || sides === 0) {
+      radius = 13;
+    } else if (sides === 3) {
+      radius = 24;
+    } else if (sides === 4) {
+      radius = 21;
+    } else if (sides >= 5) {
+      radius = 23;
+    }
+
+    let shapeSvg = '';
+    if (sides === 0 || shapeKey === 'egg') {
+      shapeSvg = `<circle cx="${center}" cy="${center}" r="${radius}" fill="${color}" stroke="${stroke}" stroke-width="3"/>`;
+    } else {
+      const pts = [];
+      const baseAngle = -Math.PI / 2;
+      for (let i = 0; i < sides; i++) {
+        const a = baseAngle + (i * 2 * Math.PI) / sides;
+        pts.push(`${center + radius * Math.cos(a)},${center + radius * Math.sin(a)}`);
+      }
+      shapeSvg = `<polygon points="${pts.join(' ')}" fill="${color}" stroke="${stroke}" stroke-width="3" stroke-linejoin="round"/>`;
+    }
+
+    return `<svg class="diep-preview-shape-spin" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 2.5px 4px rgba(0,0,0,0.22)); display: block; margin: auto; overflow: visible;">
+      <g>
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          from="0 ${center} ${center}"
+          to="360 ${center} ${center}"
+          dur="14s"
+          repeatCount="indefinite"
+        />
+        ${shapeSvg}
+      </g>
+    </svg>`;
+  }
+
+  generateEnemySvg(enemyKey, size = 72) {
+    const cfg = (CONFIG.ENEMIES && CONFIG.ENEMIES[enemyKey]) || {
+      name: 'Swarmer',
+      sides: 3,
+      color: '#f14e54',
+      stroke: '#b82a30'
+    };
+    const center = size / 2;
+    const scale = (size / 100) * 0.85;
+    const bodyRadius = 18 * (cfg.radiusMultiplier || 1.0) * scale;
+    const color = cfg.color || '#f14e54';
+    const stroke = cfg.stroke || '#b82a30';
+
+    let armorSvg = '';
+    if (cfg.outerArmor) {
+      const sides = cfg.outerArmor.sides || 6;
+      const r = bodyRadius * (cfg.outerArmor.radiusMultiplier || 1.4);
+      const pts = [];
+      for (let i = 0; i < sides; i++) {
+        const a = (i * 2 * Math.PI) / sides;
+        pts.push(`${center + r * Math.cos(a)},${center + r * Math.sin(a)}`);
+      }
+      armorSvg = `<polygon points="${pts.join(' ')}" fill="${cfg.outerArmor.color || '#2b1e24'}" stroke="${cfg.outerArmor.stroke || '#150a0e'}" stroke-width="3" stroke-linejoin="round"/>`;
+    }
+
+    let turretsSvg = '';
+    if (cfg.turrets && cfg.turrets.length > 0) {
+      const baseAngle = -90;
+      cfg.turrets.forEach(t => {
+        const angle = baseAngle + (((t.angleOffset || 0) * 180) / Math.PI);
+        const tLen = (t.length || 48) * 0.82 * scale;
+        const tWidth = (t.width || 20) * 0.82 * scale;
+        const tFront = (t.frontWidth || t.width || 20) * 0.82 * scale;
+        const xOff = (t.xOffset || 0) * 0.82 * scale;
+        const yOff = (t.yOffset || 0) * 0.82 * scale;
+
+        const p1 = `${xOff},${yOff - tWidth / 2}`;
+        const p2 = `${xOff + tLen},${yOff - tFront / 2}`;
+        const p3 = `${xOff + tLen},${yOff + tFront / 2}`;
+        const p4 = `${xOff},${yOff + tWidth / 2}`;
+        turretsSvg += `<g transform="translate(${center}, ${center}) rotate(${angle})">
+          <polygon points="${p1} ${p2} ${p3} ${p4}" fill="#999999" stroke="#555555" stroke-width="2.5" stroke-linejoin="miter"/>
+        </g>`;
+      });
+    }
+
+    let bodySvg = '';
+    if (cfg.sides && cfg.sides > 0) {
+      const pts = [];
+      const baseAngle = -Math.PI / 2;
+      for (let i = 0; i < cfg.sides; i++) {
+        const a = baseAngle + (i * 2 * Math.PI) / cfg.sides;
+        pts.push(`${center + bodyRadius * Math.cos(a)},${center + bodyRadius * Math.sin(a)}`);
+      }
+      bodySvg = `<polygon points="${pts.join(' ')}" fill="${color}" stroke="${stroke}" stroke-width="3" stroke-linejoin="round"/>`;
+    } else {
+      bodySvg = `<circle cx="${center}" cy="${center}" r="${bodyRadius}" fill="${color}" stroke="${stroke}" stroke-width="3"/>`;
+    }
+
+    return `<svg class="diep-preview-enemy-spin" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 2.5px 4px rgba(0,0,0,0.22)); display: block; margin: auto; overflow: visible;">
+      <g>
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          from="0 ${center} ${center}"
+          to="360 ${center} ${center}"
+          dur="14s"
+          repeatCount="indefinite"
+        />
+        ${armorSvg}
+        ${turretsSvg}
+        ${bodySvg}
+      </g>
+    </svg>`;
+  }
+
+  updateAdminTankPreview(chassisKey) {
+    const cube = document.getElementById('adm-tank-preview-cube');
+    if (!cube) return;
+    const key = chassisKey || document.getElementById('adm-chassis-select')?.value || 'basic';
+    const activeColorKey = this.storage?.data?.activeColor || 'default';
+    const color = (activeColorKey === 'custom')
+      ? (this.storage?.data?.customColor || '#00b2e1')
+      : (CONFIG.COLOR_THEMES[activeColorKey]?.color || '#00b2e1');
+    const stroke = (activeColorKey === 'custom')
+      ? this.computeStrokeColor(color)
+      : (CONFIG.COLOR_THEMES[activeColorKey]?.stroke || '#0083a8');
+    cube.innerHTML = this.generateTankSvg(key, color, stroke, 72);
+  }
+
+  updateAdminShapePreview(shapeKey) {
+    const cube = document.getElementById('adm-shape-preview-cube');
+    if (!cube) return;
+    const key = shapeKey || document.getElementById('adm-shape-select')?.value || 'egg';
+    cube.innerHTML = this.generateShapeSvg(key, 72);
+  }
+
+  updateAdminEnemyPreview(enemyKey) {
+    const cube = document.getElementById('adm-enemy-preview-cube');
+    if (!cube) return;
+    const key = enemyKey || document.getElementById('adm-enemy-select')?.value || 'chaser';
+    cube.innerHTML = this.generateEnemySvg(key, 72);
+  }
+
+  updateAllAdminPreviews() {
+    this.updateAdminTankPreview();
+    this.updateAdminShapePreview();
+    this.updateAdminEnemyPreview();
+    const waveInput = document.getElementById('adm-wave-input');
+    if (waveInput && this.getCurrentWave) {
+      waveInput.value = this.getCurrentWave();
+    }
   }
 
   generateCrewSvg(crewKey, size = 110) {
@@ -1282,12 +1459,12 @@ export class UIManager {
       : (CONFIG.COLOR_THEMES[activeColorKey]?.stroke || '#737373');
 
     const tanks = [
-      { key: 'tesla', name: 'Tesla Surge', cost: 500, reqLvl: 30, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
-      { key: 'smasher', name: 'Smasher', cost: 300, reqLvl: 30, desc: 'Heavy ramming chassis with spinning hexagonal armor.' },
-      { key: 'sniper', name: 'Sniper', cost: 250, reqLvl: 15, desc: 'High-velocity long barrel cannon with wide vision.' },
-      { key: 'machinegun', name: 'Machine Gun', cost: 220, reqLvl: 15, desc: 'Rapid spread-cone spray cannon with high fire-rate.' },
-      { key: 'twin', name: 'Twin', cost: 200, reqLvl: 15, desc: 'Dual-barrel chassis with high cyclic rate-of-fire.' },
-      { key: 'flank', name: 'Flank Guard', cost: 200, reqLvl: 15, desc: 'Front and rear guns providing omnidirectional defense.' },
+      { key: 'tesla', name: 'Tesla Surge', cost: CONFIG.CHASSIS.tesla?.shopCost ?? 1500, reqLvl: 30, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
+      { key: 'smasher', name: 'Smasher', cost: CONFIG.CHASSIS.smasher?.shopCost ?? 1000, reqLvl: 30, desc: 'Heavy ramming chassis with spinning hexagonal armor.' },
+      { key: 'sniper', name: 'Sniper', cost: CONFIG.CHASSIS.sniper?.shopCost ?? 500, reqLvl: 15, desc: 'High-velocity long barrel cannon with wide vision.' },
+      { key: 'machinegun', name: 'Machine Gun', cost: CONFIG.CHASSIS.machinegun?.shopCost ?? 500, reqLvl: 15, desc: 'Rapid spread-cone spray cannon with high fire-rate.' },
+      { key: 'twin', name: 'Twin', cost: CONFIG.CHASSIS.twin?.shopCost ?? 500, reqLvl: 15, desc: 'Dual-barrel chassis with high cyclic rate-of-fire.' },
+      { key: 'flank', name: 'Flank Guard', cost: CONFIG.CHASSIS.flank?.shopCost ?? 500, reqLvl: 15, desc: 'Front and rear guns providing omnidirectional defense.' },
       { key: 'basic', name: 'Basic Tank', cost: 0, reqLvl: 1, desc: 'Reliable all-around starter chassis with standard cannon.' }
     ];
 
