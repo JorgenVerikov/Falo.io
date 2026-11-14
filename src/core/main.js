@@ -3,52 +3,17 @@ import { WeaponSystem, WEAPON_TYPE } from '../entities/weapons.js';
 import { WaveManager } from '../systems/waveManager.js';
 import { StorageManager } from './storage.js';
 import { UIManager } from '../ui/ui.js';
-import { CONFIG, getXPRequiredForLevel, getTotalXPForLevel, getEnemyUpgradesForWave } from './config.js';
+import { CONFIG, getXPRequiredForLevel, getTotalXPForLevel, computeStrokeColor } from './config.js';
+import { HUDUpdater } from './hudUpdater.js';
+import { MobileControls } from './mobileControls.js';
+import {
+  populateAdminChassisSelect,
+  populateAdminShapeSelect,
+  populateAdminEnemySelect,
+  setupAdminPanelListeners
+} from './adminController.js';
 
-export { getXPRequiredForLevel, getTotalXPForLevel };
-
-// Calculates secondary (stroke) color by shifting channels down by 30 for colors above threshold (40)
-// so bright and pastel colors (like Pastel Dream and Neon Violet) stay vibrant and saturated instead of muted.
-export function computeStrokeColor(hex) {
-  if (!hex) return '#101018';
-  let c = hex.replace('#', '');
-  if (c.length === 3) {
-    c = c.split('').map(x => x + x).join('');
-  }
-  if (c.length !== 6) return '#101018';
-
-  let r = parseInt(c.substring(0, 2), 16);
-  let g = parseInt(c.substring(2, 4), 16);
-  let b = parseInt(c.substring(4, 6), 16);
-
-  const THRESHOLD = 40;
-  const OFFSET = 30;
-
-  // If the color overall is near-black, brighten slightly so stroke is visible
-  if (r < THRESHOLD && g < THRESHOLD && b < THRESHOLD) {
-    r = Math.min(255, r + OFFSET);
-    g = Math.min(255, g + OFFSET);
-    b = Math.min(255, b + OFFSET);
-  } else {
-    const adjust = (val) => {
-      if (val === 0) return 0;
-      if (val < THRESHOLD) {
-        return Math.min(255, val + OFFSET);
-      } else {
-        return Math.max(0, val - OFFSET);
-      }
-    };
-    r = adjust(r);
-    g = adjust(g);
-    b = adjust(b);
-  }
-
-  const rStr = r.toString(16).padStart(2, '0');
-  const gStr = g.toString(16).padStart(2, '0');
-  const bStr = b.toString(16).padStart(2, '0');
-
-  return `#${rStr}${gStr}${bStr}`;
-}
+export { getXPRequiredForLevel, getTotalXPForLevel, computeStrokeColor };
 
 // Calculates total earned skill points using parameters defined in CONFIG.PLAYER.skillPointSchedule
 export function getSkillPointsEarnedUpToLevel(level) {
@@ -143,8 +108,8 @@ const player = {
     if (this.isDying || this.dashTimer > 0 || this.iFrameTimer > 0 || state.isGameOver || state.inMenu || state.godMode) return;
 
     const chassisConfig = CONFIG.CHASSIS[chassisKey];
-    const resistance = chassisConfig && chassisConfig.damageResistance !== undefined 
-      ? chassisConfig.damageResistance 
+    const resistance = chassisConfig && chassisConfig.damageResistance !== undefined
+      ? chassisConfig.damageResistance
       : 1.0;
 
     const finalDamage = amount * resistance;
@@ -168,11 +133,13 @@ const storageMgr = new StorageManager();
 const canvasMgr = new CanvasManager('gameCanvas');
 const weaponSys = new WeaponSystem(state.activeChassis);
 const waveMgr = new WaveManager();
+const hudUpdater = new HUDUpdater();
 let uiMgr;
+let mobileControls;
 
 async function initGame() {
   await storageMgr.loadSaveData();
-  
+
   unloadGame();
 
   uiMgr = new UIManager(
@@ -184,16 +151,34 @@ async function initGame() {
     returnToMenu
   );
 
+  mobileControls = new MobileControls({
+    onToggleAutoFire: toggleAutoFire,
+    onToggleAutoSpin: toggleAutoSpin,
+    onConfirmSelfDestruct: selfDestructPlayer
+  });
+
   setupInputs();
-  populateAdminChassisSelect();
-  populateAdminShapeSelect();
-  populateAdminEnemySelect();
-  setupAdminPanelListeners();
+  populateAdminChassisSelect(uiMgr);
+  populateAdminShapeSelect(uiMgr);
+  populateAdminEnemySelect(uiMgr);
+  setupAdminPanelListeners({
+    state,
+    player,
+    waveMgr,
+    uiMgr,
+    setActiveChassis,
+    addXP,
+    getSkillPointsEarnedUpToLevel,
+    applyCrewAndStatModifiers,
+    checkEvolutionProgression,
+    handleStatUpgrade
+  });
+
   uiMgr.getIsGameActive = () => (state.isPlaying && !state.inMenu);
   uiMgr.getCurrentWave = () => (waveMgr ? waveMgr.waveNumber : 1);
   uiMgr.onColorChangeCallback = () => applyCrewAndStatModifiers();
 
-  storageMgr.onDataChanged = (newData, isUser) => {
+  storageMgr.onDataChanged = (newData) => {
     applyCrewAndStatModifiers();
     if (newData && newData.activeChassis) {
       setActiveChassis(newData.activeChassis);
@@ -207,67 +192,20 @@ async function initGame() {
   requestAnimationFrame(gameLoop);
 }
 
-function populateAdminChassisSelect() {
-  const select = document.getElementById('adm-chassis-select');
-  if (!select) return;
-  select.innerHTML = '';
-
-  Object.keys(CONFIG.CHASSIS).forEach(key => {
-    const chassis = CONFIG.CHASSIS[key];
-    const opt = document.createElement('option');
-    opt.value = key;
-    opt.textContent = chassis.name.toUpperCase();
-    select.appendChild(opt);
-  });
-  if (uiMgr) uiMgr.updateAdminTankPreview(select.value);
-}
-
-function populateAdminShapeSelect() {
-  const select = document.getElementById('adm-shape-select');
-  if (!select) return;
-  select.innerHTML = '';
-
-  const shapeTypes = CONFIG.SHAPES && CONFIG.SHAPES.types ? Object.keys(CONFIG.SHAPES.types) : [];
-  shapeTypes.forEach(key => {
-    const shapeCfg = CONFIG.SHAPES.types[key];
-    const opt = document.createElement('option');
-    opt.value = key;
-    const shapeName = shapeCfg.name || (key.charAt(0).toUpperCase() + key.slice(1));
-    opt.textContent = shapeName.toUpperCase();
-    select.appendChild(opt);
-  });
-  if (uiMgr) uiMgr.updateAdminShapePreview(select.value);
-}
-
-function populateAdminEnemySelect() {
-  const select = document.getElementById('adm-enemy-select');
-  if (!select) return;
-  select.innerHTML = '';
-
-  const enemyKeys = CONFIG.ENEMIES ? Object.keys(CONFIG.ENEMIES) : [];
-  enemyKeys.forEach(key => {
-    const enemyCfg = CONFIG.ENEMIES[key];
-    const opt = document.createElement('option');
-    opt.value = key;
-    const enemyName = enemyCfg.name || (key.charAt(0).toUpperCase() + key.slice(1));
-    opt.textContent = enemyName.toUpperCase();
-    select.appendChild(opt);
-  });
-  if (uiMgr) uiMgr.updateAdminEnemyPreview(select.value);
-}
-
 function unloadGame() {
   state.inMenu = true;
   state.isPlaying = false;
   state.isGameOver = false;
 
-  // Clear all arena entities & timers
+  if (mobileControls) {
+    mobileControls.setInGameVisible(false);
+  }
+
   waveMgr.clearAll();
   weaponSys.projectiles = [];
   weaponSys.heat = 0;
   weaponSys.energy = weaponSys.maxEnergy || 100;
 
-  // Reset player state
   player.x = 0;
   player.y = 0;
   player.vx = 0;
@@ -355,6 +293,10 @@ function loadAndStartGame() {
   waveMgr.startWave(1);
 
   applyCrewAndStatModifiers();
+  if (mobileControls) {
+    mobileControls.setInGameVisible(true);
+    mobileControls.syncToggleStates(state.autoFire, state.autoSpin);
+  }
   if (uiMgr) {
     uiMgr.showInGameHUD();
     uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
@@ -373,7 +315,11 @@ function triggerGameOver() {
   player.vx = 0;
   player.vy = 0;
 
-  // Capture final metrics before clearing arena state
+  if (mobileControls) {
+    mobileControls.setInGameVisible(false);
+    mobileControls.syncToggleStates(false, false);
+  }
+
   const finalScore = Math.max(0, Math.floor(waveMgr.score || 0));
   const finalWave = waveMgr.waveNumber || 1;
 
@@ -383,11 +329,9 @@ function triggerGameOver() {
   const ratio = (CONFIG.META && CONFIG.META.scoreToCoinRatio !== undefined) ? CONFIG.META.scoreToCoinRatio : 0.10;
   const coinsEarned = Math.max(0, Math.floor((finalScore * ratio) * coinMultiplier));
 
-  // Save rewards and record run metrics
   storageMgr.addCoins(coinsEarned);
   storageMgr.recordRun(finalScore, finalWave);
 
-  // Clear arena entities now that score and wave are stored
   waveMgr.clearAll();
   weaponSys.projectiles = [];
 
@@ -434,8 +378,8 @@ function handleStatUpgrade(statKey) {
     return;
   }
 
-  const maxStatCap = (isSmasher && smasherCfg.allowedStats.includes(statKey)) 
-    ? smasherCfg.maxStatLevel 
+  const maxStatCap = (isSmasher && smasherCfg.allowedStats.includes(statKey))
+    ? smasherCfg.maxStatLevel
     : CONFIG.PLAYER.maxStatLevel;
 
   if (state.statPoints > 0 && state.stats[statKey] < maxStatCap) {
@@ -488,10 +432,8 @@ function applyCrewAndStatModifiers() {
   } else {
     if (previousMaxHp && Number.isFinite(previousMaxHp) && previousMaxHp > 0 && calculatedMaxHp > 0) {
       if (player.hp >= previousMaxHp - 0.01) {
-        // Was at full health, remain at full state so no damaged health bar appears
         player.hp = calculatedMaxHp;
       } else {
-        // Preserve exact current health percentage ratio
         const healthRatio = Math.max(0, player.hp / previousMaxHp);
         player.hp = Math.min(calculatedMaxHp, healthRatio * calculatedMaxHp);
       }
@@ -533,7 +475,6 @@ function applyCrewAndStatModifiers() {
     const turretConfig = chassisTurrets[index] || {};
     const baseW = turretConfig.weapon || CONFIG.CHASSIS[state.activeChassis].weapon || {};
 
-    // Diep.io barrel multipliers (matching Tank Editor)
     const mDamage = (turretConfig.damage !== undefined) ? turretConfig.damage : 1.0;
     const mPen = (turretConfig.penetration !== undefined) ? turretConfig.penetration : 1.0;
     const mSpeed = (turretConfig.bulletSpeed !== undefined) ? turretConfig.bulletSpeed : 1.0;
@@ -554,7 +495,6 @@ function applyCrewAndStatModifiers() {
     turret.bulletsPerShot = turretConfig.bulletsPerShot || 1;
     turret.lifetime = turretConfig.lifetime || baseCfg.lifetime || 3.0;
 
-    // 1. Firerate scaling (cyclic fire rate delay between loaded shells)
     const baseFireRateTicks = (baseW.fireRateTicks !== undefined) ? baseW.fireRateTicks : Math.round(baseCfg.fireRateTicks * mReload);
     const reloadFireRateMult = 1.0 + (reloadStat * (rCfg.fireRateScalePerPoint || 0.08));
     const baseFireSec = baseFireRateTicks / 60;
@@ -562,43 +502,33 @@ function applyCrewAndStatModifiers() {
 
     if (!turret.shootsBullet) return;
 
-    // In Diep.io: Bullet Damage scales linearly from base 7.0 (+3.0 per stat point), adjusted by the tank's damage multiplier
     const baseDmgVal = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * mDamage;
     turret.damage = baseDmgVal * gunnerCrewMult;
 
-    // Bullet Penetration: base 2.0 (+1.5 per stat point), adjusted by penetration multiplier
     const basePenVal = (baseCfg.penetration + (penStat * inc.shellPenMult)) * mPen;
     turret.penetration = basePenVal * gunnerCrewMult;
 
-    // Bullet Speed: base 160 (+speedStat * inc), adjusted by bulletSpeed and launchSpeed multipliers
     const baseSpeedVal = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * mSpeed * mLaunch;
     turret.shellSpeed = baseSpeedVal * gunnerCrewMult;
 
-    // Shell Radius / Size relative to the cannon's base size (width attaching to the hull, not frontWidth tip)
     const cannonBaseWidth = (turretConfig.width !== undefined) ? turretConfig.width : (turret.width !== undefined ? turret.width : 20);
     const baseBulletRadius = (cannonBaseWidth / 20) * (baseCfg.bulletSize || 9);
     turret.shellRadius = Math.round(baseBulletRadius * mSize * 10) / 10;
 
-    // Recoil
     turret.recoil = (baseCfg.recoil || 45) * mRecoil;
-
-    // Spread
     turret.spread = (baseCfg.spread || 0.04) * mSpread;
 
-    // 2. Reload speed scaling (deliberate scaling so reload is slower than firerate to prevent spam)
     const rackFactor = (turret.type === WEAPON_TYPE.READY_RACK) ? (rCfg.rackReloadFactor || 1.50) : 1.0;
     const baseReloadTicks = (baseW.baseReloadTicks !== undefined) ? baseW.baseReloadTicks : Math.round(baseCfg.baseReloadTicks * mReload);
     const baseReloadSec = (baseReloadTicks / 60) * rackFactor;
     const reloadSpeedMult = 1.0 + (reloadStat * (rCfg.reloadSpeedScalePerPoint || 0.06));
     turret.reloadIntervalSec = Math.max(rCfg.minReloadIntervalSec || 0.75, (baseReloadSec / reloadSpeedMult) * loaderCrewMult);
 
-    // 3. Thermal & Energy cooling/recharge rates
     turret.coolRate = (baseW.coolRate || 22) * (1.0 + (reloadStat * (rCfg.thermalCoolRateStatScaling || 0.12))) / loaderCrewMult;
     turret.heatPerShot = (baseW.heatPerShot || 6) / (1.0 + (reloadStat * (rCfg.thermalHeatReductionStatScaling || 0.05)));
     turret.rechargeRate = (baseW.rechargeRate || 20) * (1.0 + (reloadStat * (rCfg.energyRechargeStatScaling || 0.10))) / loaderCrewMult;
   });
 
-  // Base ability scaling for turretless chassis (e.g. Smasher)
   if (weaponSys.turrets.length === 0 && (weaponSys.type === WEAPON_TYPE.COOLDOWN || weaponSys.type === WEAPON_TYPE.ENERGY)) {
     const chassis = CONFIG.CHASSIS[state.activeChassis];
     const baseW = (chassis && chassis.weapon) ? chassis.weapon : {};
@@ -613,6 +543,7 @@ function applyCrewAndStatModifiers() {
 function toggleAutoFire() {
   if (state.isGameOver || state.inMenu) return;
   state.autoFire = !state.autoFire;
+  if (mobileControls) mobileControls.syncToggleStates(state.autoFire, state.autoSpin);
   if (uiMgr) {
     uiMgr.showToast(`AUTO-FIRE: ${state.autoFire ? 'ON' : 'OFF'}`);
   }
@@ -621,6 +552,7 @@ function toggleAutoFire() {
 function toggleAutoSpin() {
   if (state.isGameOver || state.inMenu) return;
   state.autoSpin = !state.autoSpin;
+  if (mobileControls) mobileControls.syncToggleStates(state.autoFire, state.autoSpin);
   if (uiMgr) {
     uiMgr.showToast(`AUTO-SPIN: ${state.autoSpin ? 'ON' : 'OFF'}`);
   }
@@ -635,6 +567,10 @@ function selfDestructPlayer() {
   player.deathAlpha = 1.0;
   state.autoFire = false;
   state.autoSpin = false;
+  if (mobileControls) {
+    mobileControls.syncToggleStates(false, false);
+    mobileControls.setInGameVisible(false);
+  }
   if (uiMgr) {
     uiMgr.showToast('SELF DESTRUCT ACTIVATED');
   }
@@ -645,7 +581,6 @@ function setupInputs() {
   window.addEventListener('contextmenu', (e) => e.preventDefault());
 
   window.addEventListener('keydown', (e) => {
-    // If typing in an input or textarea, ignore game hotkeys
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
       return;
     }
@@ -656,6 +591,10 @@ function setupInputs() {
     }
 
     if (e.key === 'Escape') {
+      if (mobileControls && mobileControls.isSelfDestructPromptOpen()) {
+        mobileControls.hideSelfDestructPrompt();
+        return;
+      }
       if (uiMgr.adminPassModal && !uiMgr.adminPassModal.classList.contains('hidden')) {
         uiMgr.hideAdminPassModal();
         return;
@@ -682,35 +621,17 @@ function setupInputs() {
       return;
     }
 
-    input.keys[e.key.toLowerCase()] = true;
+    const lower = e.key.toLowerCase();
+    input.keys[lower] = true;
 
-    // E: Autofire toggle
-    if (e.key.toLowerCase() === 'e') {
-      toggleAutoFire();
-    }
-
-    // C: Autospin toggle
-    if (e.key.toLowerCase() === 'c') {
-      toggleAutoSpin();
-    }
-
-    // O: Self Destruct (counts as defeat)
-    if (e.key.toLowerCase() === 'o') {
-      selfDestructPlayer();
-    }
-
-    // N: Toggle evolution upgrades panel
-    if (e.key.toLowerCase() === 'n') {
-      uiMgr.toggleEvolutionPanel();
-    }
-
-    // U: Toggle stat upgrades panel
-    if (e.key.toLowerCase() === 'u') {
-      uiMgr.toggleStatPanel();
-    }
+    if (lower === 'e') toggleAutoFire();
+    if (lower === 'c') toggleAutoSpin();
+    if (lower === 'o') selfDestructPlayer();
+    if (lower === 'n') uiMgr.toggleEvolutionPanel();
+    if (lower === 'u') uiMgr.toggleStatPanel();
 
     if (['1', '2', '3', '4', '5', '6', '7', '8'].includes(e.key) && state.statPoints > 0) {
-      const statDef = CONFIG.PLAYER.statDefinitions[parseInt(e.key) - 1];
+      const statDef = CONFIG.PLAYER.statDefinitions[parseInt(e.key, 10) - 1];
       if (statDef) {
         handleStatUpgrade(statDef.key);
       }
@@ -778,45 +699,32 @@ function getCurrentMilestone(level) {
   const milestones = CONFIG.EVOLUTION?.milestones || [15, 30, 45];
   let cur = 0;
   for (const m of milestones) {
-    if (level >= m) {
-      cur = m;
-    }
+    if (level >= m) cur = m;
   }
   return cur;
 }
 
 function getAvailableEvolutions(playerLevel, activeChassis) {
   const matchingKeys = [];
-
   Object.keys(CONFIG.CHASSIS).forEach(key => {
     if (key === 'basic' || key === activeChassis) return;
-
     const chassis = CONFIG.CHASSIS[key];
-
-    // Tank can appear once required level has been reached
     if (playerLevel < chassis.reqLevel) return;
-
-    // And player is in a specific tree that can upgrade into this chassis
-    if (chassis.upgradesFrom && !chassis.upgradesFrom.includes(activeChassis)) {
-      return;
-    }
-
+    if (chassis.upgradesFrom && !chassis.upgradesFrom.includes(activeChassis)) return;
     matchingKeys.push(key);
   });
-
   return matchingKeys;
 }
 
 function handleEvolutionSelect(chassisKey) {
-  const currentMilestone = getCurrentMilestone(state.level);
-  state.lastEvolvedMilestone = currentMilestone;
+  const chosenReq = CONFIG.CHASSIS[chassisKey]?.reqLevel || 0;
+  state.lastEvolvedMilestone = getCurrentMilestone(chosenReq) || getCurrentMilestone(state.level);
   state.ignoredMilestone = 0;
   setActiveChassis(chassisKey);
 }
 
 function handleEvolutionIgnore() {
-  const currentMilestone = getCurrentMilestone(state.level);
-  state.ignoredMilestone = currentMilestone;
+  state.ignoredMilestone = getCurrentMilestone(state.level);
   checkEvolutionProgression();
 }
 
@@ -824,280 +732,13 @@ function checkEvolutionProgression() {
   if (!uiMgr) return;
   const currentMilestone = getCurrentMilestone(state.level);
 
-  // If player has not reached any evolution level yet
-  if (currentMilestone === 0) {
+  if (currentMilestone === 0 || state.lastEvolvedMilestone >= currentMilestone || state.ignoredMilestone >= currentMilestone) {
     uiMgr.renderFaloUpgradeUI([], handleEvolutionSelect, handleEvolutionIgnore);
     return;
   }
 
-  // If player already picked an evolution tree for this tier milestone
-  if (state.lastEvolvedMilestone >= currentMilestone) {
-    uiMgr.renderFaloUpgradeUI([], handleEvolutionSelect, handleEvolutionIgnore);
-    return;
-  }
-
-  // If player ignored the upgrade for this tier milestone
-  if (state.ignoredMilestone >= currentMilestone) {
-    uiMgr.renderFaloUpgradeUI([], handleEvolutionSelect, handleEvolutionIgnore);
-    return;
-  }
-
-  // Unified upgrade system: merge all available tanks reachable at player's current level & tree
   const availableKeys = getAvailableEvolutions(state.level, state.activeChassis);
   uiMgr.renderFaloUpgradeUI(availableKeys, handleEvolutionSelect, handleEvolutionIgnore);
-}
-
-function grantLevels(levelsToAdd) {
-  if (state.level >= CONFIG.PLAYER.maxLevel) {
-    uiMgr.showToast(`ADMIN: ALREADY AT MAX LEVEL ${CONFIG.PLAYER.maxLevel}`);
-    return;
-  }
-
-  const startLevel = state.level;
-  const targetLevel = Math.min(CONFIG.PLAYER.maxLevel, startLevel + levelsToAdd);
-
-  // Exact XP needed to complete current level and intermediate levels up to targetLevel
-  let xpNeeded = Math.max(0, state.xpToNext - state.xp);
-  for (let lvl = startLevel + 1; lvl < targetLevel; lvl++) {
-    xpNeeded += getXPRequiredForLevel(lvl);
-  }
-
-  // Update cumulative score to reflect the granted levels
-  waveMgr.score = Math.max(waveMgr.score + xpNeeded, getTotalXPForLevel(targetLevel));
-
-  // Add XP directly without commander bonus distortion to advance levels
-  addXP(xpNeeded, true);
-
-  // Ensure exact target level synchronization
-  state.level = targetLevel;
-  state.xp = 0;
-  state.xpToNext = getXPRequiredForLevel(targetLevel);
-  const totalEarned = getSkillPointsEarnedUpToLevel(targetLevel);
-  const spent = Object.values(state.stats).reduce((a, b) => a + b, 0);
-  state.statPoints = Math.max(0, totalEarned - spent);
-
-  applyCrewAndStatModifiers();
-  checkEvolutionProgression();
-  uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
-  uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
-
-  const levelsGained = targetLevel - startLevel;
-  uiMgr.showToast(`ADMIN: +${levelsGained} LEVELS GRANTED (NOW LVL ${targetLevel})`);
-}
-
-function grantMaxLevel() {
-  const maxLvl = CONFIG.PLAYER.maxLevel;
-  const maxScore = getTotalXPForLevel(maxLvl);
-
-  if (waveMgr.score < maxScore) {
-    waveMgr.score = maxScore;
-  }
-
-  state.level = maxLvl;
-  state.xp = 0;
-  state.xpToNext = getXPRequiredForLevel(maxLvl);
-
-  const totalEarned = getSkillPointsEarnedUpToLevel(maxLvl);
-  const spent = Object.values(state.stats).reduce((a, b) => a + b, 0);
-  state.statPoints = Math.max(0, totalEarned - spent);
-
-  applyCrewAndStatModifiers();
-  checkEvolutionProgression();
-  uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
-  uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
-
-  uiMgr.showToast(`ADMIN: MAX LEVEL ${maxLvl} GRANTED (${state.statPoints} SKILL PTS)`);
-}
-
-function setupAdminPanelListeners() {
-  document.getElementById('adm-chassis-select').addEventListener('change', (e) => {
-    setActiveChassis(e.target.value);
-    uiMgr.showToast(`ADMIN: SWITCHED TO ${e.target.value.toUpperCase()}`);
-  });
-
-  document.getElementById('adm-godmode-toggle').addEventListener('change', (e) => {
-    state.godMode = e.target.checked;
-    const godLabel = document.getElementById('adm-godmode-btn-label');
-    const godState = document.getElementById('adm-godmode-state');
-    if (godLabel) godLabel.classList.toggle('is-active', state.godMode);
-    if (godState) godState.textContent = state.godMode ? 'ON' : 'OFF';
-
-    if (state.godMode) {
-      player.hp = Infinity;
-      player.maxHp = Infinity;
-    } else {
-      player.maxHp = 0;
-      applyCrewAndStatModifiers();
-      player.hp = player.maxHp;
-    }
-    uiMgr.showToast(`ADMIN: GOD MODE ${state.godMode ? 'ENABLED' : 'DISABLED'}`);
-  });
-
-  document.getElementById('adm-lvl-10').addEventListener('click', () => {
-    grantLevels(10);
-  });
-
-  document.getElementById('adm-lvl-max').addEventListener('click', () => {
-    grantMaxLevel();
-  });
-
-  const spawnSwarmer = document.getElementById('adm-spawn-swarmer');
-  if (spawnSwarmer) {
-    spawnSwarmer.addEventListener('click', () => {
-      for (let i = 0; i < 5; i++) waveMgr.spawnSingleEnemy(player, 'chaser');
-    });
-  }
-
-  const spawnSniper = document.getElementById('adm-spawn-sniper');
-  if (spawnSniper) {
-    spawnSniper.addEventListener('click', () => {
-      for (let i = 0; i < 5; i++) waveMgr.spawnSingleEnemy(player, 'ranged');
-    });
-  }
-
-  const spawnHeavy = document.getElementById('adm-spawn-heavy');
-  if (spawnHeavy) {
-    spawnHeavy.addEventListener('click', () => {
-      for (let i = 0; i < 3; i++) waveMgr.spawnSingleEnemy(player, 'heavy');
-    });
-  }
-
-  document.getElementById('adm-clear-all')?.addEventListener('click', () => {
-    waveMgr.clearAll();
-    uiMgr.showToast("ADMIN: ALL ENTITIES CLEARED");
-  });
-
-  document.getElementById('adm-toggle-pause')?.addEventListener('click', () => {
-    waveMgr.isPaused = !waveMgr.isPaused;
-    const pauseBtn = document.getElementById('adm-toggle-pause');
-    const pauseState = document.getElementById('adm-pause-state');
-    if (pauseBtn) pauseBtn.classList.toggle('is-active', waveMgr.isPaused);
-    if (pauseState) pauseState.textContent = waveMgr.isPaused ? 'ON' : 'OFF';
-    uiMgr.showToast(`ADMIN: WAVE ${waveMgr.isPaused ? 'PAUSED' : 'RESUMED'}`);
-  });
-
-  const waveInput = document.getElementById('adm-wave-input');
-
-  const wavePrevBtn = document.getElementById('adm-wave-prev');
-  if (wavePrevBtn) {
-    wavePrevBtn.addEventListener('click', () => {
-      const prevWave = Math.max(1, waveMgr.waveNumber - 1);
-      waveMgr.setWaveNumber(prevWave);
-      if (waveInput) waveInput.value = prevWave;
-      uiMgr.showToast(`ADMIN: WAVE SET TO ${prevWave}`);
-    });
-  }
-
-  const waveNextBtn = document.getElementById('adm-wave-next');
-  if (waveNextBtn) {
-    waveNextBtn.addEventListener('click', () => {
-      const nextWave = waveMgr.waveNumber + 1;
-      waveMgr.setWaveNumber(nextWave);
-      if (waveInput) waveInput.value = nextWave;
-      uiMgr.showToast(`ADMIN: WAVE SET TO ${nextWave}`);
-    });
-  }
-
-  if (waveInput) {
-    waveInput.addEventListener('input', () => {
-      const parsed = parseInt(waveInput.value, 10);
-      if (!isNaN(parsed) && parsed >= 1) {
-        const targetWave = Math.min(999, parsed);
-        waveMgr.setWaveNumber(targetWave);
-      }
-    });
-
-    waveInput.addEventListener('change', () => {
-      const targetWave = Math.max(1, Math.min(999, parseInt(waveInput.value, 10) || 1));
-      waveMgr.setWaveNumber(targetWave);
-      waveInput.value = targetWave;
-      uiMgr.showToast(`ADMIN: WAVE SET TO ${targetWave}`);
-    });
-
-    waveInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const targetWave = Math.max(1, Math.min(999, parseInt(waveInput.value, 10) || 1));
-        waveMgr.setWaveNumber(targetWave);
-        waveInput.value = targetWave;
-        waveInput.blur();
-      }
-    });
-  }
-
-  document.getElementById('adm-debug-overlay').addEventListener('change', (e) => {
-    state.debugMode = e.target.checked;
-    const debugLabel = document.getElementById('adm-debug-btn-label');
-    const debugState = document.getElementById('adm-debug-state');
-    if (debugLabel) debugLabel.classList.toggle('is-active', state.debugMode);
-    if (debugState) debugState.textContent = state.debugMode ? 'ON' : 'OFF';
-    uiMgr.showToast(`ADMIN: WIREFRAME HITBOXES ${state.debugMode ? 'ENABLED' : 'DISABLED'}`);
-  });
-
-  const spawnShapeBtn = document.getElementById('adm-spawn-shape');
-  if (spawnShapeBtn) {
-    spawnShapeBtn.addEventListener('click', () => {
-      const select = document.getElementById('adm-shape-select');
-      const countInput = document.getElementById('adm-shape-count');
-      const shapeType = select ? select.value : 'square';
-      const count = Math.max(1, Math.min(50, parseInt(countInput ? countInput.value : 1, 10) || 1));
-      waveMgr.spawnShape(player, shapeType, count, true);
-      const shapeName = CONFIG.SHAPES.types[shapeType]?.name || shapeType.toUpperCase();
-      uiMgr.showToast(`ADMIN: SPAWNED ${count}x ${shapeName.toUpperCase()}`);
-    });
-  }
-
-  const clearShapesBtn = document.getElementById('adm-clear-shapes');
-  if (clearShapesBtn) {
-    clearShapesBtn.addEventListener('click', () => {
-      waveMgr.clearShapes();
-      uiMgr.showToast("ADMIN: ALL SHAPES CLEARED");
-    });
-  }
-
-  const spawnEnemyBtn = document.getElementById('adm-spawn-enemy');
-  if (spawnEnemyBtn) {
-    spawnEnemyBtn.addEventListener('click', () => {
-      const select = document.getElementById('adm-enemy-select');
-      const countInput = document.getElementById('adm-enemy-count');
-      const enemyType = select ? select.value : 'chaser';
-      const count = Math.max(1, Math.min(50, parseInt(countInput ? countInput.value : 1, 10) || 1));
-      if (waveMgr.spawnEnemy) {
-        waveMgr.spawnEnemy(player, enemyType, count);
-      } else {
-        for (let i = 0; i < count; i++) waveMgr.spawnSingleEnemy(player, enemyType);
-      }
-      const enemyName = CONFIG.ENEMIES[enemyType]?.name || enemyType.toUpperCase();
-      uiMgr.showToast(`ADMIN: SPAWNED ${count}x ${enemyName.toUpperCase()}`);
-    });
-  }
-
-  const clearEnemiesBtn = document.getElementById('adm-clear-enemies');
-  if (clearEnemiesBtn) {
-    clearEnemiesBtn.addEventListener('click', () => {
-      if (waveMgr.clearEnemies) {
-        waveMgr.clearEnemies();
-      } else {
-        waveMgr.enemies = [];
-        waveMgr.enemyBullets = [];
-      }
-      uiMgr.showToast("ADMIN: ALL ENEMIES CLEARED");
-    });
-  }
-
-  const shapeSelect = document.getElementById('adm-shape-select');
-  if (shapeSelect) {
-    shapeSelect.addEventListener('change', (e) => {
-      if (uiMgr) uiMgr.updateAdminShapePreview(e.target.value);
-    });
-  }
-
-  const enemySelect = document.getElementById('adm-enemy-select');
-  if (enemySelect) {
-    enemySelect.addEventListener('change', (e) => {
-      if (uiMgr) uiMgr.updateAdminEnemyPreview(e.target.value);
-    });
-  }
 }
 
 function updatePlayer(dt) {
@@ -1134,21 +775,16 @@ function updatePlayer(dt) {
   const levelZoomMult = 1.0 + (growthLevel - 1) * growthCfg.cameraZoomIncreasePerLevel;
   camera.targetZoom = (chassisConfig.cameraZoom || CONFIG.CAMERA.defaultZoom) / levelZoomMult;
 
-  if (player.iFrameTimer > 0) {
-    player.iFrameTimer -= dt;
-  }
-
-  if (player.dashTimer > 0) {
-    player.dashTimer -= dt;
-  }
+  if (player.iFrameTimer > 0) player.iFrameTimer -= dt;
+  if (player.dashTimer > 0) player.dashTimer -= dt;
 
   player.timeSinceLastDamage += dt;
-  
+
   const regenStat = state.stats.regenRate || 0;
   const regenRate = CONFIG.PLAYER.baseRegenRate + (regenStat * CONFIG.PLAYER.regenRatePerPoint);
   if (player.timeSinceLastDamage >= CONFIG.PLAYER.regenDelay || regenStat > 0) {
-    const activeRegen = (player.timeSinceLastDamage >= CONFIG.PLAYER.regenDelay) 
-      ? (regenRate * CONFIG.PLAYER.outOfCombatRegenMult) 
+    const activeRegen = (player.timeSinceLastDamage >= CONFIG.PLAYER.regenDelay)
+      ? (regenRate * CONFIG.PLAYER.outOfCombatRegenMult)
       : regenRate;
     player.hp = Math.min(player.maxHp, player.hp + activeRegen * dt * (player.maxHp / CONFIG.PLAYER.baseMaxHp));
   }
@@ -1170,11 +806,24 @@ function updatePlayer(dt) {
     dirY *= 0.7071;
   }
 
+  if (mobileControls && (mobileControls.moveVec.x !== 0 || mobileControls.moveVec.y !== 0)) {
+    dirX += mobileControls.moveVec.x;
+    dirY += mobileControls.moveVec.y;
+    const len = Math.hypot(dirX, dirY);
+    if (len > 1) {
+      dirX /= len;
+      dirY /= len;
+    }
+  }
+
   const accel = player.accel || CONFIG.PLAYER.acceleration;
   player.vx += dirX * accel * dt;
   player.vy += dirY * accel * dt;
 
-  const isFiring = input.mouse.isDown || input.mouse.isRightDown || (input.keys && input.keys[' ']) || state.autoFire;
+  const isMobileMode = Boolean(mobileControls && mobileControls.isMobile);
+  const mobileFiring = Boolean(mobileControls && mobileControls.aimState.isFiring);
+  const pointerFiring = !isMobileMode && (input.mouse.isDown || input.mouse.isRightDown);
+  const isFiring = pointerFiring || (input.keys && input.keys[' ']) || state.autoFire || mobileFiring;
   const recoilImpulse = weaponSys.update(dt, player, isFiring);
   player.vx += recoilImpulse.x;
   player.vy += recoilImpulse.y;
@@ -1188,24 +837,26 @@ function updatePlayer(dt) {
   let camTargetX = player.x;
   let camTargetY = player.y;
 
-  if (state.activeChassis === 'sniper' && !state.autoSpin) {
+  if (state.activeChassis === 'sniper' && !state.autoSpin && !isMobileMode) {
     camTargetX += (input.mouse.worldX - player.x) * CONFIG.CAMERA.sniperLeanFactor;
     camTargetY += (input.mouse.worldY - player.y) * CONFIG.CAMERA.sniperLeanFactor;
   }
 
   camera.x += (camTargetX - camera.x) * CONFIG.CAMERA.smoothness;
   camera.y += (camTargetY - camera.y) * CONFIG.CAMERA.smoothness;
-
   camera.zoom += (camera.targetZoom - camera.zoom) * CONFIG.CAMERA.zoomLerpSpeed;
 
   input.mouse.worldX = (input.mouse.screenX - canvasMgr.width / 2) / camera.zoom + camera.x;
   input.mouse.worldY = (input.mouse.screenY - canvasMgr.height / 2) / camera.zoom + camera.y;
 
   if (state.autoSpin) {
-    // Autospin: spin slowly clockwise (~1.35 rad/s)
     player.angle += 1.35 * dt;
     if (player.angle > Math.PI) player.angle -= Math.PI * 2;
     else if (player.angle < -Math.PI) player.angle += Math.PI * 2;
+  } else if (isMobileMode) {
+    if (mobileControls.aimState.hasAimed) {
+      player.angle = mobileControls.aimState.angle;
+    }
   } else {
     const dx = input.mouse.worldX - player.x;
     const dy = input.mouse.worldY - player.y;
@@ -1246,7 +897,9 @@ function renderPlayerChassis() {
     );
   }
 
-  (chassis.turrets || []).forEach((turret, index) => {
+  const turrets = chassis.turrets || [];
+  for (let index = 0; index < turrets.length; index++) {
+    const turret = turrets[index];
     const recoil = weaponSys.turretStates[index] ? weaponSys.turretStates[index].recoilOffset : 0;
     const barrelLen = Math.max(4, (turret.length - recoil) * sizeScale);
     const barrelWidth = turret.width * sizeScale;
@@ -1255,7 +908,7 @@ function renderPlayerChassis() {
     const yOff = (turret.yOffset || 0) * sizeScale;
 
     canvasMgr.drawTurretBarrel(x, y, barrelWidth, barrelLen, angle + turret.angleOffset, xOff, yOff, frontWidth);
-  });
+  }
 
   canvasMgr.drawPolygon(
     x, y, radius,
@@ -1293,164 +946,6 @@ function renderPlayerChassis() {
   }
 }
 
-function updateHUD() {
-  if (state.inMenu || !state.isPlaying || state.isGameOver) return;
-
-  document.getElementById('fps-counter').textContent = Math.round(state.fps);
-  document.getElementById('score-display').textContent = Math.floor(waveMgr.score).toLocaleString();
-
-  const playerName = storageMgr.data.playerName || 'Tank';
-  const chassisName = CONFIG.CHASSIS[state.activeChassis].name;
-
-  const nameDisplay = document.getElementById('player-name-display');
-  if (nameDisplay) nameDisplay.textContent = playerName;
-
-  const scoreText = document.getElementById('score-bar-text');
-  if (scoreText) scoreText.textContent = `Score: ${Math.floor(waveMgr.score).toLocaleString()}`;
-
-  const scoreFill = document.getElementById('score-bar-fill');
-  if (scoreFill) {
-    const maxScore = getTotalXPForLevel(CONFIG.PLAYER.maxLevel);
-    const pct = (state.level >= CONFIG.PLAYER.maxLevel || waveMgr.score >= maxScore)
-      ? 100
-      : Math.min(100, Math.max(0, (waveMgr.score / maxScore) * 100));
-    scoreFill.style.width = `${pct}%`;
-  }
-
-  const levelText = document.getElementById('player-level-display');
-  if (levelText) {
-    if (state.level >= CONFIG.PLAYER.maxLevel) {
-      levelText.textContent = `Lvl ${state.level} ${chassisName} (MAX)`;
-    } else {
-      levelText.textContent = `Lvl ${state.level} ${chassisName}`;
-    }
-  }
-
-  const xpBarFill = document.getElementById('xp-bar-fill');
-  if (xpBarFill && state.level >= CONFIG.PLAYER.maxLevel) {
-    xpBarFill.style.width = '100%';
-  }
-
-  const waveStatus = document.getElementById('wave-status');
-  const waveTimerText = document.getElementById('wave-timer-text');
-
-  if (waveMgr.graceTimer > 0) {
-    waveStatus.textContent = `WAVE ${waveMgr.waveNumber} (GRACE PERIOD)`;
-    waveStatus.style.color = '#e9b439';
-    waveTimerText.textContent = `ENEMIES SPAWN IN: ${Math.ceil(waveMgr.graceTimer)}s`;
-    if (state.lastAnnouncedGraceWave !== waveMgr.waveNumber && !state.inMenu && !state.isGameOver) {
-      state.lastAnnouncedGraceWave = waveMgr.waveNumber;
-      if (uiMgr) {
-        uiMgr.showToast(`WAVE ${waveMgr.waveNumber}: 20s GRACE PERIOD ACTIVE!`);
-      }
-    }
-  } else if (waveMgr.isBreak) {
-    waveStatus.textContent = `WAVE ${waveMgr.waveNumber} CLEARED`;
-    waveStatus.style.color = '#57a857';
-    waveTimerText.textContent = `NEXT WAVE IN ${Math.ceil(waveMgr.breakTimer)}s`;
-  } else {
-    waveStatus.textContent = `WAVE ${waveMgr.waveNumber}`;
-    waveStatus.style.color = '#359bb5';
-    waveTimerText.textContent = `ENEMIES REMAINING: ${waveMgr.getRemainingEnemyCount()}`;
-  }
-
-  const enemyUpgradePill = document.getElementById('enemy-upgrade-pill');
-  if (enemyUpgradePill) {
-    enemyUpgradePill.classList.add('hidden');
-    enemyUpgradePill.textContent = '';
-  }
-
-  const titleElem = document.getElementById('weapon-title');
-  const rackContainer = document.getElementById('ready-rack-container');
-  const barWrapper = document.getElementById('gauge-bar-wrapper');
-  const barFill = document.getElementById('gauge-bar-fill');
-  const barText = document.getElementById('gauge-text');
-  const overheatBanner = document.getElementById('overheat-banner');
-
-  const hasShootingTurrets = weaponSys.turrets && weaponSys.turrets.some(t => t.shootsBullet);
-  const isSmasherAbility = (state.activeChassis === 'smasher') || (!hasShootingTurrets && (weaponSys.type === WEAPON_TYPE.COOLDOWN || weaponSys.type === WEAPON_TYPE.ENERGY));
-
-  if (isSmasherAbility) {
-    titleElem.textContent = 'KINETIC SURGE DASH';
-    rackContainer.classList.add('hidden');
-    barWrapper.classList.remove('hidden');
-    overheatBanner.classList.add('hidden');
-
-    const cooldown = weaponSys.cooldownTimer || 0;
-    const maxCooldown = weaponSys.cooldownDurationSec || 1.67;
-
-    if (cooldown > 0) {
-      const cdPct = Math.max(0, Math.min(100, (1.0 - (cooldown / maxCooldown)) * 100));
-      barFill.style.width = `${cdPct}%`;
-      barFill.className = 'gauge-bar-fill cooldown';
-      barFill.style.background = '#475569';
-      barText.textContent = `COOLDOWN: ${cooldown.toFixed(1)}s`;
-    } else {
-      barFill.style.width = '100%';
-      barFill.className = 'gauge-bar-fill ready';
-      barFill.style.background = '#00e5ff';
-      barText.textContent = 'READY';
-    }
-  } else if (!hasShootingTurrets) {
-    titleElem.textContent = 'NO TURRETS AVAILABLE';
-    rackContainer.classList.add('hidden');
-    barWrapper.classList.add('hidden');
-    overheatBanner.classList.add('hidden');
-  } else if (weaponSys.type === WEAPON_TYPE.READY_RACK) {
-    titleElem.textContent = (weaponSys.chassisKey === 'sniper') ? 'BREECH LOADER' : 'READY-RACK SYSTEM';
-    rackContainer.classList.remove('hidden');
-    barWrapper.classList.add('hidden');
-    overheatBanner.classList.add('hidden');
-
-    rackContainer.innerHTML = '';
-    for (let i = 0; i < weaponSys.maxRack; i++) {
-      const pip = document.createElement('div');
-      pip.className = 'shell-pip';
-      pip.style.borderColor = player.fillColor;
-
-      if (i < weaponSys.currentRack) {
-        pip.classList.add('loaded');
-        pip.style.background = player.fillColor;
-      } else if (i === weaponSys.currentRack && weaponSys.reloadTimer > 0) {
-        pip.classList.add('reloading');
-      }
-      rackContainer.appendChild(pip);
-    }
-  } else if (weaponSys.type === WEAPON_TYPE.THERMAL) {
-    titleElem.textContent = 'BARREL THERMAL GAUGE';
-    rackContainer.classList.add('hidden');
-    barWrapper.classList.remove('hidden');
-
-    const heat = Math.round(weaponSys.heat);
-    barFill.style.width = `${heat}%`;
-    barText.textContent = `${heat}% HEAT`;
-
-    if (weaponSys.isOverheated || heat > 80) {
-      barFill.style.background = '#d93838';
-      overheatBanner.classList.remove('hidden');
-    } else if (heat > 50) {
-      barFill.style.background = '#c4702b';
-      overheatBanner.classList.add('hidden');
-    } else {
-      barFill.style.background = player.fillColor;
-      overheatBanner.classList.add('hidden');
-    }
-  } else if (weaponSys.type === WEAPON_TYPE.ENERGY) {
-    titleElem.textContent = 'CAPACITOR BATTERY';
-    rackContainer.classList.add('hidden');
-    barWrapper.classList.remove('hidden');
-    overheatBanner.classList.add('hidden');
-
-    const energy = Math.round(weaponSys.energy);
-    const maxE = weaponSys.maxEnergy || 100;
-    const pct = Math.max(0, Math.min(100, (weaponSys.energy / maxE) * 100));
-    barFill.style.width = `${pct}%`;
-    barFill.className = 'gauge-bar-fill energy';
-    barFill.style.background = player.fillColor;
-    barText.textContent = `${energy} / ${maxE} PWR`;
-  }
-}
-
 function gameLoop(timestamp) {
   const dt = Math.min((timestamp - state.lastFrameTime) / 1000, 0.1);
   state.lastFrameTime = timestamp;
@@ -1459,7 +954,7 @@ function gameLoop(timestamp) {
   if (state.isPlaying && !state.isGameOver && !state.inMenu) {
     const prevScore = waveMgr.score;
     updatePlayer(dt);
-    
+
     waveMgr.update(dt, player, weaponSys, state.activeChassis, state.stats);
 
     if (waveMgr.score > prevScore) {
@@ -1481,7 +976,7 @@ function gameLoop(timestamp) {
     renderPlayerChassis();
     canvasMgr.endCamera();
 
-    updateHUD();
+    hudUpdater.update(state, player, waveMgr, weaponSys, storageMgr, uiMgr);
   }
 
   requestAnimationFrame(gameLoop);

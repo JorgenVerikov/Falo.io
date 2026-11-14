@@ -239,6 +239,35 @@ export const CHASSIS_CONFIG = {
         { type: 'ENERGY', maxEnergy: 100, costPerShot: 25, rechargeRate: 14 }
       )
     ]
+  },
+
+  tripleshot: {
+    name: 'Triple Shot',
+    reqLevel: 30,
+    tier: 2,
+    upgradesFrom: ['twin'],
+    shopCost: 1000,
+    cameraZoom: 0.85,
+    sides: 0,
+    radiusMultiplier: 1.0,
+    firingMode: 'simultaneous',
+    turrets: [
+      createBarrelTurret(
+        { width: 20, length: 48, frontWidth: 20, angleOffset: -Math.PI / 4, xOffset: 0, yOffset: 0 },
+        { damage: 0.70, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0.6, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0 },
+        { type: 'THERMAL', heatPerShot: 3.4, coolRate: 16, overheatLockoutTime: 2.0 }
+      ),
+      createBarrelTurret(
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 0.70, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0.6, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0 },
+        { type: 'THERMAL', heatPerShot: 3.4, coolRate: 16, overheatLockoutTime: 2.0 }
+      ),
+      createBarrelTurret(
+        { width: 20, length: 48, frontWidth: 20, angleOffset: Math.PI / 4, xOffset: 0, yOffset: 0 },
+        { damage: 0.70, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0.6, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0 },
+        { type: 'THERMAL', heatPerShot: 3.4, coolRate: 16, overheatLockoutTime: 2.0 }
+      )
+    ]
   }
 };
 

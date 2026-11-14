@@ -189,4 +189,49 @@ export class CanvasManager {
     ctx.stroke();
     ctx.restore();
   }
+
+  beginOffscreenLayer(centerX, centerY, halfExtent = 90, pixelScale = 2) {
+    if (!this._layerCanvas) {
+      this._layerCanvas = document.createElement('canvas');
+      this._layerCtx = this._layerCanvas.getContext('2d');
+    }
+    const size = Math.max(64, Math.ceil(halfExtent * 2 * pixelScale));
+    if (this._layerCanvas.width !== size || this._layerCanvas.height !== size) {
+      this._layerCanvas.width = size;
+      this._layerCanvas.height = size;
+    }
+
+    const lctx = this._layerCtx;
+    lctx.setTransform(1, 0, 0, 1, 0, 0);
+    lctx.clearRect(0, 0, size, size);
+    lctx.save();
+    lctx.translate(size / 2, size / 2);
+    lctx.scale(pixelScale, pixelScale);
+    lctx.translate(-centerX, -centerY);
+
+    this._savedCtx = this.ctx;
+    this.ctx = lctx;
+    this._layerMeta = { centerX, centerY, pixelScale, size };
+  }
+
+  endOffscreenLayer(alpha = 1.0) {
+    if (!this._savedCtx || !this._layerMeta) return;
+    this._layerCtx.restore();
+    this.ctx = this._savedCtx;
+    this._savedCtx = null;
+
+    const { centerX, centerY, pixelScale, size } = this._layerMeta;
+    const worldSize = size / pixelScale;
+    this.ctx.save();
+    this.ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+    this.ctx.drawImage(
+      this._layerCanvas,
+      centerX - worldSize / 2,
+      centerY - worldSize / 2,
+      worldSize,
+      worldSize
+    );
+    this.ctx.restore();
+    this._layerMeta = null;
+  }
 }

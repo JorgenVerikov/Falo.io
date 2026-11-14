@@ -1,0 +1,263 @@
+/**
+ * DIEP SURVIVAL - SPECIALIZED ENEMY CONFIGURATIONS
+ * Advanced tactical archetypes: Howitzer, Watcher, Suppressor, and Phantom.
+ */
+
+export const SPECIALIZED_ENEMIES_CONFIG = {
+  howitzer: {
+    minWave: 8,
+    name: 'Howitzer',
+    enemyClass: 'Specialized',
+    sides: 0,
+    radiusMultiplier: 1.15,
+    hp: 58,
+    speedMultiplier: 0.72,
+    drag: 3.6,
+    damage: 14,
+    xp: 180,
+    weight: 4.5,
+    spawnWeight: 0.14,
+    color: '#98A95B',
+    stroke: '#707d43',
+    turrets: [
+      {
+        width: 38, length: 46, frontWidth: 38, angleOffset: 0, xOffset: 0, yOffset: 0,
+        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+      }
+    ],
+    weapon: {
+      fireRateSec: 3.2,
+      bulletSpeed: 155,
+      bulletPenetration: 12.0,
+      bulletDamage: 32.0,
+      bulletRadius: 10.0,
+      bulletLifetime: 4.2,
+      bulletColor: '#f14e54',
+      bulletStroke: '#b82a30',
+      recoilForce: 320,
+      barrelRecoilAmount: 16
+    },
+    ai: {
+      role: 'artillery',
+      kitingDistance: 500,
+      lowMoraleKitingDistance: 600,
+      highMoraleKitingDistance: 400,
+      lastStandDistance: 280,
+      kitingBuffer: 55,
+      frenzyKitingDist: 400,
+      crossfireAngle: Math.PI * 0.35,
+      orbitSpeed: 0.45,
+      turretTurnSpeed: 4.5,
+      aimSmoothingTime: 0.16,
+      predictiveAim: 1.0,
+      meatShieldSeeking: true,
+      evasion: true,
+      evasionChance: 0.45,
+      evasionDangerDist: 190,
+      evasionCooldown: 0.85,
+      separationDistance: 105,
+      separationWeight: 1.2,
+      coverThresholdHp: 0.40
+    }
+  },
+  watcher: {
+    minWave: 10,
+    name: 'Watcher',
+    enemyClass: 'Specialized',
+    sides: 0,
+    radiusMultiplier: 1.0,
+    hp: 36,
+    speedMultiplier: 0.85,
+    drag: 4.0,
+    damage: 10,
+    xp: 220,
+    weight: 2.5,
+    spawnWeight: 0.06,
+    color: '#1A3B5B',
+    stroke: '#132c43',
+    turrets: [
+      {
+        width: 20, length: 58, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0,
+        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+      }
+    ],
+    weapon: {
+      fireRateSec: 3.4,
+      bulletSpeed: 390,
+      bulletPenetration: 4.5,
+      bulletDamage: 18.0,
+      bulletRadius: 8.1,
+      bulletLifetime: 3.4,
+      bulletColor: '#f14e54',
+      bulletStroke: '#b82a30',
+      recoilForce: 90,
+      barrelRecoilAmount: 13
+    },
+    stealth: {
+      idleAlpha: 0.24,
+      activeAlpha: 1.0,
+      fadeInDuration: 0.12,
+      holdVisibleSec: 0.55,
+      fadeOutDuration: 1.15
+    },
+    ai: {
+      role: 'sniper',
+      kitingDistance: 640,
+      lowMoraleKitingDistance: 720,
+      highMoraleKitingDistance: 560,
+      lastStandDistance: 440,
+      kitingBuffer: 45,
+      frenzyKitingDist: 560,
+      crossfireAngle: Math.PI * 0.42,
+      orbitSpeed: 0.28,
+      turretTurnSpeed: 18.0,
+      aimSmoothingTime: 0.02,
+      predictiveAim: 1.0,
+      requireAimLock: true,
+      meatShieldSeeking: false,
+      evasion: true,
+      evasionChance: 0.65,
+      evasionDangerDist: 220,
+      evasionCooldown: 0.55,
+      separationDistance: 100,
+      separationWeight: 1.1,
+      coverThresholdHp: 0.35
+    }
+  },
+  suppressor: {
+    minWave: 12,
+    name: 'Suppressor',
+    enemyClass: 'Specialized',
+    sides: 0,
+    radiusMultiplier: 1.0,
+    hp: 46,
+    speedMultiplier: 0.96,
+    drag: 4.0,
+    damage: 11,
+    xp: 230,
+    weight: 3.5,
+    spawnWeight: 0.055,
+    color: '#D88731',
+    stroke: '#a06424',
+    turrets: [
+      {
+        width: 20, length: 46, frontWidth: 32, angleOffset: 0, xOffset: 0, yOffset: 0,
+        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+      }
+    ],
+    weapon: {
+      fireRateSec: 0.28,
+      minFireRateSec: 0.17,
+      bulletSpeed: 250,
+      bulletPenetration: 1.6,
+      bulletDamage: 3.8,
+      bulletRadius: 7.65,
+      bulletSpread: 0.16,
+      bulletLifetime: 3.0,
+      bulletColor: '#f14e54',
+      bulletStroke: '#b82a30',
+      recoilForce: 22,
+      barrelRecoilAmount: 8,
+      thermal: {
+        maxHeat: 100,
+        heatPerShot: 6.5,
+        passiveCoolRate: 6.0,
+        overheatCoolRate: 24.0,
+        resumeHeatThreshold: 0
+      }
+    },
+    ai: {
+      role: 'suppressor',
+      kitingDistance: 525,
+      lowMoraleKitingDistance: 600,
+      highMoraleKitingDistance: 440,
+      distractedKitingDistance: 410,
+      overheatRetreatDist: 605,
+      lastStandDistance: 300,
+      kitingBuffer: 42,
+      frenzyKitingDist: 420,
+      crossfireAngle: Math.PI * 0.48,
+      assistFlankOffset: Math.PI * 0.42,
+      orbitSpeed: 0.90,
+      turretTurnSpeed: 9.0,
+      aimSmoothingTime: 0.10,
+      predictiveAim: 1.0,
+      meatShieldSeeking: true,
+      evasion: true,
+      evasionChance: 0.65,
+      evasionDangerDist: 215,
+      evasionCooldown: 0.45,
+      separationDistance: 95,
+      separationWeight: 1.25,
+      coverThresholdHp: 0.35
+    }
+  },
+  phantom: {
+    minWave: 17,
+    name: 'Phantom',
+    enemyClass: 'Specialized',
+    sides: 3,
+    radiusMultiplier: 0.72,
+    hp: 12,
+    speedMultiplier: 0.78,
+    drag: 3.2,
+    damage: 28,
+    dieOnPlayerHit: true,
+    neverRetreat: true,
+    xp: 210,
+    weight: 1.4,
+    spawnWeight: 0.05,
+    color: '#5f8fa8',
+    stroke: '#43677a',
+    turrets: [
+      {
+        width: 11, length: 36, frontWidth: 11, angleOffset: Math.PI - 0.30, xOffset: 0, yOffset: -6,
+        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+      },
+      {
+        width: 11, length: 36, frontWidth: 11, angleOffset: Math.PI + 0.30, xOffset: 0, yOffset: 6,
+        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+      }
+    ],
+    weapon: {
+      fireRateSec: 0.085,
+      minFireRateSec: 0.06,
+      bulletSpeed: 160,
+      bulletPenetration: 0.5,
+      bulletDamage: 0,
+      bulletRadius: 8.5,
+      bulletSpread: 0.14,
+      bulletLifetime: 0.24,
+      bulletColor: '#7cb5cf',
+      bulletStroke: '#4e7b91',
+      recoilForce: 42,
+      barrelRecoilAmount: 5,
+      onlyFireWhenCharging: true
+    },
+    stealth: {
+      idleAlpha: 0.14,
+      activeAlpha: 1.0,
+      fadeInDuration: 0.12,
+      holdVisibleSec: 0.25,
+      fadeOutDuration: 0.45,
+      silentWhileCloaked: true,
+      speakAlphaThreshold: 0.85
+    },
+    ai: {
+      role: 'phantom',
+      neverRetreat: true,
+      chargeTriggerDist: 360,
+      chargeStopDist: 480,
+      leadInterception: 0.90,
+      flankSpreadAngle: Math.PI * 0.38,
+      evasion: true,
+      smoothTurnRate: 7.0,
+      evadeBlendRate: 4.5,
+      separationDistance: 55,
+      separationWeight: 0.95,
+      surroundArcDist: 160,
+      frenzyHpThreshold: 0.40,
+      blindSpotExploit: true
+    }
+  }
+};

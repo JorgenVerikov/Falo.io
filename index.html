@@ -73,6 +73,29 @@
         <div id="overheat-banner" class="overheat-banner hidden">OVERHEAT</div>
       </div>
     </div>
+
+    <!-- Mobile Touch Controls Overlay -->
+    <div id="mobile-controls-layer" class="mobile-controls-layer hidden">
+      <button id="mobile-self-destruct-btn" class="mobile-self-destruct-btn" type="button">SELF DESTRUCT</button>
+
+      <div id="mobile-move-joystick" class="mobile-joystick mobile-joystick-left" aria-label="Movement Joystick">
+        <div class="mobile-joystick-ring"></div>
+        <div id="mobile-move-knob" class="mobile-joystick-knob"></div>
+        <span class="mobile-joystick-label">MOVE</span>
+      </div>
+
+      <div class="mobile-right-cluster">
+        <div class="mobile-toggles-row">
+          <button id="mobile-autofire-btn" class="mobile-toggle-btn" type="button">AUTO FIRE</button>
+          <button id="mobile-autospin-btn" class="mobile-toggle-btn" type="button">AUTO SPIN</button>
+        </div>
+        <div id="mobile-aim-joystick" class="mobile-joystick mobile-joystick-right" aria-label="Aiming Joystick">
+          <div class="mobile-joystick-ring"></div>
+          <div id="mobile-aim-knob" class="mobile-joystick-knob aim-knob"></div>
+          <span class="mobile-joystick-label">AIM / FIRE</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Main Menu Overlay -->
@@ -164,6 +187,18 @@
           <button id="open-armory-btn" class="modal-btn secondary">ARMORY</button>
           <button id="game-over-menu-btn" class="modal-btn secondary">MAIN MENU</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Self-Destruct Confirmation Modal -->
+  <div id="self-destruct-modal" class="modal-overlay hidden">
+    <div class="modal-box self-destruct-modal-box">
+      <h1 class="modal-title alert">SELF DESTRUCT</h1>
+      <p class="self-destruct-confirm-text">Are you sure you want to end this run?</p>
+      <div class="modal-actions">
+        <button id="cancel-self-destruct-btn" class="modal-btn secondary" type="button">CANCEL</button>
+        <button id="confirm-self-destruct-btn" class="modal-btn danger" type="button">END RUN</button>
       </div>
     </div>
   </div>
@@ -295,6 +330,7 @@
                 <div class="diep-section-title">
                   CONTROLS
                 </div>
+                <div id="settings-device-mode-badge" class="device-mode-badge mode-pc">DETECTED: PC (KEYBOARD & MOUSE)</div>
               </div>
             </div>
 
@@ -303,15 +339,15 @@
                 <div class="key-badge">W A S D / ARROWS</div>
                 <div class="key-info">
                   <div class="key-title">Tank Movement</div>
-                  <div class="key-desc">Use to Move around</div>
+                  <div class="key-desc">PC: Keyboard / Mobile: Left Movement Joystick</div>
                 </div>
               </div>
 
               <div class="control-key-card diep-card rarity-common">
                 <div class="key-badge">LEFT CLICK / SPACE</div>
                 <div class="key-info">
-                  <div class="key-title">Fire Cannons</div>
-                  <div class="key-desc">Shoot bullets toward mouse cursor</div>
+                  <div class="key-title">Fire & Aim Cannons</div>
+                  <div class="key-desc">PC: Mouse & Click / Mobile: Right Aiming Joystick</div>
                 </div>
               </div>
 
@@ -319,7 +355,7 @@
                 <div class="key-badge">E</div>
                 <div class="key-info">
                   <div class="key-title">Auto-Fire Toggle</div>
-                  <div class="key-desc">Locks weapons on continuous fire</div>
+                  <div class="key-desc">PC: E Key / Mobile: Auto Fire Button</div>
                 </div>
               </div>
 
@@ -327,7 +363,7 @@
                 <div class="key-badge">C</div>
                 <div class="key-info">
                   <div class="key-title">Auto-Spin Toggle</div>
-                  <div class="key-desc">Spins automatically</div>
+                  <div class="key-desc">PC: C Key / Mobile: Auto Spin Button</div>
                 </div>
               </div>
 
@@ -335,7 +371,7 @@
                 <div class="key-badge">1 - 8 / NUMPAD</div>
                 <div class="key-info">
                   <div class="key-title">Stat Point Upgrades</div>
-                  <div class="key-desc">Quickly invest earned points into stats without clicking</div>
+                  <div class="key-desc">Invest earned points into stats via keys or tap</div>
                 </div>
               </div>
 
@@ -343,7 +379,7 @@
                 <div class="key-badge">O</div>
                 <div class="key-info">
                   <div class="key-title">Self-Destruct</div>
-                  <div class="key-desc">Detonates chassis instantly</div>
+                  <div class="key-desc">PC: O Key / Mobile: Top-Left Button (with prompt)</div>
                 </div>
               </div>
 
@@ -747,7 +783,7 @@
                 <div class="diep-section-title">
                   ENEMY SPAWNER
                 </div>
-                <div class="diep-section-subtitle">Spawn aggressive combat drones for battle stress testing</div>
+                <div class="diep-section-subtitle">Spawn Standard, Infantry, and Specialized class enemies for battle stress testing</div>
               </div>
             </div>
 

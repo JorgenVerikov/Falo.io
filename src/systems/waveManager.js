@@ -18,6 +18,7 @@ export class WaveManager {
     this.enemies = [];
     this.particles = [];
     this.enemyBullets = [];
+    this.nextSquadId = 1;
 
     // Do not load or start arena wave until run begins
   }
@@ -49,9 +50,25 @@ export class WaveManager {
   }
 
   spawnEnemy(player, archetype = 'chaser', count = 1) {
+    const cfg = CONFIG.ENEMIES[archetype];
+    if (cfg && Array.isArray(cfg.squadSizes) && cfg.squadSizes.length > 0) {
+      if (count === 1) {
+        return this.spawnEnemySquad(player, archetype);
+      }
+      let remaining = count;
+      let totalSpawned = 0;
+      while (remaining > 0) {
+        const chunk = Math.min(6, remaining);
+        totalSpawned += this.spawnEnemySquad(player, archetype, chunk);
+        remaining -= chunk;
+      }
+      return totalSpawned;
+    }
+
     for (let i = 0; i < count; i++) {
       this.spawnSingleEnemy(player, archetype);
     }
+    return count;
   }
 
   spawnShape(player, shapeType = 'square', count = 1, nearPlayer = true) {
@@ -123,7 +140,12 @@ export class WaveManager {
       if (this.spawnTimer >= CONFIG.WAVE.spawnInterval) {
         this.spawnTimer = 0;
         const archetype = this.enemyQueue.shift();
-        this.spawnSingleEnemy(player, archetype);
+        const cfg = CONFIG.ENEMIES[archetype];
+        if (cfg && Array.isArray(cfg.squadSizes) && cfg.squadSizes.length > 0) {
+          this.spawnEnemySquad(player, archetype);
+        } else {
+          this.spawnSingleEnemy(player, archetype);
+        }
       }
     }
 
@@ -284,14 +306,47 @@ export class WaveManager {
     }
   }
 
-  spawnSingleEnemy(player, archetype) {
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 650 + Math.random() * 400;
-    const x = player.x + Math.cos(angle) * dist;
-    const y = player.y + Math.sin(angle) * dist;
+  spawnEnemySquad(player, archetype = 'operative', forcedSize = null) {
+    const cfg = CONFIG.ENEMIES[archetype];
+    const sizes = (cfg && Array.isArray(cfg.squadSizes) && cfg.squadSizes.length > 0)
+      ? cfg.squadSizes
+      : [4, 6];
+    const squadSize = forcedSize || sizes[Math.floor(Math.random() * sizes.length)];
 
-    const enemy = new EnemyUnit(x, y, archetype, this.waveNumber);
+    const anchorAngle = Math.random() * Math.PI * 2;
+    const anchorDist = 650 + Math.random() * 400;
+    const anchorX = (player ? player.x : 0) + Math.cos(anchorAngle) * anchorDist;
+    const anchorY = (player ? player.y : 0) + Math.sin(anchorAngle) * anchorDist;
+    const squadId = this.nextSquadId++;
+
+    const spacing = 64;
+    for (let i = 0; i < squadSize; i++) {
+      let ox = 0;
+      let oy = 0;
+      if (squadSize > 1) {
+        const ringAngle = anchorAngle + (i * Math.PI * 2) / squadSize;
+        const ringRadius = spacing * (0.75 + (i % 2) * 0.25);
+        ox = Math.cos(ringAngle) * ringRadius;
+        oy = Math.sin(ringAngle) * ringRadius;
+      }
+      this.spawnSingleEnemy(player, archetype, anchorX + ox, anchorY + oy, { squadId });
+    }
+    return squadSize;
+  }
+
+  spawnSingleEnemy(player, archetype, xOverride = null, yOverride = null, opts = {}) {
+    let x = xOverride;
+    let y = yOverride;
+    if (x === null || y === null) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 650 + Math.random() * 400;
+      x = (player ? player.x : 0) + Math.cos(angle) * dist;
+      y = (player ? player.y : 0) + Math.sin(angle) * dist;
+    }
+
+    const enemy = new EnemyUnit(x, y, archetype, this.waveNumber, opts);
     this.enemies.push(enemy);
+    return enemy;
   }
 
   getEnemyUpgradePoints() {
