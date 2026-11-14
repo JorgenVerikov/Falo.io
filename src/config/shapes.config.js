@@ -73,7 +73,7 @@ export const SHAPES_CONFIG = {
     },
     alpha_pentagon: {
       sides: 5,
-      radius: 60,
+      radius: 100,
       hp: 3000,
       xp: 3000,
       ramDamage: 20,
