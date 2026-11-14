@@ -889,7 +889,8 @@ body.theme-light #main-menu-overlay.modal-overlay {
   padding: calc(36px * var(--ui-scale)) calc(40px * var(--ui-scale));
   text-align: center;
   box-shadow: 0 0 25px rgba(53, 155, 181, 0.2);
-  min-width: calc(360px * var(--ui-scale));
+  width: min(calc(380px * var(--ui-scale)), calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
 }
 
 .main-menu-title {
@@ -1178,13 +1179,16 @@ body.theme-light #main-menu-overlay.modal-overlay {
   border: 3px solid rgba(255, 255, 255, 0.15);
   border-radius: 10px;
   padding: calc(24px * var(--ui-scale));
-  width: calc(380px * var(--ui-scale));
+  width: min(calc(380px * var(--ui-scale)), calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
   text-align: center;
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
 .modal-box.wide {
-  width: calc(520px * var(--ui-scale));
+  width: min(calc(520px * var(--ui-scale)), calc(100vw - 24px));
 }
 
 /* Smooth Game Over Modal Transitions */
@@ -3678,7 +3682,7 @@ body.theme-light .diep-admin-window {
 }
 
 /* ========================================================
-   MOBILE TOUCH CONTROLS & SELF-DESTRUCT PROMPT
+   MOBILE TOUCH CONTROLS & RESPONSIVE ASPECT RATIO
    ======================================================== */
 
 .mobile-controls-layer {
@@ -3693,49 +3697,49 @@ body.theme-light .diep-admin-window {
   display: none !important;
 }
 
-/* Top-Left Self Destruct Button */
+/* Top-Left Self Destruct Button (Plain Translucent Black in Light Mode / Translucent White in Dark Mode) */
 .mobile-self-destruct-btn {
   position: fixed;
-  top: calc(14px * var(--ui-scale));
-  left: calc(14px * var(--ui-scale));
+  top: 10px;
+  left: 10px;
   z-index: 60;
   pointer-events: auto;
   touch-action: none;
-  background-color: #f14e54;
-  background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.22) 68%);
-  border: calc(2.8px * var(--ui-scale)) solid #b82a30;
-  border-radius: calc(6px * var(--ui-scale));
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.92);
   font-family: 'Ubuntu', sans-serif;
-  font-size: calc(11px * var(--ui-scale));
-  font-weight: 900;
-  letter-spacing: 0.7px;
-  padding: calc(7px * var(--ui-scale)) calc(12px * var(--ui-scale));
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 6px 10px;
   cursor: pointer;
-  text-shadow:
-    -1.2px -1.2px 0 #222,
-     1.2px -1.2px 0 #222,
-    -1.2px  1.2px 0 #222,
-     1.2px  1.2px 0 #222;
-  -webkit-text-stroke: 0.4px #222;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
-  transition: filter 0.12s ease, transform 0.1s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
 .mobile-self-destruct-btn:active {
-  filter: brightness(0.9);
-  transform: scale(0.96);
+  background: rgba(255, 255, 255, 0.30);
 }
 
-/* Virtual Twin Joysticks */
+body.theme-light .mobile-self-destruct-btn {
+  background: rgba(0, 0, 0, 0.24);
+  border-color: rgba(0, 0, 0, 0.32);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+body.theme-light .mobile-self-destruct-btn:active {
+  background: rgba(0, 0, 0, 0.42);
+}
+
+/* Virtual Twin Joysticks (Compact vmin sizing, ordinary translucent white/black) */
 .mobile-joystick {
   position: relative;
-  width: calc(126px * var(--ui-scale));
-  height: calc(126px * var(--ui-scale));
+  width: clamp(78px, 20vmin, 108px);
+  height: clamp(78px, 20vmin, 108px);
   border-radius: 50%;
-  background: rgba(30, 32, 38, 0.42);
-  border: calc(3px * var(--ui-scale)) solid rgba(255, 255, 255, 0.28);
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.28);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.24);
   pointer-events: auto;
   touch-action: none;
   user-select: none;
@@ -3743,24 +3747,24 @@ body.theme-light .diep-admin-window {
 }
 
 .mobile-joystick.active {
-  background: rgba(30, 32, 38, 0.56);
-  border-color: rgba(0, 178, 225, 0.75);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.45);
 }
 
 .mobile-joystick-left {
   position: fixed;
-  bottom: calc(22px * var(--ui-scale));
-  left: calc(22px * var(--ui-scale));
+  bottom: 14px;
+  left: 14px;
 }
 
 .mobile-right-cluster {
   position: fixed;
-  bottom: calc(22px * var(--ui-scale));
-  right: calc(22px * var(--ui-scale));
+  bottom: 14px;
+  right: 14px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: calc(10px * var(--ui-scale));
+  align-items: flex-end;
+  gap: 8px;
   pointer-events: none;
 }
 
@@ -3772,11 +3776,11 @@ body.theme-light .diep-admin-window {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 58%;
-  height: 58%;
+  width: 56%;
+  height: 56%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  border: 1.5px dashed rgba(255, 255, 255, 0.22);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
   pointer-events: none;
 }
 
@@ -3784,32 +3788,24 @@ body.theme-light .diep-admin-window {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: calc(50px * var(--ui-scale));
-  height: calc(50px * var(--ui-scale));
+  width: clamp(32px, 8.2vmin, 44px);
+  height: clamp(32px, 8.2vmin, 44px);
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background-color: #00b2e1;
-  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.25) 0%, transparent 55%, rgba(0, 0, 0, 0.22) 100%);
-  border: calc(3px * var(--ui-scale)) solid #007a9e;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+  background: rgba(255, 255, 255, 0.28);
+  border: 1.5px solid rgba(255, 255, 255, 0.48);
   pointer-events: none;
-}
-
-.mobile-joystick-knob.aim-knob {
-  background-color: #f14e54;
-  border-color: #b82a30;
 }
 
 .mobile-joystick-label {
   position: absolute;
-  bottom: calc(8px * var(--ui-scale));
+  bottom: 6px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: calc(9px * var(--ui-scale));
-  font-weight: 900;
-  letter-spacing: 0.7px;
-  color: rgba(255, 255, 255, 0.65);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.55);
   pointer-events: none;
   white-space: nowrap;
 }
@@ -3818,94 +3814,194 @@ body.theme-light .diep-admin-window {
 .mobile-toggles-row {
   display: flex;
   align-items: center;
-  gap: calc(8px * var(--ui-scale));
+  gap: 6px;
   pointer-events: auto;
 }
 
 .mobile-toggle-btn {
-  background-color: #64748b;
-  background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.22) 68%);
-  border: calc(2.5px * var(--ui-scale)) solid #3f4a59;
-  border-radius: calc(6px * var(--ui-scale));
-  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.92);
   font-family: 'Ubuntu', sans-serif;
-  font-size: calc(10.5px * var(--ui-scale));
-  font-weight: 900;
-  letter-spacing: 0.5px;
-  padding: calc(7px * var(--ui-scale)) calc(10px * var(--ui-scale));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 6px 9px;
   cursor: pointer;
   touch-action: none;
-  text-shadow:
-    -1.2px -1.2px 0 #222,
-     1.2px -1.2px 0 #222,
-    -1.2px  1.2px 0 #222,
-     1.2px  1.2px 0 #222;
-  -webkit-text-stroke: 0.4px #222;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
-  transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.1s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
   white-space: nowrap;
 }
 
 .mobile-toggle-btn:active {
-  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.30);
 }
 
 .mobile-toggle-btn.active {
-  background-color: #00b2e1;
-  border-color: #007a9e;
-  box-shadow: 0 0 12px rgba(0, 178, 225, 0.5), 0 3px 8px rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.38);
+  border-color: rgba(255, 255, 255, 0.78);
+  color: #ffffff;
 }
 
-/* Light Theme Adjustments for Mobile Joysticks */
+/* Light Mode: Ordinary Translucent Black Buttons & Joysticks */
 body.theme-light .mobile-joystick {
-  background: rgba(55, 65, 81, 0.28);
-  border-color: rgba(31, 41, 55, 0.45);
+  background: rgba(0, 0, 0, 0.12);
+  border-color: rgba(0, 0, 0, 0.24);
 }
 
 body.theme-light .mobile-joystick.active {
-  background: rgba(55, 65, 81, 0.38);
-  border-color: #007a9e;
+  background: rgba(0, 0, 0, 0.18);
+  border-color: rgba(0, 0, 0, 0.42);
 }
 
 body.theme-light .mobile-joystick-ring {
-  border-color: rgba(31, 41, 55, 0.32);
+  border-color: rgba(0, 0, 0, 0.18);
+}
+
+body.theme-light .mobile-joystick-knob {
+  background: rgba(0, 0, 0, 0.26);
+  border-color: rgba(0, 0, 0, 0.44);
 }
 
 body.theme-light .mobile-joystick-label {
-  color: rgba(17, 24, 39, 0.72);
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
+  color: rgba(0, 0, 0, 0.50);
 }
 
-/* Mobile Layout Avoidance (Prevents overlap with top-left Self Destruct & bottom-left Move Stick) */
+body.theme-light .mobile-toggle-btn {
+  background: rgba(0, 0, 0, 0.24);
+  border-color: rgba(0, 0, 0, 0.32);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+body.theme-light .mobile-toggle-btn:active {
+  background: rgba(0, 0, 0, 0.38);
+}
+
+body.theme-light .mobile-toggle-btn.active {
+  background: rgba(0, 0, 0, 0.56);
+  border-color: rgba(0, 0, 0, 0.80);
+  color: #ffffff;
+}
+
+/* Mobile Layout Avoidance & Responsive Proportions */
+body.is-mobile #top-left-hud {
+  top: 10px !important;
+  right: 10px !important;
+  padding: calc(5px * var(--ui-scale)) calc(9px * var(--ui-scale));
+}
+
+body.is-mobile #wave-banner {
+  top: 10px;
+  min-width: calc(140px * var(--ui-scale));
+  padding: calc(5px * var(--ui-scale)) calc(10px * var(--ui-scale));
+}
+
 body.is-mobile #falo-upgrade-panel {
-  top: calc(56px * var(--ui-scale));
-  left: calc(14px * var(--ui-scale));
+  top: 46px;
+  left: 10px;
 }
 
 body.is-mobile .bottom-left-panel {
-  bottom: calc(164px * var(--ui-scale));
-  left: calc(14px * var(--ui-scale));
+  bottom: calc(clamp(78px, 20vmin, 108px) + 24px);
+  left: 12px;
   width: calc(165px * var(--ui-scale));
 }
 
 body.is-mobile .stat-corner-tab {
-  bottom: calc(164px * var(--ui-scale));
-  left: calc(14px * var(--ui-scale));
+  bottom: calc(clamp(78px, 20vmin, 108px) + 24px);
+  left: 12px;
 }
 
-@media (max-width: 900px) {
-  body.is-mobile #bottom-hud-wrapper {
-    bottom: calc(10px * var(--ui-scale));
-    max-width: calc(100vw - 320px);
+body.is-mobile #bottom-hud-wrapper {
+  bottom: 8px;
+  gap: calc(3px * var(--ui-scale));
+  max-width: calc(100vw - 2 * clamp(78px, 20vmin, 108px) - 44px);
+}
+
+body.is-mobile .hud-player-name {
+  font-size: calc(15px * var(--ui-scale));
+}
+
+body.is-mobile .score-bar-wrapper {
+  width: min(calc(220px * var(--ui-scale)), 100%);
+}
+
+body.is-mobile .level-bar-wrapper {
+  width: min(calc(260px * var(--ui-scale)), 100%);
+}
+
+body.is-mobile .center-hud {
+  min-width: min(calc(220px * var(--ui-scale)), 100%);
+  padding: calc(5px * var(--ui-scale)) calc(8px * var(--ui-scale));
+}
+
+/* Portrait / Narrow Screen Adjustments */
+@media (max-width: 620px) {
+  body.is-mobile #wave-banner {
+    top: 44px;
   }
-  body.is-mobile .level-bar-wrapper {
-    width: calc(240px * var(--ui-scale));
+
+  body.is-mobile #falo-upgrade-panel {
+    top: 96px;
   }
-  body.is-mobile .score-bar-wrapper {
-    width: calc(190px * var(--ui-scale));
+
+  .diep-shop-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
   }
-  body.is-mobile .center-hud {
-    min-width: calc(210px * var(--ui-scale));
+
+  .diep-shop-header-left {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .diep-shop-tabs {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .diep-shop-tab {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .diep-section-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .diep-filter-sort-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .auth-status-container {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    justify-content: space-between;
+  }
+}
+
+/* Compact Landscape Phone Adjustments */
+@media (max-height: 460px) {
+  .main-menu-box {
+    padding: 16px 22px;
+  }
+
+  .main-menu-actions {
+    gap: 8px;
+  }
+
+  .diep-shop-header {
+    padding: 8px 14px;
+  }
+
+  .diep-shop-scroll-area {
+    padding: 12px 16px;
+    gap: 14px;
   }
 }
 

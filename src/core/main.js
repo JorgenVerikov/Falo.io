@@ -69,6 +69,14 @@ const camera = {
   targetZoom: CONFIG.CAMERA.defaultZoom
 };
 
+function getViewportZoomFactor() {
+  const w = (canvasMgr && canvasMgr.width) || window.innerWidth || 1280;
+  const h = (canvasMgr && canvasMgr.height) || window.innerHeight || 720;
+  const isMobile = Boolean(mobileControls && mobileControls.isMobile);
+  if (!isMobile && w >= 1100 && h >= 640) return 1.0;
+  return Math.max(0.42, Math.min(1.0, Math.min(w / 1100, h / 640)));
+}
+
 // Inputs
 const input = {
   keys: {},
@@ -285,6 +293,7 @@ function loadAndStartGame() {
   camera.y = 0;
 
   setActiveChassis('basic');
+  camera.zoom = camera.targetZoom;
 
   waveMgr.score = 0;
   state.lastAnnouncedGraceWave = 0;
@@ -418,7 +427,7 @@ function applyCrewAndStatModifiers() {
   player.radius = (tankDiameter / 2) * ((chassisConfig && chassisConfig.radiusMultiplier) || 1.0);
 
   const levelZoomMult = 1.0 + (growthLevel - 1) * growthCfg.cameraZoomIncreasePerLevel;
-  camera.targetZoom = (chassisConfig.cameraZoom || CONFIG.CAMERA.defaultZoom) / levelZoomMult;
+  camera.targetZoom = ((chassisConfig.cameraZoom || CONFIG.CAMERA.defaultZoom) / levelZoomMult) * getViewportZoomFactor();
 
   const previousMaxHp = player.maxHp;
   const maxHpStat = state.stats.maxHp || 0;
@@ -773,7 +782,7 @@ function updatePlayer(dt) {
   player.radius = (tankDiameter / 2) * ((chassisConfig && chassisConfig.radiusMultiplier) || 1.0);
 
   const levelZoomMult = 1.0 + (growthLevel - 1) * growthCfg.cameraZoomIncreasePerLevel;
-  camera.targetZoom = (chassisConfig.cameraZoom || CONFIG.CAMERA.defaultZoom) / levelZoomMult;
+  camera.targetZoom = ((chassisConfig.cameraZoom || CONFIG.CAMERA.defaultZoom) / levelZoomMult) * getViewportZoomFactor();
 
   if (player.iFrameTimer > 0) player.iFrameTimer -= dt;
   if (player.dashTimer > 0) player.dashTimer -= dt;

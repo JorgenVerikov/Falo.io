@@ -63,6 +63,9 @@ export class UIManager {
     this.setupEdgeHoverTriggers();
     this.setupDebugLogTerminal();
     this.applySettings();
+
+    window.addEventListener('resize', () => this.applyResponsiveUiScale());
+    window.addEventListener('falo:devicemodechange', () => this.applyResponsiveUiScale());
   }
 
   initElements() {
@@ -476,14 +479,30 @@ export class UIManager {
     });
   }
 
+  getEffectiveUiScale(userScale = 1.0) {
+    const w = window.innerWidth || 1280;
+    const h = window.innerHeight || 720;
+    const isMobile = document.body.classList.contains('is-mobile');
+    if (!isMobile && w > 900 && h > 540) return userScale;
+    const fitFactor = Math.max(0.58, Math.min(0.95, Math.min(w / 780, h / 520)));
+    return Math.round(userScale * fitFactor * 100) / 100;
+  }
+
+  applyResponsiveUiScale() {
+    const userScale = parseFloat(this.storage.data.settings?.uiScale) || 1.0;
+    const effectiveScale = this.getEffectiveUiScale(userScale);
+    this.currentUiScale = effectiveScale;
+    document.documentElement.style.setProperty('--ui-scale', effectiveScale);
+  }
+
   applySettings() {
     const s = this.storage.data.settings;
     const theme = s.theme || 'light';
     const scale = parseFloat(s.uiScale) || 1.0;
-    this.currentUiScale = scale;
+    this.userUiScale = scale;
 
     this.canvasMgr.setTheme(theme);
-    document.documentElement.style.setProperty('--ui-scale', scale);
+    this.applyResponsiveUiScale();
 
     if (this.playerNameInput) {
       this.playerNameInput.value = this.storage.data.playerName || 'Player';

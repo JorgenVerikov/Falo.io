@@ -131,6 +131,7 @@ export class MobileControls {
     }
 
     this.updateLayerVisibility();
+    window.dispatchEvent(new CustomEvent('falo:devicemodechange', { detail: { isMobile: this.isMobile } }));
   }
 
   setInGameVisible(visible) {
