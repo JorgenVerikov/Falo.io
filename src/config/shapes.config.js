@@ -39,6 +39,7 @@ export const SHAPES_CONFIG = {
       evolutionTimeMax: 65
     },
     square: {
+      name: 'Square',
       sides: 4,
       radius: 30,
       hp: 10,
@@ -50,6 +51,7 @@ export const SHAPES_CONFIG = {
       stroke: '#caba4d'
     },
     triangle: {
+      name: 'Triangle',
       sides: 3,
       radius: 30,
       hp: 25,
@@ -61,6 +63,7 @@ export const SHAPES_CONFIG = {
       stroke: '#cc5e5e'
     },
     pentagon: {
+      name: 'Pentagon',
       sides: 5,
       radius: 38,
       hp: 130,
@@ -72,6 +75,7 @@ export const SHAPES_CONFIG = {
       stroke: '#5e71cc'
     },
     alpha_pentagon: {
+      name: 'Alpha Pentagon',
       sides: 5,
       radius: 100,
       hp: 3000,
@@ -83,6 +87,7 @@ export const SHAPES_CONFIG = {
       stroke: '#5e71cc'
     },
     hexagon: {
+      name: 'Hexagon',
       sides: 6,
       radius: 45,
       hp: 1500,
@@ -94,6 +99,7 @@ export const SHAPES_CONFIG = {
       stroke: '#2894a4'
     },
     heptagon: {
+      name: 'Heptagon',
       sides: 7,
       radius: 65,
       hp: 4000,
@@ -105,6 +111,7 @@ export const SHAPES_CONFIG = {
       stroke: '#D24795'
     },
     octagon: {
+      name: 'Octagon',
       sides: 8,
       radius: 70,
       hp: 5000,
