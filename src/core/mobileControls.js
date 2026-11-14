@@ -8,11 +8,12 @@ export function detectIsMobileDevice() {
   if (typeof window === 'undefined') return false;
   const ua = navigator.userAgent || '';
   const uaMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i.test(ua);
+  const iPadDesktopMode = /Macintosh/i.test(ua) && (navigator.maxTouchPoints > 1);
   const hasTouch = (navigator.maxTouchPoints > 0) || ('ontouchstart' in window);
   const coarsePointer = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   const anyCoarse = Boolean(window.matchMedia && window.matchMedia('(any-pointer: coarse)').matches);
 
-  if (coarsePointer || uaMobile) return true;
+  if (coarsePointer || uaMobile || iPadDesktopMode) return true;
   if (hasTouch && anyCoarse && window.innerWidth <= 1024) return true;
   return false;
 }
@@ -103,12 +104,20 @@ export class MobileControls {
       }
     }, { passive: true });
 
-    window.addEventListener('resize', () => {
+    const syncViewportDetection = () => {
       const detected = detectIsMobileDevice();
       if (detected !== this.isMobile && performance.now() - this.lastTouchTime > 1000) {
         this.setMobileMode(detected);
       }
+    };
+
+    window.addEventListener('resize', syncViewportDetection);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(syncViewportDetection, 120);
     });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncViewportDetection);
+    }
   }
 
   setMobileMode(isMobile) {
@@ -275,15 +284,18 @@ export class MobileControls {
       updateFromClient(e.clientX, e.clientY);
     });
 
-    padEl.addEventListener('pointermove', (e) => {
+    const onPointerMove = (e) => {
       if (e.pointerId !== activePointerId) return;
-      e.preventDefault();
+      if (e.cancelable) e.preventDefault();
       updateFromClient(e.clientX, e.clientY);
-    });
+    };
+
+    padEl.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
 
     const onPointerEnd = (e) => {
       if (e.pointerId !== activePointerId) return;
-      e.preventDefault();
+      if (e.cancelable) e.preventDefault();
       releaseStick();
     };
 

@@ -65,6 +65,12 @@ export class UIManager {
     this.applySettings();
 
     window.addEventListener('resize', () => this.applyResponsiveUiScale());
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => this.applyResponsiveUiScale(), 100);
+    });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => this.applyResponsiveUiScale());
+    }
     window.addEventListener('falo:devicemodechange', () => this.applyResponsiveUiScale());
   }
 

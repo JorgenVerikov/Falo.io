@@ -12,6 +12,12 @@ export class CanvasManager {
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => this.resize(), 100);
+    });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => this.resize());
+    }
   }
 
   setTheme(themeName) {
