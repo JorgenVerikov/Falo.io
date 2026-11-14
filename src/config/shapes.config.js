@@ -71,6 +71,17 @@ export const SHAPES_CONFIG = {
       color: '#768dfc',
       stroke: '#5e71cc'
     },
+    alphapentagon: {
+      sides: 5,
+      radius: 60,
+      hp: 3000,
+      xp: 3000,
+      ramDamage: 20,
+      weight: 9.0,
+      spawnWeight: 0.10,
+      color: '#768dfc',
+      stroke: '#5e71cc'
+    },
     hexagon: {
       sides: 6,
       radius: 45,
@@ -84,9 +95,9 @@ export const SHAPES_CONFIG = {
     },
     heptagon: {
       sides: 7,
-      radius: 55,
-      hp: 2000,
-      xp: 2000,
+      radius: 65,
+      hp: 4000,
+      xp: 4000,
       ramDamage: 30,
       weight: 18.0,
       spawnWeight: 0.0025,
@@ -95,9 +106,9 @@ export const SHAPES_CONFIG = {
     },
     octagon: {
       sides: 8,
-      radius: 65,
-      hp: 3000,
-      xp: 3000,
+      radius: 70,
+      hp: 5000,
+      xp: 5000,
       ramDamage: 40,
       weight: 22.0,
       spawnWeight: 0.0015,
