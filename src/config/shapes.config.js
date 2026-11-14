@@ -71,7 +71,7 @@ export const SHAPES_CONFIG = {
       color: '#768dfc',
       stroke: '#5e71cc'
     },
-    alphapentagon: {
+    alpha_pentagon: {
       sides: 5,
       radius: 60,
       hp: 3000,
