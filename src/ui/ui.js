@@ -884,6 +884,8 @@ export class UIManager {
 
     const isSmasher = (activeChassis === 'smasher');
     const smasherCfg = CONFIG.PLAYER.smasherRules;
+    const chassisCfg = CONFIG.CHASSIS[activeChassis] || {};
+    const labelOverrides = chassisCfg.statLabelOverrides || {};
     let statDefs = CONFIG.PLAYER.statDefinitions;
     if (isSmasher) {
       statDefs = statDefs.filter(s => smasherCfg.allowedStats.includes(s.key));
@@ -899,7 +901,7 @@ export class UIManager {
 
       const fillWidthPct = Math.min(100, (level / maxCap) * 100);
       const canUpgrade = statPoints > 0 && level < maxCap;
-      const label = s.label || s.name.replace(/\[\d+\]\s*/, '');
+      const label = labelOverrides[s.key] || s.label || s.name.replace(/\[\d+\]\s*/, '');
       const hotkey = s.keyNum || '1';
 
       pill.innerHTML = `

@@ -205,8 +205,11 @@ export class HUDUpdater {
       return;
     }
 
-    if (weaponSys.type === WEAPON_TYPE.READY_RACK) {
-      const nextTitle = (weaponSys.chassisKey === 'sniper') ? 'BREECH LOADER' : 'READY-RACK SYSTEM';
+    if (weaponSys.type === WEAPON_TYPE.READY_RACK || weaponSys.type === WEAPON_TYPE.DRONE_SPAWNER) {
+      const isDroneSpawner = weaponSys.type === WEAPON_TYPE.DRONE_SPAWNER;
+      const nextTitle = isDroneSpawner
+        ? 'DRONE SWARM'
+        : ((weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin') ? 'BREECH LOADER' : 'READY-RACK SYSTEM');
       if (this.prevWeaponTitle !== nextTitle) {
         this.prevWeaponTitle = nextTitle;
         els.titleElem.textContent = nextTitle;
@@ -221,9 +224,9 @@ export class HUDUpdater {
         els.overheatBanner.classList.add('hidden');
       }
 
-      const maxRack = weaponSys.maxRack || 0;
-      const curRack = weaponSys.currentRack || 0;
-      const isReloading = (weaponSys.reloadTimer || 0) > 0;
+      const maxRack = isDroneSpawner ? (weaponSys.maxDrones || 8) : (weaponSys.maxRack || 0);
+      const curRack = isDroneSpawner ? (weaponSys.activeDroneCount || 0) : (weaponSys.currentRack || 0);
+      const isReloading = isDroneSpawner ? (curRack < maxRack) : ((weaponSys.reloadTimer || 0) > 0);
       const fillColor = player.fillColor;
 
       // Only rebuild shell pip elements if rack capacity changed

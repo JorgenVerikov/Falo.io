@@ -5,14 +5,14 @@
 
 export const INFANTRY_ENEMIES_CONFIG = {
   operative: {
-    minWave: 5,
+    minWave: 14,
     name: 'Operative',
     enemyClass: 'Infantry',
     sides: 0,
-    radiusMultiplier: 0.64,
+    radiusMultiplier: 0.38,
     squadSizes: [4, 5, 6],
     hp: 20,
-    speedMultiplier: 1.05,
+    speedMultiplier: 0.9,
     drag: 4.0,
     damage: 8,
     xp: 45,
@@ -22,17 +22,17 @@ export const INFANTRY_ENEMIES_CONFIG = {
     stroke: '#265740',
     turrets: [
       {
-        width: 11, length: 64, frontWidth: 9, angleOffset: 0, xOffset: 0, yOffset: 0,
+        width: 15, length: 58, frontWidth: 15, angleOffset: 0, xOffset: 0, yOffset: 0,
         shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
       }
     ],
     weapon: {
-      fireRateSec: 0.26,
+      fireRateSec: 0.40,
       minFireRateSec: 0.18,
       asyncJitter: 0.24,
       bulletSpeed: 345,
       bulletPenetration: 0.70,
-      bulletDamage: 1.25,
+      bulletDamage: 1.5,
       bulletRadius: 10.5,
       bulletSpread: 0.11,
       bulletLifetime: 2.6,

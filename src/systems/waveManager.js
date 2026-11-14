@@ -163,7 +163,9 @@ export class WaveManager {
 
     this.maintainShapes(player);
 
-    const playerProjectiles = (playerWeapon && playerWeapon.projectiles) ? playerWeapon.projectiles : [];
+    const rawProjectiles = (playerWeapon && playerWeapon.projectiles) ? playerWeapon.projectiles : [];
+    const rawDrones = (playerWeapon && playerWeapon.drones) ? playerWeapon.drones : [];
+    const playerProjectiles = rawDrones.length > 0 ? rawProjectiles.concat(rawDrones) : rawProjectiles;
     for (const s of this.shapes) s.update(dt, this);
     const totalRemainingEnemies = this.getRemainingEnemyCount();
     for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerStats.moveSpeed || 0, this.enemies, playerProjectiles, totalRemainingEnemies, this.shapes);

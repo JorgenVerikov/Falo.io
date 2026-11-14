@@ -81,7 +81,7 @@ export const SHAPES_CONFIG = {
       hp: 3000,
       xp: 3000,
       ramDamage: 20,
-      weight: 9.0,
+      weight: 30.0,
       spawnWeight: 0.01,
       color: '#768dfc',
       stroke: '#5e71cc'

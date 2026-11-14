@@ -67,6 +67,10 @@ export function renderTanksShop(ui, container) {
   const rawTanks = [
     { key: 'tesla', name: 'Tesla Surge', cost: CONFIG.CHASSIS.tesla?.shopCost ?? 1500, reqLvl: 30, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
     { key: 'tripleshot', name: 'Triple Shot', cost: CONFIG.CHASSIS.tripleshot?.shopCost ?? 1000, reqLvl: 30, desc: 'Three front-spread cannons covering a wide arc with strong recoil.' },
+    { key: 'quadtank', name: 'Quad Tank', cost: CONFIG.CHASSIS.quadtank?.shopCost ?? 1000, reqLvl: 30, desc: 'Four cannons in a plus sign firing in four directions with nullified recoil.' },
+    { key: 'twinflank', name: 'Twin Flank', cost: CONFIG.CHASSIS.twinflank?.shopCost ?? 1000, reqLvl: 30, desc: 'Dual front and rear cannons providing balanced coverage with nullified recoil.' },
+    { key: 'assassin', name: 'Assassin', cost: CONFIG.CHASSIS.assassin?.shopCost ?? 1000, reqLvl: 30, desc: 'Extended long-barrel sniper with wider field of view and higher velocity at reduced reload.' },
+    { key: 'overseer', name: 'Overseer', cost: CONFIG.CHASSIS.overseer?.shopCost ?? 1000, reqLvl: 30, desc: 'Dual side spawners deploy up to 8 controllable drones that attack or repel on command.' },
     { key: 'smasher', name: 'Smasher', cost: CONFIG.CHASSIS.smasher?.shopCost ?? 1000, reqLvl: 30, desc: 'Heavy ramming chassis with spinning hexagonal armor.' },
     { key: 'sniper', name: 'Sniper', cost: CONFIG.CHASSIS.sniper?.shopCost ?? 500, reqLvl: 15, desc: 'High-velocity long barrel cannon with wide vision.' },
     { key: 'machinegun', name: 'Machine Gun', cost: CONFIG.CHASSIS.machinegun?.shopCost ?? 500, reqLvl: 15, desc: 'Rapid spread-cone spray cannon with high fire-rate.' },

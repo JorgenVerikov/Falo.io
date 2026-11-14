@@ -211,6 +211,8 @@ function unloadGame() {
 
   waveMgr.clearAll();
   weaponSys.projectiles = [];
+  weaponSys.drones = [];
+  weaponSys.activeDroneCount = 0;
   weaponSys.heat = 0;
   weaponSys.energy = weaponSys.maxEnergy || 100;
 
@@ -343,6 +345,8 @@ function triggerGameOver() {
 
   waveMgr.clearAll();
   weaponSys.projectiles = [];
+  weaponSys.drones = [];
+  weaponSys.activeDroneCount = 0;
 
   if (uiMgr) {
     uiMgr.hideInGameHUD();
@@ -547,6 +551,21 @@ function applyCrewAndStatModifiers() {
     weaponSys.cooldownDurationSec = Math.max(0.4, baseCooldownSec * loaderCrewMult);
     weaponSys.fireIntervalSec = weaponSys.cooldownDurationSec;
   }
+
+  if (weaponSys.drones && weaponSys.drones.length > 0 && weaponSys.turrets.length > 0) {
+    const primaryTurret = weaponSys.turrets[0];
+    for (let i = 0; i < weaponSys.drones.length; i++) {
+      const d = weaponSys.drones[i];
+      d.speed = primaryTurret.shellSpeed;
+      d.damage = primaryTurret.damage;
+      if (primaryTurret.penetration > d.maxPenetration) {
+        d.penetration += (primaryTurret.penetration - d.maxPenetration);
+        d.maxPenetration = primaryTurret.penetration;
+      }
+      d.color = player.fillColor;
+      d.strokeColor = player.strokeColor;
+    }
+  }
 }
 
 function toggleAutoFire() {
@@ -669,6 +688,12 @@ function setupInputs() {
   window.addEventListener('mouseup', (e) => {
     if (e.button === 0) input.mouse.isDown = false;
     if (e.button === 2) input.mouse.isRightDown = false;
+  });
+
+  window.addEventListener('blur', () => {
+    input.mouse.isDown = false;
+    input.mouse.isRightDown = false;
+    input.keys = {};
   });
 }
 
@@ -833,7 +858,41 @@ function updatePlayer(dt) {
   const mobileFiring = Boolean(mobileControls && mobileControls.aimState.isFiring);
   const pointerFiring = !isMobileMode && (input.mouse.isDown || input.mouse.isRightDown);
   const isFiring = pointerFiring || (input.keys && input.keys[' ']) || state.autoFire || mobileFiring;
-  const recoilImpulse = weaponSys.update(dt, player, isFiring);
+
+  let droneMode = 'IDLE';
+  let droneTargetX = input.mouse.worldX;
+  let droneTargetY = input.mouse.worldY;
+  if (isMobileMode) {
+    if (mobileControls && mobileControls.aimState.isFiring) {
+      droneMode = 'ATTRACT';
+      const aimDist = 140 + (mobileControls.aimState.magnitude || 0.5) * 320;
+      droneTargetX = player.x + Math.cos(mobileControls.aimState.angle) * aimDist;
+      droneTargetY = player.y + Math.sin(mobileControls.aimState.angle) * aimDist;
+    } else if (state.autoFire && mobileControls && mobileControls.aimState.hasAimed) {
+      droneMode = 'ATTRACT';
+      droneTargetX = player.x + Math.cos(mobileControls.aimState.angle) * 300;
+      droneTargetY = player.y + Math.sin(mobileControls.aimState.angle) * 300;
+    }
+  } else {
+    const attractPressed = input.mouse.isDown || Boolean(input.keys && input.keys[' ']);
+    const repelPressed = input.mouse.isRightDown || Boolean(input.keys && input.keys['shift']);
+    if (attractPressed) {
+      droneMode = 'ATTRACT';
+    } else if (repelPressed) {
+      droneMode = 'REPEL';
+    } else if (state.autoFire) {
+      droneMode = 'ATTRACT';
+    }
+  }
+
+  const recoilImpulse = weaponSys.update(
+    dt,
+    player,
+    isFiring,
+    { mode: droneMode, targetX: droneTargetX, targetY: droneTargetY },
+    waveMgr.enemies,
+    waveMgr.shapes
+  );
   player.vx += recoilImpulse.x;
   player.vy += recoilImpulse.y;
 
@@ -846,7 +905,7 @@ function updatePlayer(dt) {
   let camTargetX = player.x;
   let camTargetY = player.y;
 
-  if (state.activeChassis === 'sniper' && !state.autoSpin && !isMobileMode) {
+  if ((state.activeChassis === 'sniper' || state.activeChassis === 'assassin') && !state.autoSpin && !isMobileMode) {
     camTargetX += (input.mouse.worldX - player.x) * CONFIG.CAMERA.sniperLeanFactor;
     camTargetY += (input.mouse.worldY - player.y) * CONFIG.CAMERA.sniperLeanFactor;
   }

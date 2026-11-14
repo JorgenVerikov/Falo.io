@@ -48,6 +48,7 @@ export class PhysicsSystem {
     const shapes = waveMgr.shapes;
     const enemies = waveMgr.enemies;
     const playerProjectiles = playerWeapon.projectiles;
+    const playerDrones = playerWeapon.drones || [];
     const enemyBullets = waveMgr.enemyBullets;
     const shapePenDrain = CONFIG.WEAPONS.shapePenetrationDrain || 2.0;
     const enemyPenDrain = CONFIG.WEAPONS.enemyPenetrationDrain || 1.5;
@@ -206,9 +207,10 @@ export class PhysicsSystem {
       }
     }
 
-    // 5. PLAYER PROJECTILES vs SHAPES & ENEMIES
-    for (let i = 0; i < playerProjectiles.length; i++) {
-      const proj = playerProjectiles[i];
+    // 5. PLAYER PROJECTILES & DRONES vs SHAPES & ENEMIES
+    const offensiveUnits = playerDrones.length > 0 ? playerProjectiles.concat(playerDrones) : playerProjectiles;
+    for (let i = 0; i < offensiveUnits.length; i++) {
+      const proj = offensiveUnits[i];
       if (proj.dead) continue;
 
       for (let j = 0; j < shapes.length; j++) {
@@ -272,9 +274,9 @@ export class PhysicsSystem {
       }
     }
 
-    // 6. PLAYER BULLETS vs ENEMY BULLETS
-    for (let i = 0; i < playerProjectiles.length; i++) {
-      const playerProj = playerProjectiles[i];
+    // 6. PLAYER BULLETS & DRONES vs ENEMY BULLETS
+    for (let i = 0; i < offensiveUnits.length; i++) {
+      const playerProj = offensiveUnits[i];
       if (playerProj.dead) continue;
 
       for (let j = 0; j < enemyBullets.length; j++) {

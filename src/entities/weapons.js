@@ -5,6 +5,7 @@ export const WEAPON_TYPE = {
   THERMAL: 'THERMAL',
   ENERGY: 'ENERGY',
   COOLDOWN: 'COOLDOWN',
+  DRONE_SPAWNER: 'DRONE_SPAWNER',
   NONE: 'NONE'
 };
 
@@ -111,9 +112,246 @@ export class Projectile {
   }
 }
 
+export class Drone {
+  constructor(x, y, vx, vy, radius, damage, health, maxSpeed, color, strokeColor) {
+    this.x = x;
+    this.y = y;
+    this.vx = vx;
+    this.vy = vy;
+    this.speed = maxSpeed;
+    this.angle = Math.atan2(vy, vx);
+    this.baseRadius = radius;
+    this.radius = radius;
+    this.damage = damage;
+    this.penetration = health;
+    this.maxPenetration = health;
+    this.color = color;
+    this.strokeColor = strokeColor;
+    this.dead = false;
+    this.isDying = false;
+    this.deathTimer = 0;
+    this.deathDuration = 0.22;
+    this.destroyed = false;
+    this.spawnEjectTimer = 0.16;
+  }
+
+  kill() {
+    if (this.dead) return;
+    this.dead = true;
+    this.isDying = true;
+    this.deathTimer = 0;
+  }
+
+  takePenetrationDamage(amount) {
+    if (this.dead) return;
+    this.penetration -= amount;
+    if (this.penetration <= 0) {
+      this.kill();
+    }
+  }
+
+  applyCenterRepulsion(objX, objY, dt, repelStrength = CONFIG.WEAPONS.repelStrength) {
+    if (this.dead) return;
+    const dx = this.x - objX;
+    const dy = this.y - objY;
+    let dist = Math.hypot(dx, dy);
+    if (dist === 0) dist = 0.01;
+
+    const nx = dx / dist;
+    const ny = dy / dist;
+
+    this.vx += nx * repelStrength * dt;
+    this.vy += ny * repelStrength * dt;
+    this.vx *= 0.96;
+    this.vy *= 0.96;
+  }
+
+  updateBehavior(dt, player, controlState, targetEntity, droneIndex, totalDrones, livingDrones, idleOrbitTime) {
+    if (this.isDying) {
+      this.deathTimer += dt;
+      const progress = Math.min(1.0, this.deathTimer / this.deathDuration);
+      this.radius = this.baseRadius * (1.0 + progress * 0.85);
+      this.x += this.vx * dt * 0.25;
+      this.y += this.vy * dt * 0.25;
+      if (this.deathTimer >= this.deathDuration) {
+        this.destroyed = true;
+      }
+      return;
+    }
+
+    const baseDrag = (CONFIG.WEAPONS && CONFIG.WEAPONS.droneDrag !== undefined) ? CONFIG.WEAPONS.droneDrag : 7.5;
+    const turnSpeed = (CONFIG.WEAPONS && CONFIG.WEAPONS.droneTurnSpeed !== undefined) ? CONFIG.WEAPONS.droneTurnSpeed : 4.5;
+    const orbitSpeed = (CONFIG.WEAPONS && CONFIG.WEAPONS.droneOrbitSpeed !== undefined) ? CONFIG.WEAPONS.droneOrbitSpeed : 0.9;
+
+    if (this.spawnEjectTimer > 0) {
+      this.spawnEjectTimer -= dt;
+      const ejectDrag = Math.exp(-baseDrag * dt);
+      this.vx *= ejectDrag;
+      this.vy *= ejectDrag;
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      return;
+    }
+
+    const maxSpd = this.speed;
+    const mode = controlState ? controlState.mode : 'IDLE';
+    let desiredVx = 0;
+    let desiredVy = 0;
+    let activeDrag = baseDrag;
+
+    if (mode === 'ATTRACT') {
+      const dx = controlState.targetX - this.x;
+      const dy = controlState.targetY - this.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 8) {
+        const approachSpd = dist < 48 ? Math.min(maxSpd, dist * 5.5) : maxSpd;
+        desiredVx = (dx / dist) * approachSpd;
+        desiredVy = (dy / dist) * approachSpd;
+      } else {
+        desiredVx = 0;
+        desiredVy = 0;
+        activeDrag = baseDrag * 1.4;
+      }
+    } else if (mode === 'REPEL') {
+      const pDx = this.x - player.x;
+      const pDy = this.y - player.y;
+      const distFromPlayer = Math.hypot(pDx, pDy);
+      if (distFromPlayer > 1350) {
+        desiredVx = (-pDx / distFromPlayer) * maxSpd;
+        desiredVy = (-pDy / distFromPlayer) * maxSpd;
+      } else {
+        const dx = this.x - controlState.targetX;
+        const dy = this.y - controlState.targetY;
+        const dist = Math.hypot(dx, dy) || 1;
+        desiredVx = (dx / dist) * maxSpd;
+        desiredVy = (dy / dist) * maxSpd;
+      }
+    } else {
+      // IDLE: target nearby enemy or shape, otherwise orbit around player
+      if (targetEntity) {
+        const dx = targetEntity.x - this.x;
+        const dy = targetEntity.y - this.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        desiredVx = (dx / dist) * maxSpd;
+        desiredVy = (dy / dist) * maxSpd;
+      } else {
+        const orbitRadius = (player.radius || 25) + 58;
+        const slotAngle = idleOrbitTime * orbitSpeed + (droneIndex / Math.max(1, totalDrones)) * Math.PI * 2;
+        const slotX = player.x + Math.cos(slotAngle) * orbitRadius;
+        const slotY = player.y + Math.sin(slotAngle) * orbitRadius;
+        const dx = slotX - this.x;
+        const dy = slotY - this.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 2) {
+          const moveSpd = Math.min(maxSpd, dist * 5.0);
+          desiredVx = (dx / dist) * moveSpd + (player.vx || 0) * 0.35;
+          desiredVy = (dy / dist) * moveSpd + (player.vy || 0) * 0.35;
+        } else {
+          desiredVx = player.vx || 0;
+          desiredVy = player.vy || 0;
+          activeDrag = baseDrag * 1.25;
+        }
+      }
+    }
+
+    // Soft drone-to-drone separation so drones spread into a clean swarm
+    const sepDist = this.radius * 2.5;
+    let sepX = 0;
+    let sepY = 0;
+    for (let i = 0; i < livingDrones.length; i++) {
+      const other = livingDrones[i];
+      if (other === this) continue;
+      const sx = this.x - other.x;
+      const sy = this.y - other.y;
+      const dSq = sx * sx + sy * sy;
+      if (dSq > 0.001 && dSq < sepDist * sepDist) {
+        const d = Math.sqrt(dSq);
+        const push = (sepDist - d) / sepDist;
+        sepX += (sx / d) * push * 130;
+        sepY += (sy / d) * push * 130;
+      }
+    }
+
+    // Turn-rate limited steering: drones rotate toward desired heading and thrust forward
+    const desiredSpd = Math.hypot(desiredVx, desiredVy);
+    let thrustVx = 0;
+    let thrustVy = 0;
+    if (desiredSpd > 6) {
+      const desiredAngle = Math.atan2(desiredVy, desiredVx);
+      const rawDiff = Math.atan2(Math.sin(desiredAngle - this.angle), Math.cos(desiredAngle - this.angle));
+      const maxTurn = turnSpeed * dt;
+      const step = Math.abs(rawDiff) > maxTurn ? Math.sign(rawDiff) * maxTurn : rawDiff;
+      this.angle += step;
+
+      const remainingDiff = rawDiff - step;
+      const alignmentScale = Math.max(0.35, 0.5 + 0.5 * Math.cos(remainingDiff));
+      const thrustSpd = desiredSpd * alignmentScale;
+      thrustVx = Math.cos(this.angle) * thrustSpd;
+      thrustVy = Math.sin(this.angle) * thrustSpd;
+    }
+
+    // Physical acceleration + exponential fluid drag
+    const targetVx = thrustVx + sepX;
+    const targetVy = thrustVy + sepY;
+    this.vx += targetVx * activeDrag * dt;
+    this.vy += targetVy * activeDrag * dt;
+
+    const dragFactor = Math.exp(-activeDrag * dt);
+    this.vx *= dragFactor;
+    this.vy *= dragFactor;
+
+    const curSpd = Math.hypot(this.vx, this.vy);
+    const capSpd = maxSpd * 1.1;
+    if (curSpd > capSpd) {
+      this.vx = (this.vx / curSpd) * capSpd;
+      this.vy = (this.vy / curSpd) * capSpd;
+    }
+
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+
+    if (this.penetration <= 0) {
+      this.kill();
+    }
+  }
+
+  draw(ctx) {
+    ctx.save();
+    if (this.isDying) {
+      ctx.globalAlpha = Math.max(0, 1.0 - (this.deathTimer / this.deathDuration));
+    }
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+
+    ctx.beginPath();
+    for (let i = 0; i < 3; i++) {
+      const a = (i * 2 * Math.PI) / 3;
+      const px = this.radius * Math.cos(a);
+      const py = this.radius * Math.sin(a);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = this.strokeColor;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 export class WeaponSystem {
   constructor(chassisKey) {
     this.projectiles = [];
+    this.drones = [];
+    this.idleOrbitTime = 0;
+    this.nextDroneSpawnerIdx = 0;
+    this.activeDroneCount = 0;
+    this.maxDrones = 0;
+    this.isDroneClass = false;
     this.loadChassisConfig(chassisKey);
   }
 
@@ -121,6 +359,12 @@ export class WeaponSystem {
     this.chassisKey = key;
     const chassis = CONFIG.CHASSIS[key];
     const defaultWeapon = chassis.weapon || {};
+    this.isDroneClass = Boolean(chassis.isDroneClass);
+    this.maxDrones = chassis.maxDrones || 0;
+    if (!this.isDroneClass) {
+      this.drones = [];
+      this.activeDroneCount = 0;
+    }
 
     // Build independent turret definitions
     this.turrets = (chassis.turrets || []).map((t, idx) => {
@@ -227,6 +471,9 @@ export class WeaponSystem {
       this.rechargeRate = pTurret.rechargeRate;
       this.cooldownTimer = 0;
       this.fireIntervalSec = pTurret.fireIntervalSec;
+      if (pTurret.type === WEAPON_TYPE.DRONE_SPAWNER) {
+        this.maxDrones = chassis.maxDrones || pTurret.maxDrones || 8;
+      }
     } else if (chassis.weapon) {
       // Base ability / chassis-level weapon for turretless tanks (e.g. Smasher)
       this.type = chassis.weapon.type || WEAPON_TYPE.COOLDOWN;
@@ -260,8 +507,9 @@ export class WeaponSystem {
     }
   }
 
-  update(dt, player, isFiring) {
+  update(dt, player, isFiring, controlState = null, enemies = [], shapes = []) {
     let totalRecoilImpulse = { x: 0, y: 0 };
+    this.idleOrbitTime += dt;
 
     // 1. Decay barrel recoil offset for all turrets
     this.turrets.forEach((turret, i) => {
@@ -440,6 +688,91 @@ export class WeaponSystem {
       }
     }
 
+    // Drone Spawner execution (auto-replenishes up to maxDrones)
+    const droneTurrets = shootingTurrets.filter(t => t.type === WEAPON_TYPE.DRONE_SPAWNER);
+    if (droneTurrets.length > 0) {
+      let livingCount = 0;
+      for (let i = 0; i < this.drones.length; i++) {
+        if (!this.drones[i].dead) livingCount++;
+      }
+      const cap = this.maxDrones || 8;
+      if (livingCount < cap) {
+        const startIdx = this.nextDroneSpawnerIdx % droneTurrets.length;
+        for (let k = 0; k < droneTurrets.length; k++) {
+          if (livingCount >= cap) break;
+          const turret = droneTurrets[(startIdx + k) % droneTurrets.length];
+          const state = this.turretStates[turret.index];
+          if (state.cooldownTimer <= 0) {
+            state.cooldownTimer = turret.fireIntervalSec;
+            this.spawnDroneFromTurret(player, turret, state);
+            livingCount++;
+            this.nextDroneSpawnerIdx = (startIdx + k + 1) % droneTurrets.length;
+          }
+        }
+      }
+    }
+
+    // Update active drones (behavior, idle targeting, compaction)
+    const livingDrones = [];
+    for (let i = 0; i < this.drones.length; i++) {
+      if (!this.drones[i].dead) livingDrones.push(this.drones[i]);
+    }
+    this.activeDroneCount = livingDrones.length;
+
+    const isIdleMode = !controlState || controlState.mode === 'IDLE';
+    const guardRangeSq = 500 * 500;
+    const leashSq = 640 * 640;
+
+    let livingIdx = 0;
+    let dWrite = 0;
+    for (let i = 0; i < this.drones.length; i++) {
+      const d = this.drones[i];
+      if (!d.dead) {
+        let targetEntity = null;
+        if (isIdleMode) {
+          const pDx = d.x - player.x;
+          const pDy = d.y - player.y;
+          if (pDx * pDx + pDy * pDy <= leashSq) {
+            let bestScore = Infinity;
+            for (let j = 0; j < enemies.length; j++) {
+              const e = enemies[j];
+              if (e.dead || e.destroyed) continue;
+              const epDx = e.x - player.x;
+              const epDy = e.y - player.y;
+              if (epDx * epDx + epDy * epDy > guardRangeSq) continue;
+              const dd = Math.hypot(e.x - d.x, e.y - d.y);
+              if (dd < bestScore) {
+                bestScore = dd;
+                targetEntity = e;
+              }
+            }
+            if (!targetEntity) {
+              for (let j = 0; j < shapes.length; j++) {
+                const s = shapes[j];
+                if (s.dead || s.destroyed) continue;
+                const spDx = s.x - player.x;
+                const spDy = s.y - player.y;
+                if (spDx * spDx + spDy * spDy > guardRangeSq) continue;
+                const dd = Math.hypot(s.x - d.x, s.y - d.y);
+                if (dd < bestScore) {
+                  bestScore = dd;
+                  targetEntity = s;
+                }
+              }
+            }
+          }
+        }
+        d.updateBehavior(dt, player, controlState, targetEntity, livingIdx, livingDrones.length, livingDrones, this.idleOrbitTime);
+        livingIdx++;
+      } else {
+        d.updateBehavior(dt, player, controlState, null, 0, livingDrones.length, livingDrones, this.idleOrbitTime);
+      }
+      if (!d.destroyed) {
+        this.drones[dWrite++] = d;
+      }
+    }
+    this.drones.length = dWrite;
+
     // Update active projectiles (in-place compaction for O(N) performance)
     let pWrite = 0;
     for (let i = 0; i < this.projectiles.length; i++) {
@@ -452,6 +785,44 @@ export class WeaponSystem {
     this.projectiles.length = pWrite;
 
     return totalRecoilImpulse;
+  }
+
+  spawnDroneFromTurret(player, turret, turretState) {
+    const angle = player.angle;
+    const sizeScale = (player && player.radius) ? (player.radius / CONFIG.PLAYER.radius) : 1.0;
+
+    if (turret.playsRecoil) {
+      turretState.recoilOffset = turret.recoilKickAmount || 8;
+    }
+
+    const barrelAngle = angle + turret.angleOffset;
+    const perpAngle = angle + Math.PI / 2;
+    const barrelTipLen = turret.length * sizeScale;
+
+    const spawnX = player.x + Math.cos(barrelAngle) * barrelTipLen + Math.cos(perpAngle) * (turret.yOffset * sizeScale);
+    const spawnY = player.y + Math.sin(barrelAngle) * barrelTipLen + Math.sin(perpAngle) * (turret.yOffset * sizeScale);
+
+    const fill = player.fillColor || '#00b2e1';
+    const stroke = player.strokeColor || '#0083a8';
+    const droneRadius = turret.shellRadius * sizeScale;
+    const ejectSpeed = turret.shellSpeed * 0.9;
+    const vx = Math.cos(barrelAngle) * ejectSpeed;
+    const vy = Math.sin(barrelAngle) * ejectSpeed;
+
+    this.drones.push(
+      new Drone(
+        spawnX,
+        spawnY,
+        vx,
+        vy,
+        droneRadius,
+        turret.damage,
+        turret.penetration,
+        turret.shellSpeed,
+        fill,
+        stroke
+      )
+    );
   }
 
   executeTurretShot(player, turret, turretState) {
@@ -511,6 +882,9 @@ export class WeaponSystem {
   draw(ctx) {
     for (const p of this.projectiles) {
       p.draw(ctx);
+    }
+    for (const d of this.drones) {
+      d.draw(ctx);
     }
   }
 }
