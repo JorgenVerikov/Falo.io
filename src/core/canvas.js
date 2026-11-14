@@ -142,7 +142,7 @@ export class CanvasManager {
   drawStrokedText(text, x, y, fontSize = 16, fillColor = '#ffffff', strokeColor = '#000000', strokeWidth = 3.5, align = 'center') {
     const ctx = this.ctx;
     ctx.save();
-    ctx.font = `900 ${fontSize}px 'Ubuntu', 'Segoe UI', sans-serif`;
+    ctx.font = `900 ${fontSize}px 'Ubuntu', sans-serif`;
     ctx.textAlign = align;
     ctx.textBaseline = 'middle';
     ctx.lineWidth = strokeWidth;

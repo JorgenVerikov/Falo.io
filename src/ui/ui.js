@@ -701,7 +701,7 @@ export class UIManager {
 
     if (isIngame) {
       if (adminModal) adminModal.classList.add('ingame-popup-mode');
-      if (titleEl) titleEl.textContent = 'IN-GAME CHEATS';
+      if (titleEl) titleEl.textContent = 'ADMIN PANEL';
     } else {
       if (adminModal) adminModal.classList.remove('ingame-popup-mode');
       if (titleEl) titleEl.textContent = 'ADMIN';
@@ -1550,13 +1550,12 @@ export class UIManager {
     const levels = this.storage.data.crewLevels || {};
 
     const crewList = [
-      { key: 'commander', name: 'Commander', baseCost: 150, desc: '+10% Bonus XP & Coin earnings per level' },
-      { key: 'gunner', name: 'Gunner', baseCost: 150, desc: '+5% Velocity, Damage & Penetration per level' },
-      { key: 'driver', name: 'Driver', baseCost: 150, desc: '+5% Top Movement Speed per level' },
-      { key: 'loader', name: 'Loader', baseCost: 150, desc: '-5% Weapon Reload & Cooling Time per level' }
+      { key: 'commander', name: 'Commander', baseCost: 150, color: '#f59e0b', border: '#d97706', desc: '+10% Bonus XP & Coin earnings per level', getBonus: (lvl) => `+${lvl * 10}% XP & Coins` },
+      { key: 'gunner', name: 'Gunner', baseCost: 150, color: '#a855f7', border: '#7e22ce', desc: '+5% Velocity, Damage & Penetration per level', getBonus: (lvl) => `+${lvl * 5}% Bullet Stats` },
+      { key: 'driver', name: 'Driver', baseCost: 150, color: '#3b82f6', border: '#1d4ed8', desc: '+5% Top Movement Speed per level', getBonus: (lvl) => `+${lvl * 5}% Move Speed` },
+      { key: 'loader', name: 'Loader', baseCost: 150, color: '#10b981', border: '#047857', desc: '-5% Weapon Reload & Cooling Time per level', getBonus: (lvl) => `-${lvl * 5}% Reload & Cool` }
     ];
 
-    // Single Clean Grid (All equal quality)
     const allSection = document.createElement('div');
     allSection.className = 'diep-shop-section';
     allSection.innerHTML = `
@@ -1570,7 +1569,7 @@ export class UIManager {
           </select>
         </div>
       </div>
-      <div class="diep-items-grid" id="all-crew-grid"></div>
+      <div class="diep-crew-list" id="all-crew-grid"></div>
     `;
 
     const sortSelect = allSection.querySelector('#diep-crew-sort-select');
@@ -1591,23 +1590,51 @@ export class UIManager {
 
   createCrewCard(crew, coins, levels) {
     const card = document.createElement('div');
-    card.className = 'diep-card';
+    card.className = 'diep-crew-row';
 
-    const level = levels[crew.key] || 0;
-    const isMax = level >= 10;
+    const maxLevel = 10;
+    const level = Math.min(maxLevel, Math.max(0, levels[crew.key] || 0));
+    const isMax = level >= maxLevel;
     const finalCost = Math.floor(crew.baseCost * Math.pow(CONFIG.CREW.costMultiplier || 1.35, level));
     const canAfford = coins >= finalCost;
+    const accentColor = crew.color || '#00b2e1';
+    const borderColor = crew.border || '#64748b';
+
+    card.style.borderColor = borderColor;
+    card.style.backgroundImage = `
+      linear-gradient(to right, ${accentColor}26 1px, transparent 1px),
+      linear-gradient(to bottom, ${accentColor}26 1px, transparent 1px)
+    `;
+    card.style.backgroundSize = '16px 16px';
+
+    let segmentsHtml = '';
+    for (let i = 0; i < maxLevel; i++) {
+      const filled = i < level;
+      segmentsHtml += `<div class="diep-crew-seg ${filled ? 'filled' : ''}" ${filled ? `style="background-color: ${accentColor};"` : ''}></div>`;
+    }
+
+    const bonusText = crew.getBonus ? crew.getBonus(level) : `LVL ${level}`;
 
     card.innerHTML = `
-      <div class="diep-card-preview-stage">
-        ${this.generateCrewSvg(crew.key, 105)}
+      <div class="diep-crew-icon-col">
+        ${this.generateCrewSvg(crew.key, 66)}
       </div>
-      <div class="diep-card-footer">
-        <div class="diep-card-details-row">
-          <span class="diep-card-title">${crew.name}</span>
-          <span class="diep-card-rarity-label">LVL ${level}/10</span>
+      <div class="diep-crew-info-col">
+        <div class="diep-crew-top-row">
+          <div class="diep-crew-name-group">
+            <span class="diep-crew-name">${crew.name}</span>
+            <span class="diep-crew-desc">${crew.desc}</span>
+          </div>
+          <div class="diep-crew-stats-group">
+            <span class="diep-crew-bonus-tag" style="color: ${borderColor};">${bonusText}</span>
+            <span class="diep-crew-lvl-tag">${level} / ${maxLevel} UPGRADED</span>
+          </div>
         </div>
-        <div class="diep-card-subdesc">${crew.desc}</div>
+        <div class="diep-crew-bar-track" title="${level} of ${maxLevel} upgrades">
+          ${segmentsHtml}
+        </div>
+      </div>
+      <div class="diep-crew-action-col">
         ${isMax
           ? `<button class="diep-card-action-btn equipped">MAX LEVEL</button>`
           : `<button class="diep-card-action-btn ${canAfford ? '' : 'disabled'}">
@@ -1730,17 +1757,6 @@ export class UIManager {
   createColorCard(theme, coins, unlockedColors, activeColor, isFeatured = false) {
     const card = document.createElement('div');
     card.className = 'diep-card';
-    
-    // Explicit theme color outline and matching tinted graph grid
-    const borderColor = theme.stroke || theme.color;
-    card.style.borderColor = borderColor;
-    card.style.borderWidth = '3px';
-    card.style.backgroundColor = '#f8fafc';
-    card.style.backgroundImage = `
-      linear-gradient(to right, ${theme.color}2e 1px, transparent 1px),
-      linear-gradient(to bottom, ${theme.color}2e 1px, transparent 1px)
-    `;
-    card.style.backgroundSize = '16px 16px';
 
     let finalCost = theme.cost;
     let oldCost = null;
@@ -1766,6 +1782,15 @@ export class UIManager {
     const isActive = activeColor === theme.key;
     const canAfford = coins >= finalCost;
 
+    const rarityColorMap = {
+      Common: '#6b7280',
+      Uncommon: '#3b82f6',
+      Rare: '#3b82f6',
+      Epic: '#a855f7',
+      Legendary: '#ca8a04'
+    };
+    const rarityColor = rarityColorMap[theme.rarity] || '#6b7280';
+
     card.innerHTML = `
       ${discountBadge ? `<div class="diep-card-discount-badge">${discountBadge}</div>` : ''}
       <div class="diep-card-preview-stage">
@@ -1774,7 +1799,7 @@ export class UIManager {
       <div class="diep-card-footer">
         <div class="diep-card-details-row">
           <span class="diep-card-title">${theme.name}</span>
-          <span class="diep-card-rarity-label" style="color: ${theme.stroke || theme.color}; font-weight: 900;">${theme.rarity}</span>
+          <span class="diep-card-rarity-label" style="color: ${rarityColor}; font-weight: 900;">${theme.rarity}</span>
         </div>
         ${isUnlocked
           ? (isActive

@@ -917,6 +917,11 @@ function setupAdminPanelListeners() {
 
   document.getElementById('adm-godmode-toggle').addEventListener('change', (e) => {
     state.godMode = e.target.checked;
+    const godLabel = document.getElementById('adm-godmode-btn-label');
+    const godState = document.getElementById('adm-godmode-state');
+    if (godLabel) godLabel.classList.toggle('is-active', state.godMode);
+    if (godState) godState.textContent = state.godMode ? 'ON' : 'OFF';
+
     if (state.godMode) {
       player.hp = Infinity;
       player.maxHp = Infinity;
@@ -957,13 +962,17 @@ function setupAdminPanelListeners() {
     });
   }
 
-  document.getElementById('adm-clear-all').addEventListener('click', () => {
+  document.getElementById('adm-clear-all')?.addEventListener('click', () => {
     waveMgr.clearAll();
     uiMgr.showToast("ADMIN: ALL ENTITIES CLEARED");
   });
 
-  document.getElementById('adm-toggle-pause').addEventListener('click', () => {
+  document.getElementById('adm-toggle-pause')?.addEventListener('click', () => {
     waveMgr.isPaused = !waveMgr.isPaused;
+    const pauseBtn = document.getElementById('adm-toggle-pause');
+    const pauseState = document.getElementById('adm-pause-state');
+    if (pauseBtn) pauseBtn.classList.toggle('is-active', waveMgr.isPaused);
+    if (pauseState) pauseState.textContent = waveMgr.isPaused ? 'ON' : 'OFF';
     uiMgr.showToast(`ADMIN: WAVE ${waveMgr.isPaused ? 'PAUSED' : 'RESUMED'}`);
   });
 
@@ -989,30 +998,40 @@ function setupAdminPanelListeners() {
     });
   }
 
-  const waveSetBtn = document.getElementById('adm-wave-set');
-  if (waveSetBtn) {
-    waveSetBtn.addEventListener('click', () => {
-      const targetWave = Math.max(1, parseInt(waveInput ? waveInput.value : 1, 10) || 1);
+  if (waveInput) {
+    waveInput.addEventListener('input', () => {
+      const parsed = parseInt(waveInput.value, 10);
+      if (!isNaN(parsed) && parsed >= 1) {
+        const targetWave = Math.min(999, parsed);
+        waveMgr.setWaveNumber(targetWave);
+      }
+    });
+
+    waveInput.addEventListener('change', () => {
+      const targetWave = Math.max(1, Math.min(999, parseInt(waveInput.value, 10) || 1));
       waveMgr.setWaveNumber(targetWave);
-      if (waveInput) waveInput.value = targetWave;
+      waveInput.value = targetWave;
       uiMgr.showToast(`ADMIN: WAVE SET TO ${targetWave}`);
     });
-  }
 
-  if (waveInput) {
     waveInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        const targetWave = Math.max(1, parseInt(waveInput.value, 10) || 1);
+        const targetWave = Math.max(1, Math.min(999, parseInt(waveInput.value, 10) || 1));
         waveMgr.setWaveNumber(targetWave);
         waveInput.value = targetWave;
-        uiMgr.showToast(`ADMIN: WAVE SET TO ${targetWave}`);
+        waveInput.blur();
       }
     });
   }
 
   document.getElementById('adm-debug-overlay').addEventListener('change', (e) => {
     state.debugMode = e.target.checked;
+    const debugLabel = document.getElementById('adm-debug-btn-label');
+    const debugState = document.getElementById('adm-debug-state');
+    if (debugLabel) debugLabel.classList.toggle('is-active', state.debugMode);
+    if (debugState) debugState.textContent = state.debugMode ? 'ON' : 'OFF';
+    uiMgr.showToast(`ADMIN: WIREFRAME HITBOXES ${state.debugMode ? 'ENABLED' : 'DISABLED'}`);
   });
 
   const spawnShapeBtn = document.getElementById('adm-spawn-shape');

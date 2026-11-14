@@ -1710,7 +1710,7 @@ export class EnemyUnit {
     const unitDeathAlpha = this.isDying ? Math.max(0, 1.0 - (this.deathTimer / this.deathDuration)) : 1.0;
     ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha * unitDeathAlpha));
 
-    ctx.font = 'bold 11px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = "bold 11px 'Ubuntu', sans-serif";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const textWidth = ctx.measureText(this.chatText).width;
