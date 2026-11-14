@@ -123,6 +123,62 @@ export const ENEMY_CONFIG = {
       steerableBoost: true, // Dynamically steers charge into player's path
       rampageAggroDist: 320
     }
+  },
+  howitzer: {
+    minWave: 8,
+    name: 'Howitzer',
+    sides: 0,
+    radiusMultiplier: 1.15,
+    hp: 58,
+    speedMultiplier: 0.72, // Slower, heavy artillery chassis
+    drag: 3.6,
+    damage: 14,
+    xp: 180,
+    weight: 4.5, // Heavier physical collision mass
+    spawnWeight: 0.14, // Support artillery unit spawning alongside later waves
+    color: '#98A95B',
+    stroke: '#707d43',
+    // Massive wide Destroyer-style cannon
+    turrets: [
+      {
+        width: 38, length: 46, frontWidth: 38, angleOffset: 0, xOffset: 0, yOffset: 0,
+        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+      }
+    ],
+    weapon: {
+      fireRateSec: 3.2,        // Deliberate, slow-firing cannon
+      bulletSpeed: 155,
+      bulletPenetration: 12.0, // 6x Drone penetration: plows through walls of player bullets
+      bulletDamage: 32.0,      // Massive single-shot damage
+      bulletRadius: 10.0,      // Scaled by barrel width (38/20) * sizeScale -> giant cannonball
+      bulletLifetime: 4.2,
+      bulletColor: '#f14e54',
+      bulletStroke: '#b82a30',
+      recoilForce: 320,        // Moderate physical recoil impulse pushing the Howitzer backward on fire
+      barrelRecoilAmount: 16
+    },
+    ai: {
+      role: 'artillery',
+      kitingDistance: 500,          // Stands further back than normal Drones (350)
+      lowMoraleKitingDistance: 600, // Falls back further when cautious
+      highMoraleKitingDistance: 400,
+      lastStandDistance: 280,
+      kitingBuffer: 55,
+      frenzyKitingDist: 400,
+      crossfireAngle: Math.PI * 0.35,
+      orbitSpeed: 0.45,             // Steadily repositions without zipping around like Drones
+      turretTurnSpeed: 4.5,         // Heavier turret traverse speed
+      aimSmoothingTime: 0.16,
+      predictiveAim: 1.0,
+      meatShieldSeeking: true,
+      evasion: true,
+      evasionChance: 0.45,
+      evasionDangerDist: 190,
+      evasionCooldown: 0.85,
+      separationDistance: 105,
+      separationWeight: 1.2,
+      coverThresholdHp: 0.40
+    }
   }
 };
 
@@ -199,7 +255,8 @@ export const ENEMY_UPGRADE_CONFIG = {
   archetypeStatPriority: {
     chaser: ['moveSpeed', 'bodyDamage', 'maxHp', 'regenRate'],
     ranged: ['bulletDamage', 'bulletSpeed', 'reloadSpeed', 'bulletPenetration', 'maxHp', 'moveSpeed', 'regenRate'],
-    heavy: ['maxHp', 'bodyDamage', 'regenRate', 'moveSpeed']
+    heavy: ['maxHp', 'bodyDamage', 'regenRate', 'moveSpeed'],
+    howitzer: ['bulletDamage', 'bulletPenetration', 'reloadSpeed', 'bulletSpeed', 'maxHp', 'moveSpeed', 'regenRate']
   }
 };
 

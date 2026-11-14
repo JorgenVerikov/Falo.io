@@ -899,7 +899,7 @@ export class EnemyUnit {
     const pVy = player.vy || 0;
 
     // 1. ADVANCED MATHEMATICAL BALLISTIC LEAD PREDICTION WITH VELOCITY SMOOTHING & TURRET SLEW
-    if (this.archetypeKey === 'ranged' && this.config.weapon) {
+    if ((this.archetypeKey === 'ranged' || this.archetypeKey === 'howitzer') && this.config.weapon) {
       const inc = ENEMY_UPGRADE_CONFIG.increments;
       const bSpeedMult = 1.0 + (this.upgrades.stats.bulletSpeed * inc.bulletSpeed);
       const bSpeed = (this.config.weapon.bulletSpeed || 180) * bSpeedMult;
@@ -971,8 +971,8 @@ export class EnemyUnit {
         }
       }
 
-      // Meat shield check for ranged drones
-      if (this.archetypeKey === 'ranged' && ally.archetypeKey === 'heavy') {
+      // Meat shield check for ranged drones & artillery
+      if ((this.archetypeKey === 'ranged' || this.archetypeKey === 'howitzer') && ally.archetypeKey === 'heavy') {
         if (aDist < closestHeavyDist) {
           closestHeavyDist = aDist;
           friendlyHeavy = ally;
@@ -1173,8 +1173,8 @@ export class EnemyUnit {
       // Add gentle flocking separation offset so swarmers don't bunch into a single line
       targetWaypointX += sepX * 25;
       targetWaypointY += sepY * 25;
-    } else if (this.archetypeKey === 'ranged') {
-      // DRONE: Adaptive Kiting, Crossfire Angles, Cover-Seeking & Morale Dynamics
+    } else if (this.archetypeKey === 'ranged' || this.archetypeKey === 'howitzer') {
+      // DRONE & HOWITZER: Adaptive Kiting, Crossfire Angles, Cover-Seeking & Morale Dynamics
       const aiCfg = this.config.ai || {};
       let kitingDist = aiCfg.kitingDistance || 350;
 
@@ -1186,8 +1186,9 @@ export class EnemyUnit {
           EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
         }
       } else if (this.isLastStand) {
-        // LAST STAND: Closes in aggressively to 190px point-blank range with relentless fire!
-        if (dist > 190) {
+        // LAST STAND: Closes in aggressively with relentless fire!
+        const lastStandDist = aiCfg.lastStandDistance || 190;
+        if (dist > lastStandDist) {
           dirX = dx / dist;
           dirY = dy / dist;
         } else {
@@ -1200,9 +1201,9 @@ export class EnemyUnit {
           EnemyCommunicationSystem.tryBroadcast(this, 'LAST_STAND');
         }
       } else if (this.moraleState === 'LOW') {
-        // CAUTIOUS: Less engaging, backs up significantly (480px standoff)
-        kitingDist = 480;
-        if (dist < 430) {
+        // CAUTIOUS: Less engaging, backs up significantly
+        kitingDist = aiCfg.lowMoraleKitingDistance || 480;
+        if (dist < kitingDist - 50) {
           dirX = -dx / dist;
           dirY = -dy / dist;
           if (Math.random() < 0.09) {
@@ -1221,12 +1222,12 @@ export class EnemyUnit {
         }
       } else {
         if (this.moraleState === 'HIGH') {
-          // HIGH MORALE: Aggressive pressure (closing distance to 240px)
-          kitingDist = 240;
+          // HIGH MORALE: Aggressive pressure
+          kitingDist = aiCfg.highMoraleKitingDistance || 240;
         } else if (isPlayerWounded) {
           kitingDist = aiCfg.frenzyKitingDist || 250;
         } else if (isLowHealth) {
-          kitingDist = 420;
+          kitingDist = Math.max(420, (aiCfg.kitingDistance || 350) + 70);
         }
 
         const buffer = aiCfg.kitingBuffer || 40;
@@ -1374,11 +1375,12 @@ export class EnemyUnit {
     }
 
     if (this.config.ai && this.config.ai.evasion && playerProjectiles && playerProjectiles.length > 0) {
-      const maxThreatDist = (this.archetypeKey === 'ranged')
+      const isRangedUnit = (this.archetypeKey === 'ranged' || this.archetypeKey === 'howitzer');
+      const maxThreatDist = isRangedUnit
         ? (this.config.ai.evasionDangerDist || 210)
         : 180;
 
-      const canAttemptDodge = (this.archetypeKey !== 'ranged') || this.isEvading || (this.dodgeCooldown <= 0);
+      const canAttemptDodge = !isRangedUnit || this.isEvading || (this.dodgeCooldown <= 0);
 
       if (canAttemptDodge) {
         let minTimeToImpact = Infinity;
@@ -1395,7 +1397,7 @@ export class EnemyUnit {
         }
 
         if (bestEvade) {
-          if (this.archetypeKey === 'ranged') {
+          if (isRangedUnit) {
             if (this.isEvading) {
               shouldEvade = true;
               evadeX = bestEvade.x;
@@ -1512,7 +1514,7 @@ export class EnemyUnit {
 
       // Blend flocking separation forces
       const sepWeight = (this.config.ai && this.config.ai.separationWeight) ? this.config.ai.separationWeight : 1.0;
-      if (this.archetypeKey === 'ranged' && dist < (this.config.ai?.kitingDistance || 350)) {
+      if ((this.archetypeKey === 'ranged' || this.archetypeKey === 'howitzer') && dist < (this.config.ai?.kitingDistance || 350)) {
         dirX += sepX * (sepWeight * 0.35);
         dirY += sepY * (sepWeight * 0.35);
       } else {
@@ -1557,7 +1559,7 @@ export class EnemyUnit {
     this.y += this.vy * dt;
 
     // 5. WEAPON DISCHARGE
-    if (this.archetypeKey === 'ranged' && this.config.weapon) {
+    if ((this.archetypeKey === 'ranged' || this.archetypeKey === 'howitzer') && this.config.weapon) {
       const wCfg = this.config.weapon;
       this.fireTimer += dt;
       
@@ -1570,7 +1572,12 @@ export class EnemyUnit {
         this.fireTimer = 0;
 
         if (this.barrelRecoilOffsets.length > 0) {
-          this.barrelRecoilOffsets[0] = 10;
+          this.barrelRecoilOffsets[0] = (wCfg.barrelRecoilAmount !== undefined) ? wCfg.barrelRecoilAmount : 10;
+        }
+
+        if (wCfg.recoilForce) {
+          this.vx -= Math.cos(this.angle) * wCfg.recoilForce;
+          this.vy -= Math.sin(this.angle) * wCfg.recoilForce;
         }
 
         const sizeScale = this.radius / (CONFIG.PLAYER.baseRadius || 25);
