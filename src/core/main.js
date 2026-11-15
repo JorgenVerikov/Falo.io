@@ -533,9 +533,32 @@ function applyCrewAndStatModifiers() {
 
     const rackFactor = (turret.type === WEAPON_TYPE.READY_RACK) ? (rCfg.rackReloadFactor || 1.50) : 1.0;
     const baseReloadTicks = (baseW.baseReloadTicks !== undefined) ? baseW.baseReloadTicks : Math.round(baseCfg.baseReloadTicks * mReload);
-    const baseReloadSec = (baseReloadTicks / 60) * rackFactor;
+    const rrCfg = (CONFIG.PLAYER && CONFIG.PLAYER.readyRack) || {};
+    const chassisCfg = CONFIG.CHASSIS[state.activeChassis] || {};
+    const globalRefillMult = (rrCfg.refillSpeedMultiplier !== undefined) ? rrCfg.refillSpeedMultiplier : 1.0;
+    const chassisRefillMult = (chassisCfg.readyRackRefillSpeed !== undefined) ? chassisCfg.readyRackRefillSpeed : 1.0;
+    const turretRefillSpeed = (baseW.refillSpeed !== undefined) ? baseW.refillSpeed : 1.0;
+    const combinedRefillSpeed = Math.max(0.05, globalRefillMult * chassisRefillMult * turretRefillSpeed);
+
+    let baseReloadSec;
+    if (turret.type === WEAPON_TYPE.READY_RACK && baseW.refillSec !== undefined) {
+      baseReloadSec = baseW.refillSec;
+    } else if (turret.type === WEAPON_TYPE.READY_RACK && rrCfg.baseRefillSec !== undefined) {
+      baseReloadSec = rrCfg.baseRefillSec * mReload;
+    } else {
+      baseReloadSec = (baseReloadTicks / 60) * rackFactor;
+    }
+    if (turret.type === WEAPON_TYPE.READY_RACK) {
+      baseReloadSec /= combinedRefillSpeed;
+    }
+
+    const minReloadSec = (turret.type === WEAPON_TYPE.READY_RACK && baseW.minRefillSec !== undefined)
+      ? baseW.minRefillSec
+      : ((turret.type === WEAPON_TYPE.READY_RACK && rrCfg.minRefillSec !== undefined)
+          ? rrCfg.minRefillSec
+          : (rCfg.minReloadIntervalSec || 0.75));
     const reloadSpeedMult = 1.0 + (reloadStat * (rCfg.reloadSpeedScalePerPoint || 0.06));
-    turret.reloadIntervalSec = Math.max(rCfg.minReloadIntervalSec || 0.75, (baseReloadSec / reloadSpeedMult) * loaderCrewMult);
+    turret.reloadIntervalSec = Math.max(minReloadSec, (baseReloadSec / reloadSpeedMult) * loaderCrewMult);
 
     turret.coolRate = (baseW.coolRate || 22) * (1.0 + (reloadStat * (rCfg.thermalCoolRateStatScaling || 0.12))) / loaderCrewMult;
     turret.heatPerShot = (baseW.heatPerShot || 6) / (1.0 + (reloadStat * (rCfg.thermalHeatReductionStatScaling || 0.05)));

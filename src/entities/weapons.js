@@ -374,9 +374,32 @@ export class WeaponSystem {
       const w = hasExplicitWeapon ? t.weapon : (shootsBullet ? defaultWeapon : {});
       const weaponType = w.type || 'READY_RACK';
 
-      // Apply ready rack reload factor
+      // Apply ready rack reload factor & player.config readyRack overrides
       const rCfg = CONFIG.WEAPONS.reloadScaling;
-      const rackFactor = (weaponType === WEAPON_TYPE.READY_RACK) ? (rCfg.rackReloadFactor || 1.40) : 1.0;
+      const rrCfg = (CONFIG.PLAYER && CONFIG.PLAYER.readyRack) || {};
+      const rackFactor = (weaponType === WEAPON_TYPE.READY_RACK) ? (rCfg.rackReloadFactor || 1.50) : 1.0;
+      const reloadMult = (t.reload !== undefined) ? t.reload : 1.0;
+      const globalRefillMult = (rrCfg.refillSpeedMultiplier !== undefined) ? rrCfg.refillSpeedMultiplier : 1.0;
+      const chassisRefillMult = (chassis.readyRackRefillSpeed !== undefined) ? chassis.readyRackRefillSpeed : 1.0;
+      const turretRefillSpeed = (w.refillSpeed !== undefined) ? w.refillSpeed : 1.0;
+      const combinedRefillSpeed = Math.max(0.05, globalRefillMult * chassisRefillMult * turretRefillSpeed);
+
+      let initialReloadSec;
+      if (weaponType === WEAPON_TYPE.READY_RACK && w.refillSec !== undefined) {
+        initialReloadSec = w.refillSec;
+      } else if (weaponType === WEAPON_TYPE.READY_RACK && rrCfg.baseRefillSec !== undefined) {
+        initialReloadSec = rrCfg.baseRefillSec * reloadMult;
+      } else {
+        initialReloadSec = ((w.baseReloadTicks || 120) / 60) * rackFactor;
+      }
+      if (weaponType === WEAPON_TYPE.READY_RACK) {
+        initialReloadSec /= combinedRefillSpeed;
+      }
+      const minInitialReloadSec = (weaponType === WEAPON_TYPE.READY_RACK && w.minRefillSec !== undefined)
+        ? w.minRefillSec
+        : ((weaponType === WEAPON_TYPE.READY_RACK && rrCfg.minRefillSec !== undefined)
+            ? rrCfg.minRefillSec
+            : (rCfg.minReloadIntervalSec || 0.75));
 
       return {
         index: idx,
@@ -396,7 +419,7 @@ export class WeaponSystem {
         penetrationMult: (t.penetration !== undefined) ? t.penetration : 1.0,
         bulletSpeedMult: (t.bulletSpeed !== undefined) ? t.bulletSpeed : 1.0,
         bulletSizeMult: (t.bulletSize !== undefined) ? t.bulletSize : 1.0,
-        reloadMult: (t.reload !== undefined) ? t.reload : 1.0,
+        reloadMult,
         spreadMult: (t.spread !== undefined) ? t.spread : 1.0,
         recoilMult: (t.recoil !== undefined) ? t.recoil : 1.0,
         knockbackMult: (t.knockback !== undefined) ? t.knockback : 1.0,
@@ -416,6 +439,9 @@ export class WeaponSystem {
         shellRadius: (w.shellRadius !== undefined) ? w.shellRadius : Math.round(((t.width || 20) / 20) * (CONFIG.WEAPONS.basicBarrelBase.bulletSize || 9) * (t.bulletSize || 1.0) * 10) / 10,
         spread: w.spread || 0,
         maxRack: w.maxRack || 3,
+        refillSpeed: turretRefillSpeed,
+        refillSec: w.refillSec,
+        minRefillSec: w.minRefillSec,
         heatPerShot: w.heatPerShot || 6,
         coolRate: w.coolRate || 12,
         overheatLockoutTime: w.overheatLockoutTime || 2.2,
@@ -423,7 +449,7 @@ export class WeaponSystem {
         costPerShot: w.costPerShot || 25,
         rechargeRate: w.rechargeRate || 20,
         fireIntervalSec: Math.max(rCfg.minFireIntervalSec || 0.20, (w.fireRateTicks || 80) / 60),
-        reloadIntervalSec: Math.max(rCfg.minReloadIntervalSec || 0.75, ((w.baseReloadTicks || 120) / 60) * rackFactor)
+        reloadIntervalSec: Math.max(minInitialReloadSec, initialReloadSec)
       };
     });
 

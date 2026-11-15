@@ -77,6 +77,12 @@ export const PLAYER_CONFIG = {
     moveSpeedMult: 0.07
   },
 
+  readyRack: {
+    refillSpeedMultiplier: 1.0, // Global Ready-Rack bullet refill speed (>1.0 = faster refill, <1.0 = slower)
+    baseRefillSec: 3.0,         // Base seconds to refill 1 shell (scaled by turret reload multiplier)
+    minRefillSec: 0.75          // Minimum seconds per shell refill even at max Reload upgrades
+  },
+
   statDefinitions: [
     { key: 'regenRate', keyNum: '1', label: 'Health Regen', name: 'Health Regen', color: '#f0b58e', physical: true },
     { key: 'maxHp', keyNum: '2', label: 'Max Health', name: 'Max Health', color: '#eb64d8', physical: true },
@@ -107,7 +113,7 @@ export const CHASSIS_CONFIG = {
       createBarrelTurret(
         { width: 20, length: 48, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0 },
         { damage: 1, penetration: 1, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 1, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0 },
-        { type: 'READY_RACK', maxRack: 3 }
+        { type: 'READY_RACK', maxRack: 3, refillSpeed: 1.25 }
       )
     ]
   },
@@ -149,7 +155,7 @@ export const CHASSIS_CONFIG = {
       createBarrelTurret(
         { width: 20, length: 58, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0 },
         { damage: 1.0, penetration: 1.0, bulletSpeed: 1.4, bulletSize: 0.9, reload: 1.533, spread: 0, recoil: 1.5, knockback: 1.2, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0 },
-        { type: 'READY_RACK', maxRack: 1 }
+        { type: 'READY_RACK', maxRack: 1, refillSpeed: 1.0 }
       )
     ]
   },
@@ -168,12 +174,12 @@ export const CHASSIS_CONFIG = {
       createBarrelTurret(
         { width: 20, length: 48, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0 },
         { damage: 1.0, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0.8, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0 },
-        { type: 'READY_RACK', maxRack: 4 }
+        { type: 'READY_RACK', maxRack: 4, refillSpeed: 1.0 }
       ),
       createBarrelTurret(
         { width: 20, length: 38, frontWidth: 20, angleOffset: Math.PI, xOffset: 0, yOffset: 0 },
         { damage: 1.0, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0.8, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0 },
-        { type: 'READY_RACK', maxRack: 4 }
+        { type: 'READY_RACK', maxRack: 4, refillSpeed: 1.0 }
       )
     ]
   },
@@ -351,7 +357,7 @@ export const CHASSIS_CONFIG = {
       createBarrelTurret(
         { width: 20, length: 68, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0 },
         { damage: 1.0, penetration: 1.0, bulletSpeed: 1.5, bulletSize: 0.9, reload: 2.0, spread: 0, recoil: 1.8, knockback: 1.25, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.5, fireDelay: 0 },
-        { type: 'READY_RACK', maxRack: 1 }
+        { type: 'READY_RACK', maxRack: 1, refillSpeed: 1.0 }
       )
     ]
   },
