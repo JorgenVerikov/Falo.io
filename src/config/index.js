@@ -1,9 +1,9 @@
 /**
- * DIEP SURVIVAL - CONFIGURATION AGGREGATOR
+ * FALO SURVIVAL - CONFIGURATION AGGREGATOR
  * Combines player, enemy, shape, environment, weapons, and game configurations.
  */
 
-import { PLAYER_CONFIG, CHASSIS_CONFIG, EVOLUTION_CONFIG, getXPRequiredForLevel, DIEP_LEVEL_SCORES, getTotalXPForLevel } from './player.config.js';
+import { PLAYER_CONFIG, CHASSIS_CONFIG, EVOLUTION_CONFIG, getXPRequiredForLevel, FALO_LEVEL_SCORES, getTotalXPForLevel } from './player.config.js';
 import { ENEMY_CONFIG, ENEMY_UPGRADE_CONFIG, getEnemyUpgradesForWave } from './enemy.config.js';
 import { SHAPES_CONFIG } from './shapes.config.js';
 import { ARENA_CONFIG, CAMERA_CONFIG, WAVE_CONFIG, VFX_CONFIG } from './environment.config.js';
@@ -30,7 +30,7 @@ export {
   COLOR_THEMES,
   computeStrokeColor,
   getXPRequiredForLevel,
-  DIEP_LEVEL_SCORES,
+  FALO_LEVEL_SCORES,
   getTotalXPForLevel
 };
 

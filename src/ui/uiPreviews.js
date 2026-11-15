@@ -280,8 +280,8 @@ export function generateTankSvg(chassisKey, color = '#00b2e1', stroke = null, si
     bodySvg = `<circle cx="${center}" cy="${center}" r="${bodyRadius}" fill="${color}" stroke="${strokeColor}" stroke-width="3"/>`;
   }
 
-  return `<svg class="diep-preview-tank-spin" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.3)); display: block; margin: auto; overflow: visible;">
-    <g class="diep-tank-spin-slow">
+  return `<svg class="falo-preview-tank-spin" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.3)); display: block; margin: auto; overflow: visible;">
+    <g class="falo-tank-spin-slow">
       <animateTransform
         attributeName="transform"
         type="rotate"
@@ -328,7 +328,7 @@ export function generateShapeSvg(shapeKey, size = 72) {
     shapeSvg = `<polygon points="${pts.join(' ')}" fill="${color}" stroke="${stroke}" stroke-width="3" stroke-linejoin="round"/>`;
   }
 
-  return `<svg class="diep-preview-shape-spin" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 2.5px 4px rgba(0,0,0,0.22)); display: block; margin: auto; overflow: visible;">
+  return `<svg class="falo-preview-shape-spin" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 2.5px 4px rgba(0,0,0,0.22)); display: block; margin: auto; overflow: visible;">
     <g>
       <animateTransform
         attributeName="transform"
@@ -419,7 +419,7 @@ export function generateEnemySvg(enemyKey, size = 72) {
     bodySvg = `<circle cx="${center}" cy="${center}" r="${bodyRadius}" fill="${color}" stroke="${stroke}" stroke-width="3"/>`;
   }
 
-  return `<svg class="diep-preview-enemy-spin" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 2.5px 4px rgba(0,0,0,0.22)); display: block; margin: auto; overflow: visible;">
+  return `<svg class="falo-preview-enemy-spin" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 2.5px 4px rgba(0,0,0,0.22)); display: block; margin: auto; overflow: visible;">
     <g>
       <animateTransform
         attributeName="transform"

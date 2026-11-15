@@ -1,5 +1,5 @@
 /**
- * DIEP SURVIVAL - SPECIALIZED ENEMY CONFIGURATIONS
+ * FALO SURVIVAL - SPECIALIZED ENEMY CONFIGURATIONS
  * Advanced tactical archetypes: Howitzer, Watcher, Suppressor, and Phantom.
  */
 

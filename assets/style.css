@@ -179,7 +179,7 @@ body.theme-light .enemy-upgrade-pill {
   width: fit-content;
 }
 
-.falo-card {
+#falo-upgrade-panel .falo-card {
   position: relative;
   width: calc(82px * var(--ui-scale));
   height: calc(82px * var(--ui-scale));
@@ -197,16 +197,16 @@ body.theme-light .enemy-upgrade-pill {
   overflow: visible !important;
 }
 
-.falo-card:hover {
+#falo-upgrade-panel .falo-card:hover {
   transform: translateY(-3px) scale(1.03);
   filter: brightness(1.08);
 }
 
-.falo-card.active {
+#falo-upgrade-panel .falo-card.active {
   border-color: #00b2e1 !important;
 }
 
-.falo-card.locked-shop {
+#falo-upgrade-panel .falo-card.locked-shop {
   border-color: #e03838 !important;
   filter: grayscale(0.2) opacity(0.9);
 }
@@ -285,7 +285,7 @@ body.theme-light .enemy-upgrade-pill {
   transform: none;
 }
 
-/* 8-Stat Upgrade Panel (Diep.io Style) */
+/* 8-Stat Upgrade Panel (Falo.io Style) */
 .bottom-left-panel {
   position: fixed;
   bottom: calc(12px * var(--ui-scale));
@@ -996,6 +996,7 @@ body.theme-light #main-menu-overlay.modal-overlay {
   width: 100%;
   height: 100%;
   display: block;
+  filter: drop-shadow(-6px 7px 0 rgba(0, 0, 0, 0.42)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
 }
 
 .main-menu-right-panel {
@@ -1641,14 +1642,14 @@ body.theme-light #main-menu-overlay.modal-overlay {
 }
 
 /* Settings Window Styled Cleanly Like Shop/Armory Window */
-.diep-settings-window {
+.falo-settings-window {
   width: 100vw;
   max-width: 100vw;
   height: 100vh;
   max-height: 100vh;
 }
 
-.diep-settings-scroll-area {
+.falo-settings-scroll-area {
   padding: calc(20px * var(--ui-scale)) calc(30px * var(--ui-scale));
 }
 
@@ -1753,7 +1754,7 @@ body.theme-light #main-menu-overlay.modal-overlay {
   gap: calc(6px * var(--ui-scale));
 }
 
-.settings-card-body .diep-card-action-btn {
+.settings-card-body .falo-card-action-btn {
   margin-top: calc(8px * var(--ui-scale));
 }
 
@@ -1855,7 +1856,7 @@ body.theme-light #main-menu-overlay.modal-overlay {
   color: #111827;
 }
 
-body:not(.theme-light) .key-title {
+body:not(.theme-light) .control-key-card:not(.falo-card) .key-title {
   color: #f1f5f9;
 }
 
@@ -2346,7 +2347,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 }
 
 /* ========================================================
-   DIEP.IO AUTHENTIC SHOP UI
+   FALO.IO AUTHENTIC SHOP UI
    ======================================================== */
 
 #armory-modal.modal-overlay,
@@ -2414,7 +2415,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   transform: scale(1) translateY(0);
 }
 
-.diep-shop-window {
+.falo-shop-window {
   width: 100vw;
   max-width: 100vw;
   height: 100vh;
@@ -2438,14 +2439,14 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.34s ease, filter 0.34s ease;
 }
 
-.modal-overlay.active .diep-shop-window {
+.modal-overlay.active .falo-shop-window {
   transform: scale(1);
   opacity: 1;
   filter: blur(0px);
 }
 
 /* Header Bar */
-.diep-shop-header {
+.falo-shop-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2457,13 +2458,13 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   flex-shrink: 0;
 }
 
-.diep-shop-header-left {
+.falo-shop-header-left {
   display: flex;
   align-items: center;
   gap: calc(24px * var(--ui-scale));
 }
 
-.diep-shop-logo {
+.falo-shop-logo {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2479,16 +2480,16 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   -webkit-text-stroke: 0.5px #222;
 }
 
-.diep-shop-logo-icon {
+.falo-shop-logo-icon {
   font-size: calc(22px * var(--ui-scale));
 }
 
-.diep-shop-tabs {
+.falo-shop-tabs {
   display: flex;
   gap: calc(10px * var(--ui-scale));
 }
 
-.diep-shop-tab {
+.falo-shop-tab {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2518,23 +2519,23 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   transform: none;
 }
 
-.diep-shop-tab:hover {
+.falo-shop-tab:hover {
   filter: brightness(1.16);
 }
 
-.diep-shop-tab.active {
+.falo-shop-tab.active {
   background-color: #00b2e1;
   border-color: #007a9e;
   color: #ffffff;
 }
 
-.diep-shop-header-right {
+.falo-shop-header-right {
   display: flex;
   align-items: center;
   gap: calc(16px * var(--ui-scale));
 }
 
-.diep-coins-chip {
+.falo-coins-chip {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -2558,7 +2559,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
-.diep-coin-icon {
+.falo-coin-icon {
   display: inline-block;
   vertical-align: middle;
   width: calc(11px * var(--ui-scale));
@@ -2585,7 +2586,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   letter-spacing: 0.8px;
 }
 
-.diep-shop-close-btn {
+.falo-shop-close-btn {
   background-color: #f14e54;
   background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%);
   border: calc(2.8px * var(--ui-scale)) solid #b82a30;
@@ -2608,16 +2609,16 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   transition: filter 0.12s ease;
 }
 
-.diep-shop-close-btn:hover {
+.falo-shop-close-btn:hover {
   filter: brightness(1.16);
 }
 
-.diep-shop-close-btn:active {
+.falo-shop-close-btn:active {
   filter: brightness(0.92);
 }
 
 /* Scroll Area */
-.diep-shop-scroll-area {
+.falo-shop-scroll-area {
   flex: 1;
   overflow-y: auto;
   padding: calc(18px * var(--ui-scale)) calc(22px * var(--ui-scale));
@@ -2627,25 +2628,27 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 }
 
 /* Sections */
-.diep-shop-section {
+.falo-shop-section {
   display: flex;
   flex-direction: column;
   gap: calc(12px * var(--ui-scale));
 }
 
-.diep-section-header {
+.falo-section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: calc(8px * var(--ui-scale)) calc(12px * var(--ui-scale));
 }
 
-.diep-section-title-wrap {
+.falo-section-title-wrap {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.diep-section-title {
+.falo-section-title {
   font-size: calc(13px * var(--ui-scale));
   font-weight: 900;
   color: #ffffff;
@@ -2656,7 +2659,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   text-transform: uppercase;
 }
 
-.diep-ends-in-tag {
+.falo-ends-in-tag {
   font-size: calc(11px * var(--ui-scale));
   color: #9ca3af;
   font-weight: 700;
@@ -2666,13 +2669,14 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 }
 
 /* Filter and Sort bar */
-.diep-filter-sort-bar {
+.falo-filter-sort-bar {
   display: flex;
   align-items: center;
-  gap: calc(10px * var(--ui-scale));
+  flex-wrap: wrap;
+  gap: calc(8px * var(--ui-scale)) calc(10px * var(--ui-scale));
 }
 
-.diep-rarity-filter-dots {
+.falo-rarity-filter-dots {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2682,7 +2686,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   border: 1px solid #2f313d;
 }
 
-.diep-filter-dot {
+.falo-filter-dot {
   width: 13px;
   height: 13px;
   border-radius: 50%;
@@ -2692,12 +2696,12 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   padding: 0;
 }
 
-.diep-filter-dot.active {
+.falo-filter-dot.active {
   border-color: #ffffff;
   transform: scale(1.22);
 }
 
-.diep-filter-dot.dot-all {
+.falo-filter-dot.dot-all {
   width: auto;
   height: auto;
   font-size: 10px;
@@ -2707,16 +2711,17 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   border: none;
   padding: 0 4px;
 }
-.diep-filter-dot.dot-all.active { color: #ffffff; }
+.falo-filter-dot.dot-all.active { color: #ffffff; }
 
-.diep-filter-dot.dot-common { background-color: #9ca3af; }
-.diep-filter-dot.dot-rare { background-color: #3b82f6; }
-.diep-filter-dot.dot-epic { background-color: #a855f7; }
-.diep-filter-dot.dot-legendary { background-color: #eab308; }
+.falo-filter-dot.dot-common { background-color: #9ca3af; }
+.falo-filter-dot.dot-rare { background-color: #3b82f6; }
+.falo-filter-dot.dot-epic { background-color: #a855f7; }
+.falo-filter-dot.dot-legendary { background-color: #eab308; }
 
-.diep-tier-filter-bar {
+.falo-tier-filter-bar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
   background: #1e1f26;
   padding: 3px 6px;
@@ -2724,7 +2729,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   border: 1px solid #2f313d;
 }
 
-.diep-tier-filter-btn {
+.falo-tier-filter-btn {
   background: transparent;
   border: none;
   color: #9ca3af;
@@ -2735,25 +2740,42 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   border-radius: 9999px;
   cursor: pointer;
   letter-spacing: 0.4px;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  transition: background-color 0.14s ease, color 0.14s ease, transform 0.12s ease;
 }
 
-.diep-tier-filter-btn:hover {
+.falo-tier-filter-btn:hover {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.08);
 }
 
-.diep-tier-filter-btn.active {
+.falo-tier-filter-btn.active {
   background-color: #00b2e1;
   color: #ffffff;
 }
 
-.diep-tier-filter-btn.tier-1.active { background-color: #6b7280; }
-.diep-tier-filter-btn.tier-2.active { background-color: #3b82f6; }
-.diep-tier-filter-btn.tier-3.active { background-color: #a855f7; }
-.diep-tier-filter-btn.tier-4.active { background-color: #ca8a04; }
+.falo-tier-filter-btn.tier-1.active { background-color: #6b7280; }
+.falo-tier-filter-btn.tier-2.active { background-color: #3b82f6; }
+.falo-tier-filter-btn.tier-3.active { background-color: #a855f7; }
+.falo-tier-filter-btn.tier-4.active { background-color: #ca8a04; }
 
-.diep-sort-select {
+.falo-shop-empty-state {
+  grid-column: 1 / -1;
+  padding: calc(24px * var(--ui-scale)) calc(18px * var(--ui-scale));
+  border-radius: calc(10px * var(--ui-scale));
+  border: 2px dashed rgba(148, 163, 184, 0.28);
+  color: #94a3b8;
+  font-size: calc(13px * var(--ui-scale));
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.4px;
+}
+
+body.theme-light .falo-shop-empty-state {
+  border-color: rgba(100, 116, 139, 0.35);
+  color: #475569;
+}
+
+.falo-sort-select {
   background: #1e1f26;
   border: 1px solid #2f313d;
   color: #d1d5db;
@@ -2767,20 +2789,20 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 }
 
 /* Grid Layouts */
-.diep-featured-grid {
+.falo-featured-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: calc(14px * var(--ui-scale));
 }
 
-.diep-items-grid {
+.falo-items-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(calc(185px * var(--ui-scale)), 1fr));
   gap: calc(14px * var(--ui-scale));
 }
 
-/* The Diep Card */
-.diep-card {
+/* The Falo Card */
+.falo-card {
   position: relative;
   background-color: #f8fafc;
   background-image: 
@@ -2798,21 +2820,21 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
-.diep-card:hover {
+.falo-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
 }
 
-.diep-card.is-equipped {
+.falo-card.is-equipped {
   box-shadow: 0 0 0 calc(3px * var(--ui-scale)) #00b2e1, 0 6px 20px rgba(0, 178, 225, 0.42) !important;
 }
 
-.diep-card.is-unlocked {
+.falo-card.is-unlocked {
   border-color: #059669;
 }
 
 /* Graph-Paper Grid Backgrounds matching Rarity */
-.diep-card.rarity-common {
+.falo-card.rarity-common {
   background-color: #f3f4f6;
   background-image: 
     linear-gradient(to right, rgba(156, 163, 175, 0.28) 1px, transparent 1px),
@@ -2821,7 +2843,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   border-color: #9ca3af;
 }
 
-.diep-card.rarity-rare {
+.falo-card.rarity-rare {
   background-color: #eff6ff;
   background-image: 
     linear-gradient(to right, rgba(96, 165, 250, 0.3) 1px, transparent 1px),
@@ -2830,7 +2852,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   border-color: #3b82f6;
 }
 
-.diep-card.rarity-epic {
+.falo-card.rarity-epic {
   background-color: #faf5ff;
   background-image: 
     linear-gradient(to right, rgba(192, 132, 252, 0.32) 1px, transparent 1px),
@@ -2839,7 +2861,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   border-color: #a855f7;
 }
 
-.diep-card.rarity-legendary {
+.falo-card.rarity-legendary {
   background-color: #fefce8;
   background-image: 
     linear-gradient(to right, rgba(250, 204, 21, 0.35) 1px, transparent 1px),
@@ -2849,7 +2871,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 }
 
 /* Discount Badge */
-.diep-card-discount-badge {
+.falo-card-discount-badge {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -2865,7 +2887,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 }
 
 /* Visual Item Preview Stage */
-.diep-card-preview-stage {
+.falo-card-preview-stage {
   height: calc(130px * var(--ui-scale));
   display: flex;
   align-items: center;
@@ -2874,22 +2896,22 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   padding: 10px;
 }
 
-.diep-featured-grid .diep-card-preview-stage {
+.falo-featured-grid .falo-card-preview-stage {
   height: calc(155px * var(--ui-scale));
 }
 
-.diep-card:hover .diep-card-preview-stage svg {
+.falo-card:hover .falo-card-preview-stage svg {
   transform: scale(1.05);
   transition: transform 0.18s ease;
 }
 
 /* Tank Shop Preview Slow Continuous Spin */
-.diep-tank-spin-slow {
+.falo-tank-spin-slow {
   display: block;
 }
 
 /* Bottom Card Details */
-.diep-card-footer {
+.falo-card-footer {
   padding: 0 calc(10px * var(--ui-scale)) calc(10px * var(--ui-scale)) calc(10px * var(--ui-scale));
   display: flex;
   flex-direction: column;
@@ -2898,14 +2920,14 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   background: transparent;
 }
 
-.diep-card-details-row {
+.falo-card-details-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   width: 100%;
 }
 
-.diep-card-title {
+.falo-card-title {
   font-size: calc(13.5px * var(--ui-scale));
   font-weight: 900;
   color: #111827;
@@ -2916,14 +2938,14 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   text-overflow: ellipsis;
 }
 
-.diep-card-rarity-label {
+.falo-card-rarity-label {
   font-size: calc(11px * var(--ui-scale));
   font-weight: 800;
   color: #4b5563;
   text-transform: capitalize;
 }
 
-.diep-card-subdesc {
+.falo-card-subdesc {
   font-size: calc(10px * var(--ui-scale));
   font-weight: 700;
   color: #4b5563;
@@ -2934,8 +2956,8 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   align-items: flex-start;
 }
 
-/* Card Action Button (Authentic Diep.io Style) */
-.diep-card-action-btn {
+/* Card Action Button (Authentic Falo.io Style) */
+.falo-card-action-btn {
   width: 100%;
   margin-top: auto;
   position: relative;
@@ -2971,17 +2993,17 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   transform: none;
 }
 
-.diep-card-action-btn:hover:not(.disabled) {
+.falo-card-action-btn:hover:not(.disabled) {
   filter: brightness(1.16);
   transform: none !important;
 }
 
-.diep-card-action-btn:active:not(.disabled) {
+.falo-card-action-btn:active:not(.disabled) {
   filter: brightness(0.92);
   transform: none !important;
 }
 
-.diep-card-action-btn.unlocked {
+.falo-card-action-btn.unlocked {
   background-color: #10b981;
   border-color: #059669;
   background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%);
@@ -2989,26 +3011,26 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   cursor: default;
 }
 
-.diep-card-action-btn.unlocked:hover {
+.falo-card-action-btn.unlocked:hover {
   filter: none !important;
   transform: none !important;
 }
 
-.diep-card-action-btn.equipped {
+.falo-card-action-btn.equipped {
   background-color: #8c929a;
   border-color: #525659;
   background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%);
   color: #ffffff;
 }
 
-.diep-card-action-btn.equip-ready {
+.falo-card-action-btn.equip-ready {
   background-color: #00b2e1;
   border-color: #007a9e;
   background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%);
   color: #ffffff;
 }
 
-.diep-card-action-btn.disabled {
+.falo-card-action-btn.disabled {
   background-color: #55585c;
   border-color: #3d4044;
   background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%);
@@ -3017,7 +3039,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
   filter: grayscale(0.5);
 }
 
-.diep-old-price {
+.falo-old-price {
   text-decoration: line-through;
   opacity: 0.72;
   font-size: calc(11px * var(--ui-scale));
@@ -3050,7 +3072,7 @@ body.theme-light .falo-panel-header {
   text-shadow: none;
 }
 
-body.theme-light .falo-card {
+body.theme-light #falo-upgrade-panel .falo-card {
   background-color: #e6e9ed;
   border-color: #a0a5aa;
   color: #2b2e31;
@@ -3321,68 +3343,68 @@ body.theme-light #close-armory-btn:hover {
   transform: none !important;
 }
 
-/* Authentic Diep Light/Classic Theme Shop Overrides */
+/* Authentic Falo Light/Classic Theme Shop Overrides */
 body.theme-light #armory-modal.modal-overlay,
 body.theme-light #settings-modal.modal-overlay,
 body.theme-light #admin-panel-modal.modal-overlay {
   background: rgba(180, 184, 188, 0.40);
 }
 
-body.theme-light .diep-shop-window {
+body.theme-light .falo-shop-window {
   background-color: rgba(235, 238, 242, 0.70);
   color: #1f2937;
 }
 
-body.theme-light .diep-shop-header {
+body.theme-light .falo-shop-header {
   background-color: rgba(220, 224, 229, 0.85);
   border-bottom: 2px solid rgba(0, 0, 0, 0.12);
 }
 
-body.theme-light .diep-shop-logo {
+body.theme-light .falo-shop-logo {
   color: #111827;
   text-shadow: none;
   -webkit-text-stroke: 0px;
 }
 
-body.theme-light .diep-coins-chip {
+body.theme-light .falo-coins-chip {
   background-color: #e2e5e9;
   border-color: #c4c8cd;
   color: #1f2937;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-body.theme-light .diep-section-title {
+body.theme-light .falo-section-title {
   color: #111827;
   text-shadow: none;
 }
 
-body.theme-light .diep-section-sub,
-body.theme-light .diep-ends-in-tag {
+body.theme-light .falo-section-sub,
+body.theme-light .falo-ends-in-tag {
   color: #4b5563;
 }
 
-body.theme-light .diep-sort-select {
+body.theme-light .falo-sort-select {
   background-color: #e2e5e9;
   border-color: #c4c8cd;
   color: #1f2937;
 }
 
-body.theme-light .diep-rarity-filter-dots,
-body.theme-light .diep-tier-filter-bar {
+body.theme-light .falo-rarity-filter-dots,
+body.theme-light .falo-tier-filter-bar {
   background-color: #e2e5e9;
   border-color: #c4c8cd;
 }
 
-body.theme-light .diep-tier-filter-btn {
+body.theme-light .falo-tier-filter-btn {
   color: #4b5563;
 }
 
-body.theme-light .diep-tier-filter-btn:hover {
+body.theme-light .falo-tier-filter-btn:hover {
   color: #111827;
   background: rgba(0, 0, 0, 0.06);
 }
 
-body.theme-light .diep-tier-filter-btn.active {
+body.theme-light .falo-tier-filter-btn.active {
   color: #ffffff;
 }
 
@@ -3390,23 +3412,23 @@ body.theme-light .diep-tier-filter-btn.active {
    ADMIN PANEL TIDY UP: WHITE MODULES, BLUE/GREY BUTTONS, RED EXIT
    ======================================================== */
 
-.diep-admin-window {
+.falo-admin-window {
   background-color: #e2e8f0 !important;
   color: #0f172a !important;
 }
 
-body.theme-light .diep-admin-window {
+body.theme-light .falo-admin-window {
   background-color: #e2e8f0 !important;
   color: #0f172a !important;
 }
 
 /* Header */
-.diep-admin-window .diep-shop-header {
+.falo-admin-window .falo-shop-header {
   background-color: #ffffff !important;
   border-bottom: 2px solid #cbd5e1 !important;
 }
 
-.diep-admin-window .diep-shop-logo {
+.falo-admin-window .falo-shop-logo {
   color: #00b2e1 !important;
   text-shadow: none !important;
   -webkit-text-stroke: 0px !important;
@@ -3414,11 +3436,11 @@ body.theme-light .diep-admin-window {
   letter-spacing: 1.5px !important;
 }
 
-.diep-admin-window .diep-shop-tabs {
+.falo-admin-window .falo-shop-tabs {
   gap: calc(10px * var(--ui-scale));
 }
 
-.diep-admin-window .diep-shop-tab {
+.falo-admin-window .falo-shop-tab {
   background-color: #f1f5f9;
   border-color: #cbd5e1;
   color: #475569;
@@ -3426,13 +3448,13 @@ body.theme-light .diep-admin-window {
   -webkit-text-stroke: 0px;
 }
 
-.diep-admin-window .diep-shop-tab:hover {
+.falo-admin-window .falo-shop-tab:hover {
   background-color: #e2e8f0;
   color: #0f172a;
   filter: none;
 }
 
-.diep-admin-window .diep-shop-tab.active {
+.falo-admin-window .falo-shop-tab.active {
   background-color: #00b2e1 !important;
   border-color: #007a9e !important;
   color: #ffffff !important;
@@ -3441,8 +3463,8 @@ body.theme-light .diep-admin-window {
 }
 
 /* Red Exit / Close Button */
-.diep-admin-window .diep-shop-close-btn,
-.diep-admin-window #close-admin-btn {
+.falo-admin-window .falo-shop-close-btn,
+.falo-admin-window #close-admin-btn {
   background-color: #f14e54 !important;
   background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%) !important;
   border: calc(2.5px * var(--ui-scale)) solid #b3393e !important;
@@ -3462,36 +3484,36 @@ body.theme-light .diep-admin-window {
   transition: filter 0.12s ease !important;
 }
 
-.diep-admin-window .diep-shop-close-btn:hover,
-.diep-admin-window #close-admin-btn:hover {
+.falo-admin-window .falo-shop-close-btn:hover,
+.falo-admin-window #close-admin-btn:hover {
   filter: brightness(1.15) !important;
   transform: none !important;
 }
 
-.diep-admin-window .diep-shop-close-btn:active,
-.diep-admin-window #close-admin-btn:active {
+.falo-admin-window .falo-shop-close-btn:active,
+.falo-admin-window #close-admin-btn:active {
   filter: brightness(0.92) !important;
   transform: none !important;
 }
 
-.diep-admin-window .diep-coins-chip {
+.falo-admin-window .falo-coins-chip {
   background-color: #f1f5f9 !important;
   border-color: #cbd5e1 !important;
   box-shadow: none !important;
 }
 
 /* Scroll area container */
-.diep-admin-window .diep-shop-scroll-area {
+.falo-admin-window .falo-shop-scroll-area {
   padding: calc(20px * var(--ui-scale)) calc(24px * var(--ui-scale)) !important;
   gap: calc(16px * var(--ui-scale)) !important;
 }
 
 /* White Module Backgrounds with Grid for all sections, cards, and modules */
-.diep-admin-window .admin-module-card,
-.diep-admin-window .diep-shop-section,
-.diep-admin-window .diep-card,
-.diep-admin-window .admin-field-card,
-.diep-admin-window .admin-crew-card-full {
+.falo-admin-window .admin-module-card,
+.falo-admin-window .falo-shop-section,
+.falo-admin-window .falo-card,
+.falo-admin-window .admin-field-card,
+.falo-admin-window .admin-crew-card-full {
   background-color: #ffffff !important;
   background-image: 
     linear-gradient(to right, rgba(148, 163, 184, 0.35) 1px, transparent 1px),
@@ -3502,19 +3524,19 @@ body.theme-light .diep-admin-window {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
 }
 
-.diep-admin-window .admin-module-card {
+.falo-admin-window .admin-module-card {
   padding: calc(16px * var(--ui-scale)) calc(20px * var(--ui-scale)) !important;
   margin-bottom: calc(14px * var(--ui-scale)) !important;
 }
 
-.diep-admin-window .admin-field-card,
-.diep-admin-window .admin-crew-card-full {
+.falo-admin-window .admin-field-card,
+.falo-admin-window .admin-crew-card-full {
   border-color: #cbd5e1 !important;
   box-shadow: none !important;
 }
 
 /* Headers and text inside white modules */
-.diep-admin-window .diep-section-title {
+.falo-admin-window .falo-section-title {
   color: #0f172a !important;
   font-size: calc(13px * var(--ui-scale)) !important;
   font-weight: 900 !important;
@@ -3522,42 +3544,42 @@ body.theme-light .diep-admin-window {
   text-shadow: none !important;
 }
 
-.diep-admin-window .diep-section-subtitle,
-.diep-admin-window .diep-card-subdesc,
-.diep-admin-window .admin-crew-card-header .diep-card-subdesc {
+.falo-admin-window .falo-section-subtitle,
+.falo-admin-window .falo-card-subdesc,
+.falo-admin-window .admin-crew-card-header .falo-card-subdesc {
   color: #64748b !important;
   font-size: calc(11.5px * var(--ui-scale)) !important;
   font-weight: 600 !important;
 }
 
-.diep-admin-window .field-card-label {
+.falo-admin-window .field-card-label {
   color: #0284c7 !important;
   font-size: calc(11px * var(--ui-scale)) !important;
   font-weight: 900 !important;
   letter-spacing: 0.8px !important;
 }
 
-.diep-admin-window .diep-card-title {
+.falo-admin-window .falo-card-title {
   color: #0f172a !important;
   font-weight: 900 !important;
 }
 
-.diep-admin-window .admin-crew-badge {
+.falo-admin-window .admin-crew-badge {
   background: #f1f5f9 !important;
   color: #0284c7 !important;
   border: 1px solid #cbd5e1 !important;
   font-weight: 900 !important;
 }
 
-.diep-admin-window .admin-checkbox-label {
+.falo-admin-window .admin-checkbox-label {
   color: #334155 !important;
   font-weight: 800 !important;
 }
 
 /* Inputs in admin panel */
-.diep-admin-window .setting-input,
-.diep-admin-window .admin-num-control input,
-.diep-admin-window select.setting-input {
+.falo-admin-window .setting-input,
+.falo-admin-window .admin-num-control input,
+.falo-admin-window select.setting-input {
   background: #f8fafc !important;
   border: calc(2px * var(--ui-scale)) solid #cbd5e1 !important;
   color: #0f172a !important;
@@ -3565,45 +3587,45 @@ body.theme-light .diep-admin-window {
   font-weight: 700 !important;
 }
 
-.diep-admin-window .setting-input:focus,
-.diep-admin-window .admin-num-control input:focus,
-.diep-admin-window select.setting-input:focus {
+.falo-admin-window .setting-input:focus,
+.falo-admin-window .admin-num-control input:focus,
+.falo-admin-window select.setting-input:focus {
   border-color: #00b2e1 !important;
   outline: none !important;
   box-shadow: 0 0 0 2px rgba(0, 178, 225, 0.2) !important;
 }
 
 /* ========================================================
-   ADMIN BUTTON RULES: ONLY DIEP BLUE OR GREY
+   ADMIN BUTTON RULES: ONLY FALO BLUE OR GREY
    ======================================================== */
 
 /* 1. BLUE BUTTONS (Default for primary / action buttons) */
-.diep-admin-window .admin-btn,
-.diep-admin-window .diep-card-action-btn,
-.diep-admin-window .adm-save-crew-btn,
-.diep-admin-window button.admin-btn,
-.diep-admin-window button.diep-card-action-btn,
-.diep-admin-window #adm-save-all-btn,
-.diep-admin-window #adm-equip-custom-color-btn,
-.diep-admin-window #adm-preset-rich,
-.diep-admin-window #adm-preset-million,
-.diep-admin-window #adm-preset-max-crew,
-.diep-admin-window #adm-preset-unlock-all,
-.diep-admin-window #adm-set-coins-btn,
-.diep-admin-window #adm-set-highscore-btn,
-.diep-admin-window #adm-set-maxwave-btn,
-.diep-admin-window #adm-set-pilotname-btn,
-.diep-admin-window #adm-unlock-all-tanks-btn,
-.diep-admin-window #adm-unlock-all-colors-btn,
-.diep-admin-window #adm-lvl-10,
-.diep-admin-window #adm-lvl-max,
-.diep-admin-window #adm-give-level150-btn,
-.diep-admin-window #adm-wave-next,
-.diep-admin-window #adm-spawn-shape,
-.diep-admin-window #adm-spawn-enemy,
-.diep-admin-window #adm-spawn-swarmer,
-.diep-admin-window #adm-spawn-sniper,
-.diep-admin-window #adm-spawn-heavy {
+.falo-admin-window .admin-btn,
+.falo-admin-window .falo-card-action-btn,
+.falo-admin-window .adm-save-crew-btn,
+.falo-admin-window button.admin-btn,
+.falo-admin-window button.falo-card-action-btn,
+.falo-admin-window #adm-save-all-btn,
+.falo-admin-window #adm-equip-custom-color-btn,
+.falo-admin-window #adm-preset-rich,
+.falo-admin-window #adm-preset-million,
+.falo-admin-window #adm-preset-max-crew,
+.falo-admin-window #adm-preset-unlock-all,
+.falo-admin-window #adm-set-coins-btn,
+.falo-admin-window #adm-set-highscore-btn,
+.falo-admin-window #adm-set-maxwave-btn,
+.falo-admin-window #adm-set-pilotname-btn,
+.falo-admin-window #adm-unlock-all-tanks-btn,
+.falo-admin-window #adm-unlock-all-colors-btn,
+.falo-admin-window #adm-lvl-10,
+.falo-admin-window #adm-lvl-max,
+.falo-admin-window #adm-give-level150-btn,
+.falo-admin-window #adm-wave-next,
+.falo-admin-window #adm-spawn-shape,
+.falo-admin-window #adm-spawn-enemy,
+.falo-admin-window #adm-spawn-swarmer,
+.falo-admin-window #adm-spawn-sniper,
+.falo-admin-window #adm-spawn-heavy {
   background-color: #00b2e1 !important;
   background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%) !important;
   border: calc(2.5px * var(--ui-scale)) solid #007a9e !important;
@@ -3623,35 +3645,35 @@ body.theme-light .diep-admin-window {
   transition: filter 0.12s ease !important;
 }
 
-.diep-admin-window .admin-btn:hover,
-.diep-admin-window .diep-card-action-btn:hover,
-.diep-admin-window .adm-save-crew-btn:hover,
-.diep-admin-window #adm-save-all-btn:hover,
-.diep-admin-window #adm-equip-custom-color-btn:hover {
+.falo-admin-window .admin-btn:hover,
+.falo-admin-window .falo-card-action-btn:hover,
+.falo-admin-window .adm-save-crew-btn:hover,
+.falo-admin-window #adm-save-all-btn:hover,
+.falo-admin-window #adm-equip-custom-color-btn:hover {
   filter: brightness(1.16) !important;
   transform: none !important;
 }
 
-.diep-admin-window .admin-btn:active,
-.diep-admin-window .diep-card-action-btn:active,
-.diep-admin-window .adm-save-crew-btn:active,
-.diep-admin-window #adm-save-all-btn:active,
-.diep-admin-window #adm-equip-custom-color-btn:active {
+.falo-admin-window .admin-btn:active,
+.falo-admin-window .falo-card-action-btn:active,
+.falo-admin-window .adm-save-crew-btn:active,
+.falo-admin-window #adm-save-all-btn:active,
+.falo-admin-window #adm-equip-custom-color-btn:active {
   filter: brightness(0.92) !important;
   transform: none !important;
 }
 
 /* 2. GREY BUTTONS (For Resets, Clears, Revert, Previous) */
-.diep-admin-window .admin-btn.btn-grey,
-.diep-admin-window .btn-grey,
-.diep-admin-window button.btn-grey,
-.diep-admin-window #adm-preset-reset,
-.diep-admin-window #adm-revert-custom-color-btn,
-.diep-admin-window #adm-wave-prev,
-.diep-admin-window #adm-clear-all,
-.diep-admin-window #adm-clear-shapes,
-.diep-admin-window #adm-clear-enemies,
-.diep-admin-window #adm-clear-telemetry-btn {
+.falo-admin-window .admin-btn.btn-grey,
+.falo-admin-window .btn-grey,
+.falo-admin-window button.btn-grey,
+.falo-admin-window #adm-preset-reset,
+.falo-admin-window #adm-revert-custom-color-btn,
+.falo-admin-window #adm-wave-prev,
+.falo-admin-window #adm-clear-all,
+.falo-admin-window #adm-clear-shapes,
+.falo-admin-window #adm-clear-enemies,
+.falo-admin-window #adm-clear-telemetry-btn {
   background-color: #64748b !important;
   background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%) !important;
   border: calc(2.5px * var(--ui-scale)) solid #475569 !important;
@@ -3671,44 +3693,44 @@ body.theme-light .diep-admin-window {
   transition: filter 0.12s ease !important;
 }
 
-.diep-admin-window .admin-btn.btn-grey:hover,
-.diep-admin-window .btn-grey:hover,
-.diep-admin-window #adm-preset-reset:hover,
-.diep-admin-window #adm-revert-custom-color-btn:hover,
-.diep-admin-window #adm-wave-prev:hover,
-.diep-admin-window #adm-clear-all:hover,
-.diep-admin-window #adm-clear-shapes:hover,
-.diep-admin-window #adm-clear-telemetry-btn:hover {
+.falo-admin-window .admin-btn.btn-grey:hover,
+.falo-admin-window .btn-grey:hover,
+.falo-admin-window #adm-preset-reset:hover,
+.falo-admin-window #adm-revert-custom-color-btn:hover,
+.falo-admin-window #adm-wave-prev:hover,
+.falo-admin-window #adm-clear-all:hover,
+.falo-admin-window #adm-clear-shapes:hover,
+.falo-admin-window #adm-clear-telemetry-btn:hover {
   filter: brightness(1.15) !important;
   transform: none !important;
 }
 
-.diep-admin-window .admin-btn.btn-grey:active,
-.diep-admin-window .btn-grey:active,
-.diep-admin-window #adm-preset-reset:active,
-.diep-admin-window #adm-revert-custom-color-btn:active,
-.diep-admin-window #adm-wave-prev:active,
-.diep-admin-window #adm-clear-all:active,
-.diep-admin-window #adm-clear-shapes:active,
-.diep-admin-window #adm-clear-telemetry-btn:active {
+.falo-admin-window .admin-btn.btn-grey:active,
+.falo-admin-window .btn-grey:active,
+.falo-admin-window #adm-preset-reset:active,
+.falo-admin-window #adm-revert-custom-color-btn:active,
+.falo-admin-window #adm-wave-prev:active,
+.falo-admin-window #adm-clear-all:active,
+.falo-admin-window #adm-clear-shapes:active,
+.falo-admin-window #adm-clear-telemetry-btn:active {
   filter: brightness(0.92) !important;
   transform: none !important;
 }
 
 /* Chassis Toggle Pills (Blue when active, Grey when inactive) */
-.diep-admin-window .admin-toggle-pill {
+.falo-admin-window .admin-toggle-pill {
   background: #f1f5f9 !important;
   border: calc(2px * var(--ui-scale)) solid #cbd5e1 !important;
   color: #475569 !important;
   font-weight: 900 !important;
 }
 
-.diep-admin-window .admin-toggle-pill:hover {
+.falo-admin-window .admin-toggle-pill:hover {
   border-color: #00b2e1 !important;
   color: #00b2e1 !important;
 }
 
-.diep-admin-window .admin-toggle-pill.active {
+.falo-admin-window .admin-toggle-pill.active {
   background: #00b2e1 !important;
   border-color: #007a9e !important;
   color: #ffffff !important;
@@ -3716,20 +3738,20 @@ body.theme-light .diep-admin-window {
 }
 
 /* Custom Color Controls in Admin */
-.diep-admin-window #adm-custom-color-status {
+.falo-admin-window #adm-custom-color-status {
   font-size: calc(10.5px * var(--ui-scale)) !important;
   font-weight: 900 !important;
   padding: calc(4px * var(--ui-scale)) calc(10px * var(--ui-scale)) !important;
   border-radius: 9999px !important;
 }
 
-.diep-admin-window #adm-custom-color-picker {
+.falo-admin-window #adm-custom-color-picker {
   border: 2px solid #00b2e1 !important;
   border-radius: calc(6px * var(--ui-scale)) !important;
 }
 
 /* Telemetry Log Console */
-.diep-admin-window .debug-log-console {
+.falo-admin-window .debug-log-console {
   background: #f8fafc !important;
   border: 2px solid #cbd5e1 !important;
   color: #0f172a !important;
@@ -3748,7 +3770,7 @@ body.theme-light .diep-admin-window {
   -webkit-backdrop-filter: blur(4px) !important;
 }
 
-#admin-panel-modal.ingame-popup-mode .diep-admin-window {
+#admin-panel-modal.ingame-popup-mode .falo-admin-window {
   width: calc(640px * var(--ui-scale)) !important;
   max-width: 94vw !important;
   height: auto !important;
@@ -3761,29 +3783,29 @@ body.theme-light .diep-admin-window {
   flex-direction: column !important;
 }
 
-#admin-panel-modal.ingame-popup-mode .diep-shop-header {
+#admin-panel-modal.ingame-popup-mode .falo-shop-header {
   padding: calc(10px * var(--ui-scale)) calc(16px * var(--ui-scale)) !important;
   min-height: calc(48px * var(--ui-scale)) !important;
   flex-shrink: 0 !important;
 }
 
-#admin-panel-modal.ingame-popup-mode .diep-shop-logo {
+#admin-panel-modal.ingame-popup-mode .falo-shop-logo {
   font-size: calc(15px * var(--ui-scale)) !important;
   letter-spacing: 1.2px !important;
 }
 
-#admin-panel-modal.ingame-popup-mode .diep-shop-tabs,
+#admin-panel-modal.ingame-popup-mode .falo-shop-tabs,
 #admin-panel-modal.ingame-popup-mode #tab-adm-userdata-btn,
 #admin-panel-modal.ingame-popup-mode #tab-adm-crew-btn,
 #admin-panel-modal.ingame-popup-mode #tab-adm-telemetry-btn,
 #admin-panel-modal.ingame-popup-mode #adm-tab-pane-userdata,
 #admin-panel-modal.ingame-popup-mode #adm-tab-pane-crew,
 #admin-panel-modal.ingame-popup-mode #adm-tab-pane-telemetry,
-#admin-panel-modal.ingame-popup-mode .diep-coins-chip {
+#admin-panel-modal.ingame-popup-mode .falo-coins-chip {
   display: none !important;
 }
 
-#admin-panel-modal.ingame-popup-mode .diep-shop-scroll-area {
+#admin-panel-modal.ingame-popup-mode .falo-shop-scroll-area {
   max-height: calc(84vh - 54px) !important;
   padding: calc(14px * var(--ui-scale)) !important;
   overflow-y: auto !important;
@@ -3856,7 +3878,7 @@ body.theme-light .diep-admin-window {
    CREW BARRACKS FULL-WIDTH UPGRADE BARS
    ======================================================== */
 
-.diep-crew-list {
+.falo-crew-list {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -3866,7 +3888,7 @@ body.theme-light .diep-admin-window {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
-.diep-crew-row {
+.falo-crew-row {
   width: 100%;
   background-color: #f8fafc;
   border: none;
@@ -3878,15 +3900,15 @@ body.theme-light .diep-admin-window {
   transition: filter 0.14s ease;
 }
 
-.diep-crew-row:last-child {
+.falo-crew-row:last-child {
   border-bottom: none !important;
 }
 
-.diep-crew-row:hover {
+.falo-crew-row:hover {
   filter: brightness(0.985);
 }
 
-.diep-crew-icon-col {
+.falo-crew-icon-col {
   width: calc(68px * var(--ui-scale));
   height: calc(68px * var(--ui-scale));
   display: flex;
@@ -3895,7 +3917,7 @@ body.theme-light .diep-admin-window {
   flex-shrink: 0;
 }
 
-.diep-crew-info-col {
+.falo-crew-info-col {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -3903,7 +3925,7 @@ body.theme-light .diep-admin-window {
   gap: calc(9px * var(--ui-scale));
 }
 
-.diep-crew-top-row {
+.falo-crew-top-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -3911,34 +3933,34 @@ body.theme-light .diep-admin-window {
   flex-wrap: wrap;
 }
 
-.diep-crew-name-group {
+.falo-crew-name-group {
   display: flex;
   align-items: baseline;
   gap: calc(10px * var(--ui-scale));
   flex-wrap: wrap;
 }
 
-.diep-crew-name {
+.falo-crew-name {
   font-size: calc(16px * var(--ui-scale));
   font-weight: 900;
   color: #0f172a;
   letter-spacing: -0.2px;
 }
 
-.diep-crew-desc {
+.falo-crew-desc {
   font-size: calc(11.5px * var(--ui-scale));
   font-weight: 700;
   color: #475569;
 }
 
-.diep-crew-stats-group {
+.falo-crew-stats-group {
   display: flex;
   align-items: center;
   gap: calc(10px * var(--ui-scale));
   flex-shrink: 0;
 }
 
-.diep-crew-bonus-tag {
+.falo-crew-bonus-tag {
   font-size: calc(11.5px * var(--ui-scale));
   font-weight: 900;
   background: rgba(255, 255, 255, 0.8);
@@ -3947,14 +3969,14 @@ body.theme-light .diep-admin-window {
   padding: calc(2px * var(--ui-scale)) calc(8px * var(--ui-scale));
 }
 
-.diep-crew-lvl-tag {
+.falo-crew-lvl-tag {
   font-size: calc(11.5px * var(--ui-scale));
   font-weight: 900;
   color: #334155;
   letter-spacing: 0.4px;
 }
 
-.diep-crew-bar-track {
+.falo-crew-bar-track {
   width: 100%;
   height: calc(18px * var(--ui-scale));
   background: #1e293b;
@@ -3967,19 +3989,19 @@ body.theme-light .diep-admin-window {
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
 }
 
-.diep-crew-seg {
+.falo-crew-seg {
   height: 100%;
   border-radius: calc(3px * var(--ui-scale));
   background: rgba(255, 255, 255, 0.10);
   transition: background-color 0.2s ease, transform 0.15s ease;
 }
 
-.diep-crew-seg.filled {
+.falo-crew-seg.filled {
   background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.28) 0%, transparent 55%, rgba(0, 0, 0, 0.18) 100%);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-.diep-crew-action-col {
+.falo-crew-action-col {
   width: calc(165px * var(--ui-scale));
   flex-shrink: 0;
   display: flex;
@@ -4005,7 +4027,7 @@ body.theme-light .diep-admin-window {
   pointer-events: none;
 }
 
-.diep-admin-window .admin-toggle-btn {
+.falo-admin-window .admin-toggle-btn {
   position: relative;
   display: flex;
   align-items: center;
@@ -4034,26 +4056,26 @@ body.theme-light .diep-admin-window {
   transition: filter 0.12s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.diep-admin-window .admin-toggle-btn:hover {
+.falo-admin-window .admin-toggle-btn:hover {
   filter: brightness(1.14);
 }
 
-.diep-admin-window .admin-toggle-btn:active {
+.falo-admin-window .admin-toggle-btn:active {
   filter: brightness(0.92);
 }
 
-.diep-admin-window .admin-toggle-btn.is-active {
+.falo-admin-window .admin-toggle-btn.is-active {
   background-color: #00b2e1;
   border-color: #007a9e;
 }
 
-.diep-admin-window .toggle-btn-label {
+.falo-admin-window .toggle-btn-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.diep-admin-window .toggle-btn-state {
+.falo-admin-window .toggle-btn-state {
   flex-shrink: 0;
   font-size: calc(10px * var(--ui-scale));
   font-weight: 900;
@@ -4067,7 +4089,7 @@ body.theme-light .diep-admin-window {
   letter-spacing: 0.6px;
 }
 
-.diep-admin-window .admin-toggle-btn.is-active .toggle-btn-state {
+.falo-admin-window .admin-toggle-btn.is-active .toggle-btn-state {
   background: rgba(255, 255, 255, 0.92);
   border-color: #ffffff;
   color: #0284c7;
@@ -4433,33 +4455,33 @@ body.is-mobile .center-hud {
     max-width: calc(100vw - 2 * clamp(104px, 26vmin, 140px) - 34px);
   }
 
-  .diep-shop-header {
+  .falo-shop-header {
     flex-wrap: wrap;
     gap: 8px;
     padding: 10px 12px;
   }
 
-  .diep-shop-header-left {
+  .falo-shop-header-left {
     flex-wrap: wrap;
     gap: 8px;
   }
 
-  .diep-shop-tabs {
+  .falo-shop-tabs {
     flex-wrap: wrap;
     gap: 6px;
   }
 
-  .diep-shop-tab {
+  .falo-shop-tab {
     padding: 6px 10px;
     font-size: 11px;
   }
 
-  .diep-section-header {
+  .falo-section-header {
     flex-wrap: wrap;
     gap: 8px;
   }
 
-  .diep-filter-sort-bar {
+  .falo-filter-sort-bar {
     flex-wrap: wrap;
     gap: 6px;
   }
@@ -4618,11 +4640,11 @@ body.is-mobile .center-hud {
     font-size: 13px;
   }
 
-  .diep-shop-header {
+  .falo-shop-header {
     padding: 8px 14px;
   }
 
-  .diep-shop-scroll-area {
+  .falo-shop-scroll-area {
     padding: 12px 16px;
     gap: 14px;
   }
@@ -4630,7 +4652,7 @@ body.is-mobile .center-hud {
 
 @media (prefers-reduced-motion: reduce) {
   #main-menu-overlay.modal-overlay,
-  .diep-shop-window,
+  .falo-shop-window,
   #game-over-modal,
   #game-over-modal .modal-box {
     transition: opacity 0.15s ease !important;
@@ -5017,13 +5039,13 @@ body.theme-light .evo-node-sub {
   -webkit-backdrop-filter: blur(3px);
 }
 
-#evolution-tree-modal.ingame-translucent .diep-evo-window {
+#evolution-tree-modal.ingame-translucent .falo-evo-window {
   background-color: rgba(17, 18, 22, 0.36);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
-#evolution-tree-modal.ingame-translucent .diep-shop-header {
+#evolution-tree-modal.ingame-translucent .falo-shop-header {
   background-color: rgba(23, 24, 29, 0.62);
 }
 
@@ -5035,11 +5057,11 @@ body.theme-light #evolution-tree-modal.ingame-translucent.modal-overlay {
   background: rgba(226, 232, 240, 0.22);
 }
 
-body.theme-light #evolution-tree-modal.ingame-translucent .diep-evo-window {
+body.theme-light #evolution-tree-modal.ingame-translucent .falo-evo-window {
   background-color: rgba(235, 238, 242, 0.34);
 }
 
-body.theme-light #evolution-tree-modal.ingame-translucent .diep-shop-header {
+body.theme-light #evolution-tree-modal.ingame-translucent .falo-shop-header {
   background-color: rgba(220, 224, 229, 0.66);
 }
 
@@ -5048,7 +5070,7 @@ body.theme-light #evolution-tree-modal.ingame-translucent .evo-tree-viewport {
 }
 
 /* Mobile Evolution Tree GPU Optimization */
-body.is-mobile .diep-evo-window {
+body.is-mobile .falo-evo-window {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   filter: none !important;
@@ -5056,11 +5078,11 @@ body.is-mobile .diep-evo-window {
   transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
 }
 
-body.theme-light.is-mobile .diep-evo-window {
+body.theme-light.is-mobile .falo-evo-window {
   background-color: #e2e5e9;
 }
 
-body.is-mobile #evolution-tree-modal .diep-shop-header {
+body.is-mobile #evolution-tree-modal .falo-shop-header {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -5071,7 +5093,7 @@ body.is-mobile #evolution-tree-modal.ingame-translucent.modal-overlay {
   background: rgba(10, 12, 16, 0.42);
 }
 
-body.is-mobile #evolution-tree-modal.ingame-translucent .diep-evo-window {
+body.is-mobile #evolution-tree-modal.ingame-translucent .falo-evo-window {
   background-color: rgba(17, 18, 22, 0.68);
 }
 
@@ -5079,10 +5101,1023 @@ body.theme-light.is-mobile #evolution-tree-modal.ingame-translucent.modal-overla
   background: rgba(226, 232, 240, 0.36);
 }
 
-body.theme-light.is-mobile #evolution-tree-modal.ingame-translucent .diep-evo-window {
+body.theme-light.is-mobile #evolution-tree-modal.ingame-translucent .falo-evo-window {
   background-color: rgba(235, 238, 242, 0.68);
 }
 
 body.is-mobile .evo-node-circle {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
+}
+
+/* ========================================================
+   DYNAMIC SPLIT-PANE ARMORY SHOP & SETTINGS LIVE SHOWCASE
+   ======================================================== */
+
+/* Opaque Backdrop & Window (hide main menu behind shop & settings) */
+#armory-modal.modal-overlay,
+#settings-modal.modal-overlay {
+  background: #14161c;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.falo-armory-window,
+.falo-settings-window {
+  background-color: #16181f;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+#armory-modal.modal-overlay.active .falo-armory-window,
+#settings-modal.modal-overlay.active .falo-settings-window {
+  transform: none;
+  filter: none;
+  overflow: visible;
+}
+
+.falo-armory-window .falo-shop-header,
+.falo-settings-window .falo-shop-header {
+  position: relative;
+  z-index: 20;
+  background-color: #1c1f27;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body.theme-light #armory-modal.modal-overlay,
+body.theme-light #settings-modal.modal-overlay {
+  background: #dde1e7;
+}
+
+body.theme-light .falo-armory-window,
+body.theme-light .falo-settings-window {
+  background-color: #e4e7ec;
+}
+
+body.theme-light .falo-armory-window .falo-shop-header,
+body.theme-light .falo-settings-window .falo-shop-header {
+  background-color: #d6dbe2;
+}
+
+.falo-armory-window .falo-shop-header-left,
+.falo-armory-window .falo-shop-header-right,
+.falo-settings-window .falo-shop-header-left,
+.falo-settings-window .falo-shop-header-right {
+  will-change: transform;
+}
+
+.falo-armory-window .falo-shop-tab,
+.falo-settings-window .falo-shop-tab {
+  position: relative;
+  border-radius: calc(4px * var(--ui-scale));
+  padding: calc(8px * var(--ui-scale)) calc(18px * var(--ui-scale));
+  background: linear-gradient(130deg, #2d333f 0%, #1b1f27 100%);
+  border: calc(2.5px * var(--ui-scale)) solid #0e1116;
+  border-bottom-width: calc(5px * var(--ui-scale));
+  border-bottom-color: #090b0e;
+  color: #f3f6fa;
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+  transform: skewX(-10deg);
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 0, 0, 0.28);
+  transition:
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.14s ease,
+    box-shadow 0.16s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.16s ease;
+}
+
+body.theme-light .falo-armory-window .falo-shop-tab:not(.active),
+body.theme-light .falo-settings-window .falo-shop-tab:not(.active) {
+  background: linear-gradient(165deg, #f8fafc 0%, #e2e7ef 100%);
+  border-color: #161a22;
+  border-bottom-color: #5b6370;
+  color: #151922;
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+}
+
+.falo-armory-window .falo-shop-tab.active,
+body.theme-light .falo-armory-window .falo-shop-tab.active,
+.falo-settings-window .falo-shop-tab.active,
+body.theme-light .falo-settings-window .falo-shop-tab.active {
+  background: linear-gradient(125deg, #00c4f4 0%, #009ac4 68%, #0082a8 100%);
+  border-color: #0b1924;
+  border-bottom-color: #005873;
+  color: #ffffff;
+  text-shadow: 1.5px 2px 0 rgba(0, 40, 56, 0.55);
+  -webkit-text-stroke: 0;
+}
+
+.falo-armory-window .falo-shop-tab:hover,
+.falo-settings-window .falo-shop-tab:hover {
+  transform: translate3d(-3px, -2px, 0) skewX(-10deg) scale(1.035);
+  filter: brightness(1.08);
+  box-shadow: -7px 8px 0 rgba(0, 0, 0, 0.48), 0 12px 24px rgba(0, 0, 0, 0.35);
+}
+
+.falo-armory-window .falo-shop-tab:active,
+.falo-settings-window .falo-shop-tab:active {
+  transform: translate3d(1px, 2px, 0) skewX(-10deg) scale(0.985);
+  box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.44);
+}
+
+.falo-armory-window .falo-coins-chip,
+.falo-settings-window .falo-coins-chip {
+  border-radius: calc(4px * var(--ui-scale));
+  border: calc(2.5px * var(--ui-scale)) solid rgba(255, 255, 255, 0.18);
+  border-bottom-width: calc(4.5px * var(--ui-scale));
+  border-bottom-color: #007a9e;
+  transform: skewX(-10deg);
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+body.theme-light .falo-armory-window .falo-coins-chip,
+body.theme-light .falo-settings-window .falo-coins-chip {
+  background: linear-gradient(165deg, #f8fafc 0%, #e2e7ef 100%);
+  border-color: #161a22;
+  border-bottom-color: #007a9e;
+  color: #151922;
+}
+
+.falo-settings-window .falo-settings-status-chip .chip-coins-amount {
+  color: #7dd3fc;
+  font-size: calc(12px * var(--ui-scale));
+  letter-spacing: 0.6px;
+}
+
+body.theme-light .falo-settings-window .falo-settings-status-chip .chip-coins-amount {
+  color: #0284c7;
+}
+
+.falo-settings-window .settings-chip-dot {
+  display: inline-block;
+  width: calc(9px * var(--ui-scale));
+  height: calc(9px * var(--ui-scale));
+  border-radius: 50%;
+  background: #00b2e1;
+  border: calc(1.5px * var(--ui-scale)) solid #007a9e;
+  transform: skewX(10deg);
+}
+
+.falo-armory-window .falo-coins-chip .chip-coin-icon,
+.falo-armory-window .shop-preview-action-btn .falo-coin-icon,
+.falo-settings-window .shop-preview-action-btn .falo-coin-icon {
+  transform: skewX(10deg);
+}
+
+.falo-armory-window #close-armory-btn,
+body.theme-light .falo-armory-window #close-armory-btn,
+.falo-settings-window #close-settings-btn,
+body.theme-light .falo-settings-window #close-settings-btn {
+  width: auto;
+  padding: calc(7px * var(--ui-scale)) calc(15px * var(--ui-scale));
+  font-size: calc(13px * var(--ui-scale));
+  letter-spacing: 0.5px;
+  border-radius: calc(4px * var(--ui-scale));
+  background: linear-gradient(135deg, #f8575e 0%, #d9383f 100%);
+  border: calc(2.5px * var(--ui-scale)) solid #240c0f;
+  border-bottom-width: calc(5px * var(--ui-scale));
+  border-bottom-color: #88171c;
+  color: #ffffff;
+  text-shadow: 1.5px 2px 0 rgba(69, 10, 10, 0.55);
+  -webkit-text-stroke: 0;
+  transform: skewX(-10deg);
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 0, 0, 0.28);
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), filter 0.12s ease, box-shadow 0.16s ease;
+}
+
+.falo-armory-window #close-armory-btn:hover,
+body.theme-light .falo-armory-window #close-armory-btn:hover,
+.falo-settings-window #close-settings-btn:hover,
+body.theme-light .falo-settings-window #close-settings-btn:hover {
+  transform: translate3d(-3px, -2px, 0) skewX(-10deg) scale(1.04) !important;
+  filter: brightness(1.08);
+  box-shadow: -7px 8px 0 rgba(0, 0, 0, 0.48), 0 12px 24px rgba(0, 0, 0, 0.35);
+}
+
+.falo-armory-window #close-armory-btn:active,
+body.theme-light .falo-armory-window #close-armory-btn:active,
+.falo-settings-window #close-settings-btn:active,
+body.theme-light .falo-settings-window #close-settings-btn:active {
+  transform: translate3d(1px, 2px, 0) skewX(-10deg) scale(0.98) !important;
+  box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.44);
+}
+
+.falo-shop-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.48fr) minmax(320px, 1fr);
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+  background-color: #16181f;
+}
+
+body.theme-light .falo-shop-body {
+  background-color: #e4e7ec;
+}
+
+/* Un-skewed Scroll Container for Reliable Cursor Hit-Testing */
+.falo-shop-catalog-pane {
+  position: relative;
+  z-index: 2;
+  margin-left: 0;
+  padding: calc(20px * var(--ui-scale)) calc(28px * var(--ui-scale)) calc(28px * var(--ui-scale)) calc(26px * var(--ui-scale));
+  overflow-y: auto;
+  overflow-x: hidden;
+  transform: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.falo-shop-catalog-pane::-webkit-scrollbar {
+  display: none;
+}
+
+/* Unified Coplanar Container so All Sections Move With Identical Cursor Influence */
+.falo-armory-window .falo-shop-unified-plane,
+.falo-settings-window .falo-shop-unified-plane {
+  display: flex;
+  flex-direction: column;
+  gap: calc(24px * var(--ui-scale));
+  will-change: transform;
+}
+
+.falo-armory-window .falo-shop-section,
+.falo-settings-window .falo-shop-section {
+  position: relative;
+}
+
+.falo-armory-window .falo-items-grid,
+.falo-settings-window .falo-items-grid {
+  grid-template-columns: repeat(auto-fill, minmax(calc(168px * var(--ui-scale)), 1fr));
+  gap: calc(14px * var(--ui-scale));
+}
+
+.falo-settings-window .settings-cards-grid {
+  grid-template-columns: repeat(auto-fit, minmax(calc(210px * var(--ui-scale)), 1fr));
+  max-width: calc(560px * var(--ui-scale));
+}
+
+.falo-armory-window .falo-shop-tilt-card,
+.falo-settings-window .falo-shop-tilt-card {
+  will-change: transform;
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 0, 0, 0.28);
+  transform: skewX(3.5deg);
+  transition:
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.falo-armory-window .falo-shop-tilt-card.is-equipped,
+.falo-settings-window .falo-shop-tilt-card.is-equipped {
+  box-shadow: 0 0 0 calc(3px * var(--ui-scale)) #00b2e1, -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 178, 225, 0.36) !important;
+}
+
+.falo-armory-window .falo-shop-tilt-card:hover,
+.falo-armory-window .falo-shop-tilt-card.is-preview-active,
+.falo-settings-window .falo-shop-tilt-card:hover,
+.falo-settings-window .falo-shop-tilt-card.is-preview-active {
+  transform: translateY(calc(-3px * var(--ui-scale))) skewX(3.5deg) scale(1.02);
+  border-color: #00b2e1 !important;
+  box-shadow: -7px 8px 0 rgba(0, 0, 0, 0.48), 0 12px 24px rgba(0, 178, 225, 0.28);
+  z-index: 4;
+}
+
+.falo-armory-window .falo-card-preview-stage svg,
+.falo-armory-window .falo-crew-icon-col svg,
+.falo-settings-window .falo-card-preview-stage svg {
+  transform: skewX(-3.5deg);
+  filter: drop-shadow(-4px 5px 0 rgba(0, 0, 0, 0.42)) drop-shadow(0 5px 12px rgba(0, 0, 0, 0.24));
+}
+
+.falo-armory-window .falo-card:hover .falo-card-preview-stage svg,
+.falo-settings-window .falo-card:hover .falo-card-preview-stage svg {
+  transform: skewX(-3.5deg) scale(1.05);
+}
+
+/* Settings Cards inside Shop Split Layout */
+.falo-settings-window .settings-option-card {
+  padding: 0;
+}
+
+.falo-settings-window .settings-theme-stage {
+  margin: calc(10px * var(--ui-scale)) calc(10px * var(--ui-scale)) calc(8px * var(--ui-scale));
+  height: calc(116px * var(--ui-scale));
+  border-radius: calc(7px * var(--ui-scale));
+  border: calc(2px * var(--ui-scale)) solid rgba(15, 23, 42, 0.16);
+  overflow: hidden;
+}
+
+.falo-settings-window .settings-theme-stage.light-preview {
+  background-color: #cdcdcd;
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.085) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.085) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.falo-settings-window .settings-theme-stage.dark-preview {
+  background-color: #1a1c23;
+  border-color: rgba(255, 255, 255, 0.14);
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.065) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.065) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.falo-settings-window .settings-theme-tank-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.falo-settings-window .settings-scale-bar-container {
+  max-width: 100%;
+}
+
+.falo-settings-window .scale-chip-btn {
+  border-radius: calc(4px * var(--ui-scale));
+  background: linear-gradient(130deg, #475569 0%, #334155 100%);
+  border: calc(2px * var(--ui-scale)) solid #1e293b;
+  border-bottom-width: calc(4px * var(--ui-scale));
+  border-bottom-color: #0f172a;
+  color: #ffffff;
+  text-shadow: none;
+  box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.25);
+  transition: transform 0.14s ease, filter 0.12s ease, background 0.14s ease, border-color 0.14s ease;
+}
+
+.falo-settings-window .scale-chip-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+.falo-settings-window .scale-chip-btn.active {
+  background: linear-gradient(125deg, #00c4f4 0%, #009ac4 68%, #0082a8 100%);
+  border-color: #0b1924;
+  border-bottom-color: #005873;
+  text-shadow: 1px 1.5px 0 rgba(0, 40, 56, 0.5);
+}
+
+.falo-settings-window .settings-controls-grid {
+  max-width: 100%;
+  grid-template-columns: repeat(auto-fill, minmax(calc(240px * var(--ui-scale)), 1fr));
+  gap: calc(14px * var(--ui-scale));
+}
+
+.falo-settings-window .control-key-card {
+  cursor: pointer;
+}
+
+.falo-settings-window .control-key-card .key-badge {
+  transform: skewX(-3.5deg);
+}
+
+/* Remove outer frame clipping from Crew Barracks so every crew card pops cleanly */
+.falo-armory-window .falo-crew-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(14px * var(--ui-scale));
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  box-shadow: none;
+  background: transparent;
+}
+
+.falo-armory-window .falo-crew-row {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: calc(10px * var(--ui-scale));
+  border-width: calc(2.5px * var(--ui-scale)) !important;
+  border-style: solid !important;
+  overflow: hidden;
+}
+
+.falo-armory-window .falo-crew-row:last-child {
+  border-bottom-width: calc(2.5px * var(--ui-scale)) !important;
+  border-bottom-style: solid !important;
+}
+
+.falo-armory-window .falo-crew-row.falo-shop-tilt-card,
+.falo-armory-window .falo-card,
+.falo-settings-window .falo-card {
+  cursor: pointer;
+}
+
+/* Card Status & Price Labels (replacing per-card Buy buttons) */
+.falo-card-status-row {
+  margin-top: auto;
+  padding-top: calc(6px * var(--ui-scale));
+  border-top: 1.5px solid rgba(148, 163, 184, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.falo-card-status-label {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(5px * var(--ui-scale));
+  font-size: calc(12px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.falo-card-status-label.is-price {
+  color: #0f172a;
+}
+
+.falo-card-status-label.is-price.is-unaffordable {
+  color: #b91c1c;
+}
+
+.falo-card-status-label.is-unlocked {
+  color: #059669;
+}
+
+.falo-card-status-label.is-equipped {
+  color: #0284c7;
+}
+
+.falo-armory-window .falo-crew-action-col {
+  width: auto;
+  min-width: calc(96px * var(--ui-scale));
+  justify-content: flex-end;
+}
+
+/* Right Preview Pane (Un-skewed layout container + decorative slanted backdrop) */
+.falo-shop-preview-pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 0;
+  min-width: 0;
+  margin: 0;
+  padding: calc(20px * var(--ui-scale)) calc(32px * var(--ui-scale)) calc(24px * var(--ui-scale)) calc(18px * var(--ui-scale));
+  transform: none;
+  overflow: visible;
+  z-index: 6;
+}
+
+.shop-preview-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, var(--shop-slant, 44px) 100%);
+  background-color: #1c2028;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+body.theme-light .shop-preview-backdrop {
+  background-color: #d6dae0;
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.065) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.065) 1px, transparent 1px);
+}
+
+.shop-preview-backdrop::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--shop-slant, 44px) + 6px);
+  background: linear-gradient(to bottom, #00b2e1, #007a9e);
+  clip-path: polygon(0 0, 4px 0, calc(var(--shop-slant, 44px) + 4px) 100%, var(--shop-slant, 44px) 100%);
+  opacity: 0.92;
+  pointer-events: none;
+}
+
+/* Custom Slanted Scrollbar Parallel to Diagonal Divider */
+.shop-slanted-scrollbar {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -14px;
+  width: 10px;
+  transform-origin: top right;
+  transform: skewX(var(--shop-slant-deg, 3.5deg));
+  z-index: 15;
+  cursor: pointer;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: auto;
+}
+
+body.theme-light .shop-slanted-scrollbar {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.shop-slanted-scrollbar.is-hidden {
+  display: none;
+}
+
+.shop-slanted-thumb {
+  width: 100%;
+  min-height: 36px;
+  border-radius: 5px;
+  background: rgba(148, 163, 184, 0.55);
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.14s ease;
+}
+
+.shop-slanted-scrollbar:hover .shop-slanted-thumb,
+.shop-slanted-scrollbar.is-dragging .shop-slanted-thumb {
+  background: #00b2e1;
+}
+
+.shop-preview-stage {
+  flex: 1;
+  min-height: calc(180px * var(--ui-scale));
+  padding-left: calc(var(--shop-slant, 44px) * 0.5 + 8px * var(--ui-scale));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.shop-preview-stage.is-switching .shop-preview-canvas:not(.hidden),
+.shop-preview-stage.is-switching .shop-preview-emblem:not(.hidden) {
+  animation: shopPreviewPop 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes shopPreviewPop {
+  from {
+    opacity: 0.35;
+    transform: translate3d(16px, 0, 0) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* Directional Shop Tab Switch Transitions */
+.falo-shop-catalog-pane.is-tab-leaving-left {
+  opacity: 0;
+  transform: translate3d(-22px, 0, 0);
+  transition: opacity 0.095s ease-in, transform 0.095s ease-in;
+  pointer-events: none;
+}
+
+.falo-shop-catalog-pane.is-tab-leaving-right {
+  opacity: 0;
+  transform: translate3d(22px, 0, 0);
+  transition: opacity 0.095s ease-in, transform 0.095s ease-in;
+  pointer-events: none;
+}
+
+.falo-shop-catalog-pane.is-tab-entering-right {
+  animation: shopCatalogEnterFromRight 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.falo-shop-catalog-pane.is-tab-entering-left {
+  animation: shopCatalogEnterFromLeft 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.falo-shop-catalog-pane.is-tab-entering-right .falo-shop-section {
+  animation: shopSectionStaggerRight 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(min(var(--section-idx, 0), 4) * 32ms);
+}
+
+.falo-shop-catalog-pane.is-tab-entering-left .falo-shop-section {
+  animation: shopSectionStaggerLeft 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(min(var(--section-idx, 0), 4) * 32ms);
+}
+
+@keyframes shopCatalogEnterFromRight {
+  from {
+    opacity: 0;
+    transform: translate3d(24px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes shopCatalogEnterFromLeft {
+  from {
+    opacity: 0;
+    transform: translate3d(-24px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes shopSectionStaggerRight {
+  from {
+    opacity: 0;
+    transform: translate3d(14px, 4px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes shopSectionStaggerLeft {
+  from {
+    opacity: 0;
+    transform: translate3d(-14px, 4px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.shop-preview-stage.is-tab-leaving-left .shop-preview-canvas:not(.hidden),
+.shop-preview-stage.is-tab-leaving-left .shop-preview-emblem:not(.hidden) {
+  opacity: 0;
+  transform: translate3d(-18px, 0, 0) scale(0.95);
+  transition: opacity 0.095s ease-in, transform 0.095s ease-in;
+}
+
+.shop-preview-stage.is-tab-leaving-right .shop-preview-canvas:not(.hidden),
+.shop-preview-stage.is-tab-leaving-right .shop-preview-emblem:not(.hidden) {
+  opacity: 0;
+  transform: translate3d(18px, 0, 0) scale(0.95);
+  transition: opacity 0.095s ease-in, transform 0.095s ease-in;
+}
+
+.shop-preview-stage.is-tab-entering-right .shop-preview-canvas:not(.hidden),
+.shop-preview-stage.is-tab-entering-right .shop-preview-emblem:not(.hidden) {
+  animation: shopStageEnterFromRight 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.shop-preview-stage.is-tab-entering-left .shop-preview-canvas:not(.hidden),
+.shop-preview-stage.is-tab-entering-left .shop-preview-emblem:not(.hidden) {
+  animation: shopStageEnterFromLeft 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes shopStageEnterFromRight {
+  from {
+    opacity: 0;
+    transform: translate3d(20px, 0, 0) scale(0.93);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes shopStageEnterFromLeft {
+  from {
+    opacity: 0;
+    transform: translate3d(-20px, 0, 0) scale(0.93);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.shop-preview-info.is-tab-leaving-left .shop-preview-header-block,
+.shop-preview-info.is-tab-leaving-left .shop-preview-desc,
+.shop-preview-info.is-tab-leaving-left .shop-preview-action-btn {
+  opacity: 0;
+  translate: -14px 0;
+  transition: opacity 0.095s ease-in, translate 0.095s ease-in;
+}
+
+.shop-preview-info.is-tab-leaving-right .shop-preview-header-block,
+.shop-preview-info.is-tab-leaving-right .shop-preview-desc,
+.shop-preview-info.is-tab-leaving-right .shop-preview-action-btn {
+  opacity: 0;
+  translate: 14px 0;
+  transition: opacity 0.095s ease-in, translate 0.095s ease-in;
+}
+
+.shop-preview-info.is-tab-entering-right .shop-preview-header-block,
+.shop-preview-info.is-tab-entering-right .shop-preview-desc,
+.shop-preview-info.is-tab-entering-right .shop-preview-action-btn {
+  animation: shopInfoEnterFromRight 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.shop-preview-info.is-tab-entering-left .shop-preview-header-block,
+.shop-preview-info.is-tab-entering-left .shop-preview-desc,
+.shop-preview-info.is-tab-entering-left .shop-preview-action-btn {
+  animation: shopInfoEnterFromLeft 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes shopInfoEnterFromRight {
+  from {
+    opacity: 0;
+    translate: 16px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes shopInfoEnterFromLeft {
+  from {
+    opacity: 0;
+    translate: -16px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+.shop-preview-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform: none;
+  filter: drop-shadow(-6px 7px 0 rgba(0, 0, 0, 0.42)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
+}
+
+.shop-preview-emblem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  transform: none;
+  filter: drop-shadow(-6px 7px 0 rgba(0, 0, 0, 0.42)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
+}
+
+.shop-preview-emblem svg {
+  width: min(calc(188px * var(--ui-scale)), 62%);
+  height: auto;
+}
+
+.shop-preview-info {
+  position: relative;
+  z-index: 3;
+  margin-left: calc(var(--shop-slant, 44px) + 6px * var(--ui-scale));
+  width: auto;
+  max-width: calc(100% - var(--shop-slant, 44px) - 6px * var(--ui-scale));
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: calc(10px * var(--ui-scale));
+  padding-top: calc(12px * var(--ui-scale));
+  border-top: 2px solid rgba(255, 255, 255, 0.1);
+  will-change: transform;
+}
+
+body.theme-light .shop-preview-info {
+  border-top-color: rgba(15, 23, 42, 0.14);
+}
+
+.shop-preview-header-block {
+  display: flex;
+  flex-direction: column;
+  gap: calc(3px * var(--ui-scale));
+  min-width: 0;
+}
+
+.shop-preview-name {
+  font-size: calc(25px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  line-height: 1.1;
+  color: #ffffff;
+  text-shadow: 2px 3px 0 rgba(0, 0, 0, 0.45);
+  overflow-wrap: break-word;
+}
+
+body.theme-light .shop-preview-name {
+  color: #111827;
+  text-shadow: none;
+}
+
+.shop-preview-meta {
+  font-size: calc(12px * var(--ui-scale));
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #7dd3fc;
+  overflow-wrap: break-word;
+}
+
+body.theme-light .shop-preview-meta {
+  color: #0284c7;
+}
+
+.shop-preview-desc {
+  width: 100%;
+  max-width: 100%;
+  font-size: calc(13px * var(--ui-scale));
+  font-weight: 600;
+  line-height: 1.45;
+  color: #cbd5e1;
+  min-height: calc(38px * var(--ui-scale));
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+body.theme-light .shop-preview-desc {
+  color: #334155;
+}
+
+.shop-preview-action-btn,
+.shop-preview-action-btn.equip-ready {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: calc(4px * var(--ui-scale));
+  padding: calc(12px * var(--ui-scale)) calc(20px * var(--ui-scale));
+  font-size: calc(15px * var(--ui-scale));
+  letter-spacing: 1.2px;
+  border-radius: calc(4px * var(--ui-scale));
+  background-color: transparent;
+  background-image: linear-gradient(125deg, #00c4f4 0%, #009ac4 68%, #0082a8 100%);
+  border: calc(2.8px * var(--ui-scale)) solid #0b1924;
+  border-bottom-width: calc(5.5px * var(--ui-scale));
+  border-bottom-color: #005873;
+  color: #ffffff;
+  text-shadow: 1.5px 2px 0 rgba(0, 40, 56, 0.55);
+  -webkit-text-stroke: 0;
+  transform: skewX(-10deg);
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 0, 0, 0.28);
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), filter 0.14s ease, box-shadow 0.16s ease;
+}
+
+.shop-preview-action-btn.unlocked {
+  background: linear-gradient(125deg, #10b981 0%, #059669 100%);
+  border-color: #064e3b;
+  border-bottom-color: #047857;
+  color: #ffffff;
+  text-shadow: 1.5px 2px 0 rgba(6, 78, 59, 0.45);
+}
+
+.shop-preview-action-btn.equipped {
+  background: linear-gradient(130deg, #64748b 0%, #475569 100%);
+  border-color: #1e293b;
+  border-bottom-color: #0f172a;
+  color: #f8fafc;
+  text-shadow: none;
+}
+
+.shop-preview-action-btn.disabled {
+  background: linear-gradient(130deg, #3f444e 0%, #2b2f36 100%);
+  border-color: #16181d;
+  border-bottom-color: #0f1115;
+  color: #9ca3af;
+  filter: none;
+  text-shadow: none;
+}
+
+.shop-preview-action-btn.unlocked:hover,
+.shop-preview-action-btn.disabled:hover,
+.shop-preview-action-btn:disabled:hover {
+  transform: skewX(-10deg) !important;
+}
+
+.shop-preview-action-btn:hover:not(.disabled):not(.unlocked):not(:disabled) {
+  transform: skewX(-10deg) translate3d(-3px, -2px, 0) scale(1.02) !important;
+  filter: brightness(1.08);
+  box-shadow: -7px 8px 0 rgba(0, 0, 0, 0.48), 0 12px 24px rgba(0, 0, 0, 0.35);
+}
+
+.shop-preview-action-btn:active:not(.disabled):not(.unlocked):not(:disabled) {
+  transform: skewX(-10deg) translate3d(1px, 2px, 0) scale(0.985) !important;
+  box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.44);
+}
+
+/* Responsive Mobile / Portrait Shop Split */
+@media (max-width: 820px) {
+  .falo-shop-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .falo-shop-preview-pane {
+    order: -1;
+    margin: 0;
+    transform: none;
+    padding: 12px 16px;
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 3px solid #007a9e;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24);
+  }
+
+  .shop-preview-backdrop {
+    clip-path: none;
+  }
+
+  .shop-preview-backdrop::before,
+  .shop-slanted-scrollbar {
+    display: none;
+  }
+
+  .shop-preview-canvas,
+  .shop-preview-emblem {
+    transform: none;
+  }
+
+  .shop-preview-stage {
+    flex: 0 0 clamp(96px, 26vw, 130px);
+    width: clamp(96px, 26vw, 130px);
+    height: clamp(96px, 26vw, 130px);
+    min-height: 0;
+    padding-left: 0;
+  }
+
+  .shop-preview-emblem svg {
+    width: 82%;
+  }
+
+  .shop-preview-info {
+    flex: 1;
+    margin-left: 0;
+    max-width: 100%;
+    min-width: 0;
+    padding-top: 0;
+    border-top: none;
+    gap: 5px;
+  }
+
+  .shop-preview-name {
+    font-size: 17px;
+  }
+
+  .shop-preview-meta {
+    font-size: 11px;
+  }
+
+  .shop-preview-desc {
+    font-size: 11.5px;
+    min-height: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .shop-preview-action-btn {
+    padding: 8px 14px;
+    font-size: 12.5px;
+  }
+
+  .falo-shop-catalog-pane {
+    margin-left: 0;
+    transform: none;
+    padding: 14px;
+    scrollbar-width: auto;
+    -ms-overflow-style: auto;
+  }
+
+  .falo-shop-catalog-pane::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+  }
+
+  .falo-armory-window .falo-shop-unified-plane,
+  .falo-settings-window .falo-shop-unified-plane {
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .falo-armory-window .falo-shop-header-left,
+  .falo-armory-window .falo-shop-header-right,
+  .falo-armory-window .falo-shop-unified-plane,
+  .falo-settings-window .falo-shop-header-left,
+  .falo-settings-window .falo-shop-header-right,
+  .falo-settings-window .falo-shop-unified-plane,
+  .falo-shop-catalog-pane,
+  .falo-shop-section,
+  .shop-preview-stage,
+  .shop-preview-canvas,
+  .shop-preview-emblem,
+  .shop-preview-info,
+  .shop-preview-header-block,
+  .shop-preview-desc,
+  .shop-preview-action-btn {
+    transform: none !important;
+    translate: none !important;
+    animation: none !important;
+  }
 }

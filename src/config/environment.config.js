@@ -1,5 +1,5 @@
 /**
- * DIEP SURVIVAL - ENVIRONMENT & ARENA CONFIGURATION
+ * FALO SURVIVAL - ENVIRONMENT & ARENA CONFIGURATION
  * Arena styling, camera mechanics, wave pacing, and VFX particle systems.
  */
 

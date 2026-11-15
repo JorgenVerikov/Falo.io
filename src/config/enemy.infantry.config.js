@@ -1,5 +1,5 @@
 /**
- * DIEP SURVIVAL - INFANTRY ENEMY CONFIGURATIONS
+ * FALO SURVIVAL - INFANTRY ENEMY CONFIGURATIONS
  * Squad-based light infantry units: Operative.
  */
 

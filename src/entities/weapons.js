@@ -453,7 +453,7 @@ export class WeaponSystem {
         fireDelayTicks: t.fireDelayTicks || 0,
         recoilKickAmount: t.recoilKickAmount || 10,
 
-        // Diep.io Tank Editor parameters & multipliers
+        // Falo.io Tank Editor parameters & multipliers
         damageMult: (t.damage !== undefined) ? t.damage : 1.0,
         penetrationMult: (t.penetration !== undefined) ? t.penetration : 1.0,
         bulletSpeedMult: (t.bulletSpeed !== undefined) ? t.bulletSpeed : 1.0,

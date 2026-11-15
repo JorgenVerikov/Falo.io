@@ -12,7 +12,9 @@ import {
   generateCrewSvg
 } from './uiPreviews.js';
 import {
+  ensureShopController,
   sortShopItems,
+  switchShopTab,
   renderShopContent,
   renderTanksShop,
   createTankCard,
@@ -21,6 +23,11 @@ import {
   renderColorsShop,
   createColorCard
 } from './uiShop.js';
+import {
+  ensureSettingsController,
+  initSettingsUI,
+  syncSettingsView
+} from './uiSettings.js';
 import {
   initAdminMenuUI,
   showAdminPassModal,
@@ -403,69 +410,19 @@ export class UIManager {
     });
 
     document.getElementById('tab-tanks-btn').addEventListener('click', () => {
-      this.activeShopTab = 'tanks';
-      this.renderShopContent();
+      switchShopTab(this, 'tanks');
     });
 
     document.getElementById('tab-crew-btn').addEventListener('click', () => {
-      this.activeShopTab = 'crew';
-      this.renderShopContent();
+      switchShopTab(this, 'crew');
     });
 
     document.getElementById('tab-colors-btn').addEventListener('click', () => {
-      this.activeShopTab = 'colors';
-      this.renderShopContent();
+      switchShopTab(this, 'colors');
     });
 
     document.getElementById('close-settings-btn').addEventListener('click', () => this.hideSettings());
-
-    const settingsTabs = [
-      { btnId: 'tab-settings-display-btn', paneId: 'settings-tab-display' },
-      { btnId: 'tab-settings-controls-btn', paneId: 'settings-tab-controls' }
-    ];
-
-    settingsTabs.forEach(({ btnId, paneId }) => {
-      const btn = document.getElementById(btnId);
-      if (btn) {
-        btn.addEventListener('click', () => {
-          settingsTabs.forEach(t => {
-            document.getElementById(t.btnId)?.classList.remove('active');
-            document.getElementById(t.paneId)?.classList.add('hidden');
-          });
-          btn.classList.add('active');
-          document.getElementById(paneId)?.classList.remove('hidden');
-        });
-      }
-    });
-
-    const selectTheme = (themeName) => {
-      const currentScale = parseFloat(this.storage.data.settings?.uiScale || 1.0);
-      this.storage.saveSettings(themeName, currentScale);
-      this.applySettings();
-      this.showToast(`THEME APPLIED: ${themeName === 'light' ? 'CLASSIC LIGHT' : 'DARK SLATE'}`);
-    };
-
-    document.getElementById('select-theme-light-btn')?.addEventListener('click', () => selectTheme('light'));
-    document.getElementById('theme-card-light')?.addEventListener('click', (e) => {
-      if (e.target.tagName !== 'BUTTON') selectTheme('light');
-    });
-
-    document.getElementById('select-theme-dark-btn')?.addEventListener('click', () => selectTheme('dark'));
-    document.getElementById('theme-card-dark')?.addEventListener('click', (e) => {
-      if (e.target.tagName !== 'BUTTON') selectTheme('dark');
-    });
-
-    document.querySelectorAll('.scale-chip-btn').forEach(chip => {
-      chip.addEventListener('click', (e) => {
-        const scaleVal = parseFloat(e.currentTarget.getAttribute('data-scale'));
-        if (!isNaN(scaleVal)) {
-          const currentTheme = this.storage.data.settings?.theme || 'light';
-          this.storage.saveSettings(currentTheme, scaleVal);
-          this.applySettings();
-          this.showToast(`UI SCALE SET TO ${Math.round(scaleVal * 100)}%`);
-        }
-      });
-    });
+    initSettingsUI(this);
 
     if (this.playerNameInput) {
       this.playerNameInput.addEventListener('input', (e) => this.storage.setPlayerName(e.target.value));
@@ -494,6 +451,13 @@ export class UIManager {
       this.evolutionPanelVisible = false;
       this.updatePanelVisibilities();
       if (this.onIgnoreEvolutionCallback) this.onIgnoreEvolutionCallback();
+    });
+
+    [this.statPanel, this.statCornerTab, this.faloPanel].forEach(panel => {
+      if (!panel) return;
+      panel.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+      });
     });
   }
 
@@ -529,34 +493,7 @@ export class UIManager {
     if (theme === 'light') document.body.classList.add('theme-light');
     else document.body.classList.remove('theme-light');
 
-    const lightCard = document.getElementById('theme-card-light');
-    const darkCard = document.getElementById('theme-card-dark');
-    const lightBtn = document.getElementById('select-theme-light-btn');
-    const darkBtn = document.getElementById('select-theme-dark-btn');
-
-    if (theme === 'light') {
-      lightCard?.classList.add('active');
-      darkCard?.classList.remove('active');
-      if (lightBtn) {
-        lightBtn.textContent = 'EQUIPPED';
-        lightBtn.className = 'diep-card-action-btn equipped';
-      }
-      if (darkBtn) {
-        darkBtn.textContent = 'EQUIP';
-        darkBtn.className = 'diep-card-action-btn equip-ready';
-      }
-    } else {
-      darkCard?.classList.add('active');
-      lightCard?.classList.remove('active');
-      if (darkBtn) {
-        darkBtn.textContent = 'EQUIPPED';
-        darkBtn.className = 'diep-card-action-btn equipped';
-      }
-      if (lightBtn) {
-        lightBtn.textContent = 'EQUIP';
-        lightBtn.className = 'diep-card-action-btn equip-ready';
-      }
-    }
+    syncSettingsView(this);
 
     const scaleBadge = document.getElementById('current-scale-badge');
     if (scaleBadge) {
@@ -637,7 +574,7 @@ export class UIManager {
       this.adminModal.classList.remove('active');
       this.adminModal.classList.add('hidden');
       this.adminModal.classList.remove('ingame-popup-mode');
-      const titleEl = document.getElementById('admin-panel-title') || this.adminModal?.querySelector('.diep-shop-logo');
+      const titleEl = document.getElementById('admin-panel-title') || this.adminModal?.querySelector('.falo-shop-logo');
       if (titleEl) titleEl.textContent = 'ADMIN';
     }
     if (this.evolutionTreeModal) {
@@ -709,6 +646,9 @@ export class UIManager {
   showSettings() {
     this.applySettings();
     this.openModal(this.settingsModal);
+    const controller = ensureSettingsController(this);
+    controller.setOpen(true);
+    requestAnimationFrame(() => controller.resizeCanvas());
   }
 
   hideSettings() {
@@ -716,6 +656,7 @@ export class UIManager {
       this.mainMenu?.onShow();
     }
     this.closeModal(this.settingsModal);
+    this.settingsController?.setOpen(false);
   }
 
   isGameActive() {
@@ -735,7 +676,7 @@ export class UIManager {
   showAdminPanel(tab) {
     const isIngame = this.isGameActive();
     const adminModal = this.adminModal;
-    const titleEl = document.getElementById('admin-panel-title') || adminModal?.querySelector('.diep-shop-logo');
+    const titleEl = document.getElementById('admin-panel-title') || adminModal?.querySelector('.falo-shop-logo');
 
     if (isIngame) {
       if (adminModal) adminModal.classList.add('ingame-popup-mode');
@@ -768,7 +709,7 @@ export class UIManager {
     this.closeModal(this.adminModal, () => {
       if (this.adminModal && !this.isGameActive()) {
         this.adminModal.classList.remove('ingame-popup-mode');
-        const titleEl = document.getElementById('admin-panel-title') || this.adminModal?.querySelector('.diep-shop-logo');
+        const titleEl = document.getElementById('admin-panel-title') || this.adminModal?.querySelector('.falo-shop-logo');
         if (titleEl) titleEl.textContent = 'ADMIN';
       }
     });
@@ -985,11 +926,16 @@ export class UIManager {
       `;
 
       const plusBtn = pill.querySelector('.stat-btn-plus');
-      if (plusBtn && canUpgrade) {
-        plusBtn.addEventListener('click', (e) => {
+      if (plusBtn) {
+        plusBtn.addEventListener('mousedown', (e) => {
           e.stopPropagation();
-          onUpgrade(s.key);
         });
+        if (canUpgrade) {
+          plusBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            onUpgrade(s.key);
+          });
+        }
       }
 
       this.statList.appendChild(pill);
@@ -1013,12 +959,16 @@ export class UIManager {
   }
 
   showArmory() {
-    this.renderShopContent();
     this.openModal(this.armoryModal);
+    const controller = ensureShopController(this);
+    controller.setOpen(true);
+    this.renderShopContent();
+    requestAnimationFrame(() => controller.resizeCanvas());
   }
 
   hideArmory() {
     this.closeModal(this.armoryModal);
+    this.shopController?.setOpen(false);
   }
 
   showEvolutionTree(inGame = false) {

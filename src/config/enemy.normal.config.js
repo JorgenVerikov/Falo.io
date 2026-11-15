@@ -1,5 +1,5 @@
 /**
- * DIEP SURVIVAL - NORMAL (STANDARD) ENEMY CONFIGURATIONS
+ * FALO SURVIVAL - NORMAL (STANDARD) ENEMY CONFIGURATIONS
  * Core frontline enemies: Drone, Light Tank, and Armored Hex.
  */
 

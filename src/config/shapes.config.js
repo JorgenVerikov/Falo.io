@@ -1,5 +1,5 @@
 /**
- * DIEP SURVIVAL - SHAPES CONFIGURATION
+ * FALO SURVIVAL - SHAPES CONFIGURATION
  * Destructible polygonal resource shapes in the arena providing XP and score.
  */
 

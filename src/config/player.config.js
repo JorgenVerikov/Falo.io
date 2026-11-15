@@ -1,5 +1,5 @@
 /**
- * DIEP SURVIVAL - PLAYER & CHASSIS CONFIGURATION
+ * FALO SURVIVAL - PLAYER & CHASSIS CONFIGURATION
  * Player baseline stats, growth curve, stat definitions, collision physics,
  * evolution chassis definitions, and level/XP progression formulas.
  */
@@ -581,7 +581,7 @@ export const CHASSIS_CONFIG = {
   }
 };
 
-// Official Diep.io leveling formula:
+// Official Falo.io leveling formula:
 // At level n (from 1 to 44), the score increment required to reach level n + 1 increases as:
 // increment(n) = (40 / 9) * (1.06 ^ (n - 1)) * min(31, n)
 export function getXPRequiredForLevel(level) {
@@ -591,7 +591,7 @@ export function getXPRequiredForLevel(level) {
 }
 
 // Generate cumulative scores required to reach levels 1..45 directly from the progression formula
-export const DIEP_LEVEL_SCORES = (() => {
+export const FALO_LEVEL_SCORES = (() => {
   const scores = [0];
   let total = 0;
   for (let lvl = 1; lvl < 45; lvl++) {
@@ -604,8 +604,8 @@ export const DIEP_LEVEL_SCORES = (() => {
 export function getTotalXPForLevel(targetLevel) {
   if (targetLevel <= 1) return 0;
   if (targetLevel <= 45) {
-    return DIEP_LEVEL_SCORES[targetLevel - 1];
+    return FALO_LEVEL_SCORES[targetLevel - 1];
   }
-  const maxScore = DIEP_LEVEL_SCORES[44];
+  const maxScore = FALO_LEVEL_SCORES[44];
   return maxScore + (targetLevel - 45) * getXPRequiredForLevel(44);
 }

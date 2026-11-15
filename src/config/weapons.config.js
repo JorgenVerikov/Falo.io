@@ -1,12 +1,12 @@
 /**
- * DIEP SURVIVAL - WEAPONS & TURRET CONFIGURATION
+ * FALO SURVIVAL - WEAPONS & TURRET CONFIGURATION
  * Barrel geometries, projectile parameters, recoil impulses, and reload scaling.
  */
 
-// Base barrel configuration for Basic Tank (Diep.io baseline reference)
+// Base barrel configuration for Basic Tank (Falo.io baseline reference)
 export const BASIC_BARREL_BASE = {
-  damage: 7.0,          // Diep.io Base Bullet Damage (7.0, increases by +3 per stat point)
-  penetration: 2.0,     // Diep.io Base Bullet Penetration (2.0, increases by +1.5 per stat point)
+  damage: 7.0,          // Falo.io Base Bullet Damage (7.0, increases by +3 per stat point)
+  penetration: 2.0,     // Falo.io Base Bullet Penetration (2.0, increases by +1.5 per stat point)
   bulletSpeed: 160,     // Base shell speed
   bulletSize: 9,        // Base shell radius
   baseReloadTicks: 120, // Base reload ticks (from Basic Tank)
@@ -16,12 +16,12 @@ export const BASIC_BARREL_BASE = {
   knockback: 1.0,       // Base knockback multiplier
   launchSpeed: 1.0,     // Base launch speed multiplier
   bulletsPerShot: 1,    // Bullets fired per shot
-  lifetime: 3.0,        // Bullet lifetime in seconds (3s from Diep tank editor)
+  lifetime: 3.0,        // Bullet lifetime in seconds (3s from Falo tank editor)
   fireDelay: 0          // Fire delay offset (phase offset 0..1)
 };
 
 /**
- * Creates a turret configuration adhering to Diep.io Tank Editor barrel parameters.
+ * Creates a turret configuration adhering to Falo.io Tank Editor barrel parameters.
  * Supports standard Tank Editor barrel geometry and multipliers:
  * [width, length, frontWidth, angleOffset, xOffset, yOffset] + multipliers.
  * Every tank shares the same base stats as the basic tank, adjusted via multipliers.
@@ -105,7 +105,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     isAutoTurret,
     mountRadius,
 
-    // Diep.io Tank Editor barrel configuration (all turrets have these matching the editor)
+    // Falo.io Tank Editor barrel configuration (all turrets have these matching the editor)
     damage,
     penetration,
     bulletSpeed,

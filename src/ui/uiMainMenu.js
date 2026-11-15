@@ -24,6 +24,7 @@ export class MainMenuController {
 
     this.tankAngle = 0;
     this.spinAngle = 0;
+    this.swayTime = 0;
     this.rafId = null;
     this.lastTime = performance.now();
 
@@ -191,14 +192,6 @@ export class MainMenuController {
 
     ctx.translate(cx, cy);
 
-    // Subtle soft drop shadow beneath tank
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(4, 10, radius * 1.04, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
-    ctx.fill();
-    ctx.restore();
-
     if (chassis.outerArmor) {
       const outerRadius = baseRadius * chassis.outerArmor.radiusMultiplier;
       drawPreviewPolygon(
@@ -293,35 +286,44 @@ export class MainMenuController {
       this.tankAngle += diff * (1 - Math.exp(-12 * dt));
     }
 
+    this.swayTime += dt;
+
     if (!this.reducedMotion) {
+      const swayNx = Math.sin(this.swayTime * 0.58) * 0.16 + Math.sin(this.swayTime * 1.13) * 0.05;
+      const swayNy = Math.cos(this.swayTime * 0.44) * 0.14 + Math.cos(this.swayTime * 0.91) * 0.04;
+      const swayRoll = Math.sin(this.swayTime * 0.5) * 0.45;
+      const effNx = this.curNx + swayNx;
+      const effNy = this.curNy + swayNy;
+
       if (this.rightPanel) {
         const isCompact = window.innerWidth <= 960;
         const baseRotY = isCompact ? -6 : -18;
         const baseRotX = isCompact ? 1 : 2.5;
         const baseRotZ = isCompact ? -0.8 : -1.6;
-        const panelRotY = baseRotY + this.curNx * 5.0;
-        const panelRotX = baseRotX - this.curNy * 3.8;
-        const shiftX = this.curNx * 10;
-        const shiftY = this.curNy * 7;
+        const panelRotY = baseRotY + effNx * 5.0;
+        const panelRotX = baseRotX - effNy * 3.8;
+        const panelRotZ = baseRotZ + swayRoll;
+        const shiftX = effNx * 10;
+        const shiftY = effNy * 7;
         this.rightPanel.style.transform =
-          `perspective(880px) translate3d(${shiftX.toFixed(2)}px, ${shiftY.toFixed(2)}px, 0) rotateY(${panelRotY.toFixed(2)}deg) rotateX(${panelRotX.toFixed(2)}deg) rotateZ(${baseRotZ.toFixed(2)}deg)`;
+          `perspective(880px) translate3d(${shiftX.toFixed(2)}px, ${shiftY.toFixed(2)}px, 0) rotateY(${panelRotY.toFixed(2)}deg) rotateX(${panelRotX.toFixed(2)}deg) rotateZ(${panelRotZ.toFixed(2)}deg)`;
       }
 
       if (this.tankWrap) {
-        const tx = this.curNx * 15;
-        const ty = this.curNy * 11;
-        const tankRotY = this.curNx * 4;
-        const tankRotX = -this.curNy * 3;
+        const tx = effNx * 15;
+        const ty = effNy * 11 + Math.sin(this.swayTime * 0.85) * 4.5;
+        const tankRotY = effNx * 4;
+        const tankRotX = -effNy * 3;
         this.tankWrap.style.transform =
           `perspective(1200px) translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) rotateY(${tankRotY.toFixed(2)}deg) rotateX(${tankRotX.toFixed(2)}deg)`;
       }
 
       if (this.authContainer) {
-        const authTx = this.curNx * 10;
-        const authTy = this.curNy * 8;
+        const authTx = effNx * 10;
+        const authTy = effNy * 8;
         const baseAuthRotY = window.innerWidth <= 960 ? 3 : 8;
-        const authRy = baseAuthRotY + this.curNx * 4.5;
-        const authRx = -this.curNy * 3.6;
+        const authRy = baseAuthRotY + effNx * 4.5;
+        const authRx = -effNy * 3.6;
         this.authContainer.style.setProperty('--auth-tx', `${authTx.toFixed(2)}px`);
         this.authContainer.style.setProperty('--auth-ty', `${authTy.toFixed(2)}px`);
         this.authContainer.style.setProperty('--auth-rx', `${authRx.toFixed(2)}deg`);
@@ -329,11 +331,11 @@ export class MainMenuController {
       }
 
       if (this.fullscreenBtn) {
-        const fsTx = this.curNx * 9;
-        const fsTy = this.curNy * 7;
+        const fsTx = effNx * 9;
+        const fsTy = effNy * 7;
         const baseFsRotY = window.innerWidth <= 960 ? 3 : 8;
-        const fsRy = baseFsRotY + this.curNx * 4.5;
-        const fsRx = -this.curNy * 3.6;
+        const fsRy = baseFsRotY + effNx * 4.5;
+        const fsRx = -effNy * 3.6;
         this.fullscreenBtn.style.setProperty('--fs-tx', `${fsTx.toFixed(2)}px`);
         this.fullscreenBtn.style.setProperty('--fs-ty', `${fsTy.toFixed(2)}px`);
         this.fullscreenBtn.style.setProperty('--fs-rx', `${fsRx.toFixed(2)}deg`);
@@ -341,8 +343,8 @@ export class MainMenuController {
       }
 
       if (this.overlay) {
-        const bgX = -this.curNx * 18;
-        const bgY = -this.curNy * 14;
+        const bgX = -effNx * 18;
+        const bgY = -effNy * 14;
         this.overlay.style.backgroundPosition = `0 0, ${bgX.toFixed(1)}px ${bgY.toFixed(1)}px, ${bgX.toFixed(1)}px ${bgY.toFixed(1)}px`;
       }
     }

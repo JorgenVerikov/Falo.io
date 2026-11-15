@@ -1,5 +1,5 @@
 /**
- * DIEP SURVIVAL - GAME & META PROGRESSION CONFIGURATION
+ * FALO SURVIVAL - GAME & META PROGRESSION CONFIGURATION
  * Crew mechanics, economy / coin conversions, and tank color palettes.
  */
 
@@ -40,7 +40,7 @@ export function computeStrokeColor(hex) {
     g = Math.min(255, g + 45);
     b = Math.min(255, b + 45);
   } else {
-    // Authentic Diep.io formula: outline stroke is ~74% of fill brightness
+    // Authentic Falo.io formula: outline stroke is ~74% of fill brightness
     r = Math.round(r * 0.74);
     g = Math.round(g * 0.74);
     b = Math.round(b * 0.74);
@@ -54,12 +54,12 @@ export function computeStrokeColor(hex) {
 }
 
 export const COLOR_THEMES = {
-  default: { name: 'Classic Cyan', color: '#00b2e1', stroke: '#0083a8', cost: 0, rarity: 'Common', desc: 'The iconic traditional Diep.io cyan blue hull.' },
+  default: { name: 'Classic Cyan', color: '#00b2e1', stroke: '#0083a8', cost: 0, rarity: 'Common', desc: 'The iconic traditional cyan blue hull.' },
   crimson: { name: 'Crimson Red', color: '#f14e54', stroke: '#b3393e', cost: 500, rarity: 'Common', desc: 'Aggressive crimson combat red chassis plating.' },
   lime: { name: 'Emerald Green', color: '#00e16e', stroke: '#00a651', cost: 500, rarity: 'Common', desc: 'Vibrant neon emerald green hull coating.' },
   neon: { name: 'Neon Violet', color: '#bf7ff5', stroke: '#8d5eb5', cost: 500, rarity: 'Common', desc: 'High-frequency fluorescent violet paint scheme.' },
   dark: { name: 'Stealth Obsidian', color: '#374151', stroke: '#1f2937', cost: 1200, rarity: 'Rare', desc: 'Matte dark carbon stealth radar-absorbent hull.' },
-  gold: { name: 'Closer', color: '#ffe100', stroke: '#bda600', cost: 2500, rarity: 'Legendary', desc: 'Lustrous polished 24K gold hull with radiant shine.' },
+  gold: { name: 'Closer', color: '#ffe100', stroke: '#bda600', cost: 2500, rarity: 'Legendary', desc: "Arena's Closed, go home." },
   pastel: { name: 'Pastel Dream', color: '#f472b6', stroke: '#be4b87', cost: 2500, rarity: 'Legendary', desc: 'Soft candy pink with gentle pastel gradient tone.' }
 };
 

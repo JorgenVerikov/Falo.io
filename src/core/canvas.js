@@ -144,7 +144,7 @@ export class CanvasManager {
     ctx.restore();
   }
 
-  // Draw text with Diep-style crisp dark stroke outline
+  // Draw text with Falo-style crisp dark stroke outline
   drawStrokedText(text, x, y, fontSize = 16, fillColor = '#ffffff', strokeColor = '#000000', strokeWidth = 3.5, align = 'center') {
     const ctx = this.ctx;
     ctx.save();

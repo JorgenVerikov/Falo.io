@@ -1,5 +1,5 @@
 /**
- * DIEP SURVIVAL - CONFIGURATION ROOT
+ * FALO SURVIVAL - CONFIGURATION ROOT
  * Re-exports modularized configuration files for seamless backwards compatibility.
  * 
  * Individual configurations can also be imported directly from:

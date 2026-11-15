@@ -793,7 +793,7 @@ function setupInputs() {
       input.mouse.isRightDown = false;
       return;
     }
-    if (e.target && e.target.closest?.('#evolution-tree-modal, #admin-panel-modal, #settings-modal, #armory-modal, #self-destruct-modal, #mobile-controls-layer')) {
+    if (e.target && e.target.closest?.('#evolution-tree-modal, #admin-panel-modal, #settings-modal, #armory-modal, #self-destruct-modal, #auth-modal, #game-over-modal, #main-menu-overlay, #mobile-controls-layer, #stat-upgrade-panel, #stat-corner-tab, #falo-upgrade-panel, .hud-panel, button')) {
       input.mouse.isDown = false;
       input.mouse.isRightDown = false;
       return;

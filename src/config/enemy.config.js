@@ -1,5 +1,5 @@
 /**
- * DIEP SURVIVAL - ENEMY CONFIGURATION AGGREGATOR
+ * FALO SURVIVAL - ENEMY CONFIGURATION AGGREGATOR
  * Combines Normal, Specialized, and Infantry enemy classes, attaches dynamic
  * radius/acceleration scaling, and provides wave-based enemy upgrade progression.
  */

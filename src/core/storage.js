@@ -1,8 +1,8 @@
 import { getSupabase, getUser } from './auth.js';
 
-const GUEST_STORAGE_KEY = 'DIEP_GUEST_SAVE_DATA_V1';
-const LEGACY_STORAGE_KEY = 'DIEP_SURVIVAL_SAVE_DATA_V6';
-const USER_CACHE_PREFIX = 'DIEP_USER_CACHE_';
+const GUEST_STORAGE_KEY = 'FALO_GUEST_SAVE_DATA_V1';
+const LEGACY_STORAGE_KEY = 'FALO_SURVIVAL_SAVE_DATA_V6';
+const USER_CACHE_PREFIX = 'FALO_USER_CACHE_';
 
 const DEFAULT_DATA = {
   playerName: 'Player',
