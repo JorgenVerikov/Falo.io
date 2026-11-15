@@ -868,10 +868,17 @@ export class UIManager {
     });
 
     const isMobile = document.body.classList.contains('is-mobile');
-    const maxRows = isMobile && (window.innerHeight || 0) <= 520 ? 2 : 3;
-    const rows = availableChassisKeys.length >= 5
-      ? maxRows
-      : (availableChassisKeys.length === 4 ? 2 : Math.min(maxRows, availableChassisKeys.length));
+    const count = availableChassisKeys.length;
+    let rows;
+    if (isMobile) {
+      if ((window.innerHeight || 0) <= 520) {
+        rows = count <= 4 ? 1 : 2;
+      } else {
+        rows = count <= 3 ? 1 : (count <= 6 ? 2 : 3);
+      }
+    } else {
+      rows = count >= 5 ? 3 : (count === 4 ? 2 : Math.min(3, count));
+    }
     grid.style.gridTemplateRows = `repeat(${rows}, calc(82px * var(--ui-scale)))`;
 
     this.hasEvolutionsAvailable = true;

@@ -4227,13 +4227,15 @@ body.is-mobile #wave-banner {
 }
 
 body.is-mobile #falo-upgrade-panel {
-  top: calc(10px + 46px * var(--ui-scale));
-  left: auto;
-  right: 2px;
-  padding: 8px 8px 4px 14px;
-  align-items: flex-end;
-  max-height: calc(100dvh - clamp(116px, 29vmin, 156px) - 108px);
-  overflow-y: auto;
+  top: calc(16px + 44px * var(--ui-scale));
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  padding: 8px 12px 4px;
+  align-items: center;
+  max-width: calc(100vw - 20px);
+  max-height: calc(100dvh - 180px);
+  overflow: auto;
   scrollbar-width: none;
 }
 
@@ -4242,17 +4244,17 @@ body.is-mobile #falo-upgrade-panel::-webkit-scrollbar {
 }
 
 body.is-mobile #falo-upgrade-panel.hidden {
-  transform: translateX(20px);
+  transform: translate(-50%, -14px);
 }
 
 body.is-mobile .falo-panel-header {
   margin-left: 0;
-  margin-right: 2px;
-  justify-content: flex-end;
+  margin-right: 0;
+  justify-content: center;
 }
 
 body.is-mobile .falo-upgrade-grid {
-  justify-content: end;
+  justify-content: center;
 }
 
 body.is-mobile .bottom-left-panel {
@@ -4296,10 +4298,10 @@ body.is-mobile .center-hud {
   }
 
   body.is-mobile #falo-upgrade-panel {
-    top: calc(10px + 46px * var(--ui-scale));
-    left: auto;
-    right: 2px;
-    max-height: calc(100dvh - clamp(104px, 26vmin, 140px) - 108px);
+    top: calc(50px + 44px * var(--ui-scale));
+    left: 50%;
+    right: auto;
+    max-height: calc(100dvh - 220px);
   }
 
   body.is-mobile .mobile-top-left-actions {
