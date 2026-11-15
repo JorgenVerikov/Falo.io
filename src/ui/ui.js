@@ -363,6 +363,7 @@ export class UIManager {
 
     document.getElementById('start-game-btn').addEventListener('click', () => {
       if (this.isDeploying) return;
+      if (this.onBeforeDeploy) this.onBeforeDeploy();
       this.hideMainMenuAnimated();
       if (this.onStartRun) this.onStartRun();
     });
@@ -866,9 +867,11 @@ export class UIManager {
       grid.appendChild(card);
     });
 
+    const isMobile = document.body.classList.contains('is-mobile');
+    const maxRows = isMobile && (window.innerHeight || 0) <= 520 ? 2 : 3;
     const rows = availableChassisKeys.length >= 5
-      ? 3
-      : (availableChassisKeys.length === 4 ? 2 : Math.min(3, availableChassisKeys.length));
+      ? maxRows
+      : (availableChassisKeys.length === 4 ? 2 : Math.min(maxRows, availableChassisKeys.length));
     grid.style.gridTemplateRows = `repeat(${rows}, calc(82px * var(--ui-scale)))`;
 
     this.hasEvolutionsAvailable = true;

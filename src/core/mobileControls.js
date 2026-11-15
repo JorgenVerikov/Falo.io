@@ -45,6 +45,7 @@ export class MobileControls {
     this.autoFireBtn = document.getElementById('mobile-autofire-btn');
     this.autoSpinBtn = document.getElementById('mobile-autospin-btn');
     this.selfDestructBtn = document.getElementById('mobile-self-destruct-btn');
+    this.fullscreenBtn = document.getElementById('mobile-fullscreen-btn');
 
     this.confirmModal = document.getElementById('self-destruct-modal');
     this.cancelSelfDestructBtn = document.getElementById('cancel-self-destruct-btn');
@@ -52,6 +53,7 @@ export class MobileControls {
     this.deviceBadgeEl = document.getElementById('settings-device-mode-badge');
 
     this.setupDeviceDetectionListeners();
+    this.setupFullscreenListeners();
     this.bindJoystick(this.movePadEl, this.moveKnobEl, (nx, ny, mag, active) => {
       if (!active || mag < 0.12) {
         this.moveVec.x = 0;
@@ -150,6 +152,8 @@ export class MobileControls {
       this.aimState.hasAimed = false;
       this.aimState.angle = 0;
       this.hideSelfDestructPrompt();
+    } else {
+      this.syncFullscreenState();
     }
     this.updateLayerVisibility();
   }
@@ -158,6 +162,90 @@ export class MobileControls {
     if (!this.layerEl) return;
     const shouldShow = this.isMobile && this.inGameActive;
     this.layerEl.classList.toggle('hidden', !shouldShow);
+  }
+
+  isFullscreenActive() {
+    return Boolean(
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    );
+  }
+
+  setupFullscreenListeners() {
+    const sync = () => this.syncFullscreenState();
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync);
+    document.addEventListener('mozfullscreenchange', sync);
+    document.addEventListener('MSFullscreenChange', sync);
+    this.syncFullscreenState();
+  }
+
+  syncFullscreenState() {
+    const active = this.isFullscreenActive();
+    if (this.fullscreenBtn) {
+      this.fullscreenBtn.classList.toggle('active', active);
+      this.fullscreenBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      this.fullscreenBtn.textContent = active ? 'EXIT FS' : 'FULLSCREEN';
+    }
+  }
+
+  requestFullscreenSafe() {
+    if (this.isFullscreenActive()) {
+      this.syncFullscreenState();
+      return Promise.resolve(true);
+    }
+    const el = document.documentElement;
+    if (!el) return Promise.resolve(false);
+    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (!req) return Promise.resolve(false);
+    try {
+      const res = req.call(el);
+      if (res && typeof res.then === 'function') {
+        return res
+          .then(() => {
+            this.syncFullscreenState();
+            return true;
+          })
+          .catch(() => false);
+      }
+      this.syncFullscreenState();
+      return Promise.resolve(true);
+    } catch (_) {
+      return Promise.resolve(false);
+    }
+  }
+
+  exitFullscreenSafe() {
+    if (!this.isFullscreenActive()) {
+      this.syncFullscreenState();
+      return Promise.resolve(true);
+    }
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+    if (!exit) return Promise.resolve(false);
+    try {
+      const res = exit.call(document);
+      if (res && typeof res.then === 'function') {
+        return res
+          .then(() => {
+            this.syncFullscreenState();
+            return true;
+          })
+          .catch(() => false);
+      }
+      this.syncFullscreenState();
+      return Promise.resolve(true);
+    } catch (_) {
+      return Promise.resolve(false);
+    }
+  }
+
+  toggleFullscreen() {
+    if (this.isFullscreenActive()) {
+      return this.exitFullscreenSafe();
+    }
+    return this.requestFullscreenSafe();
   }
 
   resetInputs() {
@@ -210,6 +298,16 @@ export class MobileControls {
     bindTap(this.autoFireBtn, () => this.onToggleAutoFire());
     bindTap(this.autoSpinBtn, () => this.onToggleAutoSpin());
     bindTap(this.selfDestructBtn, () => this.showSelfDestructPrompt());
+
+    if (this.fullscreenBtn) {
+      this.fullscreenBtn.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+      });
+      this.fullscreenBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleFullscreen();
+      });
+    }
 
     this.cancelSelfDestructBtn?.addEventListener('click', () => {
       this.hideSelfDestructPrompt();

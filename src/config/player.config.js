@@ -113,7 +113,7 @@ export const CHASSIS_CONFIG = {
       createBarrelTurret(
         { width: 20, length: 48, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0 },
         { damage: 1, penetration: 1, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 1, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0 },
-        { type: 'READY_RACK', maxRack: 3, refillSpeed: 1.25 }
+        { type: 'READY_RACK', maxRack: 3, refillSpeed: 1.35 }
       )
     ]
   },

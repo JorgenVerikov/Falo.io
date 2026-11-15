@@ -4000,12 +4000,21 @@ body.theme-light .diep-admin-window {
   display: none !important;
 }
 
-/* Top-Left Self Destruct Button (Plain Translucent Black in Light Mode / Translucent White in Dark Mode) */
-.mobile-self-destruct-btn {
+/* Top-Left Mobile Actions (Self Destruct + Fullscreen Toggle) */
+.mobile-top-left-actions {
   position: fixed;
   top: 10px;
   left: 10px;
   z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.mobile-self-destruct-btn,
+.mobile-top-btn {
+  position: relative;
   pointer-events: auto;
   touch-action: none;
   background: rgba(255, 255, 255, 0.16);
@@ -4018,28 +4027,45 @@ body.theme-light .diep-admin-window {
   letter-spacing: 0.4px;
   padding: 6px 10px;
   cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
   transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
-.mobile-self-destruct-btn:active {
+.mobile-self-destruct-btn:active,
+.mobile-top-btn:active {
   background: rgba(255, 255, 255, 0.30);
 }
 
-body.theme-light .mobile-self-destruct-btn {
+.mobile-top-btn.active {
+  background: rgba(255, 255, 255, 0.38);
+  border-color: rgba(255, 255, 255, 0.78);
+  color: #ffffff;
+}
+
+body.theme-light .mobile-self-destruct-btn,
+body.theme-light .mobile-top-btn {
   background: rgba(0, 0, 0, 0.24);
   border-color: rgba(0, 0, 0, 0.32);
   color: rgba(255, 255, 255, 0.95);
 }
 
-body.theme-light .mobile-self-destruct-btn:active {
+body.theme-light .mobile-self-destruct-btn:active,
+body.theme-light .mobile-top-btn:active {
   background: rgba(0, 0, 0, 0.42);
 }
 
-/* Virtual Twin Joysticks (Compact vmin sizing, ordinary translucent white/black) */
+body.theme-light .mobile-top-btn.active {
+  background: rgba(0, 0, 0, 0.56);
+  border-color: rgba(0, 0, 0, 0.80);
+  color: #ffffff;
+}
+
+/* Virtual Twin Joysticks */
 .mobile-joystick {
   position: relative;
-  width: clamp(78px, 20vmin, 108px);
-  height: clamp(78px, 20vmin, 108px);
+  width: clamp(116px, 29vmin, 156px);
+  height: clamp(116px, 29vmin, 156px);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.12);
   border: 1.5px solid rgba(255, 255, 255, 0.24);
@@ -4091,8 +4117,8 @@ body.theme-light .mobile-self-destruct-btn:active {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: clamp(32px, 8.2vmin, 44px);
-  height: clamp(32px, 8.2vmin, 44px);
+  width: clamp(48px, 12vmin, 64px);
+  height: clamp(48px, 12vmin, 64px);
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.28);
@@ -4102,10 +4128,10 @@ body.theme-light .mobile-self-destruct-btn:active {
 
 .mobile-joystick-label {
   position: absolute;
-  bottom: 6px;
+  bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.5px;
   color: rgba(255, 255, 255, 0.55);
@@ -4201,25 +4227,49 @@ body.is-mobile #wave-banner {
 }
 
 body.is-mobile #falo-upgrade-panel {
-  top: 46px;
-  left: 10px;
+  top: calc(10px + 46px * var(--ui-scale));
+  left: auto;
+  right: 2px;
+  padding: 8px 8px 4px 14px;
+  align-items: flex-end;
+  max-height: calc(100dvh - clamp(116px, 29vmin, 156px) - 108px);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+body.is-mobile #falo-upgrade-panel::-webkit-scrollbar {
+  display: none;
+}
+
+body.is-mobile #falo-upgrade-panel.hidden {
+  transform: translateX(20px);
+}
+
+body.is-mobile .falo-panel-header {
+  margin-left: 0;
+  margin-right: 2px;
+  justify-content: flex-end;
+}
+
+body.is-mobile .falo-upgrade-grid {
+  justify-content: end;
 }
 
 body.is-mobile .bottom-left-panel {
-  bottom: calc(clamp(78px, 20vmin, 108px) + 24px);
+  bottom: calc(clamp(116px, 29vmin, 156px) + 22px);
   left: 12px;
   width: calc(165px * var(--ui-scale));
 }
 
 body.is-mobile .stat-corner-tab {
-  bottom: calc(clamp(78px, 20vmin, 108px) + 24px);
+  bottom: calc(clamp(116px, 29vmin, 156px) + 22px);
   left: 12px;
 }
 
 body.is-mobile #bottom-hud-wrapper {
   bottom: 8px;
   gap: calc(3px * var(--ui-scale));
-  max-width: calc(100vw - 2 * clamp(78px, 20vmin, 108px) - 44px);
+  max-width: calc(100vw - 2 * clamp(116px, 29vmin, 156px) - 44px);
 }
 
 body.is-mobile .hud-player-name {
@@ -4246,7 +4296,35 @@ body.is-mobile .center-hud {
   }
 
   body.is-mobile #falo-upgrade-panel {
-    top: 96px;
+    top: calc(10px + 46px * var(--ui-scale));
+    left: auto;
+    right: 2px;
+    max-height: calc(100dvh - clamp(104px, 26vmin, 140px) - 108px);
+  }
+
+  body.is-mobile .mobile-top-left-actions {
+    gap: 4px;
+  }
+
+  body.is-mobile .mobile-self-destruct-btn,
+  body.is-mobile .mobile-top-btn {
+    font-size: 10px;
+    padding: 5px 8px;
+  }
+
+  body.is-mobile .mobile-joystick {
+    width: clamp(104px, 26vmin, 140px);
+    height: clamp(104px, 26vmin, 140px);
+  }
+
+  body.is-mobile .mobile-joystick-knob {
+    width: clamp(42px, 10.5vmin, 58px);
+    height: clamp(42px, 10.5vmin, 58px);
+  }
+
+  body.is-mobile .bottom-left-panel,
+  body.is-mobile .stat-corner-tab {
+    bottom: calc(clamp(104px, 26vmin, 140px) + 20px);
   }
 
   body.is-mobile .mobile-toggles-row {
@@ -4259,7 +4337,7 @@ body.is-mobile .center-hud {
   }
 
   body.is-mobile #bottom-hud-wrapper {
-    max-width: calc(100vw - 2 * clamp(78px, 20vmin, 108px) - 52px);
+    max-width: calc(100vw - 2 * clamp(104px, 26vmin, 140px) - 34px);
   }
 
   .diep-shop-header {

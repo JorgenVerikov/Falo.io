@@ -199,6 +199,11 @@ async function initGame() {
   uiMgr.getIsGameActive = () => (state.isPlaying && !state.inMenu);
   uiMgr.getCurrentWave = () => (waveMgr ? waveMgr.waveNumber : 1);
   uiMgr.onColorChangeCallback = () => applyCrewAndStatModifiers();
+  uiMgr.onBeforeDeploy = () => {
+    if (mobileControls && mobileControls.isMobile) {
+      mobileControls.requestFullscreenSafe();
+    }
+  };
 
   storageMgr.onDataChanged = (newData) => {
     applyCrewAndStatModifiers();
