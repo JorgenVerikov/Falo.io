@@ -395,7 +395,7 @@ function loadAndStartGame() {
   }
   if (uiMgr) {
     uiMgr.showInGameHUD();
-    uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
+    uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints, state.activeChassis);
     uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
     checkEvolutionProgression();
   }
@@ -458,7 +458,7 @@ function addXP(amount, isDirect = false) {
     leveledUp = true;
   }
 
-  uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
+  uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints, state.activeChassis);
   uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
 
   if (leveledUp) {
@@ -484,7 +484,7 @@ function handleStatUpgrade(statKey) {
     state.stats[statKey]++;
 
     applyCrewAndStatModifiers();
-    uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
+    uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints, state.activeChassis);
     uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
   }
 }
@@ -840,6 +840,7 @@ function setActiveChassis(chassisKey) {
   }
   if (uiMgr) {
     uiMgr.updateAdminTankPreview(chassisKey);
+    uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints, state.activeChassis);
   }
 
   checkEvolutionProgression();

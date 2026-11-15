@@ -875,9 +875,13 @@ export class UIManager {
     }
   }
 
-  updateXPBar(level, xp, xpToNext, statPoints) {
+  updateXPBar(level, xp, xpToNext, statPoints, activeChassis = this.activeChassis || 'basic') {
+    this.activeChassis = activeChassis;
     const isMax = (level >= CONFIG.PLAYER.maxLevel);
-    this.levelDisplay.textContent = isMax ? `LVL ${level} (MAX)` : `LVL ${level}`;
+    const chassisName = CONFIG.CHASSIS[activeChassis]?.name || 'Basic Tank';
+    this.levelDisplay.textContent = isMax
+      ? `Lvl ${level} ${chassisName} (MAX)`
+      : `Lvl ${level} ${chassisName}`;
     const pct = isMax ? 100 : Math.min(100, (xp / Math.max(1, xpToNext)) * 100);
     this.xpFill.style.width = `${pct}%`;
     this.statPointsAvailable = statPoints;

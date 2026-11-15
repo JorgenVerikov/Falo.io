@@ -135,7 +135,7 @@ export function grantLevels(levelsToAdd, deps) {
 
   applyCrewAndStatModifiers();
   checkEvolutionProgression();
-  uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
+  uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints, state.activeChassis);
   uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
 
   const levelsGained = targetLevel - startLevel;
@@ -166,7 +166,7 @@ export function grantMaxLevel(deps) {
 
   applyCrewAndStatModifiers();
   checkEvolutionProgression();
-  uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints);
+  uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints, state.activeChassis);
   uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
 
   uiMgr.showToast(`ADMIN: MAX LEVEL ${maxLvl} GRANTED (${state.statPoints} SKILL PTS)`);

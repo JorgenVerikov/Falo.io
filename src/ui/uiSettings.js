@@ -366,9 +366,9 @@ export class SettingsPreviewController {
   resizeCanvas() {
     if (!this.previewCanvas || !this.previewStage) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const rect = this.previewStage.getBoundingClientRect();
-    const cssW = Math.max(140, Math.round(this.previewStage.clientWidth || rect.width || 360));
-    const cssH = Math.max(120, Math.round(this.previewStage.clientHeight || rect.height || 300));
+    const canvasRect = this.previewCanvas.getBoundingClientRect();
+    const cssW = Math.max(80, Math.round(this.previewCanvas.clientWidth || canvasRect.width || this.previewStage.clientWidth || 320));
+    const cssH = Math.max(80, Math.round(this.previewCanvas.clientHeight || canvasRect.height || this.previewStage.clientHeight || 260));
 
     if (
       this.previewCanvas.width !== Math.round(cssW * dpr) ||
@@ -633,9 +633,9 @@ export class SettingsPreviewController {
     }
 
     if (this.currentItem && this.currentItem.kind !== 'control') {
-      const stageW = this.previewStage?.clientWidth || 0;
-      const stageH = this.previewStage?.clientHeight || 0;
-      if ((stageW > 0 && stageW !== this.cssWidth) || (stageH > 0 && stageH !== this.cssHeight)) {
+      const canvasW = Math.round(this.previewCanvas?.clientWidth || 0);
+      const canvasH = Math.round(this.previewCanvas?.clientHeight || 0);
+      if ((canvasW > 0 && canvasW !== this.cssWidth) || (canvasH > 0 && canvasH !== this.cssHeight)) {
         this.resizeCanvas();
       }
       if (this.previewCanvas) {

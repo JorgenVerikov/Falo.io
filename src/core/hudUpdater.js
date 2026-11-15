@@ -97,12 +97,12 @@ export class HUDUpdater {
     }
 
     let nextWaveStatus = '';
-    let nextWaveColor = '';
+    let nextWaveState = 'active';
     let nextWaveTimer = '';
 
     if (waveMgr.graceTimer > 0) {
-      nextWaveStatus = `WAVE ${waveMgr.waveNumber} (GRACE PERIOD)`;
-      nextWaveColor = '#e9b439';
+      nextWaveStatus = `WAVE ${waveMgr.waveNumber} · GRACE PERIOD`;
+      nextWaveState = 'grace';
       nextWaveTimer = `ENEMIES SPAWN IN: ${Math.ceil(waveMgr.graceTimer)}s`;
       if (state.lastAnnouncedGraceWave !== waveMgr.waveNumber && !state.inMenu && !state.isGameOver) {
         state.lastAnnouncedGraceWave = waveMgr.waveNumber;
@@ -112,11 +112,11 @@ export class HUDUpdater {
       }
     } else if (waveMgr.isBreak) {
       nextWaveStatus = `WAVE ${waveMgr.waveNumber} CLEARED`;
-      nextWaveColor = '#57a857';
+      nextWaveState = 'break';
       nextWaveTimer = `NEXT WAVE IN ${Math.ceil(waveMgr.breakTimer)}s`;
     } else {
       nextWaveStatus = `WAVE ${waveMgr.waveNumber}`;
-      nextWaveColor = '#359bb5';
+      nextWaveState = 'active';
       nextWaveTimer = `ENEMIES REMAINING: ${waveMgr.getRemainingEnemyCount()}`;
     }
 
@@ -125,9 +125,9 @@ export class HUDUpdater {
         this.prevWaveStatus = nextWaveStatus;
         els.waveStatus.textContent = nextWaveStatus;
       }
-      if (nextWaveColor !== this.prevWaveColor) {
-        this.prevWaveColor = nextWaveColor;
-        els.waveStatus.style.color = nextWaveColor;
+      if (nextWaveState !== this.prevWaveColor) {
+        this.prevWaveColor = nextWaveState;
+        els.waveStatus.dataset.waveState = nextWaveState;
       }
     }
     if (els.waveTimerText && nextWaveTimer !== this.prevWaveTimer) {

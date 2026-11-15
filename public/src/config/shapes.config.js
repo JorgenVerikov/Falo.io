@@ -1,5 +1,5 @@
 /**
- * DIEP SURVIVAL - SHAPES CONFIGURATION
+ * FALO SURVIVAL - SHAPES CONFIGURATION
  * Destructible polygonal resource shapes in the arena providing XP and score.
  */
 
@@ -39,6 +39,7 @@ export const SHAPES_CONFIG = {
       evolutionTimeMax: 65
     },
     square: {
+      name: 'Square',
       sides: 4,
       radius: 30,
       hp: 10,
@@ -50,6 +51,7 @@ export const SHAPES_CONFIG = {
       stroke: '#caba4d'
     },
     triangle: {
+      name: 'Triangle',
       sides: 3,
       radius: 30,
       hp: 25,
@@ -61,6 +63,7 @@ export const SHAPES_CONFIG = {
       stroke: '#cc5e5e'
     },
     pentagon: {
+      name: 'Pentagon',
       sides: 5,
       radius: 38,
       hp: 130,
@@ -71,7 +74,20 @@ export const SHAPES_CONFIG = {
       color: '#768dfc',
       stroke: '#5e71cc'
     },
+    alpha_pentagon: {
+      name: 'Alpha Pentagon',
+      sides: 5,
+      radius: 100,
+      hp: 3000,
+      xp: 3000,
+      ramDamage: 40,
+      weight: 30.0,
+      spawnWeight: 0.01,
+      color: '#768dfc',
+      stroke: '#5e71cc'
+    },
     hexagon: {
+      name: 'Hexagon',
       sides: 6,
       radius: 45,
       hp: 1500,
@@ -83,10 +99,11 @@ export const SHAPES_CONFIG = {
       stroke: '#2894a4'
     },
     heptagon: {
+      name: 'Heptagon',
       sides: 7,
-      radius: 55,
-      hp: 2000,
-      xp: 2000,
+      radius: 65,
+      hp: 4000,
+      xp: 4000,
       ramDamage: 30,
       weight: 18.0,
       spawnWeight: 0.0025,
@@ -94,10 +111,11 @@ export const SHAPES_CONFIG = {
       stroke: '#D24795'
     },
     octagon: {
+      name: 'Octagon',
       sides: 8,
-      radius: 65,
-      hp: 3000,
-      xp: 3000,
+      radius: 70,
+      hp: 5000,
+      xp: 5000,
       ramDamage: 40,
       weight: 22.0,
       spawnWeight: 0.0015,

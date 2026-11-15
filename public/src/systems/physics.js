@@ -1,13 +1,20 @@
 import { CONFIG } from '../core/config.js';
 import { EnemyCommunicationSystem } from '../entities/enemy.js';
 
+const _overlapOut = { collided: false, nx: 0, ny: 0 };
+
 export class PhysicsSystem {
   static resolveCircleOverlap(a, b, pushRatioA = 0.5, pushRatioB = 0.5) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const minDist = a.radius + b.radius;
-    const distSq = dx * dx + dy * dy;
 
+    if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) {
+      _overlapOut.collided = false;
+      return _overlapOut;
+    }
+
+    const distSq = dx * dx + dy * dy;
     if (distSq < minDist * minDist) {
       const dist = Math.sqrt(distSq) || 0.001;
       const overlap = minDist - dist;
@@ -19,32 +26,45 @@ export class PhysicsSystem {
       b.x += nx * overlap * pushRatioB;
       b.y += ny * overlap * pushRatioB;
 
-      return { collided: true, nx, ny };
+      _overlapOut.collided = true;
+      _overlapOut.nx = nx;
+      _overlapOut.ny = ny;
+      return _overlapOut;
     }
 
-    return { collided: false, nx: 0, ny: 0 };
+    _overlapOut.collided = false;
+    return _overlapOut;
   }
 
   static resolvePhysicalCollisions(waveMgr, dt, player, playerWeapon, activeChassisKey, playerStats = {}) {
     const chassisConfig = CONFIG.CHASSIS[activeChassisKey];
     const bodyDmgStat = playerStats.bodyDamage || 0;
 
-    // Configurable Diep.io Body Damage Calculation Formulas
     const ramDmgShape = CONFIG.PLAYER.baseBodyDamageShapes + (bodyDmgStat * CONFIG.PLAYER.bodyDmgPerPointShape);
     const ramDmgTank = CONFIG.PLAYER.baseBodyDamageTanks + (bodyDmgStat * CONFIG.PLAYER.bodyDmgPerPointTank);
     const playerRamDamage = ramDmgTank * (chassisConfig.bodyDamageMultiplier || 1.0);
 
     const pCol = CONFIG.PLAYER.collision;
+    const shapes = waveMgr.shapes;
+    const enemies = waveMgr.enemies;
+    const playerProjectiles = playerWeapon.projectiles;
+    const playerDrones = playerWeapon.drones || [];
+    const enemyBullets = waveMgr.enemyBullets;
+    const shapePenDrain = CONFIG.WEAPONS.shapePenetrationDrain || 2.0;
+    const enemyPenDrain = CONFIG.WEAPONS.enemyPenetrationDrain || 1.5;
+    const repelStrength = CONFIG.WEAPONS.repelStrength;
 
-    // 1. PLAYER vs RESOURCE SHAPES (Configurable Phasing Overlap + Heavy Repulsion)
-    for (const shape of waveMgr.shapes) {
+    // 1. PLAYER vs RESOURCE SHAPES
+    for (let i = 0; i < shapes.length; i++) {
+      const shape = shapes[i];
       if (shape.dead) continue;
 
       const dx = shape.x - player.x;
       const dy = shape.y - player.y;
       const minDist = player.radius + shape.radius;
-      const distSq = dx * dx + dy * dy;
+      if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) continue;
 
+      const distSq = dx * dx + dy * dy;
       if (distSq < minDist * minDist) {
         const dist = Math.sqrt(distSq) || 0.001;
         const overlap = minDist - dist;
@@ -52,7 +72,6 @@ export class PhysicsSystem {
         const ny = dy / dist;
 
         const shapeWeight = shape.config.weight || 1.0;
-
         const baseRepulsion = pCol.shapeRepulsionBase + overlap * pCol.shapeRepulsionOverlapFactor;
         const playerPushFactor = pCol.shapePlayerPushFactor / (1.0 + (bodyDmgStat * 0.1));
         const shapePushFactor = (1.0 - pCol.shapePlayerPushFactor) / shapeWeight;
@@ -79,16 +98,17 @@ export class PhysicsSystem {
       }
     }
 
-    // 2. PLAYER vs SWARM ENEMIES (Configurable Phasing Overlap + Heavy Repulsion)
-    for (const enemy of waveMgr.enemies) {
+    // 2. PLAYER vs ENEMIES
+    for (let i = 0; i < enemies.length; i++) {
+      const enemy = enemies[i];
       if (enemy.dead) continue;
 
       const dx = enemy.x - player.x;
       const dy = enemy.y - player.y;
       const minDist = player.radius + enemy.radius;
-      if (Math.abs(dx) > minDist || Math.abs(dy) > minDist) continue;
-      const distSq = dx * dx + dy * dy;
+      if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) continue;
 
+      const distSq = dx * dx + dy * dy;
       if (distSq < minDist * minDist) {
         const dist = Math.sqrt(distSq) || 0.001;
         const overlap = minDist - dist;
@@ -96,7 +116,6 @@ export class PhysicsSystem {
         const ny = dy / dist;
 
         const enemyWeight = enemy.config.weight || 1.5;
-
         const enemyRepulsion = pCol.enemyRepulsionBase + overlap * pCol.enemyRepulsionOverlapFactor;
         const enemyPlayerPush = pCol.enemyPlayerPushFactor;
         const enemyPushFactor = (1.0 - pCol.enemyPlayerPushFactor) / enemyWeight;
@@ -108,8 +127,12 @@ export class PhysicsSystem {
         enemy.vy += ny * enemyRepulsion * enemyPushFactor * dt;
 
         player.takeDamage(enemy.damage, activeChassisKey);
-        enemy.takeDamage(playerRamDamage * pCol.enemyRamDamageMultiplier * dt);
-        EnemyCommunicationSystem.onPlayerDamaged(waveMgr.enemies, enemy, true);
+        if (enemy.config && enemy.config.dieOnPlayerHit) {
+          enemy.kill();
+        } else {
+          enemy.takeDamage(playerRamDamage * pCol.enemyRamDamageMultiplier * dt);
+        }
+        EnemyCommunicationSystem.onPlayerDamaged(enemies, enemy, true);
 
         if (Math.random() < 0.35) {
           waveMgr.spawnShatterParticles(enemy.x - nx * enemy.radius * 0.5, enemy.y - ny * enemy.radius * 0.5, enemy.color, 3);
@@ -123,21 +146,24 @@ export class PhysicsSystem {
     }
 
     // 3. ENEMY vs ENEMY
-    for (let i = 0; i < waveMgr.enemies.length; i++) {
-      if (waveMgr.enemies[i].dead) continue;
-      for (let j = i + 1; j < waveMgr.enemies.length; j++) {
-        if (waveMgr.enemies[j].dead) continue;
-        this.resolveCircleOverlap(waveMgr.enemies[i], waveMgr.enemies[j], 0.5, 0.5);
+    for (let i = 0; i < enemies.length; i++) {
+      const enemyA = enemies[i];
+      if (enemyA.dead) continue;
+      for (let j = i + 1; j < enemies.length; j++) {
+        const enemyB = enemies[j];
+        if (enemyB.dead) continue;
+        this.resolveCircleOverlap(enemyA, enemyB, 0.5, 0.5);
       }
     }
 
     // 4. ENEMY vs SHAPES
-    for (const enemy of waveMgr.enemies) {
+    for (let i = 0; i < enemies.length; i++) {
+      const enemy = enemies[i];
       if (enemy.dead) continue;
-      for (const shape of waveMgr.shapes) {
+      for (let j = 0; j < shapes.length; j++) {
+        const shape = shapes[j];
         if (shape.dead) continue;
         if (shape.type === 'egg') {
-          // Eggs are tiny and fragile: do not impede enemy velocity, egg is nudged aside
           this.resolveCircleOverlap(enemy, shape, 0.0, 1.0);
         } else {
           this.resolveCircleOverlap(enemy, shape, 0.6, 0.4);
@@ -145,15 +171,19 @@ export class PhysicsSystem {
       }
     }
 
-    // 4b. SHAPE vs SHAPE (prevent overlapping)
-    for (let i = 0; i < waveMgr.shapes.length; i++) {
-      const shapeA = waveMgr.shapes[i];
+    // 4b. SHAPE vs SHAPE
+    for (let i = 0; i < shapes.length; i++) {
+      const shapeA = shapes[i];
       if (shapeA.dead) continue;
-      for (let j = i + 1; j < waveMgr.shapes.length; j++) {
-        const shapeB = waveMgr.shapes[j];
+      const weightA = shapeA.config.weight || 1.0;
+
+      for (let j = i + 1; j < shapes.length; j++) {
+        const shapeB = shapes[j];
         if (shapeB.dead) continue;
 
-        const weightA = shapeA.config.weight || 1.0;
+        const minDist = shapeA.radius + shapeB.radius;
+        if (Math.abs(shapeB.x - shapeA.x) >= minDist || Math.abs(shapeB.y - shapeA.y) >= minDist) continue;
+
         const weightB = shapeB.config.weight || 1.0;
         const totalWeight = weightA + weightB;
         const pushA = weightB / totalWeight;
@@ -161,7 +191,6 @@ export class PhysicsSystem {
 
         const col = this.resolveCircleOverlap(shapeA, shapeB, pushA, pushB);
         if (col.collided) {
-          // Elastic separation impulse to prevent sticking
           const rvx = shapeB.vx - shapeA.vx;
           const rvy = shapeB.vy - shapeA.vy;
           const normalVel = rvx * col.nx + rvy * col.ny;
@@ -178,28 +207,27 @@ export class PhysicsSystem {
       }
     }
 
-    // 5. PLAYER PROJECTILES vs SHAPES & ENEMIES
-    for (const proj of playerWeapon.projectiles) {
+    // 5. PLAYER PROJECTILES & DRONES vs SHAPES & ENEMIES
+    const offensiveUnits = playerDrones.length > 0 ? playerProjectiles.concat(playerDrones) : playerProjectiles;
+    for (let i = 0; i < offensiveUnits.length; i++) {
+      const proj = offensiveUnits[i];
       if (proj.dead) continue;
 
-      // Contact with Resource Shapes
-      for (const shape of waveMgr.shapes) {
+      for (let j = 0; j < shapes.length; j++) {
+        const shape = shapes[j];
         if (shape.dead || proj.dead) continue;
 
         const dx = proj.x - shape.x;
         const dy = proj.y - shape.y;
         const minDist = proj.radius + shape.radius;
-        if (Math.abs(dx) > minDist || Math.abs(dy) > minDist) continue;
+        if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) continue;
 
         if (dx * dx + dy * dy < minDist * minDist) {
-          const dmg = proj.damage;
-          shape.takeDamage(dmg);
+          shape.takeDamage(proj.damage);
 
-          const noDrain = shape.config && shape.config.noBulletDrain;
-          if (!noDrain) {
-            const shapePenDrain = CONFIG.WEAPONS.shapePenetrationDrain || 2.0;
+          if (!(shape.config && shape.config.noBulletDrain)) {
             proj.takePenetrationDamage(shapePenDrain);
-            proj.applyCenterRepulsion(shape.x, shape.y, dt, CONFIG.WEAPONS.repelStrength);
+            proj.applyCenterRepulsion(shape.x, shape.y, dt, repelStrength);
           }
 
           if (Math.random() < 0.35) {
@@ -208,9 +236,8 @@ export class PhysicsSystem {
 
           const shapeWeight = shape.config.weight || 1.0;
           const bSpeed = Math.hypot(proj.vx, proj.vy) || 1;
-          const pushForce = 55;
-          shape.vx += ((proj.vx / bSpeed) * pushForce) / shapeWeight;
-          shape.vy += ((proj.vy / bSpeed) * pushForce) / shapeWeight;
+          shape.vx += ((proj.vx / bSpeed) * 55) / shapeWeight;
+          shape.vy += ((proj.vy / bSpeed) * 55) / shapeWeight;
 
           if (shape.dead) {
             waveMgr.score += shape.xp;
@@ -221,23 +248,19 @@ export class PhysicsSystem {
 
       if (proj.dead) continue;
 
-      // Contact with Enemy Units
-      for (const enemy of waveMgr.enemies) {
+      for (let j = 0; j < enemies.length; j++) {
+        const enemy = enemies[j];
         if (enemy.dead || proj.dead) continue;
 
         const dx = proj.x - enemy.x;
         const dy = proj.y - enemy.y;
         const minDist = proj.radius + enemy.radius;
-        if (Math.abs(dx) > minDist || Math.abs(dy) > minDist) continue;
+        if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) continue;
 
         if (dx * dx + dy * dy < minDist * minDist) {
-          const dmg = proj.damage;
-          enemy.takeDamage(dmg);
-
-          const enemyPenDrain = CONFIG.WEAPONS.enemyPenetrationDrain || 1.5;
+          enemy.takeDamage(proj.damage);
           proj.takePenetrationDamage(enemyPenDrain);
-
-          proj.applyCenterRepulsion(enemy.x, enemy.y, dt, CONFIG.WEAPONS.repelStrength + 10);
+          proj.applyCenterRepulsion(enemy.x, enemy.y, dt, repelStrength + 10);
 
           if (Math.random() < 0.35) {
             waveMgr.spawnShatterParticles(proj.x, proj.y, enemy.color, CONFIG.VFX.impactParticleCount);
@@ -251,59 +274,61 @@ export class PhysicsSystem {
       }
     }
 
-    // 6. PLAYER BULLETS vs ENEMY BULLETS
-    for (const playerProj of playerWeapon.projectiles) {
+    // 6. PLAYER BULLETS & DRONES vs ENEMY BULLETS
+    for (let i = 0; i < offensiveUnits.length; i++) {
+      const playerProj = offensiveUnits[i];
       if (playerProj.dead) continue;
 
-      for (const enemyProj of waveMgr.enemyBullets) {
-        if (enemyProj.dead || playerProj.dead) continue;
+      for (let j = 0; j < enemyBullets.length; j++) {
+        const enemyProj = enemyBullets[j];
+        if (enemyProj.dead || playerProj.dead || enemyProj.damage <= 0) continue;
 
         const dx = playerProj.x - enemyProj.x;
         const dy = playerProj.y - enemyProj.y;
         const minDist = playerProj.radius + enemyProj.radius;
+        if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) continue;
 
         if (dx * dx + dy * dy < minDist * minDist) {
           playerProj.takePenetrationDamage(1.0);
           enemyProj.takePenetrationDamage(1.0);
-
           playerProj.applyCenterRepulsion(enemyProj.x, enemyProj.y, dt, 120);
-
           waveMgr.spawnShatterParticles(playerProj.x, playerProj.y, '#ffffff', 2);
         }
       }
     }
 
     // 7. ENEMY PROJECTILES vs PLAYER & SHAPES
-    for (const bullet of waveMgr.enemyBullets) {
-      if (bullet.dead) continue;
+    for (let i = 0; i < enemyBullets.length; i++) {
+      const bullet = enemyBullets[i];
+      if (bullet.dead || bullet.damage <= 0) continue;
 
       const pdx = player.x - bullet.x;
       const pdy = player.y - bullet.y;
       const pMinDist = player.radius + bullet.radius;
 
-      if (pdx * pdx + pdy * pdy < pMinDist * pMinDist) {
+      if (Math.abs(pdx) < pMinDist && Math.abs(pdy) < pMinDist && (pdx * pdx + pdy * pdy < pMinDist * pMinDist)) {
         bullet.kill();
         player.takeDamage(bullet.damage, activeChassisKey);
-        EnemyCommunicationSystem.onPlayerDamaged(waveMgr.enemies, null, false);
+        EnemyCommunicationSystem.onPlayerDamaged(enemies, null, false);
         waveMgr.spawnShatterParticles(player.x, player.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
         continue;
       }
 
-      // Contact with Shapes
-      for (const shape of waveMgr.shapes) {
+      for (let j = 0; j < shapes.length; j++) {
+        const shape = shapes[j];
         if (shape.dead || bullet.dead) continue;
 
         const dx = bullet.x - shape.x;
         const dy = bullet.y - shape.y;
         const minDist = bullet.radius + shape.radius;
+        if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) continue;
 
         if (dx * dx + dy * dy < minDist * minDist) {
           shape.takeDamage(bullet.damage);
 
-          const noDrain = shape.config && shape.config.noBulletDrain;
-          if (!noDrain) {
-            bullet.takePenetrationDamage(CONFIG.WEAPONS.shapePenetrationDrain || 2.0);
-            bullet.applyCenterRepulsion(shape.x, shape.y, dt, CONFIG.WEAPONS.repelStrength);
+          if (!(shape.config && shape.config.noBulletDrain)) {
+            bullet.takePenetrationDamage(shapePenDrain);
+            bullet.applyCenterRepulsion(shape.x, shape.y, dt, repelStrength);
           }
 
           if (Math.random() < 0.3) {
@@ -312,9 +337,8 @@ export class PhysicsSystem {
 
           const shapeWeight = shape.config.weight || 1.0;
           const bSpeed = Math.hypot(bullet.vx, bullet.vy) || 1;
-          const pushForce = 45;
-          shape.vx += ((bullet.vx / bSpeed) * pushForce) / shapeWeight;
-          shape.vy += ((bullet.vy / bSpeed) * pushForce) / shapeWeight;
+          shape.vx += ((bullet.vx / bSpeed) * 45) / shapeWeight;
+          shape.vy += ((bullet.vy / bSpeed) * 45) / shapeWeight;
 
           if (shape.dead) {
             waveMgr.spawnShatterParticles(shape.x, shape.y, shape.color, CONFIG.VFX.shapeShatterCount);

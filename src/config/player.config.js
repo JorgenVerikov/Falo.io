@@ -102,6 +102,7 @@ export const EVOLUTION_CONFIG = {
 export const CHASSIS_CONFIG = {
   basic: {
     name: 'Basic Tank',
+    desc: 'Reliable all-around starter chassis with standard cannon.',
     reqLevel: 1,
     tier: 0,
     upgradesFrom: [],
@@ -120,6 +121,7 @@ export const CHASSIS_CONFIG = {
 
   twin: {
     name: 'Twin',
+    desc: 'Dual-barrel chassis with high cyclic rate-of-fire.',
     reqLevel: 15,
     tier: 1,
     upgradesFrom: ['basic'],
@@ -144,6 +146,7 @@ export const CHASSIS_CONFIG = {
 
   sniper: {
     name: 'Sniper',
+    desc: 'High-velocity long barrel cannon with wide vision.',
     reqLevel: 15,
     tier: 1,
     upgradesFrom: ['basic'],
@@ -162,6 +165,7 @@ export const CHASSIS_CONFIG = {
 
   flank: {
     name: 'Flank Guard',
+    desc: 'Front and rear guns providing omnidirectional defense.',
     reqLevel: 15,
     tier: 1,
     upgradesFrom: ['basic'],
@@ -186,6 +190,7 @@ export const CHASSIS_CONFIG = {
 
   machinegun: {
     name: 'Machine Gun',
+    desc: 'Rapid spread-cone spray cannon with high fire-rate.',
     reqLevel: 15,
     tier: 1,
     upgradesFrom: ['basic'],
@@ -204,6 +209,7 @@ export const CHASSIS_CONFIG = {
 
   smasher: {
     name: 'Smasher',
+    desc: 'Heavy ramming chassis with spinning hexagonal armor.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['basic'],
@@ -231,6 +237,7 @@ export const CHASSIS_CONFIG = {
 
   tesla: {
     name: 'Tesla Surge',
+    desc: 'High-energy arc capacitor chassis with pentagonal frame.',
     reqLevel: 45,
     tier: 3,
     upgradesFrom: ['basic'],
@@ -249,6 +256,7 @@ export const CHASSIS_CONFIG = {
 
   tripleshot: {
     name: 'Triple Shot',
+    desc: 'Three front-spread cannons covering a wide arc with strong recoil.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['twin'],
@@ -278,6 +286,7 @@ export const CHASSIS_CONFIG = {
 
   quadtank: {
     name: 'Quad Tank',
+    desc: 'Four cannons in a plus sign firing in four directions with nullified recoil.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['twin', 'flank'],
@@ -312,6 +321,7 @@ export const CHASSIS_CONFIG = {
 
   twinflank: {
     name: 'Twin Flank',
+    desc: 'Dual front and rear cannons providing balanced coverage with nullified recoil.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['twin', 'flank'],
@@ -346,6 +356,7 @@ export const CHASSIS_CONFIG = {
 
   assassin: {
     name: 'Assassin',
+    desc: 'Extended long-barrel sniper with wider field of view and higher velocity at reduced reload.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['sniper'],
@@ -364,6 +375,7 @@ export const CHASSIS_CONFIG = {
 
   overseer: {
     name: 'Overseer',
+    desc: 'Dual side spawners deploy up to 8 controllable drones that attack or repel on command.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['sniper'],
@@ -394,6 +406,7 @@ export const CHASSIS_CONFIG = {
 
   hunter: {
     name: 'Hunter',
+    desc: 'Stacked dual-barrel sniper firing a small then large bullet in rapid burst.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['sniper'],
@@ -418,6 +431,7 @@ export const CHASSIS_CONFIG = {
 
   trapper: {
     name: 'Trapper',
+    desc: 'Launches high-penetration traps that stop in place to form a protective wall; 5-ammo Ready-Rack.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['sniper'],
@@ -440,6 +454,7 @@ export const CHASSIS_CONFIG = {
 
   destroyer: {
     name: 'Destroyer',
+    desc: 'Massive heavy cannon firing giant high-damage, high-recoil shells; 2-ammo Ready-Rack.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['machinegun'],
@@ -458,6 +473,7 @@ export const CHASSIS_CONFIG = {
 
   gunner: {
     name: 'Gunner',
+    desc: 'Four frontal miniguns rapidly firing streams of small, fast bullets with low recoil.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['machinegun'],
@@ -492,6 +508,7 @@ export const CHASSIS_CONFIG = {
 
   shotgun: {
     name: 'Shotgun',
+    desc: 'Overlapping flared barrels firing a 12-pellet spread blast with strong recoil.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['machinegun'],
@@ -521,6 +538,7 @@ export const CHASSIS_CONFIG = {
 
   triangle: {
     name: 'Tri-Angle',
+    desc: 'Front main cannon paired with two angled rear propulsion thrusters for forward recoil boost.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['flank'],
@@ -551,6 +569,7 @@ export const CHASSIS_CONFIG = {
 
   auto3: {
     name: 'Auto 3',
+    desc: 'Three side-mounted automatic turrets that track nearby targets and steer manually on command.',
     reqLevel: 30,
     tier: 2,
     upgradesFrom: ['flank'],

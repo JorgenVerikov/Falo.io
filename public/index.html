@@ -8,6 +8,9 @@
   <meta property="og:title" content="Falo.io" />
   <meta property="og:description" content="Top-down 2D tank survival and arena combat game with upgrades, waves, and vehicle customization" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" />
   <link rel="stylesheet" href="assets/style.css"/>
   <link rel="icon" type="image/png" href="assets/Falo.png"/>
 </head>
@@ -17,9 +20,9 @@
   <div id="toast-banner" class="toast-banner hidden">ALERT MESSAGE HERE</div>
 
   <div id="ui-container" class="hidden">
-    <div id="top-left-hud" class="hud-panel" style="position: absolute; top: 16px; right: 16px;">
-      <div class="hud-row"><span class="hud-label">FPS:</span><span id="fps-counter" class="hud-val">60</span></div>
-      <div class="hud-row"><span class="hud-label">SCORE:</span><span id="score-display" class="hud-val">0</span></div>
+    <div id="top-left-hud" class="hud-panel">
+      <div class="hud-row"><span class="hud-label">FPS</span><span id="fps-counter" class="hud-val">60</span></div>
+      <div class="hud-row"><span class="hud-label">SCORE</span><span id="score-display" class="hud-val">0</span></div>
     </div>
 
     <div id="wave-banner" class="hud-panel center-top">
@@ -70,36 +73,139 @@
         <div id="overheat-banner" class="overheat-banner hidden">OVERHEAT</div>
       </div>
     </div>
+
+    <!-- Mobile Touch Controls Overlay -->
+    <div id="mobile-controls-layer" class="mobile-controls-layer hidden">
+      <div class="mobile-top-left-actions">
+        <button id="mobile-self-destruct-btn" class="mobile-self-destruct-btn" type="button">SELF DESTRUCT</button>
+        <button id="mobile-fullscreen-btn" class="mobile-top-btn mobile-fullscreen-btn" type="button" aria-label="Toggle Fullscreen" aria-pressed="false">FULLSCREEN</button>
+      </div>
+
+      <div id="mobile-move-joystick" class="mobile-joystick mobile-joystick-left" aria-label="Movement Joystick">
+        <div class="mobile-joystick-ring"></div>
+        <div id="mobile-move-knob" class="mobile-joystick-knob"></div>
+        <span class="mobile-joystick-label">MOVE</span>
+      </div>
+
+      <div class="mobile-right-cluster">
+        <div class="mobile-toggles-row">
+          <button id="mobile-autofire-btn" class="mobile-toggle-btn" type="button">AUTO FIRE</button>
+          <button id="mobile-autospin-btn" class="mobile-toggle-btn" type="button">AUTO SPIN</button>
+        </div>
+        <div id="mobile-aim-joystick" class="mobile-joystick mobile-joystick-right" aria-label="Aiming Joystick">
+          <div class="mobile-joystick-ring"></div>
+          <div id="mobile-aim-knob" class="mobile-joystick-knob aim-knob"></div>
+          <span class="mobile-joystick-label">AIM / FIRE</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Main Menu Overlay -->
   <div id="main-menu-overlay" class="modal-overlay">
-    <div class="main-menu-box">
-      <h1 class="main-menu-title">FALO.IO</h1>
-      <p class="main-menu-sub">This is the tale of...</p>
-
-      <div class="player-name-wrapper">
-        <input type="text" id="player-name-input" class="player-name-main-input" placeholder="(This is the tale of...)" value="Tank" maxlength="20" autocomplete="off" spellcheck="false" />
+    <div id="main-menu-scene" class="main-menu-scene">
+      <!-- Left Cursor-Tracking Tank Hero -->
+      <div id="main-menu-hero-tank-wrap" class="main-menu-hero-tank-wrap" aria-hidden="true">
+        <canvas id="menu-hero-tank-canvas"></canvas>
       </div>
 
-      <div class="main-menu-actions">
-        <button id="start-game-btn" class="menu-btn primary">DEPLOY</button>
-        <button id="main-menu-armory-btn" class="menu-btn secondary">ARMORY</button>
-        <button id="main-menu-settings-btn" class="menu-btn secondary">SETTINGS</button>
+      <!-- Right Arknights-Inspired Tilted Action Column -->
+      <div id="main-menu-right-panel" class="main-menu-right-panel">
+        <div class="main-menu-brand">
+          <h1 class="main-menu-title">FALO.IO</h1>
+          <p class="main-menu-sub">This is the tale of...</p>
+        </div>
+
+        <div class="player-name-wrapper">
+          <input type="text" id="player-name-input" class="player-name-main-input" placeholder="(This is the tale of...)" value="Tank" maxlength="20" autocomplete="off" spellcheck="false" />
+        </div>
+
+        <div class="main-menu-actions">
+          <!-- Row 1: Primary Hero Tile (Deploy) -->
+          <button id="start-game-btn" class="main-menu-tile tile-deploy" type="button">
+            <span class="tile-content">
+              <span class="tile-title">DEPLOY</span>
+              <span class="tile-sub">ENTER ARENA</span>
+            </span>
+            <svg class="tile-watermark" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" aria-hidden="true">
+              <circle cx="32" cy="32" r="18" />
+              <line x1="32" y1="6" x2="32" y2="20" />
+              <line x1="32" y1="44" x2="32" y2="58" />
+              <line x1="6" y1="32" x2="20" y2="32" />
+              <line x1="44" y1="32" x2="58" y2="32" />
+              <circle cx="32" cy="32" r="4" fill="currentColor" stroke="none" />
+            </svg>
+          </button>
+
+          <!-- Row 2: Dual Split Tiles (Armory & Evolution Tree) -->
+          <div class="main-menu-tile-row">
+            <button id="main-menu-armory-btn" class="main-menu-tile tile-armory" type="button">
+              <span class="tile-content">
+                <span class="tile-title">ARMORY</span>
+                <span class="tile-sub">LOADOUT &amp; SKINS</span>
+              </span>
+              <svg class="tile-watermark" viewBox="0 0 64 64" aria-hidden="true">
+                <defs>
+                  <mask id="armory-tank-barrel-mask">
+                    <rect width="64" height="64" fill="white" />
+                    <circle cx="26" cy="32" r="15" fill="black" />
+                  </mask>
+                </defs>
+                <g transform="rotate(-24 28 32)">
+                  <rect x="26" y="24" width="30" height="16" rx="1.5" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round" mask="url(#armory-tank-barrel-mask)" />
+                  <circle cx="26" cy="32" r="15" fill="currentColor" fill-opacity="0.32" stroke="currentColor" stroke-width="3.5" />
+                </g>
+              </svg>
+            </button>
+
+            <button id="main-menu-evolution-btn" class="main-menu-tile tile-evo" type="button">
+              <span class="tile-content">
+                <span class="tile-title">EVOLUTION TREE</span>
+                <span class="tile-sub">CLASS UPGRADES</span>
+              </span>
+              <svg class="tile-watermark" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" aria-hidden="true">
+                <circle cx="32" cy="14" r="6" />
+                <circle cx="16" cy="50" r="6" />
+                <circle cx="48" cy="50" r="6" />
+                <path d="M32 20v12M32 32L16 44M32 32L48 44" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Row 3: Wide Bottom Utility Tile (Settings) -->
+          <button id="main-menu-settings-btn" class="main-menu-tile tile-settings" type="button">
+            <span class="tile-content">
+              <span class="tile-title">SETTINGS</span>
+              <span class="tile-sub">DISPLAY &amp; CONTROLS</span>
+            </span>
+            <svg class="tile-watermark" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" aria-hidden="true">
+              <circle cx="32" cy="32" r="10" />
+              <path d="M32 10v8M32 46v8M10 32h8M46 32h8M16.4 16.4l5.7 5.7M41.9 41.9l5.7 5.7M47.6 16.4l-5.7 5.7M22.1 41.9l-5.7 5.7" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Account / Authentication Status Bar (Bottom Right) -->
+    <!-- Top-Left Fullscreen Toggle Button -->
+    <button id="main-menu-fullscreen-btn" class="menu-fullscreen-btn" type="button" aria-label="Toggle Fullscreen" aria-pressed="false">
+      <svg class="menu-fullscreen-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+      </svg>
+      <span class="menu-fullscreen-label">FULLSCREEN</span>
+    </button>
+
+    <!-- Account / Authentication Status Bar (Bottom Left) -->
     <div id="auth-status-container" class="auth-status-container">
       <span id="auth-status-label" class="auth-status-label">PROFILE: GUEST</span>
-      <button id="auth-modal-open-btn" class="auth-action-link">
+      <button id="auth-modal-open-btn" class="auth-action-link" type="button">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
         LOG IN / SYNC
       </button>
-      <button id="auth-logout-btn" class="auth-action-link hidden">LOG OUT</button>
+      <button id="auth-logout-btn" class="auth-action-link hidden" type="button">LOG OUT</button>
     </div>
   </div>
 
@@ -165,209 +271,252 @@
     </div>
   </div>
 
-  <!-- Settings Modal (Clean Armory / Shop Window Style) -->
+  <!-- Mobile Self-Destruct Confirmation Modal -->
+  <div id="self-destruct-modal" class="modal-overlay hidden">
+    <div class="modal-box self-destruct-modal-box">
+      <h1 class="modal-title alert">SELF DESTRUCT</h1>
+      <p class="self-destruct-confirm-text">Are you sure you want to end this run?</p>
+      <div class="modal-actions">
+        <button id="cancel-self-destruct-btn" class="modal-btn secondary" type="button">CANCEL</button>
+        <button id="confirm-self-destruct-btn" class="modal-btn danger" type="button">END RUN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal (Shop / Armory Dynamic Split Style) -->
   <div id="settings-modal" class="modal-overlay hidden">
-    <div class="diep-shop-window diep-settings-window">
+    <div class="falo-shop-window falo-settings-window">
       <!-- Top Header Bar -->
-      <div class="diep-shop-header">
-        <div class="diep-shop-header-left">
-          <div class="diep-shop-logo">
+      <div class="falo-shop-header">
+        <div class="falo-shop-header-left">
+          <div class="falo-shop-logo">
             SETTINGS
           </div>
-          <div class="diep-shop-tabs">
-            <button id="tab-settings-display-btn" class="diep-shop-tab active" data-tab="display">
-              Display & Audio
+          <div class="falo-shop-tabs">
+            <button id="tab-settings-display-btn" class="falo-shop-tab active" data-tab="display">
+              Display &amp; Audio
             </button>
-            <button id="tab-settings-controls-btn" class="diep-shop-tab" data-tab="controls">
+            <button id="tab-settings-controls-btn" class="falo-shop-tab" data-tab="controls">
               Controls
             </button>
           </div>
         </div>
 
-        <div class="diep-shop-header-right">
-          <button id="close-settings-btn" class="diep-shop-close-btn" title="Close Settings">✕</button>
+        <div class="falo-shop-header-right">
+          <div class="falo-coins-chip falo-settings-status-chip">
+            <span class="settings-chip-dot"></span>
+            <span id="settings-header-summary" class="chip-coins-amount">LIGHT · 100%</span>
+          </div>
+          <button id="close-settings-btn" class="falo-shop-close-btn" title="Close Settings">✕</button>
         </div>
       </div>
 
-      <!-- Scrollable Settings Content Area -->
-      <div class="diep-shop-scroll-area diep-settings-scroll-area">
-        
-        <!-- Tab 1: Display & Visuals -->
-        <div id="settings-tab-display" class="settings-tab-pane">
-          <div class="diep-shop-section">
-            <div class="diep-section-header">
-              <div class="diep-section-title-wrap">
-                <div class="diep-section-title">
-                  ARENA VISUALS & THEME
+      <!-- Split Settings Catalog & Dynamic Preview Body -->
+      <div id="settings-body" class="falo-shop-body">
+        <div id="settings-content-scroll" class="falo-shop-scroll-area falo-shop-catalog-pane falo-settings-scroll-area">
+          <div id="settings-unified-plane" class="falo-shop-unified-plane">
+            <!-- Tab 1: Display & Visuals -->
+            <div id="settings-tab-display" class="settings-tab-pane">
+              <div class="falo-shop-section" style="--section-idx: 0;">
+                <div class="falo-section-header">
+                  <div class="falo-section-title-wrap">
+                    <div class="falo-section-title">
+                      ARENA VISUALS &amp; THEME
+                    </div>
+                  </div>
+                </div>
+
+                <div class="falo-items-grid settings-cards-grid">
+                  <div id="theme-card-light" class="falo-card falo-shop-tilt-card settings-option-card active" tabindex="0">
+                    <div class="falo-card-preview-stage settings-theme-stage light-preview">
+                      <div id="settings-theme-tank-light" class="settings-theme-tank-wrap"></div>
+                    </div>
+                    <div class="falo-card-footer">
+                      <div class="falo-card-details-row">
+                        <span class="falo-card-title">Classic Light</span>
+                        <span class="falo-card-rarity-label" style="color: #0284c7; font-weight: 900;">Daylight</span>
+                      </div>
+                      <div class="falo-card-status-row">
+                        <span id="theme-status-light" class="falo-card-status-label is-equipped">EQUIPPED</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="theme-card-dark" class="falo-card falo-shop-tilt-card settings-option-card" tabindex="0">
+                    <div class="falo-card-preview-stage settings-theme-stage dark-preview">
+                      <div id="settings-theme-tank-dark" class="settings-theme-tank-wrap"></div>
+                    </div>
+                    <div class="falo-card-footer">
+                      <div class="falo-card-details-row">
+                        <span class="falo-card-title">Classic Dark</span>
+                        <span class="falo-card-rarity-label" style="color: #a855f7; font-weight: 900;">Slate</span>
+                      </div>
+                      <div class="falo-card-status-row">
+                        <span id="theme-status-dark" class="falo-card-status-label is-price">CLICK TO EQUIP</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- UI Scale Section -->
+              <div class="falo-shop-section" style="--section-idx: 1;">
+                <div class="falo-section-header">
+                  <div class="falo-section-title-wrap">
+                    <div class="falo-section-title">
+                      INTERFACE &amp; HUD SCALE
+                    </div>
+                  </div>
+                </div>
+
+                <div id="settings-scale-card" class="settings-scale-bar-container falo-card falo-shop-tilt-card rarity-common">
+                  <div class="scale-bar-header">
+                    <div>
+                      <div class="falo-card-title" style="margin: 0;">VIEWPORT HUD SCALING</div>
+                      <div class="falo-card-subdesc" style="margin: 2px 0 0 0;">Adjust in-game stats, leaderboards, and UI text dimensions.</div>
+                    </div>
+                    <div id="current-scale-badge" class="settings-scale-chip">100% (Default)</div>
+                  </div>
+
+                  <div class="scale-chips-row">
+                    <button class="scale-chip-btn" type="button" data-scale="0.75">75% (Compact)</button>
+                    <button class="scale-chip-btn" type="button" data-scale="0.85">85%</button>
+                    <button class="scale-chip-btn" type="button" data-scale="1.0">100% (Standard)</button>
+                    <button class="scale-chip-btn" type="button" data-scale="1.15">115%</button>
+                    <button class="scale-chip-btn" type="button" data-scale="1.25">125% (Large)</button>
+                  </div>
+
+                  <!-- Hidden selects for compatibility -->
+                  <select id="theme-select" class="hidden">
+                    <option value="light">light</option>
+                    <option value="dark">dark</option>
+                  </select>
+                  <select id="ui-scale-select" class="hidden">
+                    <option value="0.75">0.75</option>
+                    <option value="0.85">0.85</option>
+                    <option value="1.0">1.0</option>
+                    <option value="1.15">1.15</option>
+                    <option value="1.25">1.25</option>
+                  </select>
                 </div>
               </div>
             </div>
 
-            <!-- Theme Cards Grid -->
-            <div class="diep-items-grid settings-cards-grid">
-              <!-- Classic Light Theme Card -->
-              <div id="theme-card-light" class="diep-card rarity-common settings-option-card active">
-                <div class="settings-card-header">
-                  <div class="settings-card-badge">THEME</div>
-                  <div class="settings-active-check">ACTIVE</div>
+            <!-- Tab 2: Controls -->
+            <div id="settings-tab-controls" class="settings-tab-pane hidden">
+              <div class="falo-shop-section" style="--section-idx: 0;">
+                <div class="falo-section-header">
+                  <div class="falo-section-title-wrap">
+                    <div class="falo-section-title">
+                      CONTROLS
+                    </div>
+                    <div id="settings-device-mode-badge" class="device-mode-badge mode-pc">DETECTED: PC (KEYBOARD &amp; MOUSE)</div>
+                  </div>
                 </div>
-                <div class="settings-preview-box light-preview">
-                  <div class="preview-grid-pattern"></div>
-                  <div class="preview-tank-dot cyan"></div>
-                </div>
-                <div class="settings-card-body">
-                  <div class="diep-card-title">CLASSIC LIGHT</div>
-                  <div class="diep-card-subdesc">Iconic white theme.</div>
-                  <button id="select-theme-light-btn" class="diep-card-action-btn equipped">EQUIPPED</button>
+
+                <div class="settings-controls-grid">
+                  <div class="control-key-card falo-card falo-shop-tilt-card rarity-common" data-control-key="move" tabindex="0">
+                    <div class="key-badge">W A S D / ARROWS</div>
+                    <div class="key-info">
+                      <div class="key-title">Tank Movement</div>
+                      <div class="key-desc">PC: Keyboard / Mobile: Left Movement Joystick</div>
+                    </div>
+                  </div>
+
+                  <div class="control-key-card falo-card falo-shop-tilt-card rarity-common" data-control-key="fire" tabindex="0">
+                    <div class="key-badge">LEFT CLICK / SPACE</div>
+                    <div class="key-info">
+                      <div class="key-title">Fire &amp; Aim Cannons</div>
+                      <div class="key-desc">PC: Mouse &amp; Click / Mobile: Right Aiming Joystick</div>
+                    </div>
+                  </div>
+
+                  <div class="control-key-card falo-card falo-shop-tilt-card rarity-common" data-control-key="autofire" tabindex="0">
+                    <div class="key-badge">E</div>
+                    <div class="key-info">
+                      <div class="key-title">Auto-Fire Toggle</div>
+                      <div class="key-desc">PC: E Key / Mobile: Auto Fire Button</div>
+                    </div>
+                  </div>
+
+                  <div class="control-key-card falo-card falo-shop-tilt-card rarity-common" data-control-key="autospin" tabindex="0">
+                    <div class="key-badge">C</div>
+                    <div class="key-info">
+                      <div class="key-title">Auto-Spin Toggle</div>
+                      <div class="key-desc">PC: C Key / Mobile: Auto Spin Button</div>
+                    </div>
+                  </div>
+
+                  <div class="control-key-card falo-card falo-shop-tilt-card rarity-common" data-control-key="stats" tabindex="0">
+                    <div class="key-badge">1 - 8 / NUMPAD</div>
+                    <div class="key-info">
+                      <div class="key-title">Stat Point Upgrades</div>
+                      <div class="key-desc">Invest earned points into stats via keys or tap</div>
+                    </div>
+                  </div>
+
+                  <div class="control-key-card falo-card falo-shop-tilt-card rarity-common" data-control-key="evotree" tabindex="0">
+                    <div class="key-badge">Y</div>
+                    <div class="key-info">
+                      <div class="key-title">Evolution Tree</div>
+                      <div class="key-desc">PC: Y Key / Toggles translucent tree overlay in-game</div>
+                    </div>
+                  </div>
+
+                  <div class="control-key-card falo-card falo-shop-tilt-card rarity-common" data-control-key="destruct" tabindex="0">
+                    <div class="key-badge">O</div>
+                    <div class="key-info">
+                      <div class="key-title">Self-Destruct</div>
+                      <div class="key-desc">PC: O Key / Mobile: Top-Left Button (with prompt)</div>
+                    </div>
+                  </div>
+
+                  <div class="control-key-card falo-card falo-shop-tilt-card rarity-common" data-control-key="esc" tabindex="0">
+                    <div class="key-badge">ESC</div>
+                    <div class="key-info">
+                      <div class="key-title">Close Modals</div>
+                      <div class="key-desc">Exits Settings or Shop overlays instantly</div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <!-- Dark Slate Theme Card -->
-              <div id="theme-card-dark" class="diep-card rarity-rare settings-option-card">
-                <div class="settings-card-header">
-                  <div class="settings-card-badge">THEME</div>
-                  <div class="settings-active-check">ACTIVE</div>
-                </div>
-                <div class="settings-preview-box dark-preview">
-                  <div class="preview-grid-pattern"></div>
-                  <div class="preview-tank-dot violet"></div>
-                </div>
-                <div class="settings-card-body">
-                  <div class="diep-card-title">CLASSIC DARK</div>
-                  <div class="diep-card-subdesc">Sleek midnight dark.</div>
-                  <button id="select-theme-dark-btn" class="diep-card-action-btn equip-ready">EQUIP</button>
-                </div>
+              <!-- Hidden Admin Access Input Bar -->
+              <div class="hidden-admin-trigger-wrap">
+                <input 
+                  type="password" 
+                  id="hidden-admin-input" 
+                  class="hidden-admin-input" 
+                  placeholder="" 
+                  autocomplete="off" 
+                  spellcheck="false"
+                  title="Console Access"
+                />
               </div>
-            </div>
-          </div>
-
-          <!-- UI Scale Section -->
-          <div class="diep-shop-section" style="margin-top: 18px;">
-            <div class="diep-section-header">
-              <div class="diep-section-title-wrap">
-                <div class="diep-section-title">
-                  INTERFACE & HUD SCALE
-                </div>
-              </div>
-            </div>
-
-            <div class="settings-scale-bar-container diep-card rarity-common">
-              <div class="scale-bar-header">
-                <div>
-                  <div class="diep-card-title" style="margin: 0;">VIEWPORT HUD SCALING</div>
-                  <div class="diep-card-subdesc" style="margin: 2px 0 0 0;">Adjust in-game stats, leaderboards, and UI text dimensions.</div>
-                </div>
-                <div id="current-scale-badge" class="settings-scale-chip">100% (Default)</div>
-              </div>
-
-              <div class="scale-chips-row">
-                <button class="scale-chip-btn" data-scale="0.75">75% (Compact)</button>
-                <button class="scale-chip-btn" data-scale="0.85">85%</button>
-                <button class="scale-chip-btn" data-scale="1.0">100% (Standard)</button>
-                <button class="scale-chip-btn" data-scale="1.15">115%</button>
-                <button class="scale-chip-btn" data-scale="1.25">125% (Large)</button>
-              </div>
-
-              <!-- Hidden select for compatibility -->
-              <select id="theme-select" class="hidden">
-                <option value="light">light</option>
-                <option value="dark">dark</option>
-              </select>
-              <select id="ui-scale-select" class="hidden">
-                <option value="0.75">0.75</option>
-                <option value="0.85">0.85</option>
-                <option value="1.0">1.0</option>
-                <option value="1.15">1.15</option>
-                <option value="1.25">1.25</option>
-              </select>
             </div>
           </div>
         </div>
 
-        <!-- Tab 2: Controls -->
-        <div id="settings-tab-controls" class="settings-tab-pane hidden">
-          <div class="diep-shop-section">
-            <div class="diep-section-header">
-              <div class="diep-section-title-wrap">
-                <div class="diep-section-title">
-                  CONTROLS
-                </div>
-              </div>
-            </div>
-
-            <div class="settings-controls-grid">
-              <div class="control-key-card diep-card rarity-common">
-                <div class="key-badge">W A S D / ARROWS</div>
-                <div class="key-info">
-                  <div class="key-title">Tank Movement</div>
-                  <div class="key-desc">Use to Move around</div>
-                </div>
-              </div>
-
-              <div class="control-key-card diep-card rarity-common">
-                <div class="key-badge">LEFT CLICK / SPACE</div>
-                <div class="key-info">
-                  <div class="key-title">Fire Cannons</div>
-                  <div class="key-desc">Shoot bullets toward mouse cursor</div>
-                </div>
-              </div>
-
-              <div class="control-key-card diep-card rarity-common">
-                <div class="key-badge">E</div>
-                <div class="key-info">
-                  <div class="key-title">Auto-Fire Toggle</div>
-                  <div class="key-desc">Locks weapons on continuous fire</div>
-                </div>
-              </div>
-
-              <div class="control-key-card diep-card rarity-common">
-                <div class="key-badge">C</div>
-                <div class="key-info">
-                  <div class="key-title">Auto-Spin Toggle</div>
-                  <div class="key-desc">Spins automatically</div>
-                </div>
-              </div>
-
-              <div class="control-key-card diep-card rarity-common">
-                <div class="key-badge">1 - 8 / NUMPAD</div>
-                <div class="key-info">
-                  <div class="key-title">Stat Point Upgrades</div>
-                  <div class="key-desc">Quickly invest earned points into stats without clicking</div>
-                </div>
-              </div>
-
-              <div class="control-key-card diep-card rarity-common">
-                <div class="key-badge">O</div>
-                <div class="key-info">
-                  <div class="key-title">Self-Destruct</div>
-                  <div class="key-desc">Detonates chassis instantly</div>
-                </div>
-              </div>
-
-              <div class="control-key-card diep-card rarity-common">
-                <div class="key-badge">ESC</div>
-                <div class="key-info">
-                  <div class="key-title">Close Modals</div>
-                  <div class="key-desc">Exits Settings or Shop overlays instantly</div>
-                </div>
-              </div>
-            </div>
+        <aside id="settings-preview-pane" class="falo-shop-preview-pane" aria-live="polite">
+          <div id="settings-preview-backdrop" class="shop-preview-backdrop" aria-hidden="true"></div>
+          <div id="settings-slanted-scrollbar" class="shop-slanted-scrollbar" aria-hidden="true">
+            <div id="settings-slanted-thumb" class="shop-slanted-thumb"></div>
           </div>
 
-          <!-- Hidden Admin Access Input Bar (img 4) -->
-          <div class="hidden-admin-trigger-wrap">
-            <input 
-              type="password" 
-              id="hidden-admin-input" 
-              class="hidden-admin-input" 
-              placeholder="" 
-              autocomplete="off" 
-              spellcheck="false"
-              title="Console Access"
-            />
+          <div id="settings-preview-stage" class="shop-preview-stage">
+            <canvas id="settings-preview-canvas" class="shop-preview-canvas"></canvas>
+            <div id="settings-preview-emblem" class="shop-preview-emblem hidden"></div>
           </div>
-        </div>
 
+          <div id="settings-preview-info" class="shop-preview-info">
+            <div class="shop-preview-header-block">
+              <div id="settings-preview-name" class="shop-preview-name">Classic Light</div>
+              <div id="settings-preview-meta" class="shop-preview-meta">Arena Theme · High Contrast Daylight</div>
+            </div>
+            <p id="settings-preview-desc" class="shop-preview-desc">Bright light-grey arena grid with crisp dark borders and classic arcade visibility.</p>
+            <button id="settings-preview-action-btn" class="falo-card-action-btn shop-preview-action-btn equipped" type="button" disabled>EQUIPPED</button>
+          </div>
+        </aside>
       </div>
     </div>
   </div>
@@ -380,51 +529,51 @@
 
   <!-- Admin Panel & Developer Suite (Armory / Shop Window Style) -->
   <div id="admin-panel-modal" class="modal-overlay hidden">
-    <div class="diep-shop-window diep-admin-window">
+    <div class="falo-shop-window falo-admin-window">
       <!-- Top Header Navigation Bar -->
-      <div class="diep-shop-header">
-        <div class="diep-shop-header-left">
-          <div class="diep-shop-logo" id="admin-panel-title">
+      <div class="falo-shop-header">
+        <div class="falo-shop-header-left">
+          <div class="falo-shop-logo" id="admin-panel-title">
             ADMIN
           </div>
-          <div class="diep-shop-tabs">
-            <button id="tab-adm-userdata-btn" class="diep-shop-tab active" data-tab="userdata">
+          <div class="falo-shop-tabs">
+            <button id="tab-adm-userdata-btn" class="falo-shop-tab active" data-tab="userdata">
               User Data
             </button>
-            <button id="tab-adm-crew-btn" class="diep-shop-tab" data-tab="crew">
+            <button id="tab-adm-crew-btn" class="falo-shop-tab" data-tab="crew">
               Crew Barracks
             </button>
-            <button id="tab-adm-battle-btn" class="diep-shop-tab" data-tab="battle">
+            <button id="tab-adm-battle-btn" class="falo-shop-tab" data-tab="battle">
               Cheats & Spawner
             </button>
-            <button id="tab-adm-telemetry-btn" class="diep-shop-tab" data-tab="telemetry">
+            <button id="tab-adm-telemetry-btn" class="falo-shop-tab" data-tab="telemetry">
               Telemetry
             </button>
           </div>
         </div>
 
-        <div class="diep-shop-header-right">
-          <div class="diep-coins-chip">
+        <div class="falo-shop-header-right">
+          <div class="falo-coins-chip">
             <span class="chip-coin-icon"></span>
             <span id="admin-active-profile-badge" style="font-size: 11px; font-weight: 900; color: #0284c7; letter-spacing: 0.5px;">ACTIVE PROFILE: GUEST</span>
           </div>
-          <button id="close-admin-btn" class="diep-shop-close-btn" title="Exit Admin Console">✕</button>
+          <button id="close-admin-btn" class="falo-shop-close-btn" title="Exit Admin Console">✕</button>
         </div>
       </div>
 
       <!-- Scrollable Admin Content Area -->
-      <div class="diep-shop-scroll-area diep-admin-scroll-area">
+      <div class="falo-shop-scroll-area falo-admin-scroll-area">
         
         <!-- Tab 1: User Data & Economy -->
         <div id="adm-tab-pane-userdata" class="settings-tab-pane">
           <!-- Quick Presets Module -->
           <div class="admin-module-card">
-            <div class="diep-section-header">
-              <div class="diep-section-title-wrap">
-                <div class="diep-section-title">
+            <div class="falo-section-header">
+              <div class="falo-section-title-wrap">
+                <div class="falo-section-title">
                   ONE-CLICK PROGRESSION PRESETS
                 </div>
-                <div class="diep-section-subtitle">Instantly configure user wealth, unlocks, or restart progression</div>
+                <div class="falo-section-subtitle">Instantly configure user wealth, unlocks, or restart progression</div>
               </div>
             </div>
 
@@ -439,12 +588,12 @@
 
           <!-- Economy & Pilot Record Module -->
           <div class="admin-module-card">
-            <div class="diep-section-header">
-              <div class="diep-section-title-wrap">
-                <div class="diep-section-title">
+            <div class="falo-section-header">
+              <div class="falo-section-title-wrap">
+                <div class="falo-section-title">
                   ECONOMY & PILOT RECORDS
                 </div>
-                <div class="diep-section-subtitle">Modify profile treasury, personal high score, and pilot identity</div>
+                <div class="falo-section-subtitle">Modify profile treasury, personal high score, and pilot identity</div>
               </div>
             </div>
 
@@ -485,17 +634,17 @@
 
           <!-- Tank Unlocks Module -->
           <div class="admin-module-card">
-            <div class="diep-section-header">
-              <div class="diep-section-title-wrap">
-                <div class="diep-section-title">
+            <div class="falo-section-header">
+              <div class="falo-section-title-wrap">
+                <div class="falo-section-title">
                   CHASSIS & COSMETICS UNLOCKS
                 </div>
-                <div class="diep-section-subtitle">Toggle chassis licensing and premium armory paint finishes</div>
+                <div class="falo-section-subtitle">Toggle chassis licensing and premium armory paint finishes</div>
               </div>
             </div>
 
             <div class="admin-btn-row" style="margin-top: 14px;">
-              <button id="adm-unlock-all-tanks-btn" class="admin-btn">UNLOCK ALL 7 TANKS</button>
+              <button id="adm-unlock-all-tanks-btn" class="admin-btn">UNLOCK ALL TANKS</button>
               <button id="adm-unlock-all-colors-btn" class="admin-btn">UNLOCK ALL COLOR THEMES</button>
             </div>
             <div id="adm-chassis-pills" class="admin-pills-wrap" style="margin-top: 12px;"></div>
@@ -510,7 +659,7 @@
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
               <div style="display: flex; align-items: center; gap: 12px;">
                 <input type="color" id="adm-custom-color-picker" value="#00b2e1" style="width: 44px; height: 44px; border: 2px solid #cbd5e1; border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
-                <input type="text" id="adm-custom-color-hex" maxlength="7" value="#00B2E1" class="setting-input" style="width: 110px; text-transform: uppercase; font-family: monospace; font-weight: 700; text-align: center;">
+                <input type="text" id="adm-custom-color-hex" maxlength="7" value="#00B2E1" class="setting-input" style="width: 110px; text-transform: uppercase; font-family: 'Ubuntu', sans-serif; font-weight: 700; text-align: center;">
                 <div id="adm-custom-color-preview-box" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid #0083a8; background: #00b2e1; box-shadow: 0 2px 5px rgba(0,0,0,0.15);" title="Current Preview"></div>
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
@@ -529,12 +678,12 @@
         <!-- Tab 2: Crew Barracks -->
         <div id="adm-tab-pane-crew" class="settings-tab-pane hidden">
           <div class="admin-module-card">
-            <div class="diep-section-header">
-              <div class="diep-section-title-wrap">
-                <div class="diep-section-title">
+            <div class="falo-section-header">
+              <div class="falo-section-title-wrap">
+                <div class="falo-section-title">
                   CREW UPGRADES & PASSIVE STAT BOOSTS
                 </div>
-                <div class="diep-section-subtitle">Fine-tune individual crew specialists (Loader, Gunner, Driver, Commander)</div>
+                <div class="falo-section-subtitle">Fine-tune individual crew specialists (Loader, Gunner, Driver, Commander)</div>
               </div>
             </div>
 
@@ -544,8 +693,8 @@
                 <div class="admin-crew-card-header">
                   <div class="admin-crew-title-wrap">
                     <div>
-                      <div class="diep-card-title">LOADER SPECIALIST</div>
-                      <div class="diep-card-subdesc">Decreases cannon reload interval (cyclic firerate)</div>
+                      <div class="falo-card-title">LOADER SPECIALIST</div>
+                      <div class="falo-card-subdesc">Decreases cannon reload interval (cyclic firerate)</div>
                     </div>
                   </div>
                   <div class="admin-crew-badge">RELOAD</div>
@@ -563,8 +712,8 @@
                 <div class="admin-crew-card-header">
                   <div class="admin-crew-title-wrap">
                     <div>
-                      <div class="diep-card-title">GUNNER SPECIALIST</div>
-                      <div class="diep-card-subdesc">Amplifies kinetic projectile damage across all barrels</div>
+                      <div class="falo-card-title">GUNNER SPECIALIST</div>
+                      <div class="falo-card-subdesc">Amplifies kinetic projectile damage across all barrels</div>
                     </div>
                   </div>
                   <div class="admin-crew-badge">DAMAGE</div>
@@ -582,8 +731,8 @@
                 <div class="admin-crew-card-header">
                   <div class="admin-crew-title-wrap">
                     <div>
-                      <div class="diep-card-title">DRIVER SPECIALIST</div>
-                      <div class="diep-card-subdesc">Increases chassis engine horsepower and top maneuvering speed</div>
+                      <div class="falo-card-title">DRIVER SPECIALIST</div>
+                      <div class="falo-card-subdesc">Increases chassis engine horsepower and top maneuvering speed</div>
                     </div>
                   </div>
                   <div class="admin-crew-badge">MOBILITY</div>
@@ -601,8 +750,8 @@
                 <div class="admin-crew-card-header">
                   <div class="admin-crew-title-wrap">
                     <div>
-                      <div class="diep-card-title">COMMANDER SPECIALIST</div>
-                      <div class="diep-card-subdesc">Yields bonus experience multipliers and extra arena coin bounties</div>
+                      <div class="falo-card-title">COMMANDER SPECIALIST</div>
+                      <div class="falo-card-subdesc">Yields bonus experience multipliers and extra arena coin bounties</div>
                     </div>
                   </div>
                   <div class="admin-crew-badge">MULTIPLIER</div>
@@ -618,32 +767,25 @@
           </div>
         </div>
 
-        <!-- Tab 3: Combat Cheats & Spawner -->
+        <!-- Tab 3: Admin Panel Sections -->
         <div id="adm-tab-pane-battle" class="settings-tab-pane hidden">
-          <!-- Class & Level Controls Module -->
+          <!-- 1. Player Modification -->
           <div class="admin-module-card">
-            <div class="diep-section-header">
-              <div class="diep-section-title-wrap">
-                <div class="diep-section-title">
-                  CHASSIS CLASS & LEVEL OVERRIDES
+            <div class="falo-section-header">
+              <div class="falo-section-title-wrap">
+                <div class="falo-section-title">
+                  PLAYER MODIFICATION
                 </div>
-                <div class="diep-section-subtitle">Hot-swap tank chassis on the fly and adjust pilot experience</div>
+                <div class="falo-section-subtitle">Hot-swap tank chassis, adjust pilot levels, and grant stat points</div>
               </div>
             </div>
 
             <div class="admin-control-with-preview" style="margin-top: 14px;">
               <div id="adm-tank-preview-cube" class="admin-preview-cube" title="Selected Tank Preview"></div>
               <div class="admin-control-rows">
-                <div class="setting-row" style="margin-bottom: 0;">
-                  <label style="font-weight: 900; color: #0284c7; font-size: 11px; letter-spacing: 0.8px; white-space: nowrap;">TANK CLASS:</label>
-                  <select id="adm-chassis-select" class="setting-input" style="font-weight: 900; font-size: 13px; flex: 1;">
+                <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                  <select id="adm-chassis-select" class="setting-input" style="flex: 1; min-width: 140px; font-weight: 800; font-size: 13px;">
                     <option value="basic">BASIC TANK</option>
-                    <option value="twin">TWIN</option>
-                    <option value="sniper">SNIPER</option>
-                    <option value="flank">FLANK GUARD</option>
-                    <option value="machinegun">MACHINE GUN</option>
-                    <option value="smasher">SMASHER</option>
-                    <option value="tesla">TESLA</option>
                   </select>
                 </div>
 
@@ -656,51 +798,69 @@
             </div>
           </div>
 
-          <!-- Wave & Entity Controls Module -->
+          <!-- 2. Wave Settings -->
           <div class="admin-module-card">
-            <div class="diep-section-header">
-              <div class="diep-section-title-wrap">
-                <div class="diep-section-title">
-                  WAVE PACE & ARENA ENTITIES
+            <div class="falo-section-header">
+              <div class="falo-section-title-wrap">
+                <div class="falo-section-title">
+                  WAVE SETTINGS
                 </div>
-                <div class="diep-section-subtitle">Manipulate enemy wave progression, pause timers, or wipe entities</div>
+                <div class="falo-section-subtitle">Change active wave number without resetting the arena</div>
               </div>
             </div>
 
             <div style="margin-top: 14px;">
               <div class="admin-btn-row" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                <button id="adm-toggle-pause" class="admin-btn">TOGGLE WAVE PAUSE</button>
                 <div style="display: flex; align-items: center; gap: 6px;">
-                  <button id="adm-wave-prev" class="admin-btn btn-grey" title="Previous Wave (-1)">PREV (-1)</button>
+                  <button id="adm-wave-prev" class="admin-btn btn-grey" title="Previous Wave">PREV</button>
                   <input type="number" id="adm-wave-input" min="1" max="999" value="1" class="setting-input" style="width: 72px; text-align: center; font-weight: 900;" title="Current Wave Number">
-                  <button id="adm-wave-set" class="admin-btn btn-grey" style="padding: 6px 12px; font-size: 11px;">SET</button>
-                  <button id="adm-wave-next" class="admin-btn" title="Advance Wave (+1)">+1 WAVE</button>
+                  <button id="adm-wave-next" class="admin-btn" title="Next Wave">NEXT</button>
                 </div>
-                <button id="adm-clear-all" class="admin-btn btn-grey">CLEAR ALL ENTITIES</button>
-              </div>
-
-              <div class="admin-checkboxes-row" style="display: flex; gap: 20px; margin-top: 14px; align-items: center;">
-                <label class="admin-checkbox-label" style="color: #1e293b; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 800; font-size: 12px;">
-                  <input type="checkbox" id="adm-godmode-toggle" style="accent-color: #00b2e1; width: 16px; height: 16px;">
-                  <span>GOD MODE (INFINITE HEALTH)</span>
-                </label>
-                <label class="admin-checkbox-label" style="color: #1e293b; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 800; font-size: 12px;">
-                  <input type="checkbox" id="adm-debug-overlay" style="accent-color: #00b2e1; width: 16px; height: 16px;">
-                  <span>WIREFRAME HITBOX OVERLAY</span>
-                </label>
-                <button id="adm-toggle-godmode-btn" class="hidden"></button>
               </div>
             </div>
           </div>
 
-          <!-- Shape Spawner Module -->
+          <!-- 3. Toggle-ables -->
           <div class="admin-module-card">
-            <div class="diep-section-header">
-              <div class="diep-section-title-wrap">
-                <div class="diep-section-title">
+            <div class="falo-section-header">
+              <div class="falo-section-title-wrap">
+                <div class="falo-section-title">
+                  TOGGLE-ABLES
+                </div>
+                <div class="falo-section-subtitle">Enable or disable wave pause, combat, and visual debug overrides</div>
+              </div>
+            </div>
+
+            <div class="admin-toggle-grid" style="margin-top: 14px;">
+              <button id="adm-toggle-pause" class="admin-toggle-btn" type="button">
+                <span class="toggle-btn-label">WAVE PAUSE</span>
+                <span class="toggle-btn-state" id="adm-pause-state">OFF</span>
+              </button>
+
+              <label class="admin-toggle-btn" id="adm-godmode-btn-label" for="adm-godmode-toggle">
+                <input type="checkbox" id="adm-godmode-toggle" class="admin-toggle-hidden-input">
+                <span class="toggle-btn-label">GOD MODE</span>
+                <span class="toggle-btn-state" id="adm-godmode-state">OFF</span>
+              </label>
+
+              <label class="admin-toggle-btn" id="adm-debug-btn-label" for="adm-debug-overlay">
+                <input type="checkbox" id="adm-debug-overlay" class="admin-toggle-hidden-input">
+                <span class="toggle-btn-label">WIREFRAME HITBOX</span>
+                <span class="toggle-btn-state" id="adm-debug-state">OFF</span>
+              </label>
+
+              <button id="adm-toggle-godmode-btn" class="hidden"></button>
+            </div>
+          </div>
+
+          <!-- 4. Shape Spawner -->
+          <div class="admin-module-card">
+            <div class="falo-section-header">
+              <div class="falo-section-title-wrap">
+                <div class="falo-section-title">
                   SHAPE SPAWNER
                 </div>
-                <div class="diep-section-subtitle">Spawn polygons, pentagons, crashers, and alpha bosses</div>
+                <div class="falo-section-subtitle">Spawn polygons, pentagons, crashers, and alpha bosses</div>
               </div>
             </div>
 
@@ -719,14 +879,14 @@
             </div>
           </div>
 
-          <!-- Enemy Drone Spawner Module -->
+          <!-- 5. Enemy Spawner -->
           <div class="admin-module-card">
-            <div class="diep-section-header">
-              <div class="diep-section-title-wrap">
-                <div class="diep-section-title">
-                  ENEMY DRONE SPAWNER
+            <div class="falo-section-header">
+              <div class="falo-section-title-wrap">
+                <div class="falo-section-title">
+                  ENEMY SPAWNER
                 </div>
-                <div class="diep-section-subtitle">Spawn aggressive combat drones for battle stress testing</div>
+                <div class="falo-section-subtitle">Spawn Standard, Infantry, and Specialized class enemies for battle stress testing</div>
               </div>
             </div>
 
@@ -749,12 +909,12 @@
         <!-- Tab 4: Telemetry & Logs -->
         <div id="adm-tab-pane-telemetry" class="settings-tab-pane hidden">
           <div class="admin-module-card" style="height: 100%; display: flex; flex-direction: column;">
-            <div class="diep-section-header" style="display: flex; justify-content: space-between; align-items: center;">
-              <div class="diep-section-title-wrap">
-                <div class="diep-section-title">
+            <div class="falo-section-header" style="display: flex; justify-content: space-between; align-items: center;">
+              <div class="falo-section-title-wrap">
+                <div class="falo-section-title">
                   REAL-TIME COMBAT TELEMETRY LOG
                 </div>
-                <div class="diep-section-subtitle">Live events, damage ticks, entity counts, and system status</div>
+                <div class="falo-section-subtitle">Live events, damage ticks, entity counts, and system status</div>
               </div>
               <button id="adm-clear-telemetry-btn" class="admin-btn btn-grey" style="padding: 6px 14px; font-size: 11px;">CLEAR CONSOLE</button>
             </div>
@@ -769,40 +929,128 @@
     </div>
   </div>
 
-  <!-- Armory & Shop Modal (Diep.io Style) -->
+  <!-- Armory & Shop Modal (Falo.io Style) -->
   <div id="armory-modal" class="modal-overlay hidden">
-    <div class="diep-shop-window">
+    <div class="falo-shop-window falo-armory-window">
       <!-- Top Header Navigation Bar -->
-      <div class="diep-shop-header">
-        <div class="diep-shop-header-left">
-          <div class="diep-shop-logo">
+      <div class="falo-shop-header">
+        <div class="falo-shop-header-left">
+          <div class="falo-shop-logo">
             SHOP
           </div>
-          <div class="diep-shop-tabs">
-            <button id="tab-tanks-btn" class="diep-shop-tab active" data-tab="tanks">
+          <div class="falo-shop-tabs">
+            <button id="tab-tanks-btn" class="falo-shop-tab active" data-tab="tanks">
               Tanks
             </button>
-            <button id="tab-crew-btn" class="diep-shop-tab" data-tab="crew">
+            <button id="tab-crew-btn" class="falo-shop-tab" data-tab="crew">
               Crew Barracks
             </button>
-            <button id="tab-colors-btn" class="diep-shop-tab" data-tab="colors">
+            <button id="tab-colors-btn" class="falo-shop-tab" data-tab="colors">
               Color Themes
             </button>
           </div>
         </div>
 
-        <div class="diep-shop-header-right">
-          <div class="diep-coins-chip">
+        <div class="falo-shop-header-right">
+          <div class="falo-coins-chip">
             <span class="chip-coin-icon"></span>
             <span id="armory-coins-display" class="chip-coins-amount">0</span>
             <span class="chip-coin-label">COINS</span>
           </div>
-          <button id="close-armory-btn" class="diep-shop-close-btn" title="Close Shop">✕</button>
+          <button id="close-armory-btn" class="falo-shop-close-btn" title="Close Shop">✕</button>
         </div>
       </div>
 
-      <!-- Scrollable Shop Content Area -->
-      <div id="shop-content-grid" class="diep-shop-scroll-area"></div>
+      <!-- Split Catalog & Dynamic Preview Body -->
+      <div id="shop-body" class="falo-shop-body">
+        <div id="shop-content-grid" class="falo-shop-scroll-area falo-shop-catalog-pane"></div>
+
+        <aside id="shop-preview-pane" class="falo-shop-preview-pane" aria-live="polite">
+          <div id="shop-preview-backdrop" class="shop-preview-backdrop" aria-hidden="true"></div>
+          <div id="shop-slanted-scrollbar" class="shop-slanted-scrollbar" aria-hidden="true">
+            <div id="shop-slanted-thumb" class="shop-slanted-thumb"></div>
+          </div>
+
+          <div id="shop-preview-stage" class="shop-preview-stage">
+            <canvas id="shop-preview-canvas" class="shop-preview-canvas"></canvas>
+            <div id="shop-preview-emblem" class="shop-preview-emblem hidden"></div>
+          </div>
+
+          <div id="shop-preview-info" class="shop-preview-info">
+            <div class="shop-preview-header-block">
+              <div id="shop-preview-name" class="shop-preview-name">Basic Tank</div>
+              <div id="shop-preview-meta" class="shop-preview-meta">Tier 1 · Unlocks at Level 1</div>
+            </div>
+            <p id="shop-preview-desc" class="shop-preview-desc">Reliable all-around starter chassis with standard cannon.</p>
+            <button id="shop-preview-action-btn" class="falo-card-action-btn shop-preview-action-btn" type="button">UNLOCKED</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <!-- Evolution Tree Modal (Persona 5 Style) -->
+  <div id="evolution-tree-modal" class="modal-overlay hidden">
+    <div class="falo-shop-window falo-evo-window">
+      <div class="falo-shop-header">
+        <div class="falo-shop-header-left">
+          <div class="falo-shop-logo">EVOLUTION TREE</div>
+          <div class="evo-header-hint">Drag to pan · Scroll to zoom · Click a tank to inspect</div>
+        </div>
+
+        <div class="falo-shop-header-right">
+          <div class="evo-zoom-controls" role="group" aria-label="Zoom Controls">
+            <button id="evo-zoom-out-btn" class="evo-zoom-btn" type="button" title="Zoom Out">-</button>
+            <span id="evo-zoom-label" class="evo-zoom-label">100%</span>
+            <button id="evo-zoom-in-btn" class="evo-zoom-btn" type="button" title="Zoom In">+</button>
+            <button id="evo-reset-view-btn" class="evo-zoom-btn evo-reset-btn" type="button" title="Reset View">RESET</button>
+          </div>
+          <button id="close-evolution-tree-btn" class="falo-shop-close-btn" title="Close Evolution Tree">✕</button>
+        </div>
+      </div>
+
+      <div id="evo-body" class="evo-body">
+        <div id="evo-tree-viewport" class="evo-tree-viewport">
+          <div id="evo-tree-stage" class="evo-tree-stage">
+            <div class="evo-tree-grid-bg" aria-hidden="true"></div>
+            <svg id="evo-tree-edges" class="evo-tree-edges"></svg>
+            <div id="evo-tree-nodes" class="evo-tree-nodes"></div>
+          </div>
+        </div>
+
+        <aside id="evo-preview-pane" class="falo-shop-preview-pane evo-preview-pane" aria-live="polite" aria-hidden="true">
+          <div id="evo-preview-backdrop" class="shop-preview-backdrop" aria-hidden="true"></div>
+          <button id="evo-preview-close-btn" class="evo-preview-close-btn" type="button" title="Close Tank Preview" aria-label="Close Tank Preview">✕</button>
+
+          <div id="evo-preview-stage" class="shop-preview-stage">
+            <canvas id="evo-preview-canvas" class="shop-preview-canvas"></canvas>
+          </div>
+
+          <div id="evo-preview-info" class="shop-preview-info">
+            <div class="shop-preview-header-block">
+              <div id="evo-preview-name" class="shop-preview-name">Basic Tank</div>
+              <div id="evo-preview-meta" class="shop-preview-meta">Tier 1 · Level 1</div>
+            </div>
+
+            <div class="evo-preview-specs">
+              <div class="evo-spec-row">
+                <span class="evo-spec-label">TIER</span>
+                <span id="evo-preview-tier" class="evo-spec-value">Tier 1</span>
+              </div>
+              <div class="evo-spec-row">
+                <span class="evo-spec-label">LEVEL</span>
+                <span id="evo-preview-level" class="evo-spec-value">Level 1</span>
+              </div>
+              <div class="evo-spec-row evo-spec-row-from">
+                <span class="evo-spec-label">EVOLVES FROM</span>
+                <div id="evo-preview-from" class="evo-spec-from-list">Starter Chassis</div>
+              </div>
+            </div>
+
+            <p id="evo-preview-desc" class="shop-preview-desc">Reliable all-around starter chassis with standard cannon.</p>
+          </div>
+        </aside>
+      </div>
     </div>
   </div>
 

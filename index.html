@@ -20,9 +20,9 @@
   <div id="toast-banner" class="toast-banner hidden">ALERT MESSAGE HERE</div>
 
   <div id="ui-container" class="hidden">
-    <div id="top-left-hud" class="hud-panel" style="position: absolute; top: 16px; right: 16px;">
-      <div class="hud-row"><span class="hud-label">FPS:</span><span id="fps-counter" class="hud-val">60</span></div>
-      <div class="hud-row"><span class="hud-label">SCORE:</span><span id="score-display" class="hud-val">0</span></div>
+    <div id="top-left-hud" class="hud-panel">
+      <div class="hud-row"><span class="hud-label">FPS</span><span id="fps-counter" class="hud-val">60</span></div>
+      <div class="hud-row"><span class="hud-label">SCORE</span><span id="score-display" class="hud-val">0</span></div>
     </div>
 
     <div id="wave-banner" class="hud-panel center-top">
@@ -148,12 +148,12 @@
                 <defs>
                   <mask id="armory-tank-barrel-mask">
                     <rect width="64" height="64" fill="white" />
-                    <circle cx="26" cy="34" r="15" fill="black" />
+                    <circle cx="26" cy="32" r="15" fill="black" />
                   </mask>
                 </defs>
-                <g transform="rotate(-24 28 34)">
-                  <rect x="26" y="26" width="30" height="16" rx="1.5" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round" mask="url(#armory-tank-barrel-mask)" />
-                  <circle cx="26" cy="34" r="15" fill="currentColor" fill-opacity="0.32" stroke="currentColor" stroke-width="3.5" />
+                <g transform="rotate(-24 28 32)">
+                  <rect x="26" y="24" width="30" height="16" rx="1.5" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round" mask="url(#armory-tank-barrel-mask)" />
+                  <circle cx="26" cy="32" r="15" fill="currentColor" fill-opacity="0.32" stroke="currentColor" stroke-width="3.5" />
                 </g>
               </svg>
             </button>
@@ -164,10 +164,10 @@
                 <span class="tile-sub">CLASS UPGRADES</span>
               </span>
               <svg class="tile-watermark" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" aria-hidden="true">
-                <circle cx="32" cy="12" r="6" />
-                <circle cx="16" cy="48" r="6" />
-                <circle cx="48" cy="48" r="6" />
-                <path d="M32 18v12M32 30L16 42M32 30L48 42" />
+                <circle cx="32" cy="14" r="6" />
+                <circle cx="16" cy="50" r="6" />
+                <circle cx="48" cy="50" r="6" />
+                <path d="M32 20v12M32 32L16 44M32 32L48 44" />
               </svg>
             </button>
           </div>
@@ -989,13 +989,13 @@
     </div>
   </div>
 
-  <!-- Evolution Tree Modal (Falo.io Style) -->
+  <!-- Evolution Tree Modal (Persona 5 Style) -->
   <div id="evolution-tree-modal" class="modal-overlay hidden">
     <div class="falo-shop-window falo-evo-window">
       <div class="falo-shop-header">
         <div class="falo-shop-header-left">
           <div class="falo-shop-logo">EVOLUTION TREE</div>
-          <div class="evo-header-hint">Drag to pan • Scroll to zoom • Click a tank</div>
+          <div class="evo-header-hint">Drag to pan · Scroll to zoom · Click a tank to inspect</div>
         </div>
 
         <div class="falo-shop-header-right">
@@ -1009,12 +1009,47 @@
         </div>
       </div>
 
-      <div id="evo-tree-viewport" class="evo-tree-viewport">
-        <div id="evo-tree-stage" class="evo-tree-stage">
-          <div class="evo-tree-grid-bg" aria-hidden="true"></div>
-          <svg id="evo-tree-edges" class="evo-tree-edges"></svg>
-          <div id="evo-tree-nodes" class="evo-tree-nodes"></div>
+      <div id="evo-body" class="evo-body">
+        <div id="evo-tree-viewport" class="evo-tree-viewport">
+          <div id="evo-tree-stage" class="evo-tree-stage">
+            <div class="evo-tree-grid-bg" aria-hidden="true"></div>
+            <svg id="evo-tree-edges" class="evo-tree-edges"></svg>
+            <div id="evo-tree-nodes" class="evo-tree-nodes"></div>
+          </div>
         </div>
+
+        <aside id="evo-preview-pane" class="falo-shop-preview-pane evo-preview-pane" aria-live="polite" aria-hidden="true">
+          <div id="evo-preview-backdrop" class="shop-preview-backdrop" aria-hidden="true"></div>
+          <button id="evo-preview-close-btn" class="evo-preview-close-btn" type="button" title="Close Tank Preview" aria-label="Close Tank Preview">✕</button>
+
+          <div id="evo-preview-stage" class="shop-preview-stage">
+            <canvas id="evo-preview-canvas" class="shop-preview-canvas"></canvas>
+          </div>
+
+          <div id="evo-preview-info" class="shop-preview-info">
+            <div class="shop-preview-header-block">
+              <div id="evo-preview-name" class="shop-preview-name">Basic Tank</div>
+              <div id="evo-preview-meta" class="shop-preview-meta">Tier 1 · Level 1</div>
+            </div>
+
+            <div class="evo-preview-specs">
+              <div class="evo-spec-row">
+                <span class="evo-spec-label">TIER</span>
+                <span id="evo-preview-tier" class="evo-spec-value">Tier 1</span>
+              </div>
+              <div class="evo-spec-row">
+                <span class="evo-spec-label">LEVEL</span>
+                <span id="evo-preview-level" class="evo-spec-value">Level 1</span>
+              </div>
+              <div class="evo-spec-row evo-spec-row-from">
+                <span class="evo-spec-label">EVOLVES FROM</span>
+                <div id="evo-preview-from" class="evo-spec-from-list">Starter Chassis</div>
+              </div>
+            </div>
+
+            <p id="evo-preview-desc" class="shop-preview-desc">Reliable all-around starter chassis with standard cannon.</p>
+          </div>
+        </aside>
       </div>
     </div>
   </div>

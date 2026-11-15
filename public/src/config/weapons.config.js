@@ -1,12 +1,12 @@
 /**
- * DIEP SURVIVAL - WEAPONS & TURRET CONFIGURATION
+ * FALO SURVIVAL - WEAPONS & TURRET CONFIGURATION
  * Barrel geometries, projectile parameters, recoil impulses, and reload scaling.
  */
 
-// Base barrel configuration for Basic Tank (Diep.io baseline reference)
+// Base barrel configuration for Basic Tank (Falo.io baseline reference)
 export const BASIC_BARREL_BASE = {
-  damage: 7.0,          // Diep.io Base Bullet Damage (7.0, increases by +3 per stat point)
-  penetration: 2.0,     // Diep.io Base Bullet Penetration (2.0, increases by +1.5 per stat point)
+  damage: 7.0,          // Falo.io Base Bullet Damage (7.0, increases by +3 per stat point)
+  penetration: 2.0,     // Falo.io Base Bullet Penetration (2.0, increases by +1.5 per stat point)
   bulletSpeed: 160,     // Base shell speed
   bulletSize: 9,        // Base shell radius
   baseReloadTicks: 120, // Base reload ticks (from Basic Tank)
@@ -16,12 +16,12 @@ export const BASIC_BARREL_BASE = {
   knockback: 1.0,       // Base knockback multiplier
   launchSpeed: 1.0,     // Base launch speed multiplier
   bulletsPerShot: 1,    // Bullets fired per shot
-  lifetime: 3.0,        // Bullet lifetime in seconds (3s from Diep tank editor)
+  lifetime: 3.0,        // Bullet lifetime in seconds (3s from Falo tank editor)
   fireDelay: 0          // Fire delay offset (phase offset 0..1)
 };
 
 /**
- * Creates a turret configuration adhering to Diep.io Tank Editor barrel parameters.
+ * Creates a turret configuration adhering to Falo.io Tank Editor barrel parameters.
  * Supports standard Tank Editor barrel geometry and multipliers:
  * [width, length, frontWidth, angleOffset, xOffset, yOffset] + multipliers.
  * Every tank shares the same base stats as the basic tank, adjusted via multipliers.
@@ -56,6 +56,14 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
   const lifetime = multipliers.lifetime ?? BASIC_BARREL_BASE.lifetime;
   const fireDelay = multipliers.fireDelay ?? 0;
 
+  const isTrap = Boolean(weaponExtra.isTrap ?? multipliers.isTrap);
+  const trapDrag = weaponExtra.trapDrag ?? multipliers.trapDrag;
+  const isAutoTurret = Boolean(geom.isAutoTurret ?? weaponExtra.isAutoTurret ?? multipliers.isAutoTurret);
+  const mountRadius = geom.mountRadius ?? 11;
+  const autoRange = weaponExtra.autoRange ?? multipliers.autoRange;
+  const autoFovHalf = weaponExtra.autoFovHalf ?? multipliers.autoFovHalf;
+  const autoTurnSpeed = weaponExtra.autoTurnSpeed ?? multipliers.autoTurnSpeed;
+
   // Calculate shell radius based on cannon base width (attaching to hull) and bulletSize multiplier
   const baseBulletRadius = (width / 20) * (BASIC_BARREL_BASE.bulletSize || 9);
   const shellRadius = Math.round(baseBulletRadius * bulletSize * 10) / 10;
@@ -75,6 +83,12 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     recoil: Math.round(BASIC_BARREL_BASE.recoil * recoil * 10) / 10,
     bulletsPerShot,
     lifetime,
+    isTrap,
+    isAutoTurret,
+    ...(trapDrag !== undefined ? { trapDrag } : {}),
+    ...(autoRange !== undefined ? { autoRange } : {}),
+    ...(autoFovHalf !== undefined ? { autoFovHalf } : {}),
+    ...(autoTurnSpeed !== undefined ? { autoTurnSpeed } : {}),
     ...weaponExtra
   } : null;
 
@@ -88,8 +102,10 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     shootsBullet,
     playsRecoil,
     fireDelayTicks: Math.round(fireDelay * 60),
+    isAutoTurret,
+    mountRadius,
 
-    // Diep.io Tank Editor barrel configuration (all turrets have these matching the editor)
+    // Falo.io Tank Editor barrel configuration (all turrets have these matching the editor)
     damage,
     penetration,
     bulletSpeed,
@@ -103,6 +119,11 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     bulletsPerShot,
     lifetime,
     fireDelay,
+    isTrap,
+    ...(trapDrag !== undefined ? { trapDrag } : {}),
+    ...(autoRange !== undefined ? { autoRange } : {}),
+    ...(autoFovHalf !== undefined ? { autoFovHalf } : {}),
+    ...(autoTurnSpeed !== undefined ? { autoTurnSpeed } : {}),
 
     weapon
   };
@@ -112,6 +133,15 @@ export const WEAPONS_CONFIG = {
   defaultLifetime: 3.0,
   basicBarrelBase: BASIC_BARREL_BASE,
   turnSpeed: 6.0,
+  trapDrag: 4.6,
+  trapStopSpeed: 3.0,
+  trapSpinSpeed: 6.0,
+  autoTurretRange: 760,
+  autoTurretFovHalf: Math.PI / 3,
+  autoTurretTurnSpeed: 8.5,
+  droneDrag: 7.5,
+  droneTurnSpeed: 4.5,
+  droneOrbitSpeed: 0.9,
   repelStrength: 160,
   penDrainMultiplier: 1.0,
   shapePenetrationDrain: 3.0,
