@@ -10,6 +10,7 @@ export class MainMenuController {
     this.tankWrap = document.getElementById('main-menu-hero-tank-wrap');
     this.tankCanvas = document.getElementById('menu-hero-tank-canvas');
     this.authContainer = document.getElementById('auth-status-container');
+    this.fullscreenBtn = document.getElementById('main-menu-fullscreen-btn');
     this.ctx = this.tankCanvas ? this.tankCanvas.getContext('2d') : null;
 
     this.targetNx = 0;
@@ -53,17 +54,49 @@ export class MainMenuController {
     }
   }
 
+  updatePointerTarget(clientX, clientY) {
+    if (!this.isVisible()) return;
+    this.hasMouseMoved = true;
+    this.mouseX = clientX;
+    this.mouseY = clientY;
+    const w = window.innerWidth || 1;
+    const h = window.innerHeight || 1;
+    this.targetNx = Math.max(-1, Math.min(1, (clientX / w - 0.5) * 2));
+    this.targetNy = Math.max(-1, Math.min(1, (clientY / h - 0.5) * 2));
+  }
+
   bindEvents() {
-    window.addEventListener('mousemove', (e) => {
-      if (!this.isVisible()) return;
-      this.hasMouseMoved = true;
-      this.mouseX = e.clientX;
-      this.mouseY = e.clientY;
-      const w = window.innerWidth || 1;
-      const h = window.innerHeight || 1;
-      this.targetNx = Math.max(-1, Math.min(1, (e.clientX / w - 0.5) * 2));
-      this.targetNy = Math.max(-1, Math.min(1, (e.clientY / h - 0.5) * 2));
-    });
+    window.addEventListener('pointermove', (e) => {
+      this.updatePointerTarget(e.clientX, e.clientY);
+    }, { passive: true });
+
+    window.addEventListener('pointerdown', (e) => {
+      this.updatePointerTarget(e.clientX, e.clientY);
+    }, { passive: true });
+
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches.length > 0) {
+        this.updatePointerTarget(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches && e.touches.length > 0) {
+        this.updatePointerTarget(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    const resetTouchTilt = (e) => {
+      if (!e || e.pointerType === 'touch' || e.type === 'touchend' || e.type === 'touchcancel') {
+        this.targetNx = 0;
+        this.targetNy = 0;
+      }
+    };
+
+    window.addEventListener('pointerup', resetTouchTilt, { passive: true });
+    window.addEventListener('pointercancel', resetTouchTilt, { passive: true });
+    window.addEventListener('touchend', resetTouchTilt, { passive: true });
+    window.addEventListener('touchcancel', resetTouchTilt, { passive: true });
 
     document.addEventListener('mouseleave', () => {
       this.targetNx = 0;
@@ -262,20 +295,20 @@ export class MainMenuController {
 
     if (!this.reducedMotion) {
       if (this.rightPanel) {
-        const baseRotY = window.innerWidth <= 960 ? 0 : -6;
-        const panelRotY = baseRotY + this.curNx * 4.5;
-        const panelRotX = -this.curNy * 3.5;
-        const shiftX = this.curNx * 10;
-        const shiftY = this.curNy * 8;
+        const baseRotY = window.innerWidth <= 960 ? -2 : -7;
+        const panelRotY = baseRotY + this.curNx * 5.2;
+        const panelRotX = -this.curNy * 4.2;
+        const shiftX = this.curNx * 11;
+        const shiftY = this.curNy * 9;
         this.rightPanel.style.transform =
           `perspective(1200px) translate3d(${shiftX.toFixed(2)}px, ${shiftY.toFixed(2)}px, 0) rotateY(${panelRotY.toFixed(2)}deg) rotateX(${panelRotX.toFixed(2)}deg)`;
       }
 
       if (this.tankWrap) {
-        const tx = this.curNx * 14;
-        const ty = this.curNy * 10;
-        const tankRotY = this.curNx * 3.5;
-        const tankRotX = -this.curNy * 2.5;
+        const tx = this.curNx * 15;
+        const ty = this.curNy * 11;
+        const tankRotY = this.curNx * 4;
+        const tankRotX = -this.curNy * 3;
         this.tankWrap.style.transform =
           `perspective(1200px) translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) rotateY(${tankRotY.toFixed(2)}deg) rotateX(${tankRotX.toFixed(2)}deg)`;
       }
@@ -283,13 +316,25 @@ export class MainMenuController {
       if (this.authContainer) {
         const authTx = this.curNx * 10;
         const authTy = this.curNy * 8;
-        const baseAuthRotY = window.innerWidth <= 960 ? 0 : 5;
-        const authRy = baseAuthRotY + this.curNx * 4.5;
-        const authRx = -this.curNy * 3.5;
+        const baseAuthRotY = window.innerWidth <= 960 ? 2 : 5;
+        const authRy = baseAuthRotY + this.curNx * 4.8;
+        const authRx = -this.curNy * 3.8;
         this.authContainer.style.setProperty('--auth-tx', `${authTx.toFixed(2)}px`);
         this.authContainer.style.setProperty('--auth-ty', `${authTy.toFixed(2)}px`);
         this.authContainer.style.setProperty('--auth-rx', `${authRx.toFixed(2)}deg`);
         this.authContainer.style.setProperty('--auth-ry', `${authRy.toFixed(2)}deg`);
+      }
+
+      if (this.fullscreenBtn) {
+        const fsTx = this.curNx * 9;
+        const fsTy = this.curNy * 7;
+        const baseFsRotY = window.innerWidth <= 960 ? 2 : 5;
+        const fsRy = baseFsRotY + this.curNx * 4.8;
+        const fsRx = -this.curNy * 3.8;
+        this.fullscreenBtn.style.setProperty('--fs-tx', `${fsTx.toFixed(2)}px`);
+        this.fullscreenBtn.style.setProperty('--fs-ty', `${fsTy.toFixed(2)}px`);
+        this.fullscreenBtn.style.setProperty('--fs-rx', `${fsRx.toFixed(2)}deg`);
+        this.fullscreenBtn.style.setProperty('--fs-ry', `${fsRy.toFixed(2)}deg`);
       }
 
       if (this.overlay) {
