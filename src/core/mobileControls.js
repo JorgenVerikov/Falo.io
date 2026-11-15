@@ -46,6 +46,10 @@ export class MobileControls {
     this.autoSpinBtn = document.getElementById('mobile-autospin-btn');
     this.selfDestructBtn = document.getElementById('mobile-self-destruct-btn');
     this.fullscreenBtn = document.getElementById('mobile-fullscreen-btn');
+    this.menuFullscreenBtn = document.getElementById('main-menu-fullscreen-btn');
+    this.menuFullscreenLabel = this.menuFullscreenBtn?.querySelector('.menu-fullscreen-label') || null;
+    this.selfDestructOpenedAt = 0;
+    this.modalPointerDownOnBackdrop = false;
 
     this.confirmModal = document.getElementById('self-destruct-modal');
     this.cancelSelfDestructBtn = document.getElementById('cancel-self-destruct-btn');
@@ -54,6 +58,9 @@ export class MobileControls {
 
     this.setupDeviceDetectionListeners();
     this.setupFullscreenListeners();
+    if (this.isMobile) {
+      this.tryLockLandscape();
+    }
     this.bindJoystick(this.movePadEl, this.moveKnobEl, (nx, ny, mag, active) => {
       if (!active || mag < 0.12) {
         this.moveVec.x = 0;
@@ -95,6 +102,9 @@ export class MobileControls {
         this.lastTouchTime = performance.now();
         if (!this.isMobile) {
           this.setMobileMode(true);
+        }
+        if (window.innerHeight > window.innerWidth) {
+          this.tryLockLandscape();
         }
       } else if (e.pointerType === 'mouse') {
         const elapsed = performance.now() - this.lastTouchTime;
@@ -173,8 +183,38 @@ export class MobileControls {
     );
   }
 
+  tryLockLandscape() {
+    if (!this.isMobile || typeof screen === 'undefined') return Promise.resolve(false);
+    const orientation = screen.orientation;
+    if (orientation && typeof orientation.lock === 'function') {
+      try {
+        const res = orientation.lock('landscape');
+        if (res && typeof res.then === 'function') {
+          return res.then(() => true).catch(() => false);
+        }
+        return Promise.resolve(true);
+      } catch (_) {
+        return Promise.resolve(false);
+      }
+    }
+    const legacyLock = screen.lockOrientation || screen.webkitLockOrientation || screen.mozLockOrientation || screen.msLockOrientation;
+    if (typeof legacyLock === 'function') {
+      try {
+        return Promise.resolve(Boolean(legacyLock.call(screen, 'landscape')));
+      } catch (_) {
+        return Promise.resolve(false);
+      }
+    }
+    return Promise.resolve(false);
+  }
+
   setupFullscreenListeners() {
-    const sync = () => this.syncFullscreenState();
+    const sync = () => {
+      this.syncFullscreenState();
+      if (this.isFullscreenActive() && this.isMobile) {
+        this.tryLockLandscape();
+      }
+    };
     document.addEventListener('fullscreenchange', sync);
     document.addEventListener('webkitfullscreenchange', sync);
     document.addEventListener('mozfullscreenchange', sync);
@@ -189,28 +229,41 @@ export class MobileControls {
       this.fullscreenBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
       this.fullscreenBtn.textContent = active ? 'EXIT FS' : 'FULLSCREEN';
     }
+    if (this.menuFullscreenBtn) {
+      this.menuFullscreenBtn.classList.toggle('active', active);
+      this.menuFullscreenBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      if (this.menuFullscreenLabel) {
+        this.menuFullscreenLabel.textContent = active ? 'EXIT FS' : 'FULLSCREEN';
+      }
+    }
   }
 
   requestFullscreenSafe() {
     if (this.isFullscreenActive()) {
       this.syncFullscreenState();
+      if (this.isMobile) this.tryLockLandscape();
       return Promise.resolve(true);
     }
     const el = document.documentElement;
     if (!el) return Promise.resolve(false);
     const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-    if (!req) return Promise.resolve(false);
+    if (!req) {
+      if (this.isMobile) this.tryLockLandscape();
+      return Promise.resolve(false);
+    }
     try {
       const res = req.call(el);
       if (res && typeof res.then === 'function') {
         return res
           .then(() => {
             this.syncFullscreenState();
+            if (this.isMobile) this.tryLockLandscape();
             return true;
           })
           .catch(() => false);
       }
       this.syncFullscreenState();
+      if (this.isMobile) this.tryLockLandscape();
       return Promise.resolve(true);
     } catch (_) {
       return Promise.resolve(false);
@@ -270,6 +323,9 @@ export class MobileControls {
   showSelfDestructPrompt() {
     if (!this.confirmModal || !this.inGameActive) return;
     this.resetInputs();
+    this.selfDestructOpenedAt = performance.now();
+    this.modalPointerDownOnBackdrop = false;
+    this.selfDestructBtn?.classList.add('active');
     this.confirmModal.classList.remove('hidden');
     void this.confirmModal.offsetWidth;
     this.confirmModal.classList.add('active');
@@ -279,6 +335,16 @@ export class MobileControls {
     if (!this.confirmModal) return;
     this.confirmModal.classList.remove('active');
     this.confirmModal.classList.add('hidden');
+    this.selfDestructBtn?.classList.remove('active');
+    this.modalPointerDownOnBackdrop = false;
+  }
+
+  toggleSelfDestructPrompt() {
+    if (this.isSelfDestructPromptOpen()) {
+      this.hideSelfDestructPrompt();
+    } else {
+      this.showSelfDestructPrompt();
+    }
   }
 
   isSelfDestructPromptOpen() {
@@ -297,7 +363,16 @@ export class MobileControls {
 
     bindTap(this.autoFireBtn, () => this.onToggleAutoFire());
     bindTap(this.autoSpinBtn, () => this.onToggleAutoSpin());
-    bindTap(this.selfDestructBtn, () => this.showSelfDestructPrompt());
+
+    if (this.selfDestructBtn) {
+      this.selfDestructBtn.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+      });
+      this.selfDestructBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleSelfDestructPrompt();
+      });
+    }
 
     if (this.fullscreenBtn) {
       this.fullscreenBtn.addEventListener('pointerdown', (e) => {
@@ -309,19 +384,37 @@ export class MobileControls {
       });
     }
 
-    this.cancelSelfDestructBtn?.addEventListener('click', () => {
+    if (this.menuFullscreenBtn) {
+      this.menuFullscreenBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleFullscreen();
+      });
+    }
+
+    this.cancelSelfDestructBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.hideSelfDestructPrompt();
     });
 
-    this.confirmSelfDestructBtn?.addEventListener('click', () => {
+    this.confirmSelfDestructBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.hideSelfDestructPrompt();
       this.onConfirmSelfDestruct();
     });
 
+    this.confirmModal?.addEventListener('pointerdown', (e) => {
+      this.modalPointerDownOnBackdrop = (e.target === this.confirmModal);
+    });
+
     this.confirmModal?.addEventListener('click', (e) => {
-      if (e.target === this.confirmModal) {
+      if (
+        e.target === this.confirmModal &&
+        this.modalPointerDownOnBackdrop &&
+        performance.now() - this.selfDestructOpenedAt > 120
+      ) {
         this.hideSelfDestructPrompt();
       }
+      this.modalPointerDownOnBackdrop = false;
     });
   }
 
