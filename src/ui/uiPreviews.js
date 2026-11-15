@@ -98,6 +98,127 @@ export function drawTankPreview(ctx, chassisKey, spinAngle, playerFillColor = '#
   ctx.restore();
 }
 
+const tankPreviewUrlCache = new Map();
+
+export function generateTankPreviewDataUrl(chassisKey, color = '#00b2e1', stroke = null, size = 84) {
+  const cfg = CONFIG.CHASSIS[chassisKey] || CONFIG.CHASSIS.basic;
+
+  let strokeColor = stroke;
+  if (!strokeColor) {
+    const foundTheme = Object.values(CONFIG.COLOR_THEMES).find(t => t.color && t.color.toLowerCase() === color.toLowerCase());
+    strokeColor = (foundTheme && foundTheme.stroke) ? foundTheme.stroke : computeStrokeColor(color);
+  }
+
+  const cacheKey = `${chassisKey}|${color}|${strokeColor}|${size}`;
+  const cached = tankPreviewUrlCache.get(cacheKey);
+  if (cached) return cached;
+
+  const dpr = 2;
+  const pixelSize = Math.round(size * dpr);
+  const center = pixelSize / 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = pixelSize;
+  canvas.height = pixelSize;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  const baseScale = (76 / 100) * 0.85 * dpr;
+  const bodyRadius = 20 * (cfg.radiusMultiplier || 1.0) * baseScale;
+  const armorRadius = cfg.outerArmor ? bodyRadius * (cfg.outerArmor.radiusMultiplier || 1.6) : 0;
+
+  let maxTurretExtent = 0;
+  if (cfg.turrets && cfg.turrets.length > 0) {
+    for (let i = 0; i < cfg.turrets.length; i++) {
+      const t = cfg.turrets[i];
+      const xOff = t.isAutoTurret ? bodyRadius : ((t.xOffset || 0) * 0.82 * baseScale);
+      const tLen = (t.length || 48) * 0.82 * baseScale;
+      const yOff = (t.yOffset || 0) * 0.82 * baseScale;
+      const halfW = Math.max(t.width || 20, t.frontWidth || t.width || 20) * 0.41 * baseScale;
+      const extent = Math.hypot(xOff + tLen, Math.abs(yOff) + halfW);
+      if (extent > maxTurretExtent) maxTurretExtent = extent;
+    }
+  }
+
+  const maxExtent = Math.max(bodyRadius, armorRadius, maxTurretExtent) + 5 * dpr;
+  const fitScale = maxExtent > (center - 2) ? (center - 2) / maxExtent : 1;
+
+  ctx.save();
+  ctx.translate(center, center);
+  ctx.scale(fitScale, fitScale);
+  ctx.rotate(-Math.PI / 2);
+
+  if (cfg.outerArmor) {
+    const sides = cfg.outerArmor.sides || 6;
+    const r = bodyRadius * (cfg.outerArmor.radiusMultiplier || 1.6);
+    drawPreviewPolygon(
+      ctx,
+      0,
+      0,
+      r,
+      sides,
+      0,
+      cfg.outerArmor.color || '#343444',
+      cfg.outerArmor.stroke || '#20202c',
+      3.5 * dpr
+    );
+  }
+
+  if (cfg.turrets && cfg.turrets.length > 0) {
+    for (let i = 0; i < cfg.turrets.length; i++) {
+      const t = cfg.turrets[i];
+      const angle = t.angleOffset || 0;
+      const tLen = (t.length || 48) * 0.82 * baseScale;
+      const tWidth = (t.width || 20) * 0.82 * baseScale;
+      const tFront = (t.frontWidth || t.width || 20) * 0.82 * baseScale;
+      const xOff = t.isAutoTurret ? bodyRadius : ((t.xOffset || 0) * 0.82 * baseScale);
+      const yOff = (t.yOffset || 0) * 0.82 * baseScale;
+
+      ctx.save();
+      ctx.rotate(angle);
+      ctx.fillStyle = '#999999';
+      ctx.strokeStyle = '#555555';
+      ctx.lineWidth = 2.5 * dpr;
+      ctx.lineJoin = 'miter';
+
+      ctx.beginPath();
+      ctx.moveTo(xOff, yOff - tWidth / 2);
+      ctx.lineTo(xOff + tLen, yOff - tFront / 2);
+      ctx.lineTo(xOff + tLen, yOff + tFront / 2);
+      ctx.lineTo(xOff, yOff + tWidth / 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      if (t.isAutoTurret) {
+        const mountR = (t.mountRadius || 11) * 0.82 * baseScale;
+        ctx.beginPath();
+        ctx.arc(xOff, 0, mountR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  drawPreviewPolygon(
+    ctx,
+    0,
+    0,
+    bodyRadius,
+    cfg.sides || 0,
+    0,
+    color,
+    strokeColor,
+    3 * dpr
+  );
+
+  ctx.restore();
+
+  const dataUrl = canvas.toDataURL('image/png');
+  tankPreviewUrlCache.set(cacheKey, dataUrl);
+  return dataUrl;
+}
+
 export function generateTankSvg(chassisKey, color = '#00b2e1', stroke = null, size = 110) {
   const cfg = CONFIG.CHASSIS[chassisKey] || CONFIG.CHASSIS.basic;
   const center = size / 2;

@@ -1,5 +1,5 @@
 import { CONFIG, computeStrokeColor } from '../core/config.js';
-import { generateTankSvg } from './uiPreviews.js';
+import { generateTankPreviewDataUrl } from './uiPreviews.js';
 
 const WORLD_WIDTH = 2360;
 const WORLD_HEIGHT = 860;
@@ -172,6 +172,10 @@ export class EvolutionTreeController {
     this.lastPinchMid = null;
     this.nodeElements = new Map();
     this.edgeElements = [];
+    this.renderedTreeSignature = null;
+    this.viewportRect = null;
+    this.transformRafId = null;
+    this.lastZoomText = '';
 
     this.bindControls();
   }
@@ -218,10 +222,12 @@ export class EvolutionTreeController {
         const clickedNode = e.target.closest?.('.evo-tree-node');
         this.downNodeKey = clickedNode?.dataset?.chassis || null;
         this.lastPanPointer = { x: e.clientX, y: e.clientY };
+        this.viewportRect = this.viewport.getBoundingClientRect();
         this.viewport.classList.add('is-dragging');
       } else if (this.activePointers.size === 2) {
         this.isDragging = false;
         this.downNodeKey = null;
+        this.viewportRect = this.viewport.getBoundingClientRect();
         const pts = Array.from(this.activePointers.values());
         this.lastPinchDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
         this.lastPinchMid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
@@ -247,7 +253,7 @@ export class EvolutionTreeController {
         this.panX += dx;
         this.panY += dy;
         this.lastPanPointer = { x: e.clientX, y: e.clientY };
-        this.applyTransform();
+        this.scheduleTransform();
       } else if (this.activePointers.size === 2) {
         const pts = Array.from(this.activePointers.values());
         const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
@@ -258,14 +264,14 @@ export class EvolutionTreeController {
           this.panY += mid.y - this.lastPinchMid.y;
         }
         if (this.lastPinchDist && this.lastPinchDist > 0) {
-          const rect = this.viewport.getBoundingClientRect();
+          const rect = this.viewportRect || this.viewport.getBoundingClientRect();
           const factor = dist / this.lastPinchDist;
-          this.zoomAtPoint(factor, mid.x - rect.left, mid.y - rect.top);
+          this.zoomAtPoint(factor, mid.x - rect.left, mid.y - rect.top, true);
         }
         this.dragMovedDist = 999;
         this.lastPinchDist = dist;
         this.lastPinchMid = mid;
-        this.applyTransform();
+        this.scheduleTransform();
       }
     });
 
@@ -314,6 +320,15 @@ export class EvolutionTreeController {
   renderTree() {
     if (!this.stage || !this.edgesSvg || !this.nodesLayer) return;
 
+    const { fillColor, strokeColor } = this.getActiveColors();
+    const chassisCount = Object.keys(CONFIG.CHASSIS).length;
+    const signature = `${fillColor}|${strokeColor}|${chassisCount}`;
+
+    if (this.renderedTreeSignature === signature && this.nodeElements.size > 0) {
+      this.selectTank(this.selectedKey);
+      return;
+    }
+
     const { positions, edges, worldWidth, worldHeight } = buildTreeLayout();
     this.worldWidth = worldWidth;
     this.worldHeight = worldHeight;
@@ -328,6 +343,9 @@ export class EvolutionTreeController {
     this.nodesLayer.innerHTML = '';
     this.nodeElements.clear();
     this.edgeElements = [];
+
+    const svgFrag = document.createDocumentFragment();
+    const nodesFrag = document.createDocumentFragment();
 
     // Subtle tier bands & row labels inside the stage
     const tierBands = [
@@ -344,13 +362,13 @@ export class EvolutionTreeController {
       guide.setAttribute('x2', String(worldWidth - 36));
       guide.setAttribute('y2', String(band.y));
       guide.setAttribute('class', 'evo-tier-guide-line');
-      this.edgesSvg.appendChild(guide);
+      svgFrag.appendChild(guide);
 
       const tag = document.createElement('div');
       tag.className = 'evo-tier-row-tag';
       tag.style.top = `${band.y}px`;
       tag.textContent = band.label;
-      this.nodesLayer.appendChild(tag);
+      nodesFrag.appendChild(tag);
     });
 
     // Draw orthogonal branch lines
@@ -362,13 +380,11 @@ export class EvolutionTreeController {
       path.setAttribute('class', 'evo-tree-edge');
       path.dataset.from = edge.from;
       path.dataset.to = edge.to;
-      this.edgesSvg.appendChild(path);
+      svgFrag.appendChild(path);
       this.edgeElements.push(path);
     });
 
-    const { fillColor, strokeColor } = this.getActiveColors();
-
-    // Draw slowly spinning tank nodes
+    // Draw tank nodes using cached bitmap previews
     Object.keys(positions).forEach(key => {
       const cfg = CONFIG.CHASSIS[key];
       const pos = positions[key];
@@ -388,9 +404,11 @@ export class EvolutionTreeController {
         ? `Tier 1 • Lvl ${cfg.reqLevel} Starter`
         : `Tier ${pos.tier} • Lvl ${cfg.reqLevel} • From ${parents}`;
 
+      const iconSrc = generateTankPreviewDataUrl(key, fillColor, strokeColor, 84);
+
       node.innerHTML = `
         <div class="evo-node-circle">
-          ${generateTankSvg(key, fillColor, strokeColor, 76)}
+          <img class="evo-node-tank-img" src="${iconSrc}" alt="${cfg.name}" width="84" height="84" decoding="async" draggable="false" />
         </div>
         <div class="evo-node-name-wrap">
           <div class="evo-node-name">${cfg.name}</div>
@@ -398,9 +416,13 @@ export class EvolutionTreeController {
         </div>
       `;
 
-      this.nodesLayer.appendChild(node);
+      nodesFrag.appendChild(node);
       this.nodeElements.set(key, node);
     });
+
+    this.edgesSvg.appendChild(svgFrag);
+    this.nodesLayer.appendChild(nodesFrag);
+    this.renderedTreeSignature = signature;
 
     this.selectTank(this.selectedKey);
   }
@@ -432,7 +454,7 @@ export class EvolutionTreeController {
     this.zoomAtPoint(factor, rect.width / 2, rect.height / 2);
   }
 
-  zoomAtPoint(factor, viewX, viewY) {
+  zoomAtPoint(factor, viewX, viewY, deferApply = false) {
     const nextZoom = Math.min(this.maxZoom, Math.max(this.minZoom, this.zoom * factor));
     if (Math.abs(nextZoom - this.zoom) < 0.0001) return;
 
@@ -442,7 +464,7 @@ export class EvolutionTreeController {
     this.zoom = nextZoom;
     this.panX = viewX - worldX * this.zoom;
     this.panY = viewY - worldY * this.zoom;
-    this.applyTransform();
+    if (!deferApply) this.applyTransform();
   }
 
   fitToViewport() {
@@ -459,17 +481,24 @@ export class EvolutionTreeController {
     this.applyTransform();
   }
 
+  scheduleTransform() {
+    if (this.transformRafId !== null) return;
+    this.transformRafId = requestAnimationFrame(() => {
+      this.transformRafId = null;
+      this.applyTransform();
+    });
+  }
+
   applyTransform() {
     if (this.stage) {
-      this.stage.style.transform = `translate3d(${this.panX}px, ${this.panY}px, 0) scale(${this.zoom})`;
-    }
-    if (this.viewport) {
-      const gridStep = Math.max(10, 32 * this.zoom);
-      this.viewport.style.backgroundSize = `${gridStep}px ${gridStep}px`;
-      this.viewport.style.backgroundPosition = `${this.panX}px ${this.panY}px`;
+      this.stage.style.transform = `translate3d(${this.panX.toFixed(2)}px, ${this.panY.toFixed(2)}px, 0) scale(${this.zoom.toFixed(4)})`;
     }
     if (this.zoomLabel) {
-      this.zoomLabel.textContent = `${Math.round(this.zoom * 100)}%`;
+      const pctText = `${Math.round(this.zoom * 100)}%`;
+      if (pctText !== this.lastZoomText) {
+        this.lastZoomText = pctText;
+        this.zoomLabel.textContent = pctText;
+      }
     }
   }
 
@@ -495,7 +524,11 @@ export class EvolutionTreeController {
     this.selectedKey = null;
     this.renderTree();
     this.ui.openModal(this.modal);
+    this.fitToViewport();
     requestAnimationFrame(() => {
+      if (this.viewport) {
+        this.viewportRect = this.viewport.getBoundingClientRect();
+      }
       this.fitToViewport();
     });
   }

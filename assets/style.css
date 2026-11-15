@@ -4661,10 +4661,6 @@ body.theme-light .evo-zoom-label {
   touch-action: none;
   user-select: none;
   background-color: #1b1d23;
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-  background-size: 32px 32px;
 }
 
 .evo-tree-viewport.is-dragging {
@@ -4673,9 +4669,6 @@ body.theme-light .evo-zoom-label {
 
 body.theme-light .evo-tree-viewport {
   background-color: #cdcdcd;
-  background-image:
-    linear-gradient(to right, rgba(0, 0, 0, 0.065) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.065) 1px, transparent 1px);
 }
 
 .evo-tree-stage {
@@ -4684,6 +4677,22 @@ body.theme-light .evo-tree-viewport {
   left: 0;
   transform-origin: 0 0;
   will-change: transform;
+}
+
+.evo-tree-grid-bg {
+  position: absolute;
+  inset: -1600px;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+body.theme-light .evo-tree-grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.065) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.065) 1px, transparent 1px);
 }
 
 .evo-tree-edges,
@@ -4778,8 +4787,26 @@ body.theme-light .evo-tree-edge {
     background-color 0.22s ease;
 }
 
-.evo-node-circle svg {
+.evo-node-circle svg,
+.evo-node-tank-img {
   pointer-events: none;
+  user-select: none;
+  display: block;
+}
+
+.evo-node-tank-img {
+  width: 84px;
+  height: 84px;
+}
+
+@keyframes evo-tank-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+body:not(.is-mobile) .evo-node-tank-img,
+body.is-mobile .evo-tree-node.selected .evo-node-tank-img {
+  animation: evo-tank-spin 16s linear infinite;
 }
 
 body.theme-light .evo-node-circle {
@@ -4872,8 +4899,8 @@ body.theme-light .evo-node-sub {
 
 #evolution-tree-modal.ingame-translucent .diep-evo-window {
   background-color: rgba(17, 18, 22, 0.36);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 #evolution-tree-modal.ingame-translucent .diep-shop-header {
@@ -4898,4 +4925,44 @@ body.theme-light #evolution-tree-modal.ingame-translucent .diep-shop-header {
 
 body.theme-light #evolution-tree-modal.ingame-translucent .evo-tree-viewport {
   background-color: rgba(226, 232, 240, 0.36);
+}
+
+/* Mobile Evolution Tree GPU Optimization */
+body.is-mobile .diep-evo-window {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+  background-color: #16181e;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+
+body.theme-light.is-mobile .diep-evo-window {
+  background-color: #e2e5e9;
+}
+
+body.is-mobile #evolution-tree-modal .diep-shop-header {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.is-mobile #evolution-tree-modal.ingame-translucent.modal-overlay {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(10, 12, 16, 0.42);
+}
+
+body.is-mobile #evolution-tree-modal.ingame-translucent .diep-evo-window {
+  background-color: rgba(17, 18, 22, 0.68);
+}
+
+body.theme-light.is-mobile #evolution-tree-modal.ingame-translucent.modal-overlay {
+  background: rgba(226, 232, 240, 0.36);
+}
+
+body.theme-light.is-mobile #evolution-tree-modal.ingame-translucent .diep-evo-window {
+  background-color: rgba(235, 238, 242, 0.68);
+}
+
+body.is-mobile .evo-node-circle {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
 }
