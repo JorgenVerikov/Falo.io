@@ -295,13 +295,16 @@ export class MainMenuController {
 
     if (!this.reducedMotion) {
       if (this.rightPanel) {
-        const baseRotY = window.innerWidth <= 960 ? -2 : -7;
-        const panelRotY = baseRotY + this.curNx * 5.2;
-        const panelRotX = -this.curNy * 4.2;
-        const shiftX = this.curNx * 11;
-        const shiftY = this.curNy * 9;
+        const isCompact = window.innerWidth <= 960;
+        const baseRotY = isCompact ? -6 : -18;
+        const baseRotX = isCompact ? 1 : 2.5;
+        const baseRotZ = isCompact ? -0.8 : -1.6;
+        const panelRotY = baseRotY + this.curNx * 5.0;
+        const panelRotX = baseRotX - this.curNy * 3.8;
+        const shiftX = this.curNx * 10;
+        const shiftY = this.curNy * 7;
         this.rightPanel.style.transform =
-          `perspective(1200px) translate3d(${shiftX.toFixed(2)}px, ${shiftY.toFixed(2)}px, 0) rotateY(${panelRotY.toFixed(2)}deg) rotateX(${panelRotX.toFixed(2)}deg)`;
+          `perspective(880px) translate3d(${shiftX.toFixed(2)}px, ${shiftY.toFixed(2)}px, 0) rotateY(${panelRotY.toFixed(2)}deg) rotateX(${panelRotX.toFixed(2)}deg) rotateZ(${baseRotZ.toFixed(2)}deg)`;
       }
 
       if (this.tankWrap) {
@@ -316,9 +319,9 @@ export class MainMenuController {
       if (this.authContainer) {
         const authTx = this.curNx * 10;
         const authTy = this.curNy * 8;
-        const baseAuthRotY = window.innerWidth <= 960 ? 2 : 5;
-        const authRy = baseAuthRotY + this.curNx * 4.8;
-        const authRx = -this.curNy * 3.8;
+        const baseAuthRotY = window.innerWidth <= 960 ? 3 : 8;
+        const authRy = baseAuthRotY + this.curNx * 4.5;
+        const authRx = -this.curNy * 3.6;
         this.authContainer.style.setProperty('--auth-tx', `${authTx.toFixed(2)}px`);
         this.authContainer.style.setProperty('--auth-ty', `${authTy.toFixed(2)}px`);
         this.authContainer.style.setProperty('--auth-rx', `${authRx.toFixed(2)}deg`);
@@ -328,9 +331,9 @@ export class MainMenuController {
       if (this.fullscreenBtn) {
         const fsTx = this.curNx * 9;
         const fsTy = this.curNy * 7;
-        const baseFsRotY = window.innerWidth <= 960 ? 2 : 5;
-        const fsRy = baseFsRotY + this.curNx * 4.8;
-        const fsRx = -this.curNy * 3.8;
+        const baseFsRotY = window.innerWidth <= 960 ? 3 : 8;
+        const fsRy = baseFsRotY + this.curNx * 4.5;
+        const fsRx = -this.curNy * 3.6;
         this.fullscreenBtn.style.setProperty('--fs-tx', `${fsTx.toFixed(2)}px`);
         this.fullscreenBtn.style.setProperty('--fs-ty', `${fsTy.toFixed(2)}px`);
         this.fullscreenBtn.style.setProperty('--fs-rx', `${fsRx.toFixed(2)}deg`);
