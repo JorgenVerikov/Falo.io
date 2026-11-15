@@ -66,8 +66,17 @@ const camera = {
   x: 0,
   y: 0,
   zoom: CONFIG.CAMERA.defaultZoom,
-  targetZoom: CONFIG.CAMERA.defaultZoom
+  targetZoom: CONFIG.CAMERA.defaultZoom,
+  spawnZoomTimer: 0,
+  spawnZoomDuration: 0.72,
+  spawnZoomStart: CONFIG.CAMERA.defaultZoom * 0.42,
+  exitZoomTimer: 0,
+  exitZoomDuration: 0.56,
+  exitZoomStart: CONFIG.CAMERA.defaultZoom,
+  exitZoomEnd: CONFIG.CAMERA.defaultZoom * 0.42
 };
+
+let exitTransitionTimeout = null;
 
 function getViewportZoomFactor() {
   const w = (canvasMgr && canvasMgr.width) || window.innerWidth || 1280;
@@ -111,6 +120,11 @@ const player = {
   deathDuration: 0.75,
   deathScale: 1.0,
   deathAlpha: 1.0,
+  isSpawning: false,
+  spawnTimer: 0,
+  spawnDuration: 0.48,
+  spawnScale: 1.0,
+  spawnAlpha: 1.0,
 
   takeDamage(amount, chassisKey) {
     if (this.isDying || this.dashTimer > 0 || this.iFrameTimer > 0 || state.isGameOver || state.inMenu || state.godMode) return;
@@ -201,6 +215,8 @@ async function initGame() {
 }
 
 function unloadGame() {
+  clearTimeout(exitTransitionTimeout);
+  exitTransitionTimeout = null;
   state.inMenu = true;
   state.isPlaying = false;
   state.isGameOver = false;
@@ -225,14 +241,21 @@ function unloadGame() {
   player.isDying = false;
   player.deathTimer = 0;
   player.dashTimer = 0;
+  player.isSpawning = false;
+  player.spawnTimer = 0;
+  player.spawnScale = 1.0;
+  player.spawnAlpha = 1.0;
 
   camera.x = 0;
   camera.y = 0;
   camera.zoom = CONFIG.CAMERA.defaultZoom;
   camera.targetZoom = CONFIG.CAMERA.defaultZoom;
+  camera.spawnZoomTimer = 0;
+  camera.exitZoomTimer = 0;
 
   if (canvasMgr) {
     if (canvasMgr.canvas) {
+      canvasMgr.canvas.style.filter = '';
       canvasMgr.canvas.classList.add('hidden');
     }
     canvasMgr.clear();
@@ -246,11 +269,47 @@ function unloadGame() {
   }
 }
 
-function returnToMenu() {
-  unloadGame();
-  if (uiMgr) {
-    uiMgr.showMainMenu();
+function returnToMenu(destination = 'menu') {
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false;
+  const hasVisibleArena = Boolean(
+    canvasMgr?.canvas && !canvasMgr.canvas.classList.contains('hidden')
+  );
+  const comingFromRun = !state.inMenu && (state.isPlaying || state.isGameOver || hasVisibleArena);
+
+  if (!comingFromRun || reducedMotion) {
+    unloadGame();
+    if (uiMgr) {
+      uiMgr.showMainMenu({ animateEntrance: false });
+      if (destination === 'armory') {
+        uiMgr.showArmory();
+      }
+    }
+    return;
   }
+
+  clearTimeout(exitTransitionTimeout);
+  camera.spawnZoomTimer = 0;
+  camera.exitZoomDuration = 0.56;
+  camera.exitZoomTimer = camera.exitZoomDuration;
+  camera.exitZoomStart = camera.zoom;
+  camera.exitZoomEnd = Math.max(0.18, camera.zoom * 0.42);
+
+  if (uiMgr) {
+    uiMgr.hideInGameHUD();
+    if (destination === 'armory') {
+      uiMgr.showArmory();
+    } else {
+      uiMgr.showMainMenu({ animateEntrance: true });
+    }
+  }
+
+  exitTransitionTimeout = setTimeout(() => {
+    exitTransitionTimeout = null;
+    unloadGame();
+    if (uiMgr && destination === 'armory') {
+      uiMgr.showMainMenu({ animateEntrance: false });
+    }
+  }, 560);
 }
 
 function startRun() {
@@ -262,6 +321,9 @@ function restartRun() {
 }
 
 function loadAndStartGame() {
+  clearTimeout(exitTransitionTimeout);
+  exitTransitionTimeout = null;
+  camera.exitZoomTimer = 0;
   if (canvasMgr && canvasMgr.canvas) {
     canvasMgr.canvas.classList.remove('hidden');
   }
@@ -290,20 +352,38 @@ function loadAndStartGame() {
   player.deathTimer = 0;
   player.deathScale = 1.0;
   player.deathAlpha = 1.0;
+  player.isSpawning = false;
+  player.spawnTimer = 0;
+  player.spawnScale = 1.0;
+  player.spawnAlpha = 1.0;
 
   camera.x = 0;
   camera.y = 0;
 
   setActiveChassis('basic');
-  camera.zoom = camera.targetZoom;
+  applyCrewAndStatModifiers();
+
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false;
+  if (reducedMotion) {
+    camera.spawnZoomTimer = 0;
+    camera.zoom = camera.targetZoom;
+  } else {
+    camera.spawnZoomDuration = 0.72;
+    camera.spawnZoomTimer = camera.spawnZoomDuration;
+    camera.spawnZoomStart = camera.targetZoom * 0.42;
+    camera.zoom = camera.spawnZoomStart;
+    player.isSpawning = true;
+    player.spawnTimer = 0;
+    player.spawnDuration = 0.48;
+    player.spawnScale = 0.35;
+    player.spawnAlpha = 0.25;
+  }
 
   waveMgr.score = 0;
   state.lastAnnouncedGraceWave = 0;
   state.lastAnnouncedUpgradeWave = 0;
   waveMgr.clearAll();
   waveMgr.startWave(1);
-
-  applyCrewAndStatModifiers();
   if (mobileControls) {
     mobileControls.setInGameVisible(true);
     mobileControls.syncToggleStates(state.autoFire, state.autoSpin);
@@ -343,7 +423,6 @@ function triggerGameOver() {
   storageMgr.addCoins(coinsEarned);
   storageMgr.recordRun(finalScore, finalWave);
 
-  waveMgr.clearAll();
   weaponSys.projectiles = [];
   weaponSys.drones = [];
   weaponSys.activeDroneCount = 0;
@@ -662,6 +741,10 @@ function setupInputs() {
         uiMgr.hideArmory();
         return;
       }
+      if (uiMgr.evolutionTreeModal && !uiMgr.evolutionTreeModal.classList.contains('hidden')) {
+        uiMgr.hideEvolutionTree();
+        return;
+      }
       if (uiMgr.authModal && !uiMgr.authModal.classList.contains('hidden')) {
         uiMgr.hideAuthModal();
         return;
@@ -680,6 +763,7 @@ function setupInputs() {
     if (lower === 'o') selfDestructPlayer();
     if (lower === 'n') uiMgr.toggleEvolutionPanel();
     if (lower === 'u') uiMgr.toggleStatPanel();
+    if (lower === 'y' && !e.repeat) uiMgr.toggleEvolutionTree(true);
 
     if (['1', '2', '3', '4', '5', '6', '7', '8'].includes(e.key) && state.statPoints > 0) {
       const statDef = CONFIG.PLAYER.statDefinitions[parseInt(e.key, 10) - 1];
@@ -700,6 +784,11 @@ function setupInputs() {
 
   window.addEventListener('mousedown', (e) => {
     if (state.inMenu || !state.isPlaying || state.isGameOver) {
+      input.mouse.isDown = false;
+      input.mouse.isRightDown = false;
+      return;
+    }
+    if (e.target && e.target.closest?.('#evolution-tree-modal, #admin-panel-modal, #settings-modal, #armory-modal')) {
       input.mouse.isDown = false;
       input.mouse.isRightDown = false;
       return;
@@ -928,20 +1017,50 @@ function updatePlayer(dt) {
   let camTargetX = player.x;
   let camTargetY = player.y;
 
-  if ((state.activeChassis === 'sniper' || state.activeChassis === 'assassin') && !state.autoSpin && !isMobileMode) {
+  if ((state.activeChassis === 'sniper' || state.activeChassis === 'assassin' || state.activeChassis === 'hunter') && !state.autoSpin && !isMobileMode) {
     camTargetX += (input.mouse.worldX - player.x) * CONFIG.CAMERA.sniperLeanFactor;
     camTargetY += (input.mouse.worldY - player.y) * CONFIG.CAMERA.sniperLeanFactor;
   }
 
+  if (player.isSpawning) {
+    player.spawnTimer += dt;
+    const sp = Math.min(1, player.spawnTimer / (player.spawnDuration || 0.48));
+    const easeOut = 1 - Math.pow(1 - sp, 3);
+    player.spawnScale = 0.35 + (1.0 - 0.35) * easeOut;
+    player.spawnAlpha = 0.25 + (1.0 - 0.25) * easeOut;
+    if (sp >= 1) {
+      player.isSpawning = false;
+      player.spawnScale = 1.0;
+      player.spawnAlpha = 1.0;
+    }
+  }
+
   camera.x += (camTargetX - camera.x) * CONFIG.CAMERA.smoothness;
   camera.y += (camTargetY - camera.y) * CONFIG.CAMERA.smoothness;
-  camera.zoom += (camera.targetZoom - camera.zoom) * CONFIG.CAMERA.zoomLerpSpeed;
+
+  if (camera.spawnZoomTimer > 0) {
+    camera.spawnZoomTimer = Math.max(0, camera.spawnZoomTimer - dt);
+    const zProgress = 1 - (camera.spawnZoomTimer / (camera.spawnZoomDuration || 0.72));
+    const zEase = 1 - Math.pow(1 - zProgress, 3);
+    const startZ = camera.spawnZoomStart || (camera.targetZoom * 0.42);
+    camera.zoom = startZ + (camera.targetZoom - startZ) * zEase;
+    if (canvasMgr?.canvas) {
+      const blurPx = Math.pow(1 - zProgress, 1.35) * 10;
+      canvasMgr.canvas.style.filter = blurPx > 0.08 ? `blur(${blurPx.toFixed(2)}px)` : '';
+    }
+  } else {
+    camera.zoom += (camera.targetZoom - camera.zoom) * CONFIG.CAMERA.zoomLerpSpeed;
+  }
 
   input.mouse.worldX = (input.mouse.screenX - canvasMgr.width / 2) / camera.zoom + camera.x;
   input.mouse.worldY = (input.mouse.screenY - canvasMgr.height / 2) / camera.zoom + camera.y;
 
   if (state.autoSpin) {
     player.angle += 1.35 * dt;
+    if (player.angle > Math.PI) player.angle -= Math.PI * 2;
+    else if (player.angle < -Math.PI) player.angle += Math.PI * 2;
+  } else if (chassisConfig.alwaysAutoSpin) {
+    player.angle += (chassisConfig.autoSpinSpeed || 0.55) * dt;
     if (player.angle > Math.PI) player.angle -= Math.PI * 2;
     else if (player.angle < -Math.PI) player.angle += Math.PI * 2;
   } else if (isMobileMode) {
@@ -970,14 +1089,19 @@ function renderPlayerChassis() {
 
   if (player.isDying) {
     ctx.globalAlpha = player.deathAlpha;
+  } else if (player.isSpawning) {
+    ctx.globalAlpha = player.spawnAlpha;
   }
 
   const baseRadius = player.radius;
-  const radius = player.isDying ? baseRadius * player.deathScale : baseRadius;
+  const activeScale = player.isDying
+    ? player.deathScale
+    : (player.isSpawning ? player.spawnScale : 1.0);
+  const radius = baseRadius * activeScale;
   const sizeScale = radius / (CONFIG.PLAYER.baseRadius || 25);
 
   if (chassis.outerArmor) {
-    const outerRadius = (player.radius * chassis.outerArmor.radiusMultiplier) * (player.isDying ? player.deathScale : 1.0);
+    const outerRadius = (player.radius * chassis.outerArmor.radiusMultiplier) * activeScale;
     canvasMgr.drawPolygon(
       x, y, outerRadius,
       chassis.outerArmor.sides,
@@ -991,11 +1115,31 @@ function renderPlayerChassis() {
   const turrets = chassis.turrets || [];
   for (let index = 0; index < turrets.length; index++) {
     const turret = turrets[index];
-    const recoil = weaponSys.turretStates[index] ? weaponSys.turretStates[index].recoilOffset : 0;
-    const barrelLen = Math.max(4, (turret.length - recoil) * sizeScale);
+    const tState = weaponSys.turretStates[index];
+    const recoil = tState ? tState.recoilOffset : 0;
+
+    if (turret.isAutoTurret) {
+      const mountAngle = angle + turret.angleOffset;
+      const mx = x + Math.cos(mountAngle) * radius;
+      const my = y + Math.sin(mountAngle) * radius;
+      const aimAngle = (tState && tState.worldAngle !== null && tState.worldAngle !== undefined) ? tState.worldAngle : mountAngle;
+      const barrelLen = Math.max(4, (turret.length - recoil) * sizeScale);
+      const barrelWidth = turret.width * sizeScale;
+      const frontWidth = (turret.frontWidth || turret.width) * sizeScale;
+      const mountR = (turret.mountRadius || 11) * sizeScale;
+
+      canvasMgr.drawTurretBarrel(mx, my, barrelWidth, barrelLen, aimAngle, 0, 0, frontWidth);
+      canvasMgr.drawPolygon(mx, my, mountR, 0, 0, '#999999', '#727272', CONFIG.PLAYER.strokeWidth);
+      continue;
+    }
+
+    const hasXOffset = (turret.xOffset || 0) > 0;
+    const barrelLen = hasXOffset
+      ? Math.max(4, turret.length * sizeScale)
+      : Math.max(4, (turret.length - recoil) * sizeScale);
     const barrelWidth = turret.width * sizeScale;
     const frontWidth = (turret.frontWidth || turret.width) * sizeScale;
-    const xOff = (turret.xOffset || 0) * sizeScale;
+    const xOff = (hasXOffset ? Math.max(0, (turret.xOffset || 0) - recoil) : (turret.xOffset || 0)) * sizeScale;
     const yOff = (turret.yOffset || 0) * sizeScale;
 
     canvasMgr.drawTurretBarrel(x, y, barrelWidth, barrelLen, angle + turret.angleOffset, xOff, yOff, frontWidth);
@@ -1057,7 +1201,24 @@ function gameLoop(timestamp) {
     uiMgr.updatePreviewSpin(dt, player.fillColor, player.strokeColor);
   }
 
-  if (state.isPlaying && !state.inMenu) {
+  if (camera.exitZoomTimer > 0) {
+    camera.exitZoomTimer = Math.max(0, camera.exitZoomTimer - dt);
+    const zp = 1 - (camera.exitZoomTimer / (camera.exitZoomDuration || 0.56));
+    const zEase = 1 - Math.pow(1 - zp, 3);
+    camera.zoom = camera.exitZoomStart + (camera.exitZoomEnd - camera.exitZoomStart) * zEase;
+    if (canvasMgr?.canvas) {
+      const blurPx = Math.pow(zp, 0.85) * 10;
+      canvasMgr.canvas.style.filter = blurPx > 0.08 ? `blur(${blurPx.toFixed(2)}px)` : '';
+    }
+  } else if (camera.spawnZoomTimer <= 0 && canvasMgr?.canvas?.style.filter) {
+    canvasMgr.canvas.style.filter = '';
+  }
+
+  const shouldRenderArena =
+    (state.isPlaying || state.isGameOver || camera.exitZoomTimer > 0) &&
+    (!state.inMenu || camera.exitZoomTimer > 0);
+
+  if (shouldRenderArena) {
     canvasMgr.clear();
     canvasMgr.drawGrid(camera, CONFIG.ARENA.gridSize);
 
@@ -1067,7 +1228,9 @@ function gameLoop(timestamp) {
     renderPlayerChassis();
     canvasMgr.endCamera();
 
-    hudUpdater.update(state, player, waveMgr, weaponSys, storageMgr, uiMgr);
+    if (state.isPlaying && !state.isGameOver) {
+      hudUpdater.update(state, player, waveMgr, weaponSys, storageMgr, uiMgr);
+    }
   }
 
   requestAnimationFrame(gameLoop);

@@ -53,7 +53,7 @@ export function drawTankPreview(ctx, chassisKey, spinAngle, playerFillColor = '#
       ctx.save();
       ctx.rotate(turret.angleOffset || 0);
 
-      const bx = (turret.xOffset || 0) * previewScale;
+      const bx = turret.isAutoTurret ? 18 : (turret.xOffset || 0) * previewScale;
       const backWidth = turret.width * previewScale;
       const frontWidth = (turret.frontWidth || turret.width) * previewScale;
       const halfBack = backWidth / 2;
@@ -75,6 +75,18 @@ export function drawTankPreview(ctx, chassisKey, spinAngle, playerFillColor = '#
       ctx.fill();
       ctx.lineJoin = 'miter';
       ctx.stroke();
+
+      if (turret.isAutoTurret) {
+        const mountR = (turret.mountRadius || 11) * previewScale;
+        ctx.beginPath();
+        ctx.arc(bx, 0, mountR, 0, Math.PI * 2);
+        ctx.fillStyle = '#999999';
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#727272';
+        ctx.stroke();
+      }
+
       ctx.restore();
     });
   }
@@ -106,15 +118,19 @@ export function generateTankSvg(chassisKey, color = '#00b2e1', stroke = null, si
       const tLen = (t.length || 48) * 0.82 * scale;
       const tWidth = (t.width || 20) * 0.82 * scale;
       const tFront = (t.frontWidth || t.width || 20) * 0.82 * scale;
-      const xOff = (t.xOffset || 0) * 0.82 * scale;
+      const xOff = t.isAutoTurret ? bodyRadius : ((t.xOffset || 0) * 0.82 * scale);
       const yOff = (t.yOffset || 0) * 0.82 * scale;
 
       const p1 = `${xOff},${yOff - tWidth / 2}`;
       const p2 = `${xOff + tLen},${yOff - tFront / 2}`;
       const p3 = `${xOff + tLen},${yOff + tFront / 2}`;
       const p4 = `${xOff},${yOff + tWidth / 2}`;
+      const mountSvg = t.isAutoTurret
+        ? `<circle cx="${xOff}" cy="0" r="${(t.mountRadius || 11) * 0.82 * scale}" fill="#999999" stroke="#555555" stroke-width="2.5"/>`
+        : '';
       turretsSvg += `<g transform="translate(${center}, ${center}) rotate(${angle})">
         <polygon points="${p1} ${p2} ${p3} ${p4}" fill="#999999" stroke="#555555" stroke-width="2.5" stroke-linejoin="miter"/>
+        ${mountSvg}
       </g>`;
     });
   }

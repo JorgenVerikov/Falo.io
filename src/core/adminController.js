@@ -6,15 +6,48 @@ import { CONFIG, getXPRequiredForLevel, getTotalXPForLevel } from './config.js';
 export function populateAdminChassisSelect(uiMgr) {
   const select = document.getElementById('adm-chassis-select');
   if (!select) return;
+
+  const prevValue = select.value || 'basic';
   select.innerHTML = '';
+
+  const tierGroups = [
+    { tier: 1, label: 'TIER 1 — STARTER (LVL 1)', keys: [] },
+    { tier: 2, label: 'TIER 2 — EVOLUTION (LVL 15)', keys: [] },
+    { tier: 3, label: 'TIER 3 — ADVANCED (LVL 30)', keys: [] },
+    { tier: 4, label: 'TIER 4 — APEX (LVL 45)', keys: [] }
+  ];
 
   Object.keys(CONFIG.CHASSIS).forEach(key => {
     const chassis = CONFIG.CHASSIS[key];
-    const opt = document.createElement('option');
-    opt.value = key;
-    opt.textContent = chassis.name.toUpperCase();
-    select.appendChild(opt);
+    const displayTier = typeof chassis.tier === 'number'
+      ? Math.min(4, Math.max(1, chassis.tier + 1))
+      : (chassis.reqLevel >= 45 ? 4 : chassis.reqLevel >= 30 ? 3 : chassis.reqLevel >= 15 ? 2 : 1);
+    const group = tierGroups.find(g => g.tier === displayTier) || tierGroups[2];
+    group.keys.push(key);
   });
+
+  tierGroups.forEach(group => {
+    if (group.keys.length === 0) return;
+    group.keys.sort((a, b) => CONFIG.CHASSIS[a].name.localeCompare(CONFIG.CHASSIS[b].name));
+
+    const optgroup = document.createElement('optgroup');
+    optgroup.label = group.label;
+
+    group.keys.forEach(key => {
+      const chassis = CONFIG.CHASSIS[key];
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = chassis.name.toUpperCase();
+      optgroup.appendChild(opt);
+    });
+
+    select.appendChild(optgroup);
+  });
+
+  if (CONFIG.CHASSIS[prevValue]) {
+    select.value = prevValue;
+  }
+
   if (uiMgr) uiMgr.updateAdminTankPreview(select.value);
 }
 

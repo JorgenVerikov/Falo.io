@@ -1,0 +1,320 @@
+import { CONFIG, computeStrokeColor } from '../core/config.js';
+import { drawPreviewPolygon } from './uiPreviews.js';
+
+export class MainMenuController {
+  constructor(uiMgr) {
+    this.ui = uiMgr;
+    this.overlay = document.getElementById('main-menu-overlay');
+    this.scene = document.getElementById('main-menu-scene');
+    this.rightPanel = document.getElementById('main-menu-right-panel');
+    this.tankWrap = document.getElementById('main-menu-hero-tank-wrap');
+    this.tankCanvas = document.getElementById('menu-hero-tank-canvas');
+    this.authContainer = document.getElementById('auth-status-container');
+    this.ctx = this.tankCanvas ? this.tankCanvas.getContext('2d') : null;
+
+    this.targetNx = 0;
+    this.targetNy = 0;
+    this.curNx = 0;
+    this.curNy = 0;
+
+    this.mouseX = window.innerWidth * 0.6;
+    this.mouseY = window.innerHeight * 0.5;
+    this.hasMouseMoved = false;
+
+    this.tankAngle = 0;
+    this.spinAngle = 0;
+    this.rafId = null;
+    this.lastTime = performance.now();
+
+    this.randomChassisKey = 'basic';
+    this.randomColorKey = 'default';
+    this.pickRandomTank();
+
+    this.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false;
+
+    this.bindEvents();
+    this.resizeCanvas();
+    this.startLoop();
+  }
+
+  pickRandomTank() {
+    const chassisKeys = Object.keys(CONFIG.CHASSIS || {});
+    if (chassisKeys.length > 0) {
+      let nextKey = chassisKeys[Math.floor(Math.random() * chassisKeys.length)];
+      if (chassisKeys.length > 1 && nextKey === this.randomChassisKey) {
+        nextKey = chassisKeys[(chassisKeys.indexOf(nextKey) + 1 + Math.floor(Math.random() * (chassisKeys.length - 1))) % chassisKeys.length];
+      }
+      this.randomChassisKey = nextKey;
+    }
+
+    const colorKeys = Object.keys(CONFIG.COLOR_THEMES || {});
+    if (colorKeys.length > 0) {
+      this.randomColorKey = colorKeys[Math.floor(Math.random() * colorKeys.length)];
+    }
+  }
+
+  bindEvents() {
+    window.addEventListener('mousemove', (e) => {
+      if (!this.isVisible()) return;
+      this.hasMouseMoved = true;
+      this.mouseX = e.clientX;
+      this.mouseY = e.clientY;
+      const w = window.innerWidth || 1;
+      const h = window.innerHeight || 1;
+      this.targetNx = Math.max(-1, Math.min(1, (e.clientX / w - 0.5) * 2));
+      this.targetNy = Math.max(-1, Math.min(1, (e.clientY / h - 0.5) * 2));
+    });
+
+    document.addEventListener('mouseleave', () => {
+      this.targetNx = 0;
+      this.targetNy = 0;
+    });
+
+    window.addEventListener('resize', () => {
+      this.resizeCanvas();
+    });
+  }
+
+  isVisible() {
+    return Boolean(this.overlay && !this.overlay.classList.contains('hidden'));
+  }
+
+  resizeCanvas() {
+    if (!this.tankCanvas || !this.tankWrap) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = this.tankWrap.getBoundingClientRect();
+    const cssW = Math.max(260, Math.round(this.tankWrap.clientWidth || rect.width || 560));
+    const cssH = Math.max(220, Math.round(this.tankWrap.clientHeight || rect.height || 560));
+
+    this.tankCanvas.width = Math.round(cssW * dpr);
+    this.tankCanvas.height = Math.round(cssH * dpr);
+    this.cssWidth = cssW;
+    this.cssHeight = cssH;
+    this.dpr = dpr;
+  }
+
+  getTankVisualConfig() {
+    const chassis = CONFIG.CHASSIS[this.randomChassisKey] || CONFIG.CHASSIS.basic;
+    const theme = CONFIG.COLOR_THEMES[this.randomColorKey] || CONFIG.COLOR_THEMES.default;
+    const fillColor = theme?.color || '#00b2e1';
+    const strokeColor = theme?.stroke || computeStrokeColor(fillColor);
+
+    return { chassis, fillColor, strokeColor };
+  }
+
+  computeTankLayout(w, h, chassis) {
+    const isPortraitNarrow = window.innerWidth <= 820 && window.innerHeight > 460;
+    const cx = isPortraitNarrow ? w * 0.5 : w * 0.45;
+    const cy = isPortraitNarrow ? h * 0.52 : h * 0.48;
+
+    const playerR = CONFIG.PLAYER.radius || 25;
+    let maxUnitExtent = chassis.radiusMultiplier || 1.0;
+
+    if (chassis.outerArmor) {
+      maxUnitExtent = Math.max(maxUnitExtent, chassis.outerArmor.radiusMultiplier || 1.4);
+    }
+
+    if (chassis.turrets && chassis.turrets.length > 0) {
+      chassis.turrets.forEach(turret => {
+        const bxUnit = turret.isAutoTurret ? 1.0 : ((turret.xOffset || 0) / playerR);
+        const lenUnit = (turret.length || 48) / playerR;
+        const yUnit = Math.abs(turret.yOffset || 0) / playerR;
+        const halfWidthUnit = Math.max(turret.width || 20, turret.frontWidth || turret.width || 20) / (2 * playerR);
+        const reach = Math.hypot(bxUnit + lenUnit, yUnit + halfWidthUnit);
+        maxUnitExtent = Math.max(maxUnitExtent, reach);
+      });
+    }
+
+    const topPad = 24;
+    const sidePad = 24;
+    const bottomPad = isPortraitNarrow ? 16 : 86;
+    const safeRadius = Math.max(
+      48,
+      Math.min(cx - sidePad, w - cx - sidePad, cy - topPad, h - cy - bottomPad)
+    );
+
+    const maxBase = isPortraitNarrow ? Math.min(w, h) * 0.24 : Math.min(w, h) * 0.2;
+    const baseRadius = Math.max(28, Math.min(safeRadius / (maxUnitExtent + 0.18), maxBase));
+
+    return { cx, cy, baseRadius, playerR };
+  }
+
+  drawHeroTank() {
+    if (!this.ctx || !this.tankCanvas) return;
+    const ctx = this.ctx;
+    const dpr = this.dpr || 1;
+    const w = this.cssWidth || 560;
+    const h = this.cssHeight || 560;
+
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    const { chassis, fillColor, strokeColor } = this.getTankVisualConfig();
+    const { cx, cy, baseRadius, playerR } = this.computeTankLayout(w, h, chassis);
+    const radius = baseRadius * (chassis.radiusMultiplier || 1.0);
+    const scale = baseRadius / playerR;
+    const strokeWidth = Math.max(3.5, Math.round(baseRadius * 0.085));
+
+    ctx.translate(cx, cy);
+
+    // Subtle soft drop shadow beneath tank
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(4, 10, radius * 1.04, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+    ctx.fill();
+    ctx.restore();
+
+    if (chassis.outerArmor) {
+      const outerRadius = baseRadius * chassis.outerArmor.radiusMultiplier;
+      drawPreviewPolygon(
+        ctx, 0, 0, outerRadius,
+        chassis.outerArmor.sides,
+        this.spinAngle * 0.5,
+        chassis.outerArmor.color,
+        chassis.outerArmor.stroke,
+        strokeWidth
+      );
+    }
+
+    if (chassis.turrets && chassis.turrets.length > 0) {
+      chassis.turrets.forEach(turret => {
+        ctx.save();
+        ctx.rotate(this.tankAngle + (turret.angleOffset || 0));
+
+        const bx = turret.isAutoTurret ? baseRadius : (turret.xOffset || 0) * scale;
+        const backWidth = turret.width * scale;
+        const frontWidth = (turret.frontWidth || turret.width) * scale;
+        const halfBack = backWidth / 2;
+        const halfFront = frontWidth / 2;
+        const tLen = turret.length * scale;
+        const tY = (turret.yOffset || 0) * scale;
+
+        ctx.fillStyle = '#999999';
+        ctx.strokeStyle = '#666666';
+        ctx.lineWidth = strokeWidth * 0.9;
+
+        ctx.beginPath();
+        ctx.moveTo(bx, tY - halfBack);
+        ctx.lineTo(bx + tLen, tY - halfFront);
+        ctx.lineTo(bx + tLen, tY + halfFront);
+        ctx.lineTo(bx, tY + halfBack);
+        ctx.closePath();
+
+        ctx.fill();
+        ctx.lineJoin = 'miter';
+        ctx.stroke();
+
+        if (turret.isAutoTurret) {
+          const mountR = (turret.mountRadius || 11) * scale;
+          ctx.beginPath();
+          ctx.arc(bx, 0, mountR, 0, Math.PI * 2);
+          ctx.fillStyle = '#999999';
+          ctx.fill();
+          ctx.lineWidth = strokeWidth * 0.85;
+          ctx.strokeStyle = '#666666';
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      });
+    }
+
+    drawPreviewPolygon(
+      ctx, 0, 0, radius,
+      chassis.sides || 0,
+      this.tankAngle,
+      fillColor,
+      strokeColor,
+      strokeWidth
+    );
+
+    ctx.restore();
+  }
+
+  update(dt) {
+    if (!this.isVisible()) return;
+
+    if (!this.cssWidth || !this.cssHeight) {
+      this.resizeCanvas();
+    }
+
+    const lerp = 1 - Math.exp(-9 * dt);
+    this.curNx += (this.targetNx - this.curNx) * lerp;
+    this.curNy += (this.targetNy - this.curNy) * lerp;
+    this.spinAngle += dt * 0.8;
+
+    const { chassis } = this.getTankVisualConfig();
+
+    // Aim hero tank smoothly toward cursor
+    if (this.tankCanvas) {
+      const rect = this.tankCanvas.getBoundingClientRect();
+      const { cx, cy } = this.computeTankLayout(rect.width || 560, rect.height || 560, chassis);
+      const centerX = rect.left + cx;
+      const centerY = rect.top + cy;
+      const targetAngle = this.hasMouseMoved
+        ? Math.atan2(this.mouseY - centerY, this.mouseX - centerX)
+        : 0;
+      const diff = Math.atan2(Math.sin(targetAngle - this.tankAngle), Math.cos(targetAngle - this.tankAngle));
+      this.tankAngle += diff * (1 - Math.exp(-12 * dt));
+    }
+
+    if (!this.reducedMotion) {
+      if (this.rightPanel) {
+        const baseRotY = window.innerWidth <= 960 ? 0 : -6;
+        const panelRotY = baseRotY + this.curNx * 4.5;
+        const panelRotX = -this.curNy * 3.5;
+        const shiftX = this.curNx * 10;
+        const shiftY = this.curNy * 8;
+        this.rightPanel.style.transform =
+          `perspective(1200px) translate3d(${shiftX.toFixed(2)}px, ${shiftY.toFixed(2)}px, 0) rotateY(${panelRotY.toFixed(2)}deg) rotateX(${panelRotX.toFixed(2)}deg)`;
+      }
+
+      if (this.tankWrap) {
+        const tx = this.curNx * 14;
+        const ty = this.curNy * 10;
+        const tankRotY = this.curNx * 3.5;
+        const tankRotX = -this.curNy * 2.5;
+        this.tankWrap.style.transform =
+          `perspective(1200px) translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) rotateY(${tankRotY.toFixed(2)}deg) rotateX(${tankRotX.toFixed(2)}deg)`;
+      }
+
+      if (this.authContainer) {
+        const authTx = this.curNx * 10;
+        const authTy = this.curNy * 8;
+        const baseAuthRotY = window.innerWidth <= 960 ? 0 : 5;
+        const authRy = baseAuthRotY + this.curNx * 4.5;
+        const authRx = -this.curNy * 3.5;
+        this.authContainer.style.setProperty('--auth-tx', `${authTx.toFixed(2)}px`);
+        this.authContainer.style.setProperty('--auth-ty', `${authTy.toFixed(2)}px`);
+        this.authContainer.style.setProperty('--auth-rx', `${authRx.toFixed(2)}deg`);
+        this.authContainer.style.setProperty('--auth-ry', `${authRy.toFixed(2)}deg`);
+      }
+
+      if (this.overlay) {
+        const bgX = -this.curNx * 18;
+        const bgY = -this.curNy * 14;
+        this.overlay.style.backgroundPosition = `0 0, ${bgX.toFixed(1)}px ${bgY.toFixed(1)}px, ${bgX.toFixed(1)}px ${bgY.toFixed(1)}px`;
+      }
+    }
+
+    this.drawHeroTank();
+  }
+
+  onShow({ randomize = true } = {}) {
+    if (randomize) this.pickRandomTank();
+    this.resizeCanvas();
+    this.drawHeroTank();
+  }
+
+  startLoop() {
+    const tick = (now) => {
+      const dt = Math.min(0.05, Math.max(0.001, (now - this.lastTime) / 1000));
+      this.lastTime = now;
+      this.update(dt);
+      this.rafId = requestAnimationFrame(tick);
+    };
+    this.rafId = requestAnimationFrame(tick);
+  }
+}

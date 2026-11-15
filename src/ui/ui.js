@@ -29,6 +29,8 @@ import {
   renderAdminChassisPills,
   setupAdminDataActions
 } from './uiAdmin.js';
+import { EvolutionTreeController } from './uiEvolutionTree.js';
+import { MainMenuController } from './uiMainMenu.js';
 
 export class UIManager {
   constructor(storageMgr, canvasMgr, onStartRun, onRestart, onChassisSelect, onReturnToMenu) {
@@ -57,6 +59,8 @@ export class UIManager {
     this.statPanelPinned = false;
     this.mouseInEvolutionZone = false;
     this.mouseInStatZone = false;
+    this.isDeploying = false;
+    this.deployTimeout = null;
 
     this.initElements();
     this.initAuthUI();
@@ -99,6 +103,7 @@ export class UIManager {
     this.coinsEarnedEl = document.getElementById('coins-earned');
 
     this.armoryModal = document.getElementById('armory-modal');
+    this.evolutionTreeModal = document.getElementById('evolution-tree-modal');
     this.settingsModal = document.getElementById('settings-modal');
     this.adminModal = document.getElementById('admin-panel-modal');
     this.adminPassModal = document.getElementById('admin-pass-modal');
@@ -112,6 +117,8 @@ export class UIManager {
 
     this.bindEvents();
     this.initAdminMenuUI();
+    this.evolutionTree = new EvolutionTreeController(this);
+    this.mainMenu = new MainMenuController(this);
   }
 
   initAuthUI() {
@@ -245,6 +252,7 @@ export class UIManager {
     if (this.onColorChangeCallback) {
       this.onColorChangeCallback();
     }
+    this.mainMenu?.onShow({ randomize: false });
   }
 
   setupEdgeHoverTriggers() {
@@ -354,7 +362,8 @@ export class UIManager {
     }
 
     document.getElementById('start-game-btn').addEventListener('click', () => {
-      this.hideMainMenu();
+      if (this.isDeploying) return;
+      this.hideMainMenuAnimated();
       if (this.onStartRun) this.onStartRun();
     });
 
@@ -373,21 +382,23 @@ export class UIManager {
     document.getElementById('open-armory-btn').addEventListener('click', () => {
       this.hideGameOver();
       this.openedShopFromGameOver = true;
-      if (this.onReturnToMenu) this.onReturnToMenu();
-      else this.showMainMenu();
-      this.showArmory();
+      if (this.onReturnToMenu) this.onReturnToMenu('armory');
+      else {
+        this.showMainMenu({ animateEntrance: false });
+        this.showArmory();
+      }
     });
 
     this.gameOverMenuBtn?.addEventListener('click', () => {
       this.hideGameOver();
-      if (this.onReturnToMenu) this.onReturnToMenu();
-      else this.showMainMenu();
+      if (this.onReturnToMenu) this.onReturnToMenu('menu');
+      else this.showMainMenu({ animateEntrance: true });
     });
 
     document.getElementById('close-armory-btn').addEventListener('click', () => {
       this.hideArmory();
-      if (this.onReturnToMenu) this.onReturnToMenu();
-      else this.showMainMenu();
+      if (this.onReturnToMenu) this.onReturnToMenu('menu');
+      else this.showMainMenu({ animateEntrance: false });
     });
 
     document.getElementById('tab-tanks-btn').addEventListener('click', () => {
@@ -618,7 +629,7 @@ export class UIManager {
     if (this.statCornerTab) this.statCornerTab.classList.add('hidden');
   }
 
-  showMainMenu() {
+  showMainMenu({ animateEntrance = false } = {}) {
     this.hideInGameHUD();
     this.hideGameOver();
     if (this.adminModal) {
@@ -628,11 +639,52 @@ export class UIManager {
       const titleEl = document.getElementById('admin-panel-title') || this.adminModal?.querySelector('.diep-shop-logo');
       if (titleEl) titleEl.textContent = 'ADMIN';
     }
-    this.mainMenuModal.classList.remove('hidden');
+    if (this.evolutionTreeModal) {
+      this.evolutionTreeModal.classList.remove('active', 'ingame-translucent');
+      this.evolutionTreeModal.classList.add('hidden');
+    }
+    clearTimeout(this.deployTimeout);
+    this.isDeploying = false;
+    this.mainMenuModal.classList.remove('is-deploying', 'is-entering');
+
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false;
+    if (animateEntrance && !reducedMotion) {
+      this.mainMenuModal.classList.add('is-entering');
+      this.mainMenuModal.classList.remove('hidden');
+      void this.mainMenuModal.offsetWidth;
+      this.mainMenu?.onShow();
+      requestAnimationFrame(() => {
+        this.mainMenuModal.classList.remove('is-entering');
+      });
+    } else {
+      this.mainMenuModal.classList.remove('hidden');
+      this.mainMenu?.onShow();
+    }
   }
 
   hideMainMenu() {
+    clearTimeout(this.deployTimeout);
+    this.isDeploying = false;
+    this.mainMenuModal.classList.remove('is-deploying', 'is-entering');
     this.mainMenuModal.classList.add('hidden');
+  }
+
+  hideMainMenuAnimated() {
+    if (!this.mainMenuModal || this.mainMenuModal.classList.contains('hidden')) return;
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false;
+    if (reducedMotion) {
+      this.hideMainMenu();
+      return;
+    }
+
+    clearTimeout(this.deployTimeout);
+    this.isDeploying = true;
+    this.mainMenuModal.classList.add('is-deploying');
+    this.deployTimeout = setTimeout(() => {
+      this.mainMenuModal.classList.remove('is-deploying');
+      this.mainMenuModal.classList.add('hidden');
+      this.isDeploying = false;
+    }, 480);
   }
 
   openModal(modal) {
@@ -642,7 +694,7 @@ export class UIManager {
     modal.classList.add('active');
   }
 
-  closeModal(modal, callback) {
+  closeModal(modal, callback, delay = 380) {
     if (!modal) return;
     modal.classList.remove('active');
     setTimeout(() => {
@@ -650,7 +702,7 @@ export class UIManager {
         modal.classList.add('hidden');
         if (callback) callback();
       }
-    }, 240);
+    }, delay);
   }
 
   showSettings() {
@@ -659,6 +711,9 @@ export class UIManager {
   }
 
   hideSettings() {
+    if (!this.isGameActive()) {
+      this.mainMenu?.onShow();
+    }
     this.closeModal(this.settingsModal);
   }
 
@@ -956,6 +1011,18 @@ export class UIManager {
     this.closeModal(this.armoryModal);
   }
 
+  showEvolutionTree(inGame = false) {
+    if (this.evolutionTree) this.evolutionTree.open(inGame);
+  }
+
+  hideEvolutionTree() {
+    if (this.evolutionTree) this.evolutionTree.close();
+  }
+
+  toggleEvolutionTree(inGame = false) {
+    if (this.evolutionTree) this.evolutionTree.toggle(inGame);
+  }
+
   renderShopContent() {
     renderShopContent(this);
   }
@@ -990,8 +1057,9 @@ export class UIManager {
 
   updateAdminTankPreview(chassisKey) {
     const cube = document.getElementById('adm-tank-preview-cube');
-    if (!cube) return;
     const key = chassisKey || document.getElementById('adm-chassis-select')?.value || 'basic';
+
+    if (!cube) return;
     const activeColorKey = this.storage?.data?.activeColor || 'default';
     const color = (activeColorKey === 'custom')
       ? (this.storage?.data?.customColor || '#00b2e1')

@@ -100,32 +100,101 @@
 
   <!-- Main Menu Overlay -->
   <div id="main-menu-overlay" class="modal-overlay">
-    <div class="main-menu-box">
-      <h1 class="main-menu-title">FALO.IO</h1>
-      <p class="main-menu-sub">This is the tale of...</p>
-
-      <div class="player-name-wrapper">
-        <input type="text" id="player-name-input" class="player-name-main-input" placeholder="(This is the tale of...)" value="Tank" maxlength="20" autocomplete="off" spellcheck="false" />
+    <div id="main-menu-scene" class="main-menu-scene">
+      <!-- Left Cursor-Tracking Tank Hero -->
+      <div id="main-menu-hero-tank-wrap" class="main-menu-hero-tank-wrap" aria-hidden="true">
+        <canvas id="menu-hero-tank-canvas"></canvas>
       </div>
 
-      <div class="main-menu-actions">
-        <button id="start-game-btn" class="menu-btn primary">DEPLOY</button>
-        <button id="main-menu-armory-btn" class="menu-btn secondary">ARMORY</button>
-        <button id="main-menu-settings-btn" class="menu-btn secondary">SETTINGS</button>
+      <!-- Right Arknights-Inspired Tilted Action Column -->
+      <div id="main-menu-right-panel" class="main-menu-right-panel">
+        <div class="main-menu-brand">
+          <h1 class="main-menu-title">FALO.IO</h1>
+          <p class="main-menu-sub">This is the tale of...</p>
+        </div>
+
+        <div class="player-name-wrapper">
+          <input type="text" id="player-name-input" class="player-name-main-input" placeholder="(This is the tale of...)" value="Tank" maxlength="20" autocomplete="off" spellcheck="false" />
+        </div>
+
+        <div class="main-menu-actions">
+          <!-- Row 1: Primary Hero Tile (Deploy) -->
+          <button id="start-game-btn" class="main-menu-tile tile-deploy" type="button">
+            <span class="tile-content">
+              <span class="tile-title">DEPLOY</span>
+              <span class="tile-sub">ENTER ARENA</span>
+            </span>
+            <svg class="tile-watermark" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" aria-hidden="true">
+              <circle cx="32" cy="32" r="18" />
+              <line x1="32" y1="6" x2="32" y2="20" />
+              <line x1="32" y1="44" x2="32" y2="58" />
+              <line x1="6" y1="32" x2="20" y2="32" />
+              <line x1="44" y1="32" x2="58" y2="32" />
+              <circle cx="32" cy="32" r="4" fill="currentColor" stroke="none" />
+            </svg>
+          </button>
+
+          <!-- Row 2: Dual Split Tiles (Armory & Evolution Tree) -->
+          <div class="main-menu-tile-row">
+            <button id="main-menu-armory-btn" class="main-menu-tile tile-armory" type="button">
+              <span class="tile-content">
+                <span class="tile-title">ARMORY</span>
+                <span class="tile-sub">LOADOUT &amp; SKINS</span>
+              </span>
+              <svg class="tile-watermark" viewBox="0 0 64 64" aria-hidden="true">
+                <defs>
+                  <mask id="armory-tank-barrel-mask">
+                    <rect width="64" height="64" fill="white" />
+                    <circle cx="26" cy="34" r="15" fill="black" />
+                  </mask>
+                </defs>
+                <g transform="rotate(-24 28 34)">
+                  <rect x="26" y="26" width="30" height="16" rx="1.5" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round" mask="url(#armory-tank-barrel-mask)" />
+                  <circle cx="26" cy="34" r="15" fill="currentColor" fill-opacity="0.32" stroke="currentColor" stroke-width="3.5" />
+                </g>
+              </svg>
+            </button>
+
+            <button id="main-menu-evolution-btn" class="main-menu-tile tile-evo" type="button">
+              <span class="tile-content">
+                <span class="tile-title">EVOLUTION TREE</span>
+                <span class="tile-sub">CLASS UPGRADES</span>
+              </span>
+              <svg class="tile-watermark" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" aria-hidden="true">
+                <circle cx="32" cy="12" r="6" />
+                <circle cx="16" cy="48" r="6" />
+                <circle cx="48" cy="48" r="6" />
+                <path d="M32 18v12M32 30L16 42M32 30L48 42" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Row 3: Wide Bottom Utility Tile (Settings) -->
+          <button id="main-menu-settings-btn" class="main-menu-tile tile-settings" type="button">
+            <span class="tile-content">
+              <span class="tile-title">SETTINGS</span>
+              <span class="tile-sub">DISPLAY &amp; CONTROLS</span>
+            </span>
+            <svg class="tile-watermark" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" aria-hidden="true">
+              <circle cx="32" cy="32" r="10" />
+              <path d="M32 10v8M32 46v8M10 32h8M46 32h8M16.4 16.4l5.7 5.7M41.9 41.9l5.7 5.7M47.6 16.4l-5.7 5.7M22.1 41.9l-5.7 5.7" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Account / Authentication Status Bar (Bottom Right) -->
+    <!-- Account / Authentication Status Bar (Bottom Left) -->
     <div id="auth-status-container" class="auth-status-container">
       <span id="auth-status-label" class="auth-status-label">PROFILE: GUEST</span>
-      <button id="auth-modal-open-btn" class="auth-action-link">
+      <button id="auth-modal-open-btn" class="auth-action-link" type="button">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffffff" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
         LOG IN / SYNC
       </button>
-      <button id="auth-logout-btn" class="auth-action-link hidden">LOG OUT</button>
+      <button id="auth-logout-btn" class="auth-action-link hidden" type="button">LOG OUT</button>
     </div>
   </div>
 
@@ -534,7 +603,7 @@
             </div>
 
             <div class="admin-btn-row" style="margin-top: 14px;">
-              <button id="adm-unlock-all-tanks-btn" class="admin-btn">UNLOCK ALL 7 TANKS</button>
+              <button id="adm-unlock-all-tanks-btn" class="admin-btn">UNLOCK ALL TANKS</button>
               <button id="adm-unlock-all-colors-btn" class="admin-btn">UNLOCK ALL COLOR THEMES</button>
             </div>
             <div id="adm-chassis-pills" class="admin-pills-wrap" style="margin-top: 12px;"></div>
@@ -673,16 +742,9 @@
             <div class="admin-control-with-preview" style="margin-top: 14px;">
               <div id="adm-tank-preview-cube" class="admin-preview-cube" title="Selected Tank Preview"></div>
               <div class="admin-control-rows">
-                <div class="setting-row" style="margin-bottom: 0;">
-                  <label style="font-weight: 900; color: #0284c7; font-size: 11px; letter-spacing: 0.8px; white-space: nowrap;">TANK CLASS:</label>
-                  <select id="adm-chassis-select" class="setting-input" style="font-weight: 900; font-size: 13px; flex: 1;">
+                <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                  <select id="adm-chassis-select" class="setting-input" style="flex: 1; min-width: 140px; font-weight: 800; font-size: 13px;">
                     <option value="basic">BASIC TANK</option>
-                    <option value="twin">TWIN</option>
-                    <option value="sniper">SNIPER</option>
-                    <option value="flank">FLANK GUARD</option>
-                    <option value="machinegun">MACHINE GUN</option>
-                    <option value="smasher">SMASHER</option>
-                    <option value="tesla">TESLA</option>
                   </select>
                 </div>
 
@@ -860,6 +922,35 @@
 
       <!-- Scrollable Shop Content Area -->
       <div id="shop-content-grid" class="diep-shop-scroll-area"></div>
+    </div>
+  </div>
+
+  <!-- Evolution Tree Modal (Diep.io Style) -->
+  <div id="evolution-tree-modal" class="modal-overlay hidden">
+    <div class="diep-shop-window diep-evo-window">
+      <div class="diep-shop-header">
+        <div class="diep-shop-header-left">
+          <div class="diep-shop-logo">EVOLUTION TREE</div>
+          <div class="evo-header-hint">Drag to pan • Scroll to zoom • Click a tank</div>
+        </div>
+
+        <div class="diep-shop-header-right">
+          <div class="evo-zoom-controls" role="group" aria-label="Zoom Controls">
+            <button id="evo-zoom-out-btn" class="evo-zoom-btn" type="button" title="Zoom Out">-</button>
+            <span id="evo-zoom-label" class="evo-zoom-label">100%</span>
+            <button id="evo-zoom-in-btn" class="evo-zoom-btn" type="button" title="Zoom In">+</button>
+            <button id="evo-reset-view-btn" class="evo-zoom-btn evo-reset-btn" type="button" title="Reset View">RESET</button>
+          </div>
+          <button id="close-evolution-tree-btn" class="diep-shop-close-btn" title="Close Evolution Tree">✕</button>
+        </div>
+      </div>
+
+      <div id="evo-tree-viewport" class="evo-tree-viewport">
+        <div id="evo-tree-stage" class="evo-tree-stage">
+          <svg id="evo-tree-edges" class="evo-tree-edges"></svg>
+          <div id="evo-tree-nodes" class="evo-tree-nodes"></div>
+        </div>
+      </div>
     </div>
   </div>
 

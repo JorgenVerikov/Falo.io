@@ -56,6 +56,14 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
   const lifetime = multipliers.lifetime ?? BASIC_BARREL_BASE.lifetime;
   const fireDelay = multipliers.fireDelay ?? 0;
 
+  const isTrap = Boolean(weaponExtra.isTrap ?? multipliers.isTrap);
+  const trapDrag = weaponExtra.trapDrag ?? multipliers.trapDrag;
+  const isAutoTurret = Boolean(geom.isAutoTurret ?? weaponExtra.isAutoTurret ?? multipliers.isAutoTurret);
+  const mountRadius = geom.mountRadius ?? 11;
+  const autoRange = weaponExtra.autoRange ?? multipliers.autoRange;
+  const autoFovHalf = weaponExtra.autoFovHalf ?? multipliers.autoFovHalf;
+  const autoTurnSpeed = weaponExtra.autoTurnSpeed ?? multipliers.autoTurnSpeed;
+
   // Calculate shell radius based on cannon base width (attaching to hull) and bulletSize multiplier
   const baseBulletRadius = (width / 20) * (BASIC_BARREL_BASE.bulletSize || 9);
   const shellRadius = Math.round(baseBulletRadius * bulletSize * 10) / 10;
@@ -75,6 +83,12 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     recoil: Math.round(BASIC_BARREL_BASE.recoil * recoil * 10) / 10,
     bulletsPerShot,
     lifetime,
+    isTrap,
+    isAutoTurret,
+    ...(trapDrag !== undefined ? { trapDrag } : {}),
+    ...(autoRange !== undefined ? { autoRange } : {}),
+    ...(autoFovHalf !== undefined ? { autoFovHalf } : {}),
+    ...(autoTurnSpeed !== undefined ? { autoTurnSpeed } : {}),
     ...weaponExtra
   } : null;
 
@@ -88,6 +102,8 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     shootsBullet,
     playsRecoil,
     fireDelayTicks: Math.round(fireDelay * 60),
+    isAutoTurret,
+    mountRadius,
 
     // Diep.io Tank Editor barrel configuration (all turrets have these matching the editor)
     damage,
@@ -103,6 +119,11 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     bulletsPerShot,
     lifetime,
     fireDelay,
+    isTrap,
+    ...(trapDrag !== undefined ? { trapDrag } : {}),
+    ...(autoRange !== undefined ? { autoRange } : {}),
+    ...(autoFovHalf !== undefined ? { autoFovHalf } : {}),
+    ...(autoTurnSpeed !== undefined ? { autoTurnSpeed } : {}),
 
     weapon
   };
@@ -112,6 +133,12 @@ export const WEAPONS_CONFIG = {
   defaultLifetime: 3.0,
   basicBarrelBase: BASIC_BARREL_BASE,
   turnSpeed: 6.0,
+  trapDrag: 4.6,
+  trapStopSpeed: 3.0,
+  trapSpinSpeed: 6.0,
+  autoTurretRange: 760,
+  autoTurretFovHalf: Math.PI / 3,
+  autoTurretTurnSpeed: 8.5,
   droneDrag: 7.5,
   droneTurnSpeed: 4.5,
   droneOrbitSpeed: 0.9,

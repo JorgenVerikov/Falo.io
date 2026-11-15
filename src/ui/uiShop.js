@@ -65,12 +65,19 @@ export function renderTanksShop(ui, container) {
     : (CONFIG.COLOR_THEMES[activeColorKey]?.stroke || '#737373');
 
   const rawTanks = [
-    { key: 'tesla', name: 'Tesla Surge', cost: CONFIG.CHASSIS.tesla?.shopCost ?? 1500, reqLvl: 30, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
+    { key: 'tesla', name: 'Tesla Surge', cost: CONFIG.CHASSIS.tesla?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.tesla?.reqLevel ?? 45, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
     { key: 'tripleshot', name: 'Triple Shot', cost: CONFIG.CHASSIS.tripleshot?.shopCost ?? 1000, reqLvl: 30, desc: 'Three front-spread cannons covering a wide arc with strong recoil.' },
     { key: 'quadtank', name: 'Quad Tank', cost: CONFIG.CHASSIS.quadtank?.shopCost ?? 1000, reqLvl: 30, desc: 'Four cannons in a plus sign firing in four directions with nullified recoil.' },
     { key: 'twinflank', name: 'Twin Flank', cost: CONFIG.CHASSIS.twinflank?.shopCost ?? 1000, reqLvl: 30, desc: 'Dual front and rear cannons providing balanced coverage with nullified recoil.' },
     { key: 'assassin', name: 'Assassin', cost: CONFIG.CHASSIS.assassin?.shopCost ?? 1000, reqLvl: 30, desc: 'Extended long-barrel sniper with wider field of view and higher velocity at reduced reload.' },
     { key: 'overseer', name: 'Overseer', cost: CONFIG.CHASSIS.overseer?.shopCost ?? 1000, reqLvl: 30, desc: 'Dual side spawners deploy up to 8 controllable drones that attack or repel on command.' },
+    { key: 'hunter', name: 'Hunter', cost: CONFIG.CHASSIS.hunter?.shopCost ?? 1000, reqLvl: 30, desc: 'Stacked dual-barrel sniper firing a small then large bullet in rapid burst.' },
+    { key: 'trapper', name: 'Trapper', cost: CONFIG.CHASSIS.trapper?.shopCost ?? 1000, reqLvl: 30, desc: 'Launches high-penetration traps that stop in place to form a protective wall; 5-ammo Ready-Rack.' },
+    { key: 'destroyer', name: 'Destroyer', cost: CONFIG.CHASSIS.destroyer?.shopCost ?? 1000, reqLvl: 30, desc: 'Massive heavy cannon firing giant high-damage, high-recoil shells; 2-ammo Ready-Rack.' },
+    { key: 'gunner', name: 'Gunner', cost: CONFIG.CHASSIS.gunner?.shopCost ?? 1000, reqLvl: 30, desc: 'Four frontal miniguns rapidly firing streams of small, fast bullets with low recoil.' },
+    { key: 'shotgun', name: 'Shotgun', cost: CONFIG.CHASSIS.shotgun?.shopCost ?? 1000, reqLvl: 30, desc: 'Overlapping flared barrels firing a 12-pellet spread blast with strong recoil.' },
+    { key: 'triangle', name: 'Tri-Angle', cost: CONFIG.CHASSIS.triangle?.shopCost ?? 1000, reqLvl: 30, desc: 'Front main cannon paired with two angled rear propulsion thrusters for forward recoil boost.' },
+    { key: 'auto3', name: 'Auto 3', cost: CONFIG.CHASSIS.auto3?.shopCost ?? 1000, reqLvl: 30, desc: 'Three side-mounted automatic turrets that track nearby targets and steer manually on command.' },
     { key: 'smasher', name: 'Smasher', cost: CONFIG.CHASSIS.smasher?.shopCost ?? 1000, reqLvl: 30, desc: 'Heavy ramming chassis with spinning hexagonal armor.' },
     { key: 'sniper', name: 'Sniper', cost: CONFIG.CHASSIS.sniper?.shopCost ?? 500, reqLvl: 15, desc: 'High-velocity long barrel cannon with wide vision.' },
     { key: 'machinegun', name: 'Machine Gun', cost: CONFIG.CHASSIS.machinegun?.shopCost ?? 500, reqLvl: 15, desc: 'Rapid spread-cone spray cannon with high fire-rate.' },

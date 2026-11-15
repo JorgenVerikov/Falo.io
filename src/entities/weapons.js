@@ -10,10 +10,11 @@ export const WEAPON_TYPE = {
 };
 
 export class Projectile {
-  constructor(x, y, vx, vy, radius, lifetime, damage, penetration, color, strokeColor) {
+  constructor(x, y, vx, vy, radius, lifetime, damage, penetration, color, strokeColor, options = {}) {
     this.x = x;
     this.y = y;
     this.speed = Math.hypot(vx, vy);
+    this.initialSpeed = this.speed;
     this.currentAngle = Math.atan2(vy, vx);
     this.targetAngle = this.currentAngle;
     this.turnSpeed = CONFIG.WEAPONS.turnSpeed;
@@ -28,6 +29,11 @@ export class Projectile {
     this.maxPenetration = penetration;
     this.color = color;
     this.strokeColor = strokeColor;
+    this.isTrap = Boolean(options.isTrap);
+    this.drag = options.drag ?? (CONFIG.WEAPONS.trapDrag || 4.6);
+    this.stopSpeed = options.stopSpeed ?? (CONFIG.WEAPONS.trapStopSpeed || 3.0);
+    this.trapAngle = options.trapAngle ?? this.currentAngle;
+    this.spinSpeed = options.spinSpeed ?? ((Math.random() < 0.5 ? 1 : -1) * ((CONFIG.WEAPONS.trapSpinSpeed || 6.0) * (0.85 + Math.random() * 0.3)));
     this.dead = false; // When true, ceases active collision
     this.isDying = false;
     this.deathTimer = 0;
@@ -56,14 +62,31 @@ export class Projectile {
       return;
     }
 
-    const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.currentAngle), Math.cos(this.targetAngle - this.currentAngle));
-    this.currentAngle += angleDiff * Math.min(1.0, this.turnSpeed * dt);
+    if (this.isTrap) {
+      const dragFactor = Math.exp(-this.drag * dt);
+      this.vx *= dragFactor;
+      this.vy *= dragFactor;
 
-    this.vx = Math.cos(this.currentAngle) * this.speed;
-    this.vy = Math.sin(this.currentAngle) * this.speed;
+      const currentSpeed = Math.hypot(this.vx, this.vy);
+      if (currentSpeed < this.stopSpeed) {
+        this.vx = 0;
+        this.vy = 0;
+      } else if (this.initialSpeed > 0) {
+        this.trapAngle += this.spinSpeed * (currentSpeed / this.initialSpeed) * dt;
+      }
 
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+    } else {
+      const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.currentAngle), Math.cos(this.targetAngle - this.currentAngle));
+      this.currentAngle += angleDiff * Math.min(1.0, this.turnSpeed * dt);
+
+      this.vx = Math.cos(this.currentAngle) * this.speed;
+      this.vy = Math.sin(this.currentAngle) * this.speed;
+
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+    }
 
     this.lifetime -= dt;
     if (this.lifetime <= 0 || this.penetration <= 0) {
@@ -102,7 +125,23 @@ export class Projectile {
       ctx.globalAlpha = alpha;
     }
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    if (this.isTrap) {
+      const outerR = this.radius;
+      const innerR = outerR * 0.40;
+      const points = 6;
+      for (let i = 0; i < points; i++) {
+        const r = (i % 2 === 0) ? outerR : innerR;
+        const a = this.trapAngle + (i * Math.PI) / 3;
+        const px = this.x + Math.cos(a) * r;
+        const py = this.y + Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.lineJoin = 'round';
+    } else {
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    }
     ctx.fillStyle = this.color;
     ctx.fill();
     ctx.lineWidth = 3;
@@ -427,6 +466,13 @@ export class WeaponSystem {
         bulletsPerShot: t.bulletsPerShot || 1,
         lifetime: t.lifetime || CONFIG.WEAPONS.defaultLifetime || 3.0,
         fireDelay: t.fireDelay || 0,
+        isTrap: Boolean(w.isTrap || t.isTrap),
+        trapDrag: w.trapDrag ?? t.trapDrag,
+        isAutoTurret: Boolean(t.isAutoTurret || w.isAutoTurret),
+        mountRadius: t.mountRadius || 11,
+        autoRange: w.autoRange ?? t.autoRange,
+        autoFovHalf: w.autoFovHalf ?? t.autoFovHalf,
+        autoTurnSpeed: w.autoTurnSpeed ?? t.autoTurnSpeed,
 
         // Independent Weapon Parameters
         type: weaponType,
@@ -470,7 +516,11 @@ export class WeaponSystem {
       overheatLockoutTimer: 0,
 
       // Energy State
-      energy: t.maxEnergy
+      energy: t.maxEnergy,
+
+      // Auto Turret State
+      worldAngle: null,
+      autoShouldFire: false
     }));
 
     // Firing mode and state tracking
@@ -545,9 +595,12 @@ export class WeaponSystem {
       // Cooldown timer decay for independent turrets
       if (state.cooldownTimer > 0) state.cooldownTimer -= dt;
 
-      // Visual-only recoil for non-shooting decorative turrets
+      // Visual-only recoil for non-shooting decorative turrets without a paired shooting barrel
       if (!turret.shootsBullet) {
-        if (turret.playsRecoil && isFiring && state.cooldownTimer <= 0) {
+        const hasPairedShooter = this.turrets.some(other =>
+          other.shootsBullet && Math.abs((other.angleOffset || 0) - (turret.angleOffset || 0)) < 0.01
+        );
+        if (!hasPairedShooter && turret.playsRecoil && isFiring && state.cooldownTimer <= 0) {
           state.cooldownTimer = turret.fireIntervalSec || 0.3;
           state.recoilOffset = turret.recoilKickAmount || 10;
         }
@@ -579,11 +632,109 @@ export class WeaponSystem {
     const hasDelayTurrets = shootingTurrets.some(t => (t.fireDelay || 0) > 0);
     const isAlternating = this.firingMode === 'alternating' || hasDelayTurrets;
 
-    // Tank-wide Thermal Cooling & Lockout update
+    // 2a. Auto-Turret Aiming & Target Acquisition (independent per turret)
+    const normalizeAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+    const clampVal = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    shootingTurrets.forEach(turret => {
+      if (!turret.isAutoTurret) return;
+      const state = this.turretStates[turret.index];
+      const mountAngle = normalizeAngle(player.angle + (turret.angleOffset || 0));
+      const mountRadiusDist = player.radius || CONFIG.PLAYER.radius || 25;
+      const mx = player.x + Math.cos(mountAngle) * mountRadiusDist;
+      const my = player.y + Math.sin(mountAngle) * mountRadiusDist;
+      const fovHalf = turret.autoFovHalf || CONFIG.WEAPONS.autoTurretFovHalf || (Math.PI / 3);
+      const autoRange = turret.autoRange || CONFIG.WEAPONS.autoTurretRange || 760;
+      const autoRangeSq = autoRange * autoRange;
+      const turnSpeed = turret.autoTurnSpeed || CONFIG.WEAPONS.autoTurretTurnSpeed || 8.5;
+
+      if (state.worldAngle === null || state.worldAngle === undefined) {
+        state.worldAngle = mountAngle;
+      } else {
+        const clampedPrev = clampVal(normalizeAngle(state.worldAngle - mountAngle), -fovHalf, fovHalf);
+        state.worldAngle = normalizeAngle(mountAngle + clampedPrev);
+      }
+
+      let desiredRelAngle = 0;
+      let shouldFire = false;
+      let manualControlled = false;
+
+      if (controlState && (controlState.mode === 'ATTRACT' || controlState.mode === 'REPEL')) {
+        const cursorAngle = Math.atan2(controlState.targetY - my, controlState.targetX - mx);
+        const relCursor = normalizeAngle(cursorAngle - mountAngle);
+        if (Math.abs(relCursor) <= fovHalf + 0.14) {
+          manualControlled = true;
+          if (controlState.mode === 'ATTRACT') {
+            desiredRelAngle = clampVal(relCursor, -fovHalf, fovHalf);
+            const aimErr = Math.abs(normalizeAngle((mountAngle + desiredRelAngle) - state.worldAngle));
+            shouldFire = aimErr < 0.35;
+          } else {
+            desiredRelAngle = (relCursor >= 0) ? -fovHalf : fovHalf;
+            const aimErr = Math.abs(normalizeAngle((mountAngle + desiredRelAngle) - state.worldAngle));
+            shouldFire = aimErr < 0.35;
+          }
+        }
+      }
+
+      if (!manualControlled) {
+        let bestDistSq = autoRangeSq;
+        let bestRel = null;
+
+        for (let i = 0; i < enemies.length; i++) {
+          const e = enemies[i];
+          if (e.dead || e.destroyed) continue;
+          const dx = e.x - mx;
+          const dy = e.y - my;
+          const dSq = dx * dx + dy * dy;
+          if (dSq > bestDistSq) continue;
+          const rel = normalizeAngle(Math.atan2(dy, dx) - mountAngle);
+          if (Math.abs(rel) <= fovHalf) {
+            bestDistSq = dSq;
+            bestRel = rel;
+          }
+        }
+
+        if (bestRel === null) {
+          for (let i = 0; i < shapes.length; i++) {
+            const s = shapes[i];
+            if (s.dead || s.destroyed) continue;
+            const dx = s.x - mx;
+            const dy = s.y - my;
+            const dSq = dx * dx + dy * dy;
+            if (dSq > bestDistSq) continue;
+            const rel = normalizeAngle(Math.atan2(dy, dx) - mountAngle);
+            if (Math.abs(rel) <= fovHalf) {
+              bestDistSq = dSq;
+              bestRel = rel;
+            }
+          }
+        }
+
+        if (bestRel !== null) {
+          desiredRelAngle = clampVal(bestRel, -fovHalf, fovHalf);
+          const aimErr = Math.abs(normalizeAngle((mountAngle + desiredRelAngle) - state.worldAngle));
+          shouldFire = aimErr < 0.35;
+        } else {
+          desiredRelAngle = 0;
+          shouldFire = false;
+        }
+      }
+
+      const curRel = clampVal(normalizeAngle(state.worldAngle - mountAngle), -fovHalf, fovHalf);
+      const diff = desiredRelAngle - curRel;
+      const maxStep = turnSpeed * dt;
+      const nextRel = Math.abs(diff) <= maxStep ? desiredRelAngle : curRel + Math.sign(diff) * maxStep;
+      state.worldAngle = normalizeAngle(mountAngle + clampVal(nextRel, -fovHalf, fovHalf));
+      state.autoShouldFire = shouldFire;
+    });
+
+    // 2b. Tank-wide Thermal Cooling & Lockout update
     const primaryThermal = shootingTurrets.find(t => t.type === WEAPON_TYPE.THERMAL);
     if (primaryThermal) {
       const coolRate = primaryThermal.coolRate || this.coolRate || 16;
       const lockoutTime = primaryThermal.overheatLockoutTime || this.overheatLockoutTime || 2.0;
+      const anyThermalFiring = shootingTurrets.some(t =>
+        t.type === WEAPON_TYPE.THERMAL && (t.isAutoTurret ? this.turretStates[t.index].autoShouldFire : isFiring)
+      );
 
       if (this.isOverheated) {
         this.overheatLockoutTimer -= dt;
@@ -592,7 +743,7 @@ export class WeaponSystem {
           this.isOverheated = false;
           this.heat = 0;
         }
-      } else if (!isFiring) {
+      } else if (!anyThermalFiring) {
         this.heat = Math.max(0, this.heat - coolRate * dt);
       }
 
@@ -623,8 +774,9 @@ export class WeaponSystem {
     // Each turret fires as fast as its own firerate (no bottlenecking queue)
     shootingTurrets.forEach(turret => {
       const state = this.turretStates[turret.index];
+      const wantsToFire = turret.isAutoTurret ? state.autoShouldFire : isFiring;
 
-      if (isFiring && state.cooldownTimer <= 0) {
+      if (wantsToFire && state.cooldownTimer <= 0) {
         let canFire = false;
 
         if (turret.type === WEAPON_TYPE.READY_RACK && state.currentRack > 0) {
@@ -666,13 +818,24 @@ export class WeaponSystem {
     // 4. Sync aggregate HUD metrics
     const primaryShootingIdx = this.turrets.findIndex(t => t.shootsBullet);
     if (primaryShootingIdx !== -1 && this.turretStates[primaryShootingIdx]) {
-      const pState = this.turretStates[primaryShootingIdx];
-      const pTurret = this.turrets[primaryShootingIdx];
+      let hudTurret = this.turrets[primaryShootingIdx];
+      let hudState = this.turretStates[primaryShootingIdx];
 
-      this.type = pTurret.type;
-      this.maxRack = pTurret.maxRack;
-      this.currentRack = pState.currentRack;
-      this.reloadTimer = pState.reloadTimer;
+      if (shootingTurrets.some(t => t.isAutoTurret && t.type === WEAPON_TYPE.READY_RACK)) {
+        shootingTurrets.forEach(t => {
+          if (!t.isAutoTurret) return;
+          const s = this.turretStates[t.index];
+          if (s.currentRack < hudState.currentRack || (s.currentRack === hudState.currentRack && s.reloadTimer > hudState.reloadTimer)) {
+            hudTurret = t;
+            hudState = s;
+          }
+        });
+      }
+
+      this.type = hudTurret.type;
+      this.maxRack = hudTurret.maxRack;
+      this.currentRack = hudState.currentRack;
+      this.reloadTimer = hudState.reloadTimer;
 
       if (!primaryThermal) {
         if (isAlternating) {
@@ -686,13 +849,13 @@ export class WeaponSystem {
           this.heat = maxHeat;
           this.isOverheated = anyOverheated;
         } else {
-          this.heat = pState.heat;
-          this.isOverheated = pState.isOverheated;
+          this.heat = hudState.heat;
+          this.isOverheated = hudState.isOverheated;
         }
       }
 
-      this.energy = pState.energy;
-      this.maxEnergy = pTurret.maxEnergy;
+      this.energy = hudState.energy;
+      this.maxEnergy = hudTurret.maxEnergy;
     }
 
     // Process Smasher kinetic dash cooldown ability
@@ -857,24 +1020,43 @@ export class WeaponSystem {
 
     if (turret.playsRecoil) {
       turretState.recoilOffset = turret.recoilKickAmount || 10;
+      this.turrets.forEach((other, idx) => {
+        if (!other.shootsBullet && other.playsRecoil && Math.abs((other.angleOffset || 0) - (turret.angleOffset || 0)) < 0.01) {
+          this.turretStates[idx].recoilOffset = other.recoilKickAmount || 10;
+        }
+      });
     }
 
     let impulse = { x: 0, y: 0 };
 
+    const mountAngle = angle + turret.angleOffset;
+    const fireAngle = (turret.isAutoTurret && turretState && turretState.worldAngle !== null && turretState.worldAngle !== undefined)
+      ? turretState.worldAngle
+      : mountAngle;
+
     if (turret.recoil > 0) {
       const recoilMultiplier = CONFIG.WEAPONS.recoilForceMultiplier || 1.35;
-      const recoilAngle = angle + turret.angleOffset + Math.PI;
+      const recoilAngle = fireAngle + Math.PI;
       impulse.x = Math.cos(recoilAngle) * turret.recoil * recoilMultiplier;
       impulse.y = Math.sin(recoilAngle) * turret.recoil * recoilMultiplier;
     }
 
     if (turret.shootsBullet) {
-      const barrelAngle = angle + turret.angleOffset;
-      const perpAngle = angle + Math.PI / 2;
-      const barrelTipLen = turret.length * sizeScale;
-
-      const spawnX = player.x + Math.cos(barrelAngle) * barrelTipLen + Math.cos(perpAngle) * (turret.yOffset * sizeScale);
-      const spawnY = player.y + Math.sin(barrelAngle) * barrelTipLen + Math.sin(perpAngle) * (turret.yOffset * sizeScale);
+      let spawnX;
+      let spawnY;
+      if (turret.isAutoTurret) {
+        const mountDist = player.radius || CONFIG.PLAYER.radius || 25;
+        const mx = player.x + Math.cos(mountAngle) * mountDist;
+        const my = player.y + Math.sin(mountAngle) * mountDist;
+        const tipLen = turret.length * sizeScale;
+        spawnX = mx + Math.cos(fireAngle) * tipLen;
+        spawnY = my + Math.sin(fireAngle) * tipLen;
+      } else {
+        const perpAngle = angle + Math.PI / 2;
+        const barrelTipLen = ((turret.xOffset || 0) + turret.length) * sizeScale;
+        spawnX = player.x + Math.cos(fireAngle) * barrelTipLen + Math.cos(perpAngle) * (turret.yOffset * sizeScale);
+        spawnY = player.y + Math.sin(fireAngle) * barrelTipLen + Math.sin(perpAngle) * (turret.yOffset * sizeScale);
+      }
 
       const bulletFill = player.fillColor || '#00b2e1';
       const bulletStroke = player.strokeColor || '#0083a8';
@@ -883,7 +1065,7 @@ export class WeaponSystem {
       const count = turret.bulletsPerShot || 1;
 
       for (let b = 0; b < count; b++) {
-        const shotAngle = barrelAngle + (Math.random() - 0.5) * turret.spread;
+        const shotAngle = fireAngle + (Math.random() - 0.5) * turret.spread;
         const vx = Math.cos(shotAngle) * turret.shellSpeed;
         const vy = Math.sin(shotAngle) * turret.shellSpeed;
 
@@ -896,7 +1078,12 @@ export class WeaponSystem {
             turret.damage,
             turret.penetration,
             bulletFill,
-            bulletStroke
+            bulletStroke,
+            turret.isTrap ? {
+              isTrap: true,
+              drag: turret.trapDrag ?? CONFIG.WEAPONS.trapDrag,
+              trapAngle: shotAngle
+            } : undefined
           )
         );
       }

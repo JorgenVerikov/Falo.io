@@ -225,31 +225,65 @@ export function renderAdminChassisPills(ui) {
   if (!container) return;
   container.innerHTML = '';
 
-  const allChassis = Object.keys(CONFIG.CHASSIS);
   const unlocked = ui.storage.data.unlockedChassis || ['basic'];
+  const tierGroups = [
+    { tier: 1, label: 'TIER 1 — STARTER (LVL 1)', keys: [] },
+    { tier: 2, label: 'TIER 2 — EVOLUTION (LVL 15)', keys: [] },
+    { tier: 3, label: 'TIER 3 — ADVANCED (LVL 30)', keys: [] },
+    { tier: 4, label: 'TIER 4 — APEX (LVL 45)', keys: [] }
+  ];
 
-  allChassis.forEach(key => {
-    const pill = document.createElement('div');
-    const isUnlocked = unlocked.includes(key);
-    pill.className = `admin-toggle-pill ${isUnlocked ? 'active' : ''}`;
-    pill.textContent = `${key.toUpperCase()} ${isUnlocked ? 'UNLOCKED' : '[LOCKED]'}`;
+  Object.keys(CONFIG.CHASSIS).forEach(key => {
+    const chassis = CONFIG.CHASSIS[key];
+    const displayTier = typeof chassis.tier === 'number'
+      ? Math.min(4, Math.max(1, chassis.tier + 1))
+      : (chassis.reqLevel >= 45 ? 4 : chassis.reqLevel >= 30 ? 3 : chassis.reqLevel >= 15 ? 2 : 1);
+    const group = tierGroups.find(g => g.tier === displayTier) || tierGroups[2];
+    group.keys.push(key);
+  });
 
-    pill.addEventListener('click', () => {
-      if (key === 'basic') return;
-      let current = [...(ui.storage.data.unlockedChassis || ['basic'])];
-      if (current.includes(key)) {
-        current = current.filter(c => c !== key);
-        ui.showToast(`ADMIN: LOCKED ${key.toUpperCase()}`);
-      } else {
-        current.push(key);
-        ui.showToast(`ADMIN: UNLOCKED ${key.toUpperCase()}`);
-      }
-      ui.storage.updateUserData({ unlockedChassis: current });
-      ui.refreshAllUIFromStorage();
-      renderAdminChassisPills(ui);
+  tierGroups.forEach(group => {
+    if (group.keys.length === 0) return;
+    group.keys.sort((a, b) => CONFIG.CHASSIS[a].name.localeCompare(CONFIG.CHASSIS[b].name));
+
+    const section = document.createElement('div');
+    section.className = 'admin-pills-tier-group';
+
+    const header = document.createElement('div');
+    header.className = 'admin-pills-tier-header';
+    header.textContent = group.label;
+    section.appendChild(header);
+
+    const row = document.createElement('div');
+    row.className = 'admin-pills-tier-row';
+
+    group.keys.forEach(key => {
+      const chassis = CONFIG.CHASSIS[key];
+      const pill = document.createElement('div');
+      const isUnlocked = unlocked.includes(key);
+      pill.className = `admin-toggle-pill ${isUnlocked ? 'active' : ''}`;
+      pill.textContent = `${chassis.name.toUpperCase()} ${isUnlocked ? 'UNLOCKED' : '[LOCKED]'}`;
+
+      pill.addEventListener('click', () => {
+        if (key === 'basic') return;
+        let current = [...(ui.storage.data.unlockedChassis || ['basic'])];
+        if (current.includes(key)) {
+          current = current.filter(c => c !== key);
+          ui.showToast(`ADMIN: LOCKED ${chassis.name.toUpperCase()}`);
+        } else {
+          current.push(key);
+          ui.showToast(`ADMIN: UNLOCKED ${chassis.name.toUpperCase()}`);
+        }
+        ui.storage.updateUserData({ unlockedChassis: current });
+        ui.refreshAllUIFromStorage();
+        renderAdminChassisPills(ui);
+      });
+
+      row.appendChild(pill);
     });
 
-    container.appendChild(pill);
+    section.appendChild(row);
+    container.appendChild(section);
   });
 }
 

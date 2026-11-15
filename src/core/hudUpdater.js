@@ -209,7 +209,7 @@ export class HUDUpdater {
       const isDroneSpawner = weaponSys.type === WEAPON_TYPE.DRONE_SPAWNER;
       const nextTitle = isDroneSpawner
         ? 'DRONE SWARM'
-        : ((weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin') ? 'BREECH LOADER' : 'READY-RACK SYSTEM');
+        : ((weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'hunter') ? 'BREECH LOADER' : 'READY-RACK SYSTEM');
       if (this.prevWeaponTitle !== nextTitle) {
         this.prevWeaponTitle = nextTitle;
         els.titleElem.textContent = nextTitle;
