@@ -5954,7 +5954,21 @@ body.theme-light .falo-shop-body {
   box-shadow: 0 0 0 calc(3px * var(--ui-scale)) #00b2e1, -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 178, 225, 0.36) !important;
 }
 
-.falo-armory-window .falo-shop-tilt-card:hover,
+.falo-armory-window .falo-shop-tilt-card:hover:not(.is-preview-active) {
+  transform: translateY(calc(-2px * var(--ui-scale))) skewX(3.5deg) scale(1.01);
+  box-shadow: -6px 7px 0 rgba(0, 0, 0, 0.45), 0 10px 20px rgba(0, 0, 0, 0.34);
+  z-index: 3;
+}
+
+.falo-armory-window .falo-shop-tilt-card:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.falo-armory-window .falo-shop-tilt-card:focus-visible {
+  outline: calc(2px * var(--ui-scale)) solid #00b2e1;
+  outline-offset: 2px;
+}
+
 .falo-armory-window .falo-shop-tilt-card.is-preview-active,
 .falo-settings-window .falo-shop-tilt-card:hover,
 .falo-settings-window .falo-shop-tilt-card.is-preview-active {

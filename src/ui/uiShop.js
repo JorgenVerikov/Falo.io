@@ -553,16 +553,18 @@ function attachCardDynamicInteractions(ui, card, previewData) {
     controller.setPreviewItem(previewData, { animate });
   };
 
-  card.addEventListener('mouseenter', () => {
-    selectCardForPreview({ animate: true });
-  });
-
-  card.addEventListener('focusin', () => {
-    selectCardForPreview({ animate: true });
-  });
+  card.tabIndex = 0;
+  card.setAttribute('role', 'button');
 
   card.addEventListener('click', () => {
     selectCardForPreview({ animate: true });
+  });
+
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      selectCardForPreview({ animate: true });
+    }
   });
 
   return selectCardForPreview;
