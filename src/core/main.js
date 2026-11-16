@@ -1,5 +1,5 @@
 import { CanvasManager } from './canvas.js';
-import { WeaponSystem, WEAPON_TYPE } from '../entities/weapons.js';
+import { WeaponSystem, WEAPON_TYPE, extractBulletOptions } from '../entities/weapons.js';
 import { WaveManager } from '../systems/waveManager.js';
 import { StorageManager } from './storage.js';
 import { UIManager } from '../ui/ui.js';
@@ -606,8 +606,8 @@ function applyCrewAndStatModifiers() {
     turret.spreadMult = mSpread;
     turret.recoilMult = mRecoil;
     turret.launchSpeedMult = mLaunch;
-    turret.bulletsPerShot = turretConfig.bulletsPerShot || 1;
-    turret.lifetime = turretConfig.lifetime || baseCfg.lifetime || 3.0;
+    turret.bulletsPerShot = baseW.bulletsPerShot ?? turretConfig.bulletsPerShot ?? 1;
+    turret.lifetime = baseW.lifetime ?? turretConfig.lifetime ?? baseCfg.lifetime ?? 3.0;
 
     const baseFireRateTicks = (baseW.fireRateTicks !== undefined) ? baseW.fireRateTicks : Math.round(baseCfg.fireRateTicks * mReload);
     const reloadFireRateMult = 1.0 + (reloadStat * (rCfg.fireRateScalePerPoint || 0.08));
@@ -627,10 +627,13 @@ function applyCrewAndStatModifiers() {
 
     const chassisCfg = CONFIG.CHASSIS[state.activeChassis] || {};
     const cannonBaseWidth = (turretConfig.width !== undefined) ? turretConfig.width : (turret.width !== undefined ? turret.width : 20);
-    const baseBulletRadius = (cannonBaseWidth / 20) * (baseCfg.bulletSize || 9);
+    const customRadius = baseW.bulletRadius ?? turretConfig.bulletRadius ?? turretConfig.bullet?.radius ?? turretConfig.bulletOptions?.radius;
+    const baseBulletRadius = (customRadius !== undefined) ? customRadius : ((cannonBaseWidth / 20) * (baseCfg.bulletSize || 9));
     const globalBulletSizeMult = (CONFIG.WEAPONS && CONFIG.WEAPONS.bulletSizeMultiplier !== undefined) ? CONFIG.WEAPONS.bulletSizeMultiplier : 1.0;
     const chassisBulletSizeMult = (chassisCfg.bulletSizeMultiplier !== undefined) ? chassisCfg.bulletSizeMultiplier : 1.0;
-    turret.shellRadius = Math.round(baseBulletRadius * mSize * chassisBulletSizeMult * globalBulletSizeMult * 10) / 10;
+    turret.shellRadius = (baseW.shellRadius !== undefined && baseW.bulletRadius === undefined && turretConfig.bulletRadius === undefined)
+      ? Math.round(baseW.shellRadius * chassisBulletSizeMult * globalBulletSizeMult * 10) / 10
+      : Math.round(baseBulletRadius * mSize * chassisBulletSizeMult * globalBulletSizeMult * 10) / 10;
 
     turret.recoil = (baseCfg.recoil || 45) * mRecoil;
     turret.spread = (baseCfg.spread || 0.04) * mSpread;
@@ -696,8 +699,9 @@ function applyCrewAndStatModifiers() {
     };
   }
 
-  if (weaponSys.isFactoryClass) {
-    const mProfile = chassisConfig.minionBulletProfile || {
+  const mProfile = chassisConfig.minionBulletProfile || chassisConfig.droneBulletProfile || null;
+  if (weaponSys.isFactoryClass || (weaponSys.isDroneClass && mProfile)) {
+    const effProfile = mProfile || {
       damage: 0.40,
       penetration: 0.40,
       bulletSpeed: 0.80,
@@ -705,10 +709,10 @@ function applyCrewAndStatModifiers() {
       radius: 5.0,
       lifetime: 1.35
     };
-    const mDmg = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * (mProfile.damage ?? 0.40) * gunnerCrewMult;
-    const mPen = (baseCfg.penetration + (penStat * inc.shellPenMult)) * (mProfile.penetration ?? 0.40) * gunnerCrewMult;
-    const mSpd = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * (mProfile.bulletSpeed ?? 0.80) * gunnerCrewMult;
-    const baseFireRateTicks = mProfile.fireRateTicks || baseCfg.fireRateTicks || 80;
+    const mDmg = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * (effProfile.damage ?? 0.40) * gunnerCrewMult;
+    const mPen = (baseCfg.penetration + (penStat * inc.shellPenMult)) * (effProfile.penetration ?? 0.40) * gunnerCrewMult;
+    const mSpd = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * (effProfile.bulletSpeed ?? 0.80) * gunnerCrewMult;
+    const baseFireRateTicks = effProfile.fireRateTicks || baseCfg.fireRateTicks || 80;
     const reloadFireRateMult = 1.0 + (reloadStat * (rCfg.fireRateScalePerPoint || 0.08));
     const baseFireSec = baseFireRateTicks / 60;
     const mFireIntervalSec = Math.max(rCfg.minFireIntervalSec || 0.20, (baseFireSec / reloadFireRateMult) * loaderCrewMult);
@@ -719,8 +723,9 @@ function applyCrewAndStatModifiers() {
       penetration: mPen,
       speed: mSpd,
       fireIntervalSec: mFireIntervalSec,
-      radius: (mProfile.radius ?? 5.0) * minionSizeRatio,
-      lifetime: mProfile.lifetime ?? 1.35
+      radius: (effProfile.radius ?? 5.0) * minionSizeRatio,
+      lifetime: effProfile.lifetime ?? 1.35,
+      bulletOptions: extractBulletOptions(effProfile)
     };
   }
 
@@ -729,36 +734,57 @@ function applyCrewAndStatModifiers() {
       const nStats = weaponSys.necromancerStats;
       for (let i = 0; i < weaponSys.drones.length; i++) {
         const d = weaponSys.drones[i];
-        d.speed = nStats.speed;
+        d.speed = nStats.speed * (d.speedMultiplier ?? 1.0);
         d.damage = nStats.damage;
         if (nStats.penetration > d.maxPenetration) {
           d.penetration += (nStats.penetration - d.maxPenetration);
           d.maxPenetration = nStats.penetration;
         }
-        d.color = player.fillColor;
-        d.strokeColor = player.strokeColor;
-      }
-    } else if (weaponSys.isFactoryClass) {
-      for (let i = 0; i < weaponSys.drones.length; i++) {
-        const d = weaponSys.drones[i];
-        if (d.isMinion && weaponSys.minionBulletStats) {
+        if (weaponSys.minionBulletStats) {
           d.minionBulletStats = weaponSys.minionBulletStats;
         }
-        d.color = player.fillColor;
-        d.strokeColor = player.strokeColor;
+        d.color = d.customColor || player.fillColor;
+        d.strokeColor = d.customStrokeColor || player.strokeColor;
       }
-    } else if (weaponSys.turrets.length > 0) {
-      const droneTurret = weaponSys.turrets.find(t => t.type === WEAPON_TYPE.DRONE_SPAWNER) || weaponSys.turrets[0];
+    } else if (weaponSys.isFactoryClass) {
+      const fallbackTurret = weaponSys.turrets.find(t => t.type === WEAPON_TYPE.DRONE_SPAWNER) || weaponSys.turrets[0];
       for (let i = 0; i < weaponSys.drones.length; i++) {
         const d = weaponSys.drones[i];
-        d.speed = droneTurret.shellSpeed;
+        const droneTurret = (d.turretIndex !== null && d.turretIndex !== undefined && weaponSys.turrets[d.turretIndex])
+          ? weaponSys.turrets[d.turretIndex]
+          : fallbackTurret;
+        if (droneTurret) {
+          d.speed = droneTurret.shellSpeed * (d.speedMultiplier ?? 1.0);
+          d.damage = droneTurret.damage;
+          if (droneTurret.penetration > d.maxPenetration) {
+            d.penetration += (droneTurret.penetration - d.maxPenetration);
+            d.maxPenetration = droneTurret.penetration;
+          }
+        }
+        if ((d.isMinion || (d.turrets && d.turrets.length > 0)) && weaponSys.minionBulletStats) {
+          d.minionBulletStats = weaponSys.minionBulletStats;
+        }
+        d.color = d.customColor || player.fillColor;
+        d.strokeColor = d.customStrokeColor || player.strokeColor;
+      }
+    } else if (weaponSys.turrets.length > 0) {
+      const fallbackTurret = weaponSys.turrets.find(t => t.type === WEAPON_TYPE.DRONE_SPAWNER) || weaponSys.turrets[0];
+      for (let i = 0; i < weaponSys.drones.length; i++) {
+        const d = weaponSys.drones[i];
+        const droneTurret = (d.turretIndex !== null && d.turretIndex !== undefined && weaponSys.turrets[d.turretIndex])
+          ? weaponSys.turrets[d.turretIndex]
+          : fallbackTurret;
+        d.speed = droneTurret.shellSpeed * (d.speedMultiplier ?? 1.0);
         d.damage = droneTurret.damage;
         if (droneTurret.penetration > d.maxPenetration) {
           d.penetration += (droneTurret.penetration - d.maxPenetration);
           d.maxPenetration = droneTurret.penetration;
         }
-        d.color = player.fillColor;
-        d.strokeColor = player.strokeColor;
+        if (weaponSys.minionBulletStats) {
+          d.minionBulletStats = weaponSys.minionBulletStats;
+        }
+        d.color = d.customColor || player.fillColor;
+        d.strokeColor = d.customStrokeColor || player.strokeColor;
       }
     }
   }

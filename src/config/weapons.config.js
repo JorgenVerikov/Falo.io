@@ -27,8 +27,8 @@ export const BASIC_BARREL_BASE = {
  * Every tank shares the same base stats as the basic tank, adjusted via multipliers.
  *
  * @param {Object} geom - Barrel geometry { width, length, frontWidth, angleOffset, xOffset, yOffset, shootsBullet, playsRecoil }
- * @param {Object} [multipliers={}] - Multipliers for damage, penetration, bulletSpeed, bulletSize, reload, spread, recoil, knockback, launchSpeed, bulletsPerShot, lifetime, fireDelay
- * @param {Object} [weaponExtra={}] - Weapon system extras (type, maxRack, heatPerShot, coolRate, overheatLockoutTime, maxEnergy, costPerShot, rechargeRate)
+ * @param {Object} [multipliers={}] - Multipliers and projectile/drone overrides (damage, penetration, bulletSpeed, bulletSize, reload, spread, recoil, knockback, launchSpeed, bulletsPerShot, lifetime, fireDelay, bulletShape, bulletSides, bulletInnerRadius, bulletAngleOffset, bulletSpinSpeed, bulletStrokeWidth, bulletLineJoin, bulletVertices, bulletOptions, droneOptions)
+ * @param {Object} [weaponExtra={}] - Weapon system extras (type, maxRack, heatPerShot, coolRate, overheatLockoutTime, maxEnergy, costPerShot, rechargeRate, bulletOptions, droneOptions, droneTurret)
  * @returns {Object} Complete turret & weapon configuration
  */
 export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}) {
@@ -42,21 +42,32 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
   const shootsBullet = geom.shootsBullet !== false;
   const playsRecoil = geom.playsRecoil !== false;
 
+  const mergedBullet = (geom.bullet || geom.bulletOptions || multipliers.bullet || multipliers.bulletOptions || weaponExtra.bullet || weaponExtra.bulletOptions)
+    ? {
+        ...(geom.bullet || {}),
+        ...(geom.bulletOptions || {}),
+        ...(multipliers.bullet || {}),
+        ...(multipliers.bulletOptions || {}),
+        ...(weaponExtra.bullet || {}),
+        ...(weaponExtra.bulletOptions || {})
+      }
+    : undefined;
+
   // Extract and normalize multipliers (fallback to 1.0 or baseline)
-  const damage = multipliers.damage ?? 1.0;
-  const penetration = multipliers.penetration ?? 1.0;
-  const bulletSpeed = multipliers.bulletSpeed ?? 1.0;
-  const bulletSize = multipliers.bulletSize ?? 1.0;
-  const reload = multipliers.reload ?? 1.0;
-  const spread = multipliers.spread ?? 1.0;
+  const damage = multipliers.damage ?? mergedBullet?.damage ?? 1.0;
+  const penetration = multipliers.penetration ?? mergedBullet?.penetration ?? 1.0;
+  const bulletSpeed = multipliers.bulletSpeed ?? mergedBullet?.speed ?? 1.0;
+  const bulletSize = multipliers.bulletSize ?? mergedBullet?.size ?? 1.0;
+  const reload = multipliers.reload ?? mergedBullet?.reload ?? 1.0;
+  const spread = multipliers.spread ?? mergedBullet?.spread ?? 1.0;
   const recoil = multipliers.recoil ?? 1.0;
   const knockback = multipliers.knockback ?? 1.0;
   const launchSpeed = multipliers.launchSpeed ?? 1.0;
-  const bulletsPerShot = multipliers.bulletsPerShot ?? 1;
-  const lifetime = multipliers.lifetime ?? BASIC_BARREL_BASE.lifetime;
-  const fireDelay = multipliers.fireDelay ?? 0;
+  const bulletsPerShot = weaponExtra.bulletsPerShot ?? multipliers.bulletsPerShot ?? mergedBullet?.bulletsPerShot ?? 1;
+  const lifetime = weaponExtra.lifetime ?? multipliers.lifetime ?? mergedBullet?.lifetime ?? BASIC_BARREL_BASE.lifetime;
+  const fireDelay = weaponExtra.fireDelay ?? multipliers.fireDelay ?? 0;
 
-  const isTrap = Boolean(weaponExtra.isTrap ?? multipliers.isTrap);
+  const isTrap = Boolean(weaponExtra.isTrap ?? multipliers.isTrap ?? mergedBullet?.isTrap);
   const trapDrag = weaponExtra.trapDrag ?? multipliers.trapDrag;
   const isAutoTurret = Boolean(geom.isAutoTurret ?? weaponExtra.isAutoTurret ?? multipliers.isAutoTurret);
   const isAutoDrone = Boolean(geom.isAutoDrone ?? weaponExtra.isAutoDrone ?? multipliers.isAutoDrone);
@@ -65,11 +76,56 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
   const autoFovHalf = weaponExtra.autoFovHalf ?? multipliers.autoFovHalf;
   const autoTurnSpeed = weaponExtra.autoTurnSpeed ?? multipliers.autoTurnSpeed;
 
-  // Calculate shell radius based on cannon base width (attaching to hull) and bulletSize multiplier
+  const bulletShape = weaponExtra.bulletShape ?? multipliers.bulletShape ?? geom.bulletShape;
+  const bulletSides = weaponExtra.bulletSides ?? multipliers.bulletSides ?? geom.bulletSides;
+  const bulletInnerRadius = weaponExtra.bulletInnerRadius ?? multipliers.bulletInnerRadius ?? geom.bulletInnerRadius;
+  const bulletAngleOffset = weaponExtra.bulletAngleOffset ?? multipliers.bulletAngleOffset ?? geom.bulletAngleOffset;
+  const bulletSpinSpeed = weaponExtra.bulletSpinSpeed ?? multipliers.bulletSpinSpeed ?? geom.bulletSpinSpeed;
+  const bulletStrokeWidth = weaponExtra.bulletStrokeWidth ?? multipliers.bulletStrokeWidth ?? geom.bulletStrokeWidth;
+  const bulletLineJoin = weaponExtra.bulletLineJoin ?? multipliers.bulletLineJoin ?? geom.bulletLineJoin;
+  const bulletVertices = weaponExtra.bulletVertices ?? multipliers.bulletVertices ?? geom.bulletVertices;
+  const bulletColor = weaponExtra.bulletColor ?? multipliers.bulletColor ?? geom.bulletColor;
+  const bulletStrokeColor = weaponExtra.bulletStrokeColor ?? multipliers.bulletStrokeColor ?? geom.bulletStrokeColor;
+  const bulletDrag = weaponExtra.bulletDrag ?? multipliers.bulletDrag ?? geom.bulletDrag;
+  const bulletStopSpeed = weaponExtra.bulletStopSpeed ?? multipliers.bulletStopSpeed ?? geom.bulletStopSpeed;
+  const bulletApplyDrag = weaponExtra.bulletApplyDrag ?? multipliers.bulletApplyDrag ?? geom.bulletApplyDrag;
+  const bulletDeathDuration = weaponExtra.bulletDeathDuration ?? multipliers.bulletDeathDuration ?? geom.bulletDeathDuration;
+  const bulletDeathExpandScale = weaponExtra.bulletDeathExpandScale ?? multipliers.bulletDeathExpandScale ?? geom.bulletDeathExpandScale;
+  const bulletRadius = weaponExtra.bulletRadius ?? multipliers.bulletRadius ?? geom.bulletRadius ?? mergedBullet?.radius;
+  const bulletOptions = mergedBullet;
+  const droneOptions = (multipliers.droneOptions || weaponExtra.droneOptions || weaponExtra.droneProfile)
+    ? { ...(multipliers.droneOptions || {}), ...(weaponExtra.droneProfile || {}), ...(weaponExtra.droneOptions || {}) }
+    : undefined;
+  const droneTurret = weaponExtra.droneTurret ?? multipliers.droneTurret;
+
+  // Calculate shell radius based on explicit override or cannon base width and bulletSize multiplier
   const baseBulletRadius = (width / 20) * (BASIC_BARREL_BASE.bulletSize || 9);
-  const shellRadius = Math.round(baseBulletRadius * bulletSize * 10) / 10;
+  const computedShellRadius = Math.round(baseBulletRadius * bulletSize * 10) / 10;
+  const shellRadius = weaponExtra.shellRadius ?? ((bulletRadius !== undefined) ? Math.round(bulletRadius * bulletSize * 10) / 10 : computedShellRadius);
 
   const weaponType = weaponExtra.type || 'READY_RACK';
+
+  const optionalProjectileFields = {
+    ...(bulletRadius !== undefined ? { bulletRadius } : {}),
+    ...(bulletShape !== undefined ? { bulletShape } : {}),
+    ...(bulletSides !== undefined ? { bulletSides } : {}),
+    ...(bulletInnerRadius !== undefined ? { bulletInnerRadius } : {}),
+    ...(bulletAngleOffset !== undefined ? { bulletAngleOffset } : {}),
+    ...(bulletSpinSpeed !== undefined ? { bulletSpinSpeed } : {}),
+    ...(bulletStrokeWidth !== undefined ? { bulletStrokeWidth } : {}),
+    ...(bulletLineJoin !== undefined ? { bulletLineJoin } : {}),
+    ...(bulletVertices !== undefined ? { bulletVertices } : {}),
+    ...(bulletColor !== undefined ? { bulletColor } : {}),
+    ...(bulletStrokeColor !== undefined ? { bulletStrokeColor } : {}),
+    ...(bulletDrag !== undefined ? { bulletDrag } : {}),
+    ...(bulletStopSpeed !== undefined ? { bulletStopSpeed } : {}),
+    ...(bulletApplyDrag !== undefined ? { bulletApplyDrag } : {}),
+    ...(bulletDeathDuration !== undefined ? { bulletDeathDuration } : {}),
+    ...(bulletDeathExpandScale !== undefined ? { bulletDeathExpandScale } : {}),
+    ...(bulletOptions !== undefined ? { bulletOptions } : {}),
+    ...(droneOptions !== undefined ? { droneOptions } : {}),
+    ...(droneTurret !== undefined ? { droneTurret } : {})
+  };
 
   // Construct calibrated weapon payload if turret discharges projectiles
   const weapon = shootsBullet ? {
@@ -91,6 +147,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     ...(autoRange !== undefined ? { autoRange } : {}),
     ...(autoFovHalf !== undefined ? { autoFovHalf } : {}),
     ...(autoTurnSpeed !== undefined ? { autoTurnSpeed } : {}),
+    ...optionalProjectileFields,
     ...weaponExtra
   } : null;
 
@@ -127,6 +184,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     ...(autoRange !== undefined ? { autoRange } : {}),
     ...(autoFovHalf !== undefined ? { autoFovHalf } : {}),
     ...(autoTurnSpeed !== undefined ? { autoTurnSpeed } : {}),
+    ...optionalProjectileFields,
 
     weapon
   };
@@ -156,6 +214,26 @@ export const WEAPONS_CONFIG = {
   recoilForceMultiplier: 1.35,
   smasherDashDuration: 0.45,
   smasherDashForce: 450,
+  defaultBulletOptions: {
+    shape: 'circle',
+    sides: 0,
+    innerRadiusRatio: 0.45,
+    angleOffset: 0,
+    spinSpeed: 0,
+    strokeWidth: 3,
+    lineJoin: 'round'
+  },
+  defaultDroneOptions: {
+    shape: 'polygon',
+    sides: 3,
+    innerRadiusRatio: 0.45,
+    angleOffset: 0,
+    spinSpeed: 0,
+    strokeWidth: 3,
+    lineJoin: 'round',
+    sizeMultiplier: 1.0,
+    speedMultiplier: 1.0
+  },
 
   reloadScaling: {
     fireRateScalePerPoint: 0.08,

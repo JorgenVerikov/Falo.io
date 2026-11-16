@@ -1,5 +1,5 @@
 import { CONFIG, ENEMY_UPGRADE_CONFIG, getEnemyUpgradesForWave } from '../core/config.js';
-import { Projectile } from './weapons.js';
+import { Projectile, extractBulletOptions } from './weapons.js';
 import { Particle, ResourceShape } from './shapes.js';
 import { ENEMY_CHAT_CALLOUTS, EnemyCommunicationSystem } from './enemyComms.js';
 import { solveBallisticIntercept, getBulletEvasionVector, getShapeManeuverVector } from './enemyMath.js';
@@ -868,37 +868,48 @@ export class EnemyUnit {
       : [{ length: 48, width: 20, angleOffset: 0, xOffset: 0, yOffset: 0, shootsBullet: true }];
 
     const bSpeedMult = 1.0 + (this.upgrades.stats.bulletSpeed * inc.bulletSpeed);
-    const bSpeed = ((wCfg.bulletSpeed !== undefined) ? wCfg.bulletSpeed : 180) * bSpeedMult;
+    const defaultBaseSpeed = (wCfg.bulletSpeed !== undefined) ? wCfg.bulletSpeed : 180;
 
     const penMult = 1.0 + (this.upgrades.stats.bulletPenetration * inc.bulletPenetration);
-    const pen = ((wCfg.bulletPenetration !== undefined) ? wCfg.bulletPenetration : 2.0) * penMult;
+    const defaultBasePen = (wCfg.bulletPenetration !== undefined) ? wCfg.bulletPenetration : 2.0;
 
     const dmgMult = 1.0 + (this.upgrades.stats.bulletDamage * inc.bulletDamage);
-    const baseDmg = (wCfg.bulletDamage !== undefined) ? wCfg.bulletDamage : 6.0;
-    const dmg = (baseDmg === 0) ? 0 : (baseDmg * dmgMult);
+    const defaultBaseDmg = (wCfg.bulletDamage !== undefined) ? wCfg.bulletDamage : 6.0;
 
     const baseBulletRad = (wCfg.bulletRadius !== undefined) ? wCfg.bulletRadius : 9;
-    const bLifetime = (wCfg.bulletLifetime !== undefined) ? wCfg.bulletLifetime : 3.5;
-    const bColor = wCfg.bulletColor || '#f14e54';
-    const bStroke = wCfg.bulletStroke || '#b82a30';
+    const defaultLifetime = (wCfg.bulletLifetime !== undefined) ? wCfg.bulletLifetime : 3.5;
+    const defaultColor = wCfg.bulletColor || '#f14e54';
+    const defaultStroke = wCfg.bulletStroke || '#b82a30';
 
     for (let tIdx = 0; tIdx < turrets.length; tIdx++) {
       const turret = turrets[tIdx];
       if (turret.shootsBullet === false) continue;
 
       if (tIdx < this.barrelRecoilOffsets.length) {
-        this.barrelRecoilOffsets[tIdx] = (wCfg.barrelRecoilAmount !== undefined) ? wCfg.barrelRecoilAmount : 10;
+        this.barrelRecoilOffsets[tIdx] = (turret.barrelRecoilAmount !== undefined)
+          ? turret.barrelRecoilAmount
+          : ((wCfg.barrelRecoilAmount !== undefined) ? wCfg.barrelRecoilAmount : 10);
       }
+
+      const tb = (turret.bullet && typeof turret.bullet === 'object') ? turret.bullet : null;
+      const tSpeed = (turret.shellSpeed !== undefined)
+        ? turret.shellSpeed * bSpeedMult
+        : (defaultBaseSpeed * (turret.bulletSpeed ?? tb?.speed ?? 1.0) * bSpeedMult);
+      const tPen = ((turret.bulletPenetration !== undefined)
+        ? turret.bulletPenetration
+        : (defaultBasePen * (turret.penetration ?? tb?.penetration ?? 1.0))) * penMult;
+      const tBaseDmg = (turret.bulletDamage !== undefined)
+        ? turret.bulletDamage
+        : (defaultBaseDmg * (turret.damage ?? tb?.damage ?? 1.0));
+      const tDmg = (tBaseDmg === 0) ? 0 : (tBaseDmg * dmgMult);
+      const tLifetime = turret.bulletLifetime ?? turret.lifetime ?? tb?.lifetime ?? defaultLifetime;
+      const tColor = turret.bulletColor || tb?.color || tb?.fillColor || defaultColor;
+      const tStroke = turret.bulletStroke || turret.bulletStrokeColor || tb?.stroke || tb?.strokeColor || defaultStroke;
+      const tSpread = turret.bulletSpread ?? tb?.spread ?? ((wCfg.bulletSpread || 0) * (turret.spread ?? 1.0));
+      const tShots = Math.max(1, turret.bulletsPerShot ?? tb?.bulletsPerShot ?? wCfg.bulletsPerShot ?? 1);
+      const tRecoil = turret.recoilForce ?? wCfg.recoilForce ?? 0;
 
       const baseTurretAngle = this.angle + (turret.angleOffset || 0);
-      const spreadOffset = wCfg.bulletSpread ? (Math.random() - 0.5) * wCfg.bulletSpread : 0;
-      const shotAngle = baseTurretAngle + spreadOffset;
-
-      if (wCfg.recoilForce) {
-        this.vx -= Math.cos(shotAngle) * wCfg.recoilForce;
-        this.vy -= Math.sin(shotAngle) * wCfg.recoilForce;
-      }
-
       const tx = (turret.xOffset || 0) * sizeScale;
       const ty = (turret.yOffset || 0) * sizeScale;
       const barrelTipOffset = ((turret.length || 48) * sizeScale) + 2;
@@ -907,15 +918,40 @@ export class EnemyUnit {
       const spawnX = this.x + cosT * (tx + barrelTipOffset) - sinT * ty;
       const spawnY = this.y + sinT * (tx + barrelTipOffset) + cosT * ty;
 
-      const bVx = Math.cos(shotAngle) * bSpeed;
-      const bVy = Math.sin(shotAngle) * bSpeed;
       const cannonBaseWidth = (turret.width !== undefined) ? turret.width : 20;
-      const turretSizeMult = (turret.bulletSize !== undefined) ? turret.bulletSize : 1.0;
+      const turretSizeMult = (turret.bulletSize !== undefined) ? turret.bulletSize : (tb?.size ?? 1.0);
       const cfgSizeMult = (wCfg.bulletSize !== undefined) ? wCfg.bulletSize : 1.0;
       const globalSizeMult = (CONFIG.WEAPONS && CONFIG.WEAPONS.bulletSizeMultiplier !== undefined) ? CONFIG.WEAPONS.bulletSizeMultiplier : 1.0;
-      const bRad = (baseBulletRad * (cannonBaseWidth / 20) * turretSizeMult * cfgSizeMult * globalSizeMult) * sizeScale;
+      const tBaseRad = (turret.bulletRadius !== undefined || tb?.radius !== undefined)
+        ? (turret.bulletRadius ?? tb.radius)
+        : (baseBulletRad * (cannonBaseWidth / 20));
+      const bRad = (tBaseRad * turretSizeMult * cfgSizeMult * globalSizeMult) * sizeScale;
 
-      enemyBullets.push(new Projectile(spawnX, spawnY, bVx, bVy, bRad, bLifetime, dmg, pen, bColor, bStroke, { owner: this }));
+      const bulletOpts = extractBulletOptions(wCfg, turret);
+
+      for (let b = 0; b < tShots; b++) {
+        const spreadOffset = tSpread ? (Math.random() - 0.5) * tSpread : 0;
+        const shotAngle = baseTurretAngle + spreadOffset;
+
+        if (tRecoil) {
+          this.vx -= Math.cos(shotAngle) * tRecoil;
+          this.vy -= Math.sin(shotAngle) * tRecoil;
+        }
+
+        const bVx = Math.cos(shotAngle) * tSpeed;
+        const bVy = Math.sin(shotAngle) * tSpeed;
+
+        enemyBullets.push(
+          new Projectile(
+            spawnX, spawnY,
+            bVx, bVy,
+            bRad, tLifetime,
+            tDmg, tPen,
+            tColor, tStroke,
+            { ...(bulletOpts || {}), owner: this }
+          )
+        );
+      }
     }
 
     if (this.magCapacity > 0) {
