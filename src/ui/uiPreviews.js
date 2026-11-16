@@ -93,7 +93,7 @@ export function drawTankPreview(ctx, chassisKey, spinAngle, playerFillColor = '#
 
   const radius = 18 * (chassis.radiusMultiplier || 1.0);
   const sides = chassis.sides || 0;
-  drawPreviewPolygon(ctx, 0, 0, radius, sides, 0, playerFillColor, playerStrokeColor, 3.5);
+  drawPreviewPolygon(ctx, 0, 0, radius, sides, chassis.bodyAngleOffset || 0, playerFillColor, playerStrokeColor, 3.5);
 
   ctx.restore();
 }
@@ -206,7 +206,7 @@ export function generateTankPreviewDataUrl(chassisKey, color = '#00b2e1', stroke
     0,
     bodyRadius,
     cfg.sides || 0,
-    0,
+    cfg.bodyAngleOffset || 0,
     color,
     strokeColor,
     3 * dpr
@@ -272,7 +272,7 @@ export function generateTankSvg(chassisKey, color = '#00b2e1', stroke = null, si
   if (cfg.sides && cfg.sides > 0) {
     const pts = [];
     for (let i = 0; i < cfg.sides; i++) {
-      const a = (baseAngle * (Math.PI / 180)) + ((i * 2 * Math.PI) / cfg.sides);
+      const a = (baseAngle * (Math.PI / 180)) + (cfg.bodyAngleOffset || 0) + ((i * 2 * Math.PI) / cfg.sides);
       pts.push(`${center + bodyRadius * Math.cos(a)},${center + bodyRadius * Math.sin(a)}`);
     }
     bodySvg = `<polygon points="${pts.join(' ')}" fill="${color}" stroke="${strokeColor}" stroke-width="3" stroke-linejoin="miter"/>`;

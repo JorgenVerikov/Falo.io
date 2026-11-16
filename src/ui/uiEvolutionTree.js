@@ -13,7 +13,21 @@ const ROW_Y = {
 };
 
 const TIER_4_SLOTS = [
-  { key: 'tesla', col: 6.15 }
+  { key: 'triplet', col: -0.85 },
+  { key: 'pentashot', col: 0 },
+  { key: 'spreadshot', col: 0.85 },
+  { key: 'octotank', col: 1.7 },
+  { key: 'tripletwin', col: 2.55 },
+  { key: 'auto5', col: 4.0 },
+  { key: 'battleship', col: 5.1 },
+  { key: 'tesla', col: 6.15 },
+  { key: 'ranger', col: 7.05 },
+  { key: 'stalker', col: 7.90 },
+  { key: 'overlord', col: 8.75 },
+  { key: 'necromancer', col: 9.60 },
+  { key: 'manager', col: 10.45 },
+  { key: 'overtrapper', col: 11.30 },
+  { key: 'factory', col: 12.15 }
 ];
 
 const TIER_3_SLOTS = [
@@ -116,6 +130,11 @@ function getBusY(fromKey, toKey, fromPos, toPos) {
   if (fromKey === 'basic') return 200;
   if (fromKey === 'twin') return 385;
   if (fromKey === 'flank') return 420;
+  if (fromKey === 'quadtank') return 580;
+  if (fromKey === 'twinflank') return 602;
+  if (fromKey === 'auto3') return 624;
+  if (fromKey === 'overseer') return 646;
+  if (fromKey === 'assassin') return 602;
   return (fromPos.y + toPos.y) / 2;
 }
 
@@ -810,7 +829,7 @@ export class EvolutionTreeController {
     drawPreviewPolygon(
       ctx, 0, 0, radius,
       chassis.sides || 0,
-      this.tankAngle,
+      this.tankAngle + (chassis.bodyAngleOffset || 0),
       fillColor,
       strokeColor,
       strokeWidth

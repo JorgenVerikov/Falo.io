@@ -250,7 +250,7 @@ export class MainMenuController {
     drawPreviewPolygon(
       ctx, 0, 0, radius,
       chassis.sides || 0,
-      this.tankAngle,
+      this.tankAngle + (chassis.bodyAngleOffset || 0),
       fillColor,
       strokeColor,
       strokeWidth

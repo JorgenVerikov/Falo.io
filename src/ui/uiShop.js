@@ -394,7 +394,7 @@ export class ShopPreviewController {
     drawPreviewPolygon(
       ctx, 0, 0, radius,
       chassis.sides || 0,
-      this.tankAngle,
+      this.tankAngle + (chassis.bodyAngleOffset || 0),
       fillColor,
       strokeColor,
       strokeWidth
@@ -710,6 +710,20 @@ export function renderTanksShop(ui, container, { animatePreview = false } = {}) 
     : (CONFIG.COLOR_THEMES[activeColorKey]?.stroke || '#737373');
 
   const rawTanks = [
+    { key: 'triplet', name: 'Triplet', cost: CONFIG.CHASSIS.triplet?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.triplet?.reqLevel ?? 45, desc: CONFIG.CHASSIS.triplet?.desc || 'Three parallel front cannons firing a concentrated high-speed bullet stream.' },
+    { key: 'pentashot', name: 'Penta Shot', cost: CONFIG.CHASSIS.pentashot?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.pentashot?.reqLevel ?? 45, desc: CONFIG.CHASSIS.pentashot?.desc || 'Five tiered front-arc cannons firing a rapid, wide-angle barrage with very high recoil.' },
+    { key: 'spreadshot', name: 'Spread Shot', cost: CONFIG.CHASSIS.spreadshot?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.spreadshot?.reqLevel ?? 45, desc: CONFIG.CHASSIS.spreadshot?.desc || 'Eleven-barrel fan firing a massive wide-angle spread with high penetration and near-zero recoil.' },
+    { key: 'octotank', name: 'Octo Tank', cost: CONFIG.CHASSIS.octotank?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.octotank?.reqLevel ?? 45, desc: CONFIG.CHASSIS.octotank?.desc || 'Eight equidistant cannons firing alternating 4-way cross volleys with nullified recoil.' },
+    { key: 'auto5', name: 'Auto 5', cost: CONFIG.CHASSIS.auto5?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.auto5?.reqLevel ?? 45, desc: CONFIG.CHASSIS.auto5?.desc || 'Five evenly spaced automatic turrets that track targets independently or steer manually.' },
+    { key: 'tripletwin', name: 'Triple Twin', cost: CONFIG.CHASSIS.tripletwin?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.tripletwin?.reqLevel ?? 45, desc: CONFIG.CHASSIS.tripletwin?.desc || 'Three pairs of twin cannons spaced 120 degrees apart with nullified recoil.' },
+    { key: 'battleship', name: 'Battleship', cost: CONFIG.CHASSIS.battleship?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.battleship?.reqLevel ?? 45, desc: CONFIG.CHASSIS.battleship?.desc || 'Four rapid mini-spawners streaming short-lived drones: half manual and half auto-guided.' },
+    { key: 'ranger', name: 'Ranger', cost: CONFIG.CHASSIS.ranger?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.ranger?.reqLevel ?? 45, desc: CONFIG.CHASSIS.ranger?.desc || 'Extended Assassin rifle with a reinforced trapezoid base and the widest field of view.' },
+    { key: 'stalker', name: 'Stalker', cost: CONFIG.CHASSIS.stalker?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.stalker?.reqLevel ?? 45, desc: CONFIG.CHASSIS.stalker?.desc || 'Long tapered stealth sniper that fades to invisibility even while moving; firing or taking damage reveals it.' },
+    { key: 'overlord', name: 'Overlord', cost: CONFIG.CHASSIS.overlord?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.overlord?.reqLevel ?? 45, desc: CONFIG.CHASSIS.overlord?.desc || 'Four equally spaced spawners deploy up to 12 controllable drones at double the Overseer rate.' },
+    { key: 'necromancer', name: 'Necromancer', cost: CONFIG.CHASSIS.necromancer?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.necromancer?.reqLevel ?? 45, desc: CONFIG.CHASSIS.necromancer?.desc || 'Square chassis with two side spawners that deploys up to 4 starter Square Drones and infects Squares up to 36 drones.' },
+    { key: 'manager', name: 'Manager', cost: CONFIG.CHASSIS.manager?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.manager?.reqLevel ?? 45, desc: CONFIG.CHASSIS.manager?.desc || 'Single fast front spawner with up to 8 controllable drones and stationary stealth cloaking.' },
+    { key: 'overtrapper', name: 'Overtrapper', cost: CONFIG.CHASSIS.overtrapper?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.overtrapper?.reqLevel ?? 45, desc: CONFIG.CHASSIS.overtrapper?.desc || 'Front trap launcher paired with two rear spawners maintaining 2 controllable and 2 auto-guided drones.' },
+    { key: 'factory', name: 'Factory', cost: CONFIG.CHASSIS.factory?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.factory?.reqLevel ?? 45, desc: CONFIG.CHASSIS.factory?.desc || 'Square chassis with a single front spawner deploying up to 6 armed Minions.' },
     { key: 'tesla', name: 'Tesla Surge', cost: CONFIG.CHASSIS.tesla?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.tesla?.reqLevel ?? 45, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
     { key: 'tripleshot', name: 'Triple Shot', cost: CONFIG.CHASSIS.tripleshot?.shopCost ?? 1000, reqLvl: 30, desc: 'Three front-spread cannons covering a wide arc with strong recoil.' },
     { key: 'quadtank', name: 'Quad Tank', cost: CONFIG.CHASSIS.quadtank?.shopCost ?? 1000, reqLvl: 30, desc: 'Four cannons in a plus sign firing in four directions with nullified recoil.' },

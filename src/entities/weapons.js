@@ -29,6 +29,7 @@ export class Projectile {
     this.maxPenetration = penetration;
     this.color = color;
     this.strokeColor = strokeColor;
+    this.owner = options.owner || null;
     this.isTrap = Boolean(options.isTrap);
     this.drag = options.drag ?? (CONFIG.WEAPONS.trapDrag || 4.6);
     this.stopSpeed = options.stopSpeed ?? (CONFIG.WEAPONS.trapStopSpeed || 3.0);
@@ -152,7 +153,7 @@ export class Projectile {
 }
 
 export class Drone {
-  constructor(x, y, vx, vy, radius, damage, health, maxSpeed, color, strokeColor) {
+  constructor(x, y, vx, vy, radius, damage, health, maxSpeed, color, strokeColor, options = {}) {
     this.x = x;
     this.y = y;
     this.vx = vx;
@@ -166,12 +167,22 @@ export class Drone {
     this.maxPenetration = health;
     this.color = color;
     this.strokeColor = strokeColor;
+    this.lifetime = (typeof options.lifetime === 'number' && options.lifetime < 9000) ? options.lifetime : null;
+    this.isAutoDrone = Boolean(options.isAutoDrone);
+    this.isMinion = Boolean(options.isMinion);
+    this.aimAngle = (options.aimAngle !== undefined) ? options.aimAngle : this.angle;
+    this.shootTimer = 0.25 + Math.random() * 0.35;
+    this.recoilOffset = 0;
+    this.minionBulletStats = options.minionBulletStats || null;
+    this.sides = options.sides || 3;
+    this.angleOffset = options.angleOffset || 0;
+    this.isNecromancerDrone = Boolean(options.isNecromancerDrone);
     this.dead = false;
     this.isDying = false;
     this.deathTimer = 0;
     this.deathDuration = 0.22;
     this.destroyed = false;
-    this.spawnEjectTimer = 0.16;
+    this.spawnEjectTimer = (options.spawnEjectTimer !== undefined) ? options.spawnEjectTimer : 0.16;
   }
 
   kill() {
@@ -205,7 +216,7 @@ export class Drone {
     this.vy *= 0.96;
   }
 
-  updateBehavior(dt, player, controlState, targetEntity, droneIndex, totalDrones, livingDrones, idleOrbitTime) {
+  updateBehavior(dt, player, controlState, targetEntity, droneIndex, totalDrones, livingDrones, idleOrbitTime, projectilesOut = null) {
     if (this.isDying) {
       this.deathTimer += dt;
       const progress = Math.min(1.0, this.deathTimer / this.deathDuration);
@@ -218,9 +229,22 @@ export class Drone {
       return;
     }
 
+    if (this.lifetime !== null) {
+      this.lifetime -= dt;
+      if (this.lifetime <= 0) {
+        this.kill();
+        return;
+      }
+    }
+
     const baseDrag = (CONFIG.WEAPONS && CONFIG.WEAPONS.droneDrag !== undefined) ? CONFIG.WEAPONS.droneDrag : 7.5;
     const turnSpeed = (CONFIG.WEAPONS && CONFIG.WEAPONS.droneTurnSpeed !== undefined) ? CONFIG.WEAPONS.droneTurnSpeed : 4.5;
     const orbitSpeed = (CONFIG.WEAPONS && CONFIG.WEAPONS.droneOrbitSpeed !== undefined) ? CONFIG.WEAPONS.droneOrbitSpeed : 0.9;
+
+    if (this.isMinion) {
+      this.recoilOffset = Math.max(0, this.recoilOffset - dt * (CONFIG.WEAPONS.barrelRecoilDecay || 35));
+      if (this.shootTimer > 0) this.shootTimer = Math.max(0, this.shootTimer - dt);
+    }
 
     if (this.spawnEjectTimer > 0) {
       this.spawnEjectTimer -= dt;
@@ -229,16 +253,145 @@ export class Drone {
       this.vy *= ejectDrag;
       this.x += this.vx * dt;
       this.y += this.vy * dt;
+      if (this.isMinion) {
+        this.aimAngle = this.angle;
+      }
       return;
     }
 
     const maxSpd = this.speed;
-    const mode = controlState ? controlState.mode : 'IDLE';
+    const mode = this.isAutoDrone ? 'IDLE' : (controlState ? controlState.mode : 'IDLE');
     let desiredVx = 0;
     let desiredVy = 0;
     let activeDrag = baseDrag;
+    let desiredAimAngle = this.aimAngle;
+    let shouldShoot = false;
 
-    if (mode === 'ATTRACT') {
+    if (this.isMinion) {
+      if (mode === 'ATTRACT') {
+        const dx = controlState.targetX - this.x;
+        const dy = controlState.targetY - this.y;
+        const dist = Math.hypot(dx, dy) || 0.001;
+        desiredAimAngle = Math.atan2(dy, dx);
+        shouldShoot = true;
+
+        const orbitR = 148 + (droneIndex % 2) * 14;
+        const rx = -dx / dist;
+        const ry = -dy / dist;
+        // Counter-clockwise screen-space tangent around cursor
+        const tx = ry;
+        const ty = -rx;
+
+        if (dist > orbitR + 28) {
+          const dirX = -rx * 0.94 + tx * 0.25;
+          const dirY = -ry * 0.94 + ty * 0.25;
+          const len = Math.hypot(dirX, dirY) || 1;
+          desiredVx = (dirX / len) * maxSpd;
+          desiredVy = (dirY / len) * maxSpd;
+        } else if (dist < orbitR - 28) {
+          const dirX = rx * 0.90 + tx * 0.35;
+          const dirY = ry * 0.90 + ty * 0.35;
+          const len = Math.hypot(dirX, dirY) || 1;
+          desiredVx = (dirX / len) * maxSpd;
+          desiredVy = (dirY / len) * maxSpd;
+        } else {
+          const radialErr = Math.max(-0.6, Math.min(0.6, -(dist - orbitR) / 36));
+          const dirX = tx + rx * radialErr;
+          const dirY = ty + ry * radialErr;
+          const len = Math.hypot(dirX, dirY) || 1;
+          desiredVx = (dirX / len) * maxSpd;
+          desiredVy = (dirY / len) * maxSpd;
+        }
+      } else if (mode === 'REPEL') {
+        const pDx = this.x - player.x;
+        const pDy = this.y - player.y;
+        const distFromPlayer = Math.hypot(pDx, pDy) || 0.001;
+        const dx = this.x - controlState.targetX;
+        const dy = this.y - controlState.targetY;
+        const dist = Math.hypot(dx, dy) || 0.001;
+        desiredAimAngle = Math.atan2(dy, dx);
+        shouldShoot = true;
+
+        if (distFromPlayer > 1350) {
+          desiredVx = (-pDx / distFromPlayer) * maxSpd;
+          desiredVy = (-pDy / distFromPlayer) * maxSpd;
+        } else {
+          const rx = dx / dist;
+          const ry = dy / dist;
+          if (dist < 75) {
+            const moveSpd = dist > 12 ? maxSpd * 0.7 : 0;
+            desiredVx = -rx * moveSpd;
+            desiredVy = -ry * moveSpd;
+          } else if (dist <= 230) {
+            // Clockwise outward spiral around cursor
+            const cwX = -ry;
+            const cwY = rx;
+            const dirX = cwX * 0.72 + rx * 0.69;
+            const dirY = cwY * 0.72 + ry * 0.69;
+            const len = Math.hypot(dirX, dirY) || 1;
+            desiredVx = (dirX / len) * maxSpd;
+            desiredVy = (dirY / len) * maxSpd;
+          } else {
+            desiredVx = rx * maxSpd;
+            desiredVy = ry * maxSpd;
+          }
+        }
+      } else {
+        if (targetEntity) {
+          const dx = targetEntity.x - this.x;
+          const dy = targetEntity.y - this.y;
+          const dist = Math.hypot(dx, dy) || 0.001;
+          desiredAimAngle = Math.atan2(dy, dx);
+          shouldShoot = true;
+
+          const isShapeTarget = Boolean(targetEntity.type && !targetEntity.config?.isEnemy);
+          const standoff = (targetEntity.radius || 25) + (isShapeTarget ? 72 : 108);
+          const rx = -dx / dist;
+          const ry = -dy / dist;
+          const tx = ry;
+          const ty = -rx;
+
+          if (dist > standoff + 24) {
+            const dirX = -rx * 0.92 + tx * 0.28;
+            const dirY = -ry * 0.92 + ty * 0.28;
+            const len = Math.hypot(dirX, dirY) || 1;
+            desiredVx = (dirX / len) * maxSpd;
+            desiredVy = (dirY / len) * maxSpd;
+          } else if (dist < standoff - 24) {
+            const dirX = rx * 0.88 + tx * 0.35;
+            const dirY = ry * 0.88 + ty * 0.35;
+            const len = Math.hypot(dirX, dirY) || 1;
+            desiredVx = (dirX / len) * maxSpd;
+            desiredVy = (dirY / len) * maxSpd;
+          } else {
+            const radialErr = Math.max(-0.5, Math.min(0.5, -(dist - standoff) / 32));
+            const dirX = tx + rx * radialErr;
+            const dirY = ty + ry * radialErr;
+            const len = Math.hypot(dirX, dirY) || 1;
+            desiredVx = (dirX / len) * maxSpd * 0.92;
+            desiredVy = (dirY / len) * maxSpd * 0.92;
+          }
+        } else {
+          const orbitRadius = (player.radius || 31) + 64;
+          const slotAngle = idleOrbitTime * orbitSpeed + (droneIndex / Math.max(1, totalDrones)) * Math.PI * 2;
+          const slotX = player.x + Math.cos(slotAngle) * orbitRadius;
+          const slotY = player.y + Math.sin(slotAngle) * orbitRadius;
+          const dx = slotX - this.x;
+          const dy = slotY - this.y;
+          const dist = Math.hypot(dx, dy);
+          desiredAimAngle = Math.atan2(this.y - player.y, this.x - player.x);
+          if (dist > 2) {
+            const moveSpd = Math.min(maxSpd, dist * 5.0);
+            desiredVx = (dx / dist) * moveSpd + (player.vx || 0) * 0.35;
+            desiredVy = (dy / dist) * moveSpd + (player.vy || 0) * 0.35;
+          } else {
+            desiredVx = player.vx || 0;
+            desiredVy = player.vy || 0;
+            activeDrag = baseDrag * 1.25;
+          }
+        }
+      }
+    } else if (mode === 'ATTRACT') {
       const dx = controlState.targetX - this.x;
       const dy = controlState.targetY - this.y;
       const dist = Math.hypot(dx, dy);
@@ -294,7 +447,7 @@ export class Drone {
     }
 
     // Soft drone-to-drone separation so drones spread into a clean swarm
-    const sepDist = this.radius * 2.5;
+    const sepDist = this.radius * (this.isMinion ? 2.6 : 2.5);
     let sepX = 0;
     let sepY = 0;
     for (let i = 0; i < livingDrones.length; i++) {
@@ -323,10 +476,10 @@ export class Drone {
       this.angle += step;
 
       const remainingDiff = rawDiff - step;
-      const alignmentScale = Math.max(0.35, 0.5 + 0.5 * Math.cos(remainingDiff));
+      const alignmentScale = this.isMinion ? 0.92 : Math.max(0.35, 0.5 + 0.5 * Math.cos(remainingDiff));
       const thrustSpd = desiredSpd * alignmentScale;
-      thrustVx = Math.cos(this.angle) * thrustSpd;
-      thrustVy = Math.sin(this.angle) * thrustSpd;
+      thrustVx = this.isMinion ? desiredVx * alignmentScale : Math.cos(this.angle) * thrustSpd;
+      thrustVy = this.isMinion ? desiredVy * alignmentScale : Math.sin(this.angle) * thrustSpd;
     }
 
     // Physical acceleration + exponential fluid drag
@@ -349,6 +502,42 @@ export class Drone {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
+    if (this.isMinion) {
+      const aimDiff = Math.atan2(Math.sin(desiredAimAngle - this.aimAngle), Math.cos(desiredAimAngle - this.aimAngle));
+      const maxAimTurn = 10.5 * dt;
+      const aimStep = Math.abs(aimDiff) > maxAimTurn ? Math.sign(aimDiff) * maxAimTurn : aimDiff;
+      this.aimAngle += aimStep;
+
+      if (shouldShoot && this.shootTimer <= 0 && projectilesOut && this.minionBulletStats) {
+        const bStats = this.minionBulletStats;
+        this.shootTimer = bStats.fireIntervalSec || 1.33;
+        this.recoilOffset = 5;
+        const barrelTipLen = this.radius * 1.5;
+        const bx = this.x + Math.cos(this.aimAngle) * barrelTipLen;
+        const by = this.y + Math.sin(this.aimAngle) * barrelTipLen;
+        const bVx = Math.cos(this.aimAngle) * bStats.speed;
+        const bVy = Math.sin(this.aimAngle) * bStats.speed;
+        const bRad = bStats.radius || 5.0;
+        const bLife = bStats.lifetime || 1.35;
+        projectilesOut.push(
+          new Projectile(
+            bx,
+            by,
+            bVx,
+            bVy,
+            bRad,
+            bLife,
+            bStats.damage,
+            bStats.penetration,
+            this.color,
+            this.strokeColor
+          )
+        );
+        this.vx -= Math.cos(this.aimAngle) * 16;
+        this.vy -= Math.sin(this.aimAngle) * 16;
+      }
+    }
+
     if (this.penetration <= 0) {
       this.kill();
     }
@@ -360,11 +549,40 @@ export class Drone {
       ctx.globalAlpha = Math.max(0, 1.0 - (this.deathTimer / this.deathDuration));
     }
     ctx.translate(this.x, this.y);
-    ctx.rotate(this.angle);
 
+    if (this.isMinion) {
+      ctx.save();
+      ctx.rotate(this.aimAngle);
+      const barrelWidth = this.radius * 0.72;
+      const recoil = Math.min(this.radius * 0.32, this.recoilOffset || 0);
+      const barrelLen = Math.max(this.radius * 0.9, this.radius * 1.52 - recoil);
+      ctx.fillStyle = '#999999';
+      ctx.strokeStyle = '#727272';
+      ctx.lineWidth = 2.5;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.rect(0, -barrelWidth / 2, barrelLen, barrelWidth);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+      ctx.fillStyle = this.color;
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = this.strokeColor;
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    ctx.rotate(this.angle + (this.angleOffset || 0));
+
+    const sides = this.sides || 3;
     ctx.beginPath();
-    for (let i = 0; i < 3; i++) {
-      const a = (i * 2 * Math.PI) / 3;
+    for (let i = 0; i < sides; i++) {
+      const a = (i * 2 * Math.PI) / sides;
       const px = this.radius * Math.cos(a);
       const py = this.radius * Math.sin(a);
       if (i === 0) ctx.moveTo(px, py);
@@ -391,6 +609,8 @@ export class WeaponSystem {
     this.activeDroneCount = 0;
     this.maxDrones = 0;
     this.isDroneClass = false;
+    this.isFactoryClass = false;
+    this.minionBulletStats = null;
     this.loadChassisConfig(chassisKey);
   }
 
@@ -399,10 +619,43 @@ export class WeaponSystem {
     const chassis = CONFIG.CHASSIS[key];
     const defaultWeapon = chassis.weapon || {};
     this.isDroneClass = Boolean(chassis.isDroneClass);
+    this.isFactoryClass = Boolean(chassis.isFactoryClass);
+    this.unlimitedDrones = Boolean(chassis.unlimitedDrones);
+    this.infectSquares = Boolean(chassis.infectSquares);
+    this.starterDroneCap = chassis.starterDroneCap || 0;
     this.maxDrones = chassis.maxDrones || 0;
+    const baseCfg = CONFIG.WEAPONS.basicBarrelBase || { damage: 7.0, penetration: 2.0, bulletSpeed: 160, fireRateTicks: 80 };
+    const profile = chassis.droneProfile || { damage: 1.68, penetration: 2.0, bulletSpeed: 0.76, radius: 15 };
+    this.necromancerStats = {
+      damage: baseCfg.damage * (profile.damage ?? 1.68),
+      penetration: baseCfg.penetration * (profile.penetration ?? 2.0),
+      speed: baseCfg.bulletSpeed * (profile.bulletSpeed ?? 0.76),
+      radius: profile.radius ?? 15
+    };
+    if (this.isFactoryClass) {
+      const mProfile = chassis.minionBulletProfile || { damage: 0.40, penetration: 0.40, bulletSpeed: 0.80, fireRateTicks: 80, radius: 5.0, lifetime: 1.35 };
+      const rCfg = CONFIG.WEAPONS.reloadScaling || {};
+      this.minionBulletStats = {
+        damage: baseCfg.damage * (mProfile.damage ?? 0.40),
+        penetration: baseCfg.penetration * (mProfile.penetration ?? 0.40),
+        speed: baseCfg.bulletSpeed * (mProfile.bulletSpeed ?? 0.80),
+        fireIntervalSec: Math.max(rCfg.minFireIntervalSec || 0.20, (mProfile.fireRateTicks || baseCfg.fireRateTicks || 80) / 60),
+        radius: mProfile.radius ?? 5.0,
+        lifetime: mProfile.lifetime ?? 1.35
+      };
+    } else {
+      this.minionBulletStats = null;
+    }
     if (!this.isDroneClass) {
       this.drones = [];
       this.activeDroneCount = 0;
+    } else if (this.drones.length > 0) {
+      this.drones = this.drones.filter(d =>
+        !d.dead &&
+        Boolean(d.isNecromancerDrone) === this.infectSquares &&
+        Boolean(d.isMinion) === this.isFactoryClass
+      );
+      this.activeDroneCount = this.drones.length;
     }
 
     // Build independent turret definitions
@@ -469,6 +722,8 @@ export class WeaponSystem {
         isTrap: Boolean(w.isTrap || t.isTrap),
         trapDrag: w.trapDrag ?? t.trapDrag,
         isAutoTurret: Boolean(t.isAutoTurret || w.isAutoTurret),
+        isAutoDrone: Boolean(t.isAutoDrone || w.isAutoDrone),
+        maxDronesForType: w.maxDronesForType ?? t.maxDronesForType ?? null,
         mountRadius: t.mountRadius || 11,
         autoRange: w.autoRange ?? t.autoRange,
         autoFovHalf: w.autoFovHalf ?? t.autoFovHalf,
@@ -482,7 +737,14 @@ export class WeaponSystem {
         penetration: w.penetration || 2.0,
         damage: w.damage || 7.0,
         recoil: w.recoil || 0,
-        shellRadius: (w.shellRadius !== undefined) ? w.shellRadius : Math.round(((t.width || 20) / 20) * (CONFIG.WEAPONS.basicBarrelBase.bulletSize || 9) * (t.bulletSize || 1.0) * 10) / 10,
+        shellRadius: Math.round(
+          ((w.shellRadius !== undefined)
+            ? w.shellRadius
+            : (((t.width || 20) / 20) * (CONFIG.WEAPONS.basicBarrelBase.bulletSize || 9) * (t.bulletSize !== undefined ? t.bulletSize : 1.0)))
+          * (chassis.bulletSizeMultiplier !== undefined ? chassis.bulletSizeMultiplier : 1.0)
+          * (CONFIG.WEAPONS.bulletSizeMultiplier !== undefined ? CONFIG.WEAPONS.bulletSizeMultiplier : 1.0)
+          * 10
+        ) / 10,
         spread: w.spread || 0,
         maxRack: w.maxRack || 3,
         refillSpeed: turretRefillSpeed,
@@ -527,28 +789,33 @@ export class WeaponSystem {
     this.firingMode = chassis.firingMode || 'simultaneous';
     this.wasFiring = false;
 
-    // Bind primary HUD readouts to the first SHOOTING turret on the tank
-    const primaryShootingIdx = this.turrets.findIndex(t => t.shootsBullet);
-    const pTurret = (primaryShootingIdx !== -1) ? this.turrets[primaryShootingIdx] : null;
+    // Bind primary HUD readouts across each distinct weapon system on the tank
+    const shootingTurrets = this.turrets.filter(t => t.shootsBullet);
+    const pTurret = shootingTurrets[0] || null;
+    const thermalTurret = shootingTurrets.find(t => t.type === WEAPON_TYPE.THERMAL) || null;
+    const energyTurret = shootingTurrets.find(t => t.type === WEAPON_TYPE.ENERGY) || null;
+    const readyRackTurret = shootingTurrets.find(t => t.type === WEAPON_TYPE.READY_RACK) || null;
+    const droneTurret = shootingTurrets.find(t => t.type === WEAPON_TYPE.DRONE_SPAWNER) || null;
 
     if (pTurret) {
       this.type = pTurret.type;
-      this.maxRack = pTurret.maxRack;
-      this.currentRack = pTurret.maxRack;
+      this.maxRack = readyRackTurret ? readyRackTurret.maxRack : pTurret.maxRack;
+      this.currentRack = readyRackTurret ? readyRackTurret.maxRack : pTurret.maxRack;
       this.reloadTimer = 0;
       this.heat = 0;
       this.isOverheated = false;
       this.overheatLockoutTimer = 0;
-      this.coolRate = pTurret.coolRate || 16;
-      this.overheatLockoutTime = pTurret.overheatLockoutTime || 2.0;
-      this.energy = pTurret.maxEnergy;
-      this.maxEnergy = pTurret.maxEnergy;
-      this.costPerShot = pTurret.costPerShot;
-      this.rechargeRate = pTurret.rechargeRate;
+      this.coolRate = (thermalTurret && thermalTurret.coolRate) || pTurret.coolRate || 16;
+      this.overheatLockoutTime = (thermalTurret && thermalTurret.overheatLockoutTime) || pTurret.overheatLockoutTime || 2.0;
+      this.energy = energyTurret ? energyTurret.maxEnergy : pTurret.maxEnergy;
+      this.maxEnergy = energyTurret ? energyTurret.maxEnergy : pTurret.maxEnergy;
+      this.costPerShot = energyTurret ? energyTurret.costPerShot : pTurret.costPerShot;
+      this.rechargeRate = energyTurret ? energyTurret.rechargeRate : pTurret.rechargeRate;
       this.cooldownTimer = 0;
       this.fireIntervalSec = pTurret.fireIntervalSec;
-      if (pTurret.type === WEAPON_TYPE.DRONE_SPAWNER) {
-        this.maxDrones = chassis.maxDrones || pTurret.maxDrones || 8;
+      if (droneTurret || this.isDroneClass) {
+        this.unlimitedDrones = Boolean(chassis.unlimitedDrones);
+        this.maxDrones = chassis.maxDrones || (droneTurret && droneTurret.maxDrones) || 8;
       }
     } else if (chassis.weapon) {
       // Base ability / chassis-level weapon for turretless tanks (e.g. Smasher)
@@ -568,6 +835,19 @@ export class WeaponSystem {
       this.cooldownDurationSec = Math.max(0.4, baseCooldownSec);
       this.fireIntervalSec = this.cooldownDurationSec;
       this.cooldownTimer = 0;
+    } else if (this.infectSquares || this.isDroneClass) {
+      this.type = WEAPON_TYPE.DRONE_SPAWNER;
+      this.maxRack = 0;
+      this.currentRack = 0;
+      this.reloadTimer = 0;
+      this.heat = 0;
+      this.isOverheated = false;
+      this.energy = 0;
+      this.maxEnergy = 0;
+      this.costPerShot = 0;
+      this.rechargeRate = 0;
+      this.cooldownTimer = 0;
+      this.maxDrones = chassis.maxDrones || 22;
     } else {
       this.type = WEAPON_TYPE.NONE;
       this.maxRack = 0;
@@ -586,6 +866,7 @@ export class WeaponSystem {
   update(dt, player, isFiring, controlState = null, enemies = [], shapes = []) {
     let totalRecoilImpulse = { x: 0, y: 0 };
     this.idleOrbitTime += dt;
+    this.firedThisFrame = false;
 
     // 1. Decay barrel recoil offset for all turrets
     this.turrets.forEach((turret, i) => {
@@ -622,7 +903,8 @@ export class WeaponSystem {
       } else if (turret.type === WEAPON_TYPE.THERMAL) {
         // Individual thermal cooling is managed tank-wide below
       } else if (turret.type === WEAPON_TYPE.ENERGY) {
-        if (!isFiring) {
+        const turretFiring = turret.isAutoTurret ? state.autoShouldFire : isFiring;
+        if (!turretFiring) {
           state.energy = Math.min(turret.maxEnergy, state.energy + turret.rechargeRate * dt);
         }
       }
@@ -808,6 +1090,7 @@ export class WeaponSystem {
 
         if (canFire) {
           state.cooldownTimer = turret.fireIntervalSec;
+          this.firedThisFrame = true;
           const impulse = this.executeTurretShot(player, turret, state);
           totalRecoilImpulse.x += impulse.x;
           totalRecoilImpulse.y += impulse.y;
@@ -815,27 +1098,35 @@ export class WeaponSystem {
       }
     });
 
-    // 4. Sync aggregate HUD metrics
+    // 4. Sync aggregate HUD metrics across all weapon types present
     const primaryShootingIdx = this.turrets.findIndex(t => t.shootsBullet);
     if (primaryShootingIdx !== -1 && this.turretStates[primaryShootingIdx]) {
-      let hudTurret = this.turrets[primaryShootingIdx];
-      let hudState = this.turretStates[primaryShootingIdx];
-
-      if (shootingTurrets.some(t => t.isAutoTurret && t.type === WEAPON_TYPE.READY_RACK)) {
-        shootingTurrets.forEach(t => {
-          if (!t.isAutoTurret) return;
-          const s = this.turretStates[t.index];
-          if (s.currentRack < hudState.currentRack || (s.currentRack === hudState.currentRack && s.reloadTimer > hudState.reloadTimer)) {
-            hudTurret = t;
-            hudState = s;
-          }
-        });
-      }
-
+      const hudTurret = this.turrets[primaryShootingIdx];
+      const hudState = this.turretStates[primaryShootingIdx];
       this.type = hudTurret.type;
-      this.maxRack = hudTurret.maxRack;
-      this.currentRack = hudState.currentRack;
-      this.reloadTimer = hudState.reloadTimer;
+
+      const readyRackTurrets = shootingTurrets.filter(t => t.type === WEAPON_TYPE.READY_RACK);
+      if (readyRackTurrets.length > 0) {
+        let repTurret = readyRackTurrets[0];
+        let repState = this.turretStates[repTurret.index];
+        if (readyRackTurrets.some(t => t.isAutoTurret)) {
+          readyRackTurrets.forEach(t => {
+            if (!t.isAutoTurret) return;
+            const s = this.turretStates[t.index];
+            if (s.currentRack < repState.currentRack || (s.currentRack === repState.currentRack && s.reloadTimer > repState.reloadTimer)) {
+              repTurret = t;
+              repState = s;
+            }
+          });
+        }
+        this.maxRack = repTurret.maxRack;
+        this.currentRack = repState.currentRack;
+        this.reloadTimer = repState.reloadTimer;
+      } else {
+        this.maxRack = hudTurret.maxRack;
+        this.currentRack = hudState.currentRack;
+        this.reloadTimer = hudState.reloadTimer;
+      }
 
       if (!primaryThermal) {
         if (isAlternating) {
@@ -854,8 +1145,23 @@ export class WeaponSystem {
         }
       }
 
-      this.energy = hudState.energy;
-      this.maxEnergy = hudTurret.maxEnergy;
+      const energyTurrets = shootingTurrets.filter(t => t.type === WEAPON_TYPE.ENERGY);
+      if (energyTurrets.length > 0) {
+        let repEnergyTurret = energyTurrets[0];
+        let repEnergyState = this.turretStates[repEnergyTurret.index];
+        energyTurrets.forEach(t => {
+          const s = this.turretStates[t.index];
+          if (s.energy < repEnergyState.energy) {
+            repEnergyTurret = t;
+            repEnergyState = s;
+          }
+        });
+        this.energy = repEnergyState.energy;
+        this.maxEnergy = repEnergyTurret.maxEnergy;
+      } else {
+        this.energy = hudState.energy;
+        this.maxEnergy = hudTurret.maxEnergy;
+      }
     }
 
     // Process Smasher kinetic dash cooldown ability
@@ -886,16 +1192,57 @@ export class WeaponSystem {
       }
       const cap = this.maxDrones || 8;
       if (livingCount < cap) {
+        let manualCount = 0;
+        let autoCount = 0;
+        for (let i = 0; i < this.drones.length; i++) {
+          if (this.drones[i].dead) continue;
+          if (this.drones[i].isAutoDrone) autoCount++;
+          else manualCount++;
+        }
         const startIdx = this.nextDroneSpawnerIdx % droneTurrets.length;
         for (let k = 0; k < droneTurrets.length; k++) {
           if (livingCount >= cap) break;
           const turret = droneTurrets[(startIdx + k) % droneTurrets.length];
+          if (turret.maxDronesForType !== null && turret.maxDronesForType !== undefined) {
+            const typeCount = turret.isAutoDrone ? autoCount : manualCount;
+            if (typeCount >= turret.maxDronesForType) continue;
+          }
           const state = this.turretStates[turret.index];
           if (state.cooldownTimer <= 0) {
             state.cooldownTimer = turret.fireIntervalSec;
             this.spawnDroneFromTurret(player, turret, state);
             livingCount++;
+            if (turret.isAutoDrone) autoCount++;
+            else manualCount++;
             this.nextDroneSpawnerIdx = (startIdx + k + 1) % droneTurrets.length;
+          }
+        }
+      }
+    }
+
+    // Necromancer starter drone spawner (replenishes up to starterDroneCap = 4 from side spawners)
+    if (this.infectSquares && this.starterDroneCap > 0 && this.turrets.length > 0) {
+      let livingCount = this.getLivingDroneCount();
+      const starterCap = Math.min(this.starterDroneCap, this.maxDrones || 22);
+      if (livingCount < starterCap) {
+        const sizeScale = (player && player.radius) ? (player.radius / CONFIG.PLAYER.radius) : 1.0;
+        const startIdx = this.nextDroneSpawnerIdx % this.turrets.length;
+        for (let k = 0; k < this.turrets.length; k++) {
+          if (livingCount >= starterCap) break;
+          const turret = this.turrets[(startIdx + k) % this.turrets.length];
+          const state = this.turretStates[turret.index];
+          if (state.cooldownTimer <= 0) {
+            state.cooldownTimer = turret.fireIntervalSec || 1.25;
+            state.recoilOffset = 8;
+            const barrelAngle = player.angle + (turret.angleOffset || 0);
+            const barrelTipLen = (turret.length || 34) * sizeScale;
+            const spawnX = player.x + Math.cos(barrelAngle) * barrelTipLen;
+            const spawnY = player.y + Math.sin(barrelAngle) * barrelTipLen;
+            const ejectSpd = (this.necromancerStats?.speed || 121.6) * 0.9;
+            if (this.spawnNecromancerDrone(player, spawnX, spawnY, barrelAngle, ejectSpd, 0.16)) {
+              livingCount++;
+            }
+            this.nextDroneSpawnerIdx = (startIdx + k + 1) % this.turrets.length;
           }
         }
       }
@@ -909,41 +1256,71 @@ export class WeaponSystem {
     this.activeDroneCount = livingDrones.length;
 
     const isIdleMode = !controlState || controlState.mode === 'IDLE';
-    const guardRangeSq = 500 * 500;
-    const leashSq = 640 * 640;
+    const manualGuardRangeSq = this.isFactoryClass ? 740 * 740 : 500 * 500;
+    const autoGuardRangeSq = 820 * 820;
+    const manualLeashSq = this.isFactoryClass ? 880 * 880 : 640 * 640;
+    const autoLeashSq = 920 * 920;
 
     let livingIdx = 0;
     let dWrite = 0;
     for (let i = 0; i < this.drones.length; i++) {
       const d = this.drones[i];
       if (!d.dead) {
+        if (d.isMinion && this.minionBulletStats) {
+          d.minionBulletStats = this.minionBulletStats;
+        }
         let targetEntity = null;
-        if (isIdleMode) {
+        if (isIdleMode || d.isAutoDrone) {
           const pDx = d.x - player.x;
           const pDy = d.y - player.y;
+          const leashSq = d.isAutoDrone ? autoLeashSq : manualLeashSq;
+          const guardRangeSq = d.isAutoDrone ? autoGuardRangeSq : manualGuardRangeSq;
           if (pDx * pDx + pDy * pDy <= leashSq) {
+            if (
+              this.isFactoryClass &&
+              player.lastAttacker &&
+              !player.lastAttacker.dead &&
+              !player.lastAttacker.destroyed &&
+              (player.lastAttackerTimer || 0) > 0
+            ) {
+              const apDx = player.lastAttacker.x - player.x;
+              const apDy = player.lastAttacker.y - player.y;
+              if (apDx * apDx + apDy * apDy <= 920 * 920) {
+                targetEntity = player.lastAttacker;
+              }
+            }
             let bestScore = Infinity;
-            for (let j = 0; j < enemies.length; j++) {
-              const e = enemies[j];
-              if (e.dead || e.destroyed) continue;
-              const epDx = e.x - player.x;
-              const epDy = e.y - player.y;
-              if (epDx * epDx + epDy * epDy > guardRangeSq) continue;
-              const dd = Math.hypot(e.x - d.x, e.y - d.y);
-              if (dd < bestScore) {
-                bestScore = dd;
-                targetEntity = e;
+            if (!targetEntity) {
+              for (let j = 0; j < enemies.length; j++) {
+                const e = enemies[j];
+                if (e.dead || e.destroyed) continue;
+                const epDx = e.x - player.x;
+                const epDy = e.y - player.y;
+                if (epDx * epDx + epDy * epDy > guardRangeSq) continue;
+                const dd = Math.hypot(e.x - d.x, e.y - d.y);
+                if (dd < bestScore) {
+                  bestScore = dd;
+                  targetEntity = e;
+                }
               }
             }
             if (!targetEntity) {
+              const prioritizeSquares = this.infectSquares && livingDrones.length < (this.maxDrones || 22);
+              let bestIsSquare = false;
               for (let j = 0; j < shapes.length; j++) {
                 const s = shapes[j];
                 if (s.dead || s.destroyed) continue;
                 const spDx = s.x - player.x;
                 const spDy = s.y - player.y;
                 if (spDx * spDx + spDy * spDy > guardRangeSq) continue;
+                const isSq = s.type === 'square';
+                if (prioritizeSquares && bestIsSquare && !isSq) continue;
                 const dd = Math.hypot(s.x - d.x, s.y - d.y);
-                if (dd < bestScore) {
+                if (prioritizeSquares && isSq && !bestIsSquare) {
+                  bestIsSquare = true;
+                  bestScore = dd;
+                  targetEntity = s;
+                } else if (dd < bestScore) {
                   bestScore = dd;
                   targetEntity = s;
                 }
@@ -951,10 +1328,10 @@ export class WeaponSystem {
             }
           }
         }
-        d.updateBehavior(dt, player, controlState, targetEntity, livingIdx, livingDrones.length, livingDrones, this.idleOrbitTime);
+        d.updateBehavior(dt, player, controlState, targetEntity, livingIdx, livingDrones.length, livingDrones, this.idleOrbitTime, this.projectiles);
         livingIdx++;
       } else {
-        d.updateBehavior(dt, player, controlState, null, 0, livingDrones.length, livingDrones, this.idleOrbitTime);
+        d.updateBehavior(dt, player, controlState, null, 0, livingDrones.length, livingDrones, this.idleOrbitTime, this.projectiles);
       }
       if (!d.destroyed) {
         this.drones[dWrite++] = d;
@@ -985,7 +1362,7 @@ export class WeaponSystem {
     }
 
     const barrelAngle = angle + turret.angleOffset;
-    const perpAngle = angle + Math.PI / 2;
+    const perpAngle = barrelAngle + Math.PI / 2;
     const barrelTipLen = turret.length * sizeScale;
 
     const spawnX = player.x + Math.cos(barrelAngle) * barrelTipLen + Math.cos(perpAngle) * (turret.yOffset * sizeScale);
@@ -1009,9 +1386,65 @@ export class WeaponSystem {
         turret.penetration,
         turret.shellSpeed,
         fill,
-        stroke
+        stroke,
+        {
+          lifetime: turret.lifetime,
+          isAutoDrone: turret.isAutoDrone,
+          isMinion: this.isFactoryClass,
+          aimAngle: barrelAngle,
+          minionBulletStats: this.minionBulletStats
+        }
       )
     );
+  }
+
+  getLivingDroneCount() {
+    let count = 0;
+    for (let i = 0; i < this.drones.length; i++) {
+      if (!this.drones[i].dead) count++;
+    }
+    return count;
+  }
+
+  spawnNecromancerDrone(player, x, y, initialAngle = null, speedOverride = null, ejectTimer = 0) {
+    if (!this.infectSquares) return false;
+    const cap = this.maxDrones || 22;
+    if (this.getLivingDroneCount() >= cap) return false;
+
+    const sizeScale = (player && player.radius) ? (player.radius / CONFIG.PLAYER.radius) : 1.0;
+    const nStats = this.necromancerStats || { damage: 11.76, penetration: 4.0, speed: 121.6, radius: 15 };
+    const fill = player.fillColor || '#00b2e1';
+    const stroke = player.strokeColor || '#0083a8';
+    const droneRadius = (nStats.radius || 15) * (sizeScale / ((CONFIG.CHASSIS.necromancer && CONFIG.CHASSIS.necromancer.radiusMultiplier) || 1.25));
+    const dirAngle = (initialAngle !== null && initialAngle !== undefined)
+      ? initialAngle
+      : Math.atan2(y - player.y, x - player.x);
+    const launchSpd = (speedOverride !== null && speedOverride !== undefined) ? speedOverride : 20;
+    const vx = Math.cos(dirAngle) * launchSpd;
+    const vy = Math.sin(dirAngle) * launchSpd;
+
+    this.drones.push(
+      new Drone(
+        x,
+        y,
+        vx,
+        vy,
+        droneRadius,
+        nStats.damage,
+        nStats.penetration,
+        nStats.speed,
+        fill,
+        stroke,
+        {
+          sides: 4,
+          angleOffset: Math.PI / 4,
+          isNecromancerDrone: true,
+          spawnEjectTimer: ejectTimer
+        }
+      )
+    );
+    this.activeDroneCount = this.getLivingDroneCount();
+    return true;
   }
 
   executeTurretShot(player, turret, turretState) {
@@ -1052,7 +1485,7 @@ export class WeaponSystem {
         spawnX = mx + Math.cos(fireAngle) * tipLen;
         spawnY = my + Math.sin(fireAngle) * tipLen;
       } else {
-        const perpAngle = angle + Math.PI / 2;
+        const perpAngle = fireAngle + Math.PI / 2;
         const barrelTipLen = ((turret.xOffset || 0) + turret.length) * sizeScale;
         spawnX = player.x + Math.cos(fireAngle) * barrelTipLen + Math.cos(perpAngle) * (turret.yOffset * sizeScale);
         spawnY = player.y + Math.sin(fireAngle) * barrelTipLen + Math.sin(perpAngle) * (turret.yOffset * sizeScale);

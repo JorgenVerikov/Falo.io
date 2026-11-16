@@ -15,23 +15,15 @@ export class HUDUpdater {
     this.prevWaveStatus = '';
     this.prevWaveColor = '';
     this.prevWaveTimer = '';
-    this.prevWeaponTitle = '';
-    this.prevWeaponMode = '';
-    this.prevRackCount = -1;
-    this.prevRackCurrent = -1;
-    this.prevRackReloading = false;
-    this.prevFillColor = '';
-    this.prevGaugeText = '';
-    this.prevGaugePct = '';
-    this.prevGaugeBg = '';
-    this.prevGaugeClass = '';
-    this.prevOverheatHidden = null;
-    this.rackPips = [];
+    this.prevMultiGauge = null;
+    this.slotViews = [];
     this.pillHiddenOnce = false;
   }
 
   ensureElements() {
     if (this.els) return this.els;
+    const primaryTitle = document.getElementById('weapon-title');
+    const primarySlotRoot = primaryTitle ? primaryTitle.closest('.weapon-gauge-slot') : null;
     this.els = {
       fpsCounter: document.getElementById('fps-counter'),
       scoreDisplay: document.getElementById('score-display'),
@@ -43,14 +35,105 @@ export class HUDUpdater {
       waveStatus: document.getElementById('wave-status'),
       waveTimerText: document.getElementById('wave-timer-text'),
       enemyUpgradePill: document.getElementById('enemy-upgrade-pill'),
-      titleElem: document.getElementById('weapon-title'),
+      weaponHud: document.getElementById('weapon-hud'),
+      titleElem: primaryTitle,
       rackContainer: document.getElementById('ready-rack-container'),
       barWrapper: document.getElementById('gauge-bar-wrapper'),
       barFill: document.getElementById('gauge-bar-fill'),
       barText: document.getElementById('gauge-text'),
       overheatBanner: document.getElementById('overheat-banner')
     };
+
+    if (primaryTitle && this.els.rackContainer && this.els.barWrapper && this.els.barFill && this.els.barText && this.els.overheatBanner) {
+      this.slotViews = [
+        this.createSlotViewState({
+          root: primarySlotRoot || this.els.weaponHud,
+          titleElem: primaryTitle,
+          rackContainer: this.els.rackContainer,
+          barWrapper: this.els.barWrapper,
+          barFill: this.els.barFill,
+          barText: this.els.barText,
+          overheatBanner: this.els.overheatBanner
+        })
+      ];
+    }
+
     return this.els;
+  }
+
+  createSlotViewState(nodes) {
+    return {
+      root: nodes.root,
+      titleElem: nodes.titleElem,
+      rackContainer: nodes.rackContainer,
+      barWrapper: nodes.barWrapper,
+      barFill: nodes.barFill,
+      barText: nodes.barText,
+      overheatBanner: nodes.overheatBanner,
+      prevHidden: null,
+      prevWeaponTitle: '',
+      prevWeaponMode: '',
+      prevRackCount: -1,
+      prevRackCurrent: -1,
+      prevRackReloading: false,
+      prevFillColor: '',
+      prevGaugeText: '',
+      prevGaugePct: '',
+      prevGaugeBg: '',
+      prevGaugeClass: '',
+      prevOverheatHidden: null,
+      rackPips: []
+    };
+  }
+
+  ensureSlotView(els, index) {
+    if (this.slotViews[index]) return this.slotViews[index];
+    if (!els.weaponHud) return null;
+
+    const slot = document.createElement('div');
+    slot.className = 'weapon-gauge-slot';
+    slot.dataset.slotIndex = String(index);
+
+    const titleElem = document.createElement('div');
+    titleElem.className = 'weapon-title';
+
+    const rackContainer = document.createElement('div');
+    rackContainer.className = 'rack-container hidden';
+
+    const barWrapper = document.createElement('div');
+    barWrapper.className = 'gauge-bar-wrapper hidden';
+
+    const barFill = document.createElement('div');
+    barFill.className = 'gauge-bar-fill';
+
+    const barText = document.createElement('span');
+    barText.className = 'gauge-text';
+    barText.textContent = '0%';
+
+    barWrapper.appendChild(barFill);
+    barWrapper.appendChild(barText);
+
+    const overheatBanner = document.createElement('div');
+    overheatBanner.className = 'overheat-banner hidden';
+    overheatBanner.textContent = 'OVERHEAT';
+
+    slot.appendChild(titleElem);
+    slot.appendChild(rackContainer);
+    slot.appendChild(barWrapper);
+    slot.appendChild(overheatBanner);
+    els.weaponHud.appendChild(slot);
+
+    const view = this.createSlotViewState({
+      root: slot,
+      titleElem,
+      rackContainer,
+      barWrapper,
+      barFill,
+      barText,
+      overheatBanner
+    });
+    this.slotViews[index] = view;
+    return view;
   }
 
   update(state, player, waveMgr, weaponSys, storageMgr, uiMgr) {
@@ -144,113 +227,335 @@ export class HUDUpdater {
     this.updateWeaponHUD(els, state, player, weaponSys);
   }
 
-  updateWeaponHUD(els, state, player, weaponSys) {
-    if (!els.titleElem || !els.rackContainer || !els.barWrapper) return;
-
-    const hasShootingTurrets = weaponSys.turrets && weaponSys.turrets.some(t => t.shootsBullet);
-    const isSmasherAbility = (state.activeChassis === 'smasher') || (!hasShootingTurrets && (weaponSys.type === WEAPON_TYPE.COOLDOWN || weaponSys.type === WEAPON_TYPE.ENERGY));
+  buildWeaponGauges(state, player, weaponSys) {
+    const turrets = weaponSys.turrets || [];
+    const turretStates = weaponSys.turretStates || [];
+    const shootingTurrets = turrets.filter(t => t.shootsBullet);
+    const hasShootingTurrets = shootingTurrets.length > 0;
+    const hasDroneTurrets = shootingTurrets.some(t => t.type === WEAPON_TYPE.DRONE_SPAWNER);
+    const isDroneSystem = hasDroneTurrets || Boolean(weaponSys.isDroneClass) || Boolean(weaponSys.infectSquares);
+    const isSmasherAbility = (state.activeChassis === 'smasher') || (!hasShootingTurrets && !isDroneSystem && (weaponSys.type === WEAPON_TYPE.COOLDOWN || weaponSys.type === WEAPON_TYPE.ENERGY));
+    const fillColor = player.fillColor || '#00e5ff';
 
     if (isSmasherAbility) {
-      if (this.prevWeaponTitle !== 'KINETIC SURGE DASH') {
-        this.prevWeaponTitle = 'KINETIC SURGE DASH';
-        els.titleElem.textContent = 'KINETIC SURGE DASH';
-      }
-      if (this.prevWeaponMode !== 'smasher') {
-        this.prevWeaponMode = 'smasher';
-        els.rackContainer.classList.add('hidden');
-        els.barWrapper.classList.remove('hidden');
-      }
-      if (this.prevOverheatHidden !== true) {
-        this.prevOverheatHidden = true;
-        els.overheatBanner.classList.add('hidden');
-      }
-
       const cooldown = weaponSys.cooldownTimer || 0;
       const maxCooldown = weaponSys.cooldownDurationSec || 1.67;
-
-      let pctStr;
-      let cls;
-      let bg;
-      let txt;
       if (cooldown > 0) {
         const cdPct = Math.max(0, Math.min(100, (1.0 - (cooldown / maxCooldown)) * 100));
-        pctStr = `${cdPct.toFixed(1)}%`;
-        cls = 'gauge-bar-fill cooldown';
-        bg = '#475569';
-        txt = `COOLDOWN: ${cooldown.toFixed(1)}s`;
+        return [{
+          kind: 'bar',
+          mode: 'smasher',
+          title: 'KINETIC SURGE DASH',
+          pctStr: `${cdPct.toFixed(1)}%`,
+          cls: 'gauge-bar-fill cooldown',
+          bg: '#475569',
+          txt: `COOLDOWN: ${cooldown.toFixed(1)}s`,
+          hideOverheat: true
+        }];
+      }
+      return [{
+        kind: 'bar',
+        mode: 'smasher',
+        title: 'KINETIC SURGE DASH',
+        pctStr: '100%',
+        cls: 'gauge-bar-fill ready',
+        bg: '#00e5ff',
+        txt: 'READY',
+        hideOverheat: true
+      }];
+    }
+
+    if (!hasShootingTurrets && !isDroneSystem) {
+      return [{
+        kind: 'none',
+        mode: 'none',
+        title: 'NO TURRETS AVAILABLE'
+      }];
+    }
+
+    const gauges = [];
+
+    // 1. Barrel Thermal Gauge (one shared heat gauge across all thermal cannons)
+    const hasThermal = shootingTurrets.some(t => t.type === WEAPON_TYPE.THERMAL) || (!hasShootingTurrets && weaponSys.type === WEAPON_TYPE.THERMAL);
+    if (hasThermal) {
+      const heat = Math.round(weaponSys.heat || 0);
+      let bg = fillColor;
+      let hideOverheat = true;
+      if (weaponSys.isOverheated || heat > 80) {
+        bg = '#d93838';
+        hideOverheat = false;
+      } else if (heat > 50) {
+        bg = '#c4702b';
+        hideOverheat = true;
+      }
+      gauges.push({
+        kind: 'bar',
+        mode: 'thermal',
+        title: 'BARREL THERMAL GAUGE',
+        pctStr: `${heat}%`,
+        cls: 'gauge-bar-fill',
+        bg,
+        txt: `${heat}% HEAT`,
+        hideOverheat
+      });
+    }
+
+    // 2. Ready-Rack / Breech Loader Gauge(s)
+    const readyRackTurrets = shootingTurrets.filter(t => t.type === WEAPON_TYPE.READY_RACK);
+    if (readyRackTurrets.length > 0) {
+      const summarizeRackGroup = (group) => {
+        let repTurret = group[0];
+        let repState = turretStates[repTurret.index];
+        if (group.some(t => t.isAutoTurret)) {
+          group.forEach(t => {
+            if (!t.isAutoTurret) return;
+            const s = turretStates[t.index];
+            if (!s || !repState) return;
+            if (s.currentRack < repState.currentRack || (s.currentRack === repState.currentRack && s.reloadTimer > repState.reloadTimer)) {
+              repTurret = t;
+              repState = s;
+            }
+          });
+        }
+        return {
+          maxRack: repTurret.maxRack || 0,
+          curRack: repState ? (repState.currentRack || 0) : (weaponSys.currentRack || 0),
+          isReloading: repState ? ((repState.reloadTimer || 0) > 0) : ((weaponSys.reloadTimer || 0) > 0)
+        };
+      };
+
+      const isSniperFamily = (weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'hunter');
+      const bulletRacks = readyRackTurrets.filter(t => !t.isTrap);
+      const trapRacks = readyRackTurrets.filter(t => t.isTrap);
+
+      if (bulletRacks.length > 0 && trapRacks.length > 0) {
+        const bSummary = summarizeRackGroup(bulletRacks);
+        gauges.push({
+          kind: 'rack',
+          mode: 'rack-bullet',
+          title: isSniperFamily ? 'BREECH LOADER' : 'READY-RACK SYSTEM',
+          maxRack: bSummary.maxRack,
+          curRack: bSummary.curRack,
+          isReloading: bSummary.isReloading,
+          fillColor
+        });
+
+        const tSummary = summarizeRackGroup(trapRacks);
+        gauges.push({
+          kind: 'rack',
+          mode: 'rack-trap',
+          title: 'TRAP RACK',
+          maxRack: tSummary.maxRack,
+          curRack: tSummary.curRack,
+          isReloading: tSummary.isReloading,
+          fillColor
+        });
       } else {
-        pctStr = '100%';
-        cls = 'gauge-bar-fill ready';
-        bg = '#00e5ff';
-        txt = 'READY';
+        const summary = summarizeRackGroup(readyRackTurrets);
+        gauges.push({
+          kind: 'rack',
+          mode: 'rack',
+          title: isSniperFamily ? 'BREECH LOADER' : 'READY-RACK SYSTEM',
+          maxRack: summary.maxRack,
+          curRack: summary.curRack,
+          isReloading: summary.isReloading,
+          fillColor
+        });
       }
-      this.syncGaugeBar(els, pctStr, cls, bg, txt);
+    } else if (!hasShootingTurrets && weaponSys.type === WEAPON_TYPE.READY_RACK) {
+      gauges.push({
+        kind: 'rack',
+        mode: 'rack',
+        title: (weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'hunter') ? 'BREECH LOADER' : 'READY-RACK SYSTEM',
+        maxRack: weaponSys.maxRack || 0,
+        curRack: weaponSys.currentRack || 0,
+        isReloading: (weaponSys.reloadTimer || 0) > 0,
+        fillColor
+      });
+    }
+
+    // 3. Capacitor Battery (Energy) Gauge
+    const energyTurrets = shootingTurrets.filter(t => t.type === WEAPON_TYPE.ENERGY);
+    if (energyTurrets.length > 0 || (!hasShootingTurrets && weaponSys.type === WEAPON_TYPE.ENERGY)) {
+      let curEnergy = weaponSys.energy || 0;
+      let maxEnergy = weaponSys.maxEnergy || 100;
+      if (energyTurrets.length > 0) {
+        let repT = energyTurrets[0];
+        let repS = turretStates[repT.index];
+        energyTurrets.forEach(t => {
+          const s = turretStates[t.index];
+          if (s && repS && s.energy < repS.energy) {
+            repT = t;
+            repS = s;
+          }
+        });
+        curEnergy = repS ? repS.energy : curEnergy;
+        maxEnergy = repT.maxEnergy || maxEnergy;
+      }
+      const roundedEnergy = Math.round(curEnergy);
+      const pct = Math.max(0, Math.min(100, (curEnergy / Math.max(1, maxEnergy)) * 100));
+      gauges.push({
+        kind: 'bar',
+        mode: 'energy',
+        title: 'CAPACITOR BATTERY',
+        pctStr: `${pct.toFixed(1)}%`,
+        cls: 'gauge-bar-fill energy',
+        bg: fillColor,
+        txt: `${roundedEnergy} / ${maxEnergy} PWR`,
+        hideOverheat: true
+      });
+    }
+
+    // 4. Drone Count Gauge (Square Swarm / Swarm Stream / Drone Swarm)
+    if (isDroneSystem) {
+      const activeCount = weaponSys.activeDroneCount || 0;
+      if (weaponSys.infectSquares) {
+        const maxCount = weaponSys.maxDrones || 22;
+        const pct = Math.min(100, (activeCount / Math.max(1, maxCount)) * 100);
+        gauges.push({
+          kind: 'bar',
+          mode: 'necromancer-swarm',
+          title: 'SQUARE SWARM',
+          pctStr: `${pct.toFixed(1)}%`,
+          cls: 'gauge-bar-fill ready',
+          bg: fillColor,
+          txt: `ACTIVE SQUARES: ${activeCount} / ${maxCount}`,
+          hideOverheat: true
+        });
+      } else if (weaponSys.unlimitedDrones) {
+        const pct = Math.min(100, (activeCount / 28) * 100);
+        gauges.push({
+          kind: 'bar',
+          mode: 'swarm-stream',
+          title: 'SWARM STREAM',
+          pctStr: `${pct.toFixed(1)}%`,
+          cls: 'gauge-bar-fill ready',
+          bg: fillColor,
+          txt: `ACTIVE DRONES: ${activeCount}`,
+          hideOverheat: true
+        });
+      } else {
+        const maxCount = weaponSys.maxDrones || 8;
+        const swarmTitle = weaponSys.isFactoryClass ? 'MINION SWARM' : 'DRONE SWARM';
+        const swarmUnitLabel = weaponSys.isFactoryClass ? 'MINIONS' : 'DRONES';
+        if (maxCount <= 16) {
+          gauges.push({
+            kind: 'rack',
+            mode: 'drone-rack',
+            title: swarmTitle,
+            maxRack: maxCount,
+            curRack: activeCount,
+            isReloading: activeCount < maxCount,
+            fillColor
+          });
+        } else {
+          const pct = Math.min(100, (activeCount / Math.max(1, maxCount)) * 100);
+          gauges.push({
+            kind: 'bar',
+            mode: 'drone-bar',
+            title: swarmTitle,
+            pctStr: `${pct.toFixed(1)}%`,
+            cls: 'gauge-bar-fill ready',
+            bg: fillColor,
+            txt: `ACTIVE ${swarmUnitLabel}: ${activeCount} / ${maxCount}`,
+            hideOverheat: true
+          });
+        }
+      }
+    }
+
+    if (gauges.length === 0) {
+      gauges.push({
+        kind: 'none',
+        mode: 'none',
+        title: 'NO TURRETS AVAILABLE'
+      });
+    }
+
+    return gauges;
+  }
+
+  updateWeaponHUD(els, state, player, weaponSys) {
+    if (this.slotViews.length === 0) return;
+
+    const gauges = this.buildWeaponGauges(state, player, weaponSys);
+    const isMulti = gauges.length > 1;
+    if (els.weaponHud && isMulti !== this.prevMultiGauge) {
+      this.prevMultiGauge = isMulti;
+      els.weaponHud.classList.toggle('has-multi-gauges', isMulti);
+    }
+
+    for (let i = 0; i < gauges.length; i++) {
+      const view = this.ensureSlotView(els, i);
+      if (!view) continue;
+      if (view.root && view.prevHidden !== false) {
+        view.prevHidden = false;
+        view.root.classList.remove('hidden');
+      }
+      this.syncSlotView(view, gauges[i]);
+    }
+
+    for (let i = gauges.length; i < this.slotViews.length; i++) {
+      const view = this.slotViews[i];
+      if (view && view.root && view.prevHidden !== true) {
+        view.prevHidden = true;
+        view.root.classList.add('hidden');
+      }
+    }
+  }
+
+  syncSlotView(view, gauge) {
+    if (gauge.title !== view.prevWeaponTitle) {
+      view.prevWeaponTitle = gauge.title;
+      view.titleElem.textContent = gauge.title;
+    }
+
+    if (gauge.kind === 'none') {
+      if (view.prevWeaponMode !== 'none') {
+        view.prevWeaponMode = 'none';
+        view.rackContainer.classList.add('hidden');
+        view.barWrapper.classList.add('hidden');
+      }
+      if (view.prevOverheatHidden !== true) {
+        view.prevOverheatHidden = true;
+        view.overheatBanner.classList.add('hidden');
+      }
       return;
     }
 
-    if (!hasShootingTurrets) {
-      if (this.prevWeaponTitle !== 'NO TURRETS AVAILABLE') {
-        this.prevWeaponTitle = 'NO TURRETS AVAILABLE';
-        els.titleElem.textContent = 'NO TURRETS AVAILABLE';
+    if (gauge.kind === 'rack') {
+      if (view.prevWeaponMode !== gauge.mode) {
+        view.prevWeaponMode = gauge.mode;
+        view.rackContainer.classList.remove('hidden');
+        view.barWrapper.classList.add('hidden');
       }
-      if (this.prevWeaponMode !== 'none') {
-        this.prevWeaponMode = 'none';
-        els.rackContainer.classList.add('hidden');
-        els.barWrapper.classList.add('hidden');
-      }
-      if (this.prevOverheatHidden !== true) {
-        this.prevOverheatHidden = true;
-        els.overheatBanner.classList.add('hidden');
-      }
-      return;
-    }
-
-    if (weaponSys.type === WEAPON_TYPE.READY_RACK || weaponSys.type === WEAPON_TYPE.DRONE_SPAWNER) {
-      const isDroneSpawner = weaponSys.type === WEAPON_TYPE.DRONE_SPAWNER;
-      const nextTitle = isDroneSpawner
-        ? 'DRONE SWARM'
-        : ((weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'hunter') ? 'BREECH LOADER' : 'READY-RACK SYSTEM');
-      if (this.prevWeaponTitle !== nextTitle) {
-        this.prevWeaponTitle = nextTitle;
-        els.titleElem.textContent = nextTitle;
-      }
-      if (this.prevWeaponMode !== 'rack') {
-        this.prevWeaponMode = 'rack';
-        els.rackContainer.classList.remove('hidden');
-        els.barWrapper.classList.add('hidden');
-      }
-      if (this.prevOverheatHidden !== true) {
-        this.prevOverheatHidden = true;
-        els.overheatBanner.classList.add('hidden');
+      if (view.prevOverheatHidden !== true) {
+        view.prevOverheatHidden = true;
+        view.overheatBanner.classList.add('hidden');
       }
 
-      const maxRack = isDroneSpawner ? (weaponSys.maxDrones || 8) : (weaponSys.maxRack || 0);
-      const curRack = isDroneSpawner ? (weaponSys.activeDroneCount || 0) : (weaponSys.currentRack || 0);
-      const isReloading = isDroneSpawner ? (curRack < maxRack) : ((weaponSys.reloadTimer || 0) > 0);
-      const fillColor = player.fillColor;
-
-      // Only rebuild shell pip elements if rack capacity changed
-      if (maxRack !== this.prevRackCount) {
-        this.prevRackCount = maxRack;
-        this.rackPips = [];
-        els.rackContainer.innerHTML = '';
+      const { maxRack, curRack, isReloading, fillColor } = gauge;
+      if (maxRack !== view.prevRackCount) {
+        view.prevRackCount = maxRack;
+        view.rackPips = [];
+        view.rackContainer.innerHTML = '';
         for (let i = 0; i < maxRack; i++) {
           const pip = document.createElement('div');
           pip.className = 'shell-pip';
-          els.rackContainer.appendChild(pip);
-          this.rackPips.push(pip);
+          view.rackContainer.appendChild(pip);
+          view.rackPips.push(pip);
         }
-        this.prevRackCurrent = -1;
-        this.prevFillColor = '';
+        view.prevRackCurrent = -1;
+        view.prevFillColor = '';
       }
 
-      if (curRack !== this.prevRackCurrent || isReloading !== this.prevRackReloading || fillColor !== this.prevFillColor) {
-        this.prevRackCurrent = curRack;
-        this.prevRackReloading = isReloading;
-        this.prevFillColor = fillColor;
+      if (curRack !== view.prevRackCurrent || isReloading !== view.prevRackReloading || fillColor !== view.prevFillColor) {
+        view.prevRackCurrent = curRack;
+        view.prevRackReloading = isReloading;
+        view.prevFillColor = fillColor;
 
-        for (let i = 0; i < this.rackPips.length; i++) {
-          const pip = this.rackPips[i];
+        for (let i = 0; i < view.rackPips.length; i++) {
+          const pip = view.rackPips[i];
           pip.style.borderColor = fillColor;
           if (i < curRack) {
             pip.className = 'shell-pip loaded';
@@ -267,80 +572,38 @@ export class HUDUpdater {
       return;
     }
 
-    if (weaponSys.type === WEAPON_TYPE.THERMAL) {
-      if (this.prevWeaponTitle !== 'BARREL THERMAL GAUGE') {
-        this.prevWeaponTitle = 'BARREL THERMAL GAUGE';
-        els.titleElem.textContent = 'BARREL THERMAL GAUGE';
-      }
-      if (this.prevWeaponMode !== 'thermal') {
-        this.prevWeaponMode = 'thermal';
-        els.rackContainer.classList.add('hidden');
-        els.barWrapper.classList.remove('hidden');
-      }
-
-      const heat = Math.round(weaponSys.heat);
-      const pctStr = `${heat}%`;
-      const txt = `${heat}% HEAT`;
-
-      let bg;
-      let hideOverheat;
-      if (weaponSys.isOverheated || heat > 80) {
-        bg = '#d93838';
-        hideOverheat = false;
-      } else if (heat > 50) {
-        bg = '#c4702b';
-        hideOverheat = true;
-      } else {
-        bg = player.fillColor;
-        hideOverheat = true;
-      }
-
-      if (this.prevOverheatHidden !== hideOverheat) {
-        this.prevOverheatHidden = hideOverheat;
-        els.overheatBanner.classList.toggle('hidden', hideOverheat);
-      }
-      this.syncGaugeBar(els, pctStr, null, bg, txt);
-      return;
+    // Bar gauge (Thermal, Energy, Smasher Cooldown, Necromancer/Battleship/High-Count Drones)
+    if (view.prevWeaponMode !== gauge.mode) {
+      view.prevWeaponMode = gauge.mode;
+      view.rackContainer.classList.add('hidden');
+      view.barWrapper.classList.remove('hidden');
     }
 
-    if (weaponSys.type === WEAPON_TYPE.ENERGY) {
-      if (this.prevWeaponTitle !== 'CAPACITOR BATTERY') {
-        this.prevWeaponTitle = 'CAPACITOR BATTERY';
-        els.titleElem.textContent = 'CAPACITOR BATTERY';
-      }
-      if (this.prevWeaponMode !== 'energy') {
-        this.prevWeaponMode = 'energy';
-        els.rackContainer.classList.add('hidden');
-        els.barWrapper.classList.remove('hidden');
-      }
-      if (this.prevOverheatHidden !== true) {
-        this.prevOverheatHidden = true;
-        els.overheatBanner.classList.add('hidden');
-      }
-
-      const energy = Math.round(weaponSys.energy);
-      const maxE = weaponSys.maxEnergy || 100;
-      const pct = Math.max(0, Math.min(100, (weaponSys.energy / maxE) * 100));
-      this.syncGaugeBar(els, `${pct.toFixed(1)}%`, 'gauge-bar-fill energy', player.fillColor, `${energy} / ${maxE} PWR`);
+    const hideOverheat = gauge.hideOverheat !== false;
+    if (view.prevOverheatHidden !== hideOverheat) {
+      view.prevOverheatHidden = hideOverheat;
+      view.overheatBanner.classList.toggle('hidden', hideOverheat);
     }
+
+    this.syncGaugeBar(view, gauge.pctStr, gauge.cls, gauge.bg, gauge.txt);
   }
 
-  syncGaugeBar(els, pctStr, cls, bg, txt) {
-    if (pctStr !== this.prevGaugePct) {
-      this.prevGaugePct = pctStr;
-      els.barFill.style.width = pctStr;
+  syncGaugeBar(view, pctStr, cls, bg, txt) {
+    if (pctStr !== view.prevGaugePct) {
+      view.prevGaugePct = pctStr;
+      view.barFill.style.width = pctStr;
     }
-    if (cls && cls !== this.prevGaugeClass) {
-      this.prevGaugeClass = cls;
-      els.barFill.className = cls;
+    if (cls && cls !== view.prevGaugeClass) {
+      view.prevGaugeClass = cls;
+      view.barFill.className = cls;
     }
-    if (bg !== this.prevGaugeBg) {
-      this.prevGaugeBg = bg;
-      els.barFill.style.background = bg;
+    if (bg !== view.prevGaugeBg) {
+      view.prevGaugeBg = bg;
+      view.barFill.style.background = bg;
     }
-    if (txt !== this.prevGaugeText) {
-      this.prevGaugeText = txt;
-      els.barText.textContent = txt;
+    if (txt !== view.prevGaugeText) {
+      view.prevGaugeText = txt;
+      view.barText.textContent = txt;
     }
   }
 }

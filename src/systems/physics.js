@@ -55,6 +55,7 @@ export class PhysicsSystem {
     const repelStrength = CONFIG.WEAPONS.repelStrength;
 
     // 1. PLAYER vs RESOURCE SHAPES
+    const canNecromancerInfect = Boolean(chassisConfig && chassisConfig.infectSquares && playerWeapon);
     for (let i = 0; i < shapes.length; i++) {
       const shape = shapes[i];
       if (shape.dead) continue;
@@ -71,6 +72,20 @@ export class PhysicsSystem {
         const nx = dx / dist;
         const ny = dy / dist;
 
+        const infectOnBody = canNecromancerInfect &&
+          shape.type === 'square' &&
+          playerWeapon.getLivingDroneCount() < (playerWeapon.maxDrones || 22);
+
+        if (infectOnBody) {
+          if (shape.ramDamage > 0) {
+            player.takeDamage(shape.ramDamage, activeChassisKey, shape);
+          }
+          shape.kill();
+          playerWeapon.spawnNecromancerDrone(player, shape.x, shape.y, shape.angle);
+          waveMgr.spawnShatterParticles(shape.x, shape.y, player.fillColor || shape.color, 5);
+          continue;
+        }
+
         const shapeWeight = shape.config.weight || 1.0;
         const baseRepulsion = pCol.shapeRepulsionBase + overlap * pCol.shapeRepulsionOverlapFactor;
         const playerPushFactor = pCol.shapePlayerPushFactor / (1.0 + (bodyDmgStat * 0.1));
@@ -84,7 +99,7 @@ export class PhysicsSystem {
 
         shape.takeDamage(ramDmgShape * pCol.shapeRamDamageMultiplier * dt);
         if (shape.ramDamage > 0) {
-          player.takeDamage(shape.ramDamage, activeChassisKey);
+          player.takeDamage(shape.ramDamage, activeChassisKey, shape);
         }
 
         if (Math.random() < 0.3) {
@@ -126,7 +141,7 @@ export class PhysicsSystem {
         enemy.vx += nx * enemyRepulsion * enemyPushFactor * dt;
         enemy.vy += ny * enemyRepulsion * enemyPushFactor * dt;
 
-        player.takeDamage(enemy.damage, activeChassisKey);
+        player.takeDamage(enemy.damage, activeChassisKey, enemy);
         if (enemy.config && enemy.config.dieOnPlayerHit) {
           enemy.kill();
         } else {
@@ -223,10 +238,12 @@ export class PhysicsSystem {
         if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) continue;
 
         if (dx * dx + dy * dy < minDist * minDist) {
+          const isNecroInfectHit = canNecromancerInfect && proj.isNecromancerDrone && shape.type === 'square';
           shape.takeDamage(proj.damage);
 
           if (!(shape.config && shape.config.noBulletDrain)) {
-            proj.takePenetrationDamage(shapePenDrain);
+            const drain = isNecroInfectHit ? 1.0 : shapePenDrain;
+            proj.takePenetrationDamage(drain);
             proj.applyCenterRepulsion(shape.x, shape.y, dt, repelStrength);
           }
 
@@ -240,8 +257,14 @@ export class PhysicsSystem {
           shape.vy += ((proj.vy / bSpeed) * 55) / shapeWeight;
 
           if (shape.dead) {
-            waveMgr.score += shape.xp;
-            waveMgr.spawnShatterParticles(shape.x, shape.y, shape.color, CONFIG.VFX.shapeShatterCount);
+            const infected = isNecroInfectHit &&
+              playerWeapon.spawnNecromancerDrone(player, shape.x, shape.y, shape.angle);
+            if (infected) {
+              waveMgr.spawnShatterParticles(shape.x, shape.y, player.fillColor || shape.color, 5);
+            } else {
+              waveMgr.score += shape.xp;
+              waveMgr.spawnShatterParticles(shape.x, shape.y, shape.color, CONFIG.VFX.shapeShatterCount);
+            }
           }
         }
       }
@@ -308,7 +331,7 @@ export class PhysicsSystem {
 
       if (Math.abs(pdx) < pMinDist && Math.abs(pdy) < pMinDist && (pdx * pdx + pdy * pdy < pMinDist * pMinDist)) {
         bullet.kill();
-        player.takeDamage(bullet.damage, activeChassisKey);
+        player.takeDamage(bullet.damage, activeChassisKey, bullet.owner || null);
         EnemyCommunicationSystem.onPlayerDamaged(enemies, null, false);
         waveMgr.spawnShatterParticles(player.x, player.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
         continue;

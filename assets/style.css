@@ -693,12 +693,40 @@ body.theme-light .enemy-upgrade-pill {
   transform: skewX(10deg);
 }
 
+.center-hud.has-multi-gauges {
+  padding-top: calc(6px * var(--ui-scale));
+  padding-bottom: calc(6px * var(--ui-scale));
+}
+
+.weapon-gauge-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.weapon-gauge-slot.hidden {
+  display: none;
+}
+
+.center-hud.has-multi-gauges .weapon-gauge-slot:not(.hidden) + .weapon-gauge-slot:not(.hidden) {
+  margin-top: calc(6px * var(--ui-scale));
+  padding-top: calc(6px * var(--ui-scale));
+  border-top: calc(1.5px * var(--ui-scale)) solid rgba(148, 163, 184, 0.24);
+  width: 100%;
+}
+
 .weapon-title {
   font-size: calc(10.5px * var(--ui-scale));
   font-weight: 900;
   letter-spacing: 1.3px;
   color: #7dd3fc;
   margin-bottom: calc(6px * var(--ui-scale));
+}
+
+.center-hud.has-multi-gauges .weapon-title {
+  font-size: calc(9.8px * var(--ui-scale));
+  margin-bottom: calc(4px * var(--ui-scale));
 }
 
 .rack-container {
@@ -716,6 +744,11 @@ body.theme-light .enemy-upgrade-pill {
   transform: skewX(-10deg);
   box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.42);
   transition: all 0.14s ease;
+}
+
+.center-hud.has-multi-gauges .shell-pip {
+  width: calc(16px * var(--ui-scale));
+  height: calc(21px * var(--ui-scale));
 }
 
 .shell-pip.loaded {
@@ -3310,6 +3343,9 @@ body.theme-light .gauge-text {
 }
 
 body.theme-light .weapon-title { color: #0284c7; }
+body.theme-light .center-hud.has-multi-gauges .weapon-gauge-slot:not(.hidden) + .weapon-gauge-slot:not(.hidden) {
+  border-top-color: rgba(15, 23, 42, 0.16);
+}
 
 body.theme-light .toast-banner {
   background: linear-gradient(135deg, #f8575e 0%, #d9383f 100%);
@@ -4663,6 +4699,15 @@ body.is-mobile .level-bar-wrapper {
 body.is-mobile .center-hud {
   min-width: min(calc(220px * var(--ui-scale)), 100%);
   padding: calc(5px * var(--ui-scale)) calc(8px * var(--ui-scale));
+}
+
+body.is-mobile .center-hud.has-multi-gauges .gauge-bar-wrapper {
+  height: calc(19px * var(--ui-scale));
+}
+
+body.is-mobile .center-hud.has-multi-gauges .shell-pip {
+  width: calc(14px * var(--ui-scale));
+  height: calc(18px * var(--ui-scale));
 }
 
 /* Portrait / Narrow Screen Adjustments */

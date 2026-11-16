@@ -401,26 +401,88 @@ export class EnemyUnit {
       if (this.evadeTimer <= 0) this.isEvading = false;
     }
 
-    const dx = player.x - this.x;
-    const dy = player.y - this.y;
+    const rawDx = player.x - this.x;
+    const rawDy = player.y - this.y;
+    const rawDist = Math.hypot(rawDx, rawDy) || 1;
+    const playerCloaked = (player.cloakAlpha !== undefined && player.cloakAlpha < 0.25) && rawDist > (this.radius + (player.radius || 25) + 32);
+
+    if (!playerCloaked) {
+      this.lastKnownPlayerX = player.x;
+      this.lastKnownPlayerY = player.y;
+      this.hasReachedLastSeen = false;
+      this.searchWaypointTimer = 0;
+      this.searchWaypointX = null;
+      this.searchWaypointY = null;
+    } else if (this.lastKnownPlayerX === undefined) {
+      // Freshly spawned enemies do not know exact coordinates of an already-invisible Stalker
+      const guessAngle = Math.random() * Math.PI * 2;
+      const guessDist = 300 + Math.random() * 220;
+      this.lastKnownPlayerX = player.x + Math.cos(guessAngle) * guessDist;
+      this.lastKnownPlayerY = player.y + Math.sin(guessAngle) * guessDist;
+      this.hasReachedLastSeen = false;
+      this.searchWaypointTimer = 0;
+    }
+
+    let searchTargetX = this.lastKnownPlayerX;
+    let searchTargetY = this.lastKnownPlayerY;
+    let distToLastSeen = 0;
+
+    if (playerCloaked) {
+      distToLastSeen = Math.hypot(this.lastKnownPlayerX - this.x, this.lastKnownPlayerY - this.y);
+      const arrivalDist = this.isRangedArchetype() ? 220 : 80;
+      if (distToLastSeen <= arrivalDist) {
+        this.hasReachedLastSeen = true;
+      }
+
+      if (this.hasReachedLastSeen) {
+        this.searchWaypointTimer = (this.searchWaypointTimer || 0) - dt;
+        const wpDist = (this.searchWaypointX !== null && this.searchWaypointX !== undefined)
+          ? Math.hypot(this.searchWaypointX - this.x, this.searchWaypointY - this.y)
+          : 0;
+        if (this.searchWaypointTimer <= 0 || this.searchWaypointX === null || this.searchWaypointX === undefined || wpDist < 48) {
+          const sweepR = (this.isRangedArchetype() ? 130 : 90) + Math.random() * 140;
+          const sweepA = Math.random() * Math.PI * 2;
+          this.searchWaypointX = this.lastKnownPlayerX + Math.cos(sweepA) * sweepR;
+          this.searchWaypointY = this.lastKnownPlayerY + Math.sin(sweepA) * sweepR;
+          this.searchWaypointTimer = 1.2 + Math.random() * 1.1;
+        }
+        searchTargetX = this.searchWaypointX;
+        searchTargetY = this.searchWaypointY;
+      }
+    }
+
+    const perceivedPlayer = playerCloaked
+      ? { ...player, x: searchTargetX, y: searchTargetY, vx: 0, vy: 0 }
+      : player;
+
+    const dx = perceivedPlayer.x - this.x;
+    const dy = perceivedPlayer.y - this.y;
     const dist = Math.hypot(dx, dy) || 1;
     const directAngle = Math.atan2(dy, dx);
-    const pVx = player.vx || 0;
-    const pVy = player.vy || 0;
+    const pVx = perceivedPlayer.vx || 0;
+    const pVy = perceivedPlayer.vy || 0;
 
-    // 1. Turret Aiming & Ballistic Lead Prediction
+    // 1. Turret Aiming & Ballistic Lead Prediction (or Area Sweep when player is invisible)
     if (this.isRangedArchetype() && this.config.weapon) {
-      const inc = ENEMY_UPGRADE_CONFIG.increments;
-      const bSpeedMult = 1.0 + (this.upgrades.stats.bulletSpeed * inc.bulletSpeed);
-      const bSpeed = (this.config.weapon.bulletSpeed || 180) * bSpeedMult;
+      let targetAimAngle;
+      if (playerCloaked) {
+        this.searchSweepPhase = (this.searchSweepPhase || Math.random() * Math.PI * 2) + dt * 1.8;
+        const probeX = this.lastKnownPlayerX + Math.cos(this.searchSweepPhase) * 145;
+        const probeY = this.lastKnownPlayerY + Math.sin(this.searchSweepPhase * 0.85) * 145;
+        targetAimAngle = Math.atan2(probeY - this.y, probeX - this.x);
+      } else {
+        const inc = ENEMY_UPGRADE_CONFIG.increments;
+        const bSpeedMult = 1.0 + (this.upgrades.stats.bulletSpeed * inc.bulletSpeed);
+        const bSpeed = (this.config.weapon.bulletSpeed || 180) * bSpeedMult;
 
-      const smoothWindow = (this.config.ai && this.config.ai.aimSmoothingTime) ? this.config.ai.aimSmoothingTime : 0.12;
-      const filterAlpha = Math.min(1.0, dt / smoothWindow);
-      this.smoothTargetVx += (pVx - this.smoothTargetVx) * filterAlpha;
-      this.smoothTargetVy += (pVy - this.smoothTargetVy) * filterAlpha;
+        const smoothWindow = (this.config.ai && this.config.ai.aimSmoothingTime) ? this.config.ai.aimSmoothingTime : 0.12;
+        const filterAlpha = Math.min(1.0, dt / smoothWindow);
+        this.smoothTargetVx += (pVx - this.smoothTargetVx) * filterAlpha;
+        this.smoothTargetVy += (pVy - this.smoothTargetVy) * filterAlpha;
 
-      const intercept = solveBallisticIntercept(this.x, this.y, player.x, player.y, this.smoothTargetVx, this.smoothTargetVy, bSpeed);
-      const targetAimAngle = Math.atan2(intercept.y - this.y, intercept.x - this.x);
+        const intercept = solveBallisticIntercept(this.x, this.y, perceivedPlayer.x, perceivedPlayer.y, this.smoothTargetVx, this.smoothTargetVy, bSpeed);
+        targetAimAngle = Math.atan2(intercept.y - this.y, intercept.x - this.x);
+      }
 
       const angleDiff = Math.atan2(Math.sin(targetAimAngle - this.angle), Math.cos(targetAimAngle - this.angle));
       const turnRate = (this.config.ai && this.config.ai.turretTurnSpeed) ? this.config.ai.turretTurnSpeed : 8.5;
@@ -555,7 +617,7 @@ export class EnemyUnit {
     }
 
     // 4. Populate shared AI context & dispatch to Enemy Class Behavior Module
-    _aiCtx.player = player;
+    _aiCtx.player = perceivedPlayer;
     _aiCtx.allEnemies = allEnemies;
     _aiCtx.dx = dx;
     _aiCtx.dy = dy;
@@ -582,8 +644,8 @@ export class EnemyUnit {
 
     _moveOut.dirX = 0;
     _moveOut.dirY = 0;
-    _moveOut.targetWaypointX = player.x;
-    _moveOut.targetWaypointY = player.y;
+    _moveOut.targetWaypointX = perceivedPlayer.x;
+    _moveOut.targetWaypointY = perceivedPlayer.y;
 
     const enemyClass = this.config.enemyClass || 'Normal';
     if (enemyClass === 'Infantry') {
@@ -765,8 +827,9 @@ export class EnemyUnit {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    // 8. Weapon Discharge
-    if ((isRanged || this.archetypeKey === 'phantom') && this.config.weapon) {
+    // 8. Weapon Discharge (fires normally at visible targets, or fires sweep probes into the nearest last-seen area when searching)
+    const shouldFireProbe = !playerCloaked || this.hasReachedLastSeen || distToLastSeen < 480;
+    if (shouldFireProbe && (isRanged || this.archetypeKey === 'phantom') && this.config.weapon) {
       this.updateWeaponFiring(dt, enemyBullets);
     }
   }
@@ -847,9 +910,12 @@ export class EnemyUnit {
       const bVx = Math.cos(shotAngle) * bSpeed;
       const bVy = Math.sin(shotAngle) * bSpeed;
       const cannonBaseWidth = (turret.width !== undefined) ? turret.width : 20;
-      const bRad = (baseBulletRad * (cannonBaseWidth / 20)) * sizeScale;
+      const turretSizeMult = (turret.bulletSize !== undefined) ? turret.bulletSize : 1.0;
+      const cfgSizeMult = (wCfg.bulletSize !== undefined) ? wCfg.bulletSize : 1.0;
+      const globalSizeMult = (CONFIG.WEAPONS && CONFIG.WEAPONS.bulletSizeMultiplier !== undefined) ? CONFIG.WEAPONS.bulletSizeMultiplier : 1.0;
+      const bRad = (baseBulletRad * (cannonBaseWidth / 20) * turretSizeMult * cfgSizeMult * globalSizeMult) * sizeScale;
 
-      enemyBullets.push(new Projectile(spawnX, spawnY, bVx, bVy, bRad, bLifetime, dmg, pen, bColor, bStroke));
+      enemyBullets.push(new Projectile(spawnX, spawnY, bVx, bVy, bRad, bLifetime, dmg, pen, bColor, bStroke, { owner: this }));
     }
 
     if (this.magCapacity > 0) {

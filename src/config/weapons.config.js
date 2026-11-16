@@ -59,6 +59,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
   const isTrap = Boolean(weaponExtra.isTrap ?? multipliers.isTrap);
   const trapDrag = weaponExtra.trapDrag ?? multipliers.trapDrag;
   const isAutoTurret = Boolean(geom.isAutoTurret ?? weaponExtra.isAutoTurret ?? multipliers.isAutoTurret);
+  const isAutoDrone = Boolean(geom.isAutoDrone ?? weaponExtra.isAutoDrone ?? multipliers.isAutoDrone);
   const mountRadius = geom.mountRadius ?? 11;
   const autoRange = weaponExtra.autoRange ?? multipliers.autoRange;
   const autoFovHalf = weaponExtra.autoFovHalf ?? multipliers.autoFovHalf;
@@ -85,6 +86,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     lifetime,
     isTrap,
     isAutoTurret,
+    isAutoDrone,
     ...(trapDrag !== undefined ? { trapDrag } : {}),
     ...(autoRange !== undefined ? { autoRange } : {}),
     ...(autoFovHalf !== undefined ? { autoFovHalf } : {}),
@@ -103,6 +105,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     playsRecoil,
     fireDelayTicks: Math.round(fireDelay * 60),
     isAutoTurret,
+    isAutoDrone,
     mountRadius,
 
     // Falo.io Tank Editor barrel configuration (all turrets have these matching the editor)
@@ -147,6 +150,7 @@ export const WEAPONS_CONFIG = {
   shapePenetrationDrain: 3.0,
   enemyPenetrationDrain: 2.5,
   damageMultiplier: 1.0,
+  bulletSizeMultiplier: 1.0,
   bulletVsBulletDrain: 1.0,
   barrelRecoilDecay: 40,
   recoilForceMultiplier: 1.35,

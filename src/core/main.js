@@ -125,8 +125,11 @@ const player = {
   spawnDuration: 0.48,
   spawnScale: 1.0,
   spawnAlpha: 1.0,
+  cloakAlpha: 1.0,
+  lastAttacker: null,
+  lastAttackerTimer: 0,
 
-  takeDamage(amount, chassisKey) {
+  takeDamage(amount, chassisKey, attacker = null) {
     if (this.isDying || this.dashTimer > 0 || this.iFrameTimer > 0 || state.isGameOver || state.inMenu || state.godMode) return;
 
     const chassisConfig = CONFIG.CHASSIS[chassisKey];
@@ -138,6 +141,14 @@ const player = {
     this.hp = Math.max(0, this.hp - finalDamage);
     this.iFrameTimer = CONFIG.PLAYER.iFrameDuration;
     this.timeSinceLastDamage = 0;
+    if (attacker && !attacker.dead && !attacker.destroyed) {
+      this.lastAttacker = attacker;
+      this.lastAttackerTimer = 8.0;
+    }
+    if (chassisConfig && chassisConfig.stealth) {
+      const bump = chassisConfig.stealth.damageRevealBump !== undefined ? chassisConfig.stealth.damageRevealBump : 0.55;
+      this.cloakAlpha = Math.min(1.0, Math.max(this.cloakAlpha ?? 1.0, 0.25) + bump);
+    }
 
     if (this.hp <= 0) {
       this.hp = 0;
@@ -250,6 +261,9 @@ function unloadGame() {
   player.spawnTimer = 0;
   player.spawnScale = 1.0;
   player.spawnAlpha = 1.0;
+  player.cloakAlpha = 1.0;
+  player.lastAttacker = null;
+  player.lastAttackerTimer = 0;
 
   camera.x = 0;
   camera.y = 0;
@@ -361,6 +375,9 @@ function loadAndStartGame() {
   player.spawnTimer = 0;
   player.spawnScale = 1.0;
   player.spawnAlpha = 1.0;
+  player.cloakAlpha = 1.0;
+  player.lastAttacker = null;
+  player.lastAttackerTimer = 0;
 
   camera.x = 0;
   camera.y = 0;
@@ -608,9 +625,12 @@ function applyCrewAndStatModifiers() {
     const baseSpeedVal = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * mSpeed * mLaunch;
     turret.shellSpeed = baseSpeedVal * gunnerCrewMult;
 
+    const chassisCfg = CONFIG.CHASSIS[state.activeChassis] || {};
     const cannonBaseWidth = (turretConfig.width !== undefined) ? turretConfig.width : (turret.width !== undefined ? turret.width : 20);
     const baseBulletRadius = (cannonBaseWidth / 20) * (baseCfg.bulletSize || 9);
-    turret.shellRadius = Math.round(baseBulletRadius * mSize * 10) / 10;
+    const globalBulletSizeMult = (CONFIG.WEAPONS && CONFIG.WEAPONS.bulletSizeMultiplier !== undefined) ? CONFIG.WEAPONS.bulletSizeMultiplier : 1.0;
+    const chassisBulletSizeMult = (chassisCfg.bulletSizeMultiplier !== undefined) ? chassisCfg.bulletSizeMultiplier : 1.0;
+    turret.shellRadius = Math.round(baseBulletRadius * mSize * chassisBulletSizeMult * globalBulletSizeMult * 10) / 10;
 
     turret.recoil = (baseCfg.recoil || 45) * mRecoil;
     turret.spread = (baseCfg.spread || 0.04) * mSpread;
@@ -618,7 +638,6 @@ function applyCrewAndStatModifiers() {
     const rackFactor = (turret.type === WEAPON_TYPE.READY_RACK) ? (rCfg.rackReloadFactor || 1.50) : 1.0;
     const baseReloadTicks = (baseW.baseReloadTicks !== undefined) ? baseW.baseReloadTicks : Math.round(baseCfg.baseReloadTicks * mReload);
     const rrCfg = (CONFIG.PLAYER && CONFIG.PLAYER.readyRack) || {};
-    const chassisCfg = CONFIG.CHASSIS[state.activeChassis] || {};
     const globalRefillMult = (rrCfg.refillSpeedMultiplier !== undefined) ? rrCfg.refillSpeedMultiplier : 1.0;
     const chassisRefillMult = (chassisCfg.readyRackRefillSpeed !== undefined) ? chassisCfg.readyRackRefillSpeed : 1.0;
     const turretRefillSpeed = (baseW.refillSpeed !== undefined) ? baseW.refillSpeed : 1.0;
@@ -659,18 +678,88 @@ function applyCrewAndStatModifiers() {
     weaponSys.fireIntervalSec = weaponSys.cooldownDurationSec;
   }
 
-  if (weaponSys.drones && weaponSys.drones.length > 0 && weaponSys.turrets.length > 0) {
-    const primaryTurret = weaponSys.turrets[0];
-    for (let i = 0; i < weaponSys.drones.length; i++) {
-      const d = weaponSys.drones[i];
-      d.speed = primaryTurret.shellSpeed;
-      d.damage = primaryTurret.damage;
-      if (primaryTurret.penetration > d.maxPenetration) {
-        d.penetration += (primaryTurret.penetration - d.maxPenetration);
-        d.maxPenetration = primaryTurret.penetration;
+  if (chassisConfig.baseMaxDrones !== undefined) {
+    const perReload = chassisConfig.dronesPerReloadPoint || 0;
+    weaponSys.maxDrones = chassisConfig.baseMaxDrones + (reloadStat * perReload);
+  }
+
+  if (weaponSys.infectSquares) {
+    const profile = chassisConfig.droneProfile || { damage: 1.68, penetration: 2.0, bulletSpeed: 0.76, radius: 15 };
+    const nDmg = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * (profile.damage ?? 1.68) * gunnerCrewMult;
+    const nPen = (baseCfg.penetration + (penStat * inc.shellPenMult)) * (profile.penetration ?? 2.0) * gunnerCrewMult;
+    const nSpd = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * (profile.bulletSpeed ?? 0.76) * gunnerCrewMult;
+    weaponSys.necromancerStats = {
+      damage: nDmg,
+      penetration: nPen,
+      speed: nSpd,
+      radius: profile.radius ?? 15
+    };
+  }
+
+  if (weaponSys.isFactoryClass) {
+    const mProfile = chassisConfig.minionBulletProfile || {
+      damage: 0.40,
+      penetration: 0.40,
+      bulletSpeed: 0.80,
+      fireRateTicks: 80,
+      radius: 5.0,
+      lifetime: 1.35
+    };
+    const mDmg = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * (mProfile.damage ?? 0.40) * gunnerCrewMult;
+    const mPen = (baseCfg.penetration + (penStat * inc.shellPenMult)) * (mProfile.penetration ?? 0.40) * gunnerCrewMult;
+    const mSpd = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * (mProfile.bulletSpeed ?? 0.80) * gunnerCrewMult;
+    const baseFireRateTicks = mProfile.fireRateTicks || baseCfg.fireRateTicks || 80;
+    const reloadFireRateMult = 1.0 + (reloadStat * (rCfg.fireRateScalePerPoint || 0.08));
+    const baseFireSec = baseFireRateTicks / 60;
+    const mFireIntervalSec = Math.max(rCfg.minFireIntervalSec || 0.20, (baseFireSec / reloadFireRateMult) * loaderCrewMult);
+    const sizeScale = (player && player.radius) ? (player.radius / CONFIG.PLAYER.radius) : 1.0;
+    const minionSizeRatio = sizeScale / ((chassisConfig && chassisConfig.radiusMultiplier) || 1.25);
+    weaponSys.minionBulletStats = {
+      damage: mDmg,
+      penetration: mPen,
+      speed: mSpd,
+      fireIntervalSec: mFireIntervalSec,
+      radius: (mProfile.radius ?? 5.0) * minionSizeRatio,
+      lifetime: mProfile.lifetime ?? 1.35
+    };
+  }
+
+  if (weaponSys.drones && weaponSys.drones.length > 0) {
+    if (weaponSys.infectSquares && weaponSys.necromancerStats) {
+      const nStats = weaponSys.necromancerStats;
+      for (let i = 0; i < weaponSys.drones.length; i++) {
+        const d = weaponSys.drones[i];
+        d.speed = nStats.speed;
+        d.damage = nStats.damage;
+        if (nStats.penetration > d.maxPenetration) {
+          d.penetration += (nStats.penetration - d.maxPenetration);
+          d.maxPenetration = nStats.penetration;
+        }
+        d.color = player.fillColor;
+        d.strokeColor = player.strokeColor;
       }
-      d.color = player.fillColor;
-      d.strokeColor = player.strokeColor;
+    } else if (weaponSys.isFactoryClass) {
+      for (let i = 0; i < weaponSys.drones.length; i++) {
+        const d = weaponSys.drones[i];
+        if (d.isMinion && weaponSys.minionBulletStats) {
+          d.minionBulletStats = weaponSys.minionBulletStats;
+        }
+        d.color = player.fillColor;
+        d.strokeColor = player.strokeColor;
+      }
+    } else if (weaponSys.turrets.length > 0) {
+      const droneTurret = weaponSys.turrets.find(t => t.type === WEAPON_TYPE.DRONE_SPAWNER) || weaponSys.turrets[0];
+      for (let i = 0; i < weaponSys.drones.length; i++) {
+        const d = weaponSys.drones[i];
+        d.speed = droneTurret.shellSpeed;
+        d.damage = droneTurret.damage;
+        if (droneTurret.penetration > d.maxPenetration) {
+          d.penetration += (droneTurret.penetration - d.maxPenetration);
+          d.maxPenetration = droneTurret.penetration;
+        }
+        d.color = player.fillColor;
+        d.strokeColor = player.strokeColor;
+      }
     }
   }
 }
@@ -929,6 +1018,12 @@ function updatePlayer(dt) {
 
   if (player.iFrameTimer > 0) player.iFrameTimer -= dt;
   if (player.dashTimer > 0) player.dashTimer -= dt;
+  if (player.lastAttackerTimer > 0) {
+    player.lastAttackerTimer = Math.max(0, player.lastAttackerTimer - dt);
+    if (player.lastAttackerTimer <= 0 || !player.lastAttacker || player.lastAttacker.dead || player.lastAttacker.destroyed) {
+      player.lastAttacker = null;
+    }
+  }
 
   player.timeSinceLastDamage += dt;
 
@@ -1020,10 +1115,31 @@ function updatePlayer(dt) {
   player.vx -= player.vx * CONFIG.PLAYER.drag * dt;
   player.vy -= player.vy * CONFIG.PLAYER.drag * dt;
 
+  if (chassisConfig.stealth) {
+    const sCfg = chassisConfig.stealth;
+    const minAlpha = sCfg.minAlpha !== undefined ? sCfg.minAlpha : 0.06;
+    const fadeInTime = Math.max(0.2, sCfg.fadeInTime || 2.0);
+    const fadeOutTime = Math.max(0.1, sCfg.fadeOutTime || 0.4);
+    const hasMoveInput = Math.abs(dirX) > 0.01 || Math.abs(dirY) > 0.01;
+    const isMoving = Boolean(sCfg.requireStationary) && (hasMoveInput || Math.hypot(player.vx, player.vy) > 35);
+    const autoFireBreaks = state.autoFire && !weaponSys.isDroneClass;
+
+    if (autoFireBreaks || isMoving) {
+      player.cloakAlpha = Math.min(1.0, (player.cloakAlpha ?? 1.0) + ((1.0 - minAlpha) / fadeOutTime) * dt);
+    } else if (weaponSys.firedThisFrame) {
+      const bump = sCfg.shotRevealBump !== undefined ? sCfg.shotRevealBump : 0.55;
+      player.cloakAlpha = Math.min(1.0, Math.max(player.cloakAlpha ?? 1.0, 0.35) + bump);
+    } else {
+      player.cloakAlpha = Math.max(minAlpha, (player.cloakAlpha ?? 1.0) - ((1.0 - minAlpha) / fadeInTime) * dt);
+    }
+  } else {
+    player.cloakAlpha = 1.0;
+  }
+
   let camTargetX = player.x;
   let camTargetY = player.y;
 
-  if ((state.activeChassis === 'sniper' || state.activeChassis === 'assassin' || state.activeChassis === 'hunter') && !state.autoSpin && !isMobileMode) {
+  if ((state.activeChassis === 'sniper' || state.activeChassis === 'assassin' || state.activeChassis === 'ranger' || state.activeChassis === 'stalker' || state.activeChassis === 'hunter') && !state.autoSpin && !isMobileMode) {
     camTargetX += (input.mouse.worldX - player.x) * CONFIG.CAMERA.sniperLeanFactor;
     camTargetY += (input.mouse.worldY - player.y) * CONFIG.CAMERA.sniperLeanFactor;
   }
@@ -1090,13 +1206,13 @@ function renderPlayerChassis() {
     return;
   }
 
-  const ctx = canvasMgr.ctx;
-  ctx.save();
-
-  if (player.isDying) {
-    ctx.globalAlpha = player.deathAlpha;
-  } else if (player.isSpawning) {
-    ctx.globalAlpha = player.spawnAlpha;
+  const cloakAlpha = (player.cloakAlpha !== undefined) ? player.cloakAlpha : 1.0;
+  const stateAlpha = player.isDying
+    ? player.deathAlpha
+    : (player.isSpawning ? player.spawnAlpha : 1.0);
+  const unitAlpha = Math.max(0, Math.min(1.0, stateAlpha * cloakAlpha));
+  if (unitAlpha <= 0.002) {
+    return;
   }
 
   const baseRadius = player.radius;
@@ -1105,6 +1221,24 @@ function renderPlayerChassis() {
     : (player.isSpawning ? player.spawnScale : 1.0);
   const radius = baseRadius * activeScale;
   const sizeScale = radius / (CONFIG.PLAYER.baseRadius || 25);
+
+  const turrets = chassis.turrets || [];
+  let maxReach = radius * (chassis.outerArmor ? (chassis.outerArmor.radiusMultiplier || 1.5) : 1.5);
+  for (let i = 0; i < turrets.length; i++) {
+    const t = turrets[i];
+    const reach = ((t.isAutoTurret ? radius : 0) + ((t.xOffset || 0) + (t.length || 48) + Math.abs(t.yOffset || 0) + Math.max(t.width || 20, t.frontWidth || t.width || 20) * 0.5) * sizeScale);
+    if (reach > maxReach) maxReach = reach;
+  }
+
+  const ctx = canvasMgr.ctx;
+  const useOffscreen = unitAlpha < 0.995 && typeof canvasMgr.beginOffscreenLayer === 'function';
+  if (useOffscreen) {
+    const halfExtent = Math.max(96, Math.ceil(maxReach + 18));
+    canvasMgr.beginOffscreenLayer(x, y, halfExtent, 2);
+  } else {
+    ctx.save();
+    ctx.globalAlpha = unitAlpha;
+  }
 
   if (chassis.outerArmor) {
     const outerRadius = (player.radius * chassis.outerArmor.radiusMultiplier) * activeScale;
@@ -1118,7 +1252,6 @@ function renderPlayerChassis() {
     );
   }
 
-  const turrets = chassis.turrets || [];
   for (let index = 0; index < turrets.length; index++) {
     const turret = turrets[index];
     const tState = weaponSys.turretStates[index];
@@ -1154,18 +1287,27 @@ function renderPlayerChassis() {
   canvasMgr.drawPolygon(
     x, y, radius,
     chassis.sides,
-    angle,
+    angle + (chassis.bodyAngleOffset || 0),
     player.fillColor,
     player.strokeColor,
     CONFIG.PLAYER.strokeWidth
   );
 
-  ctx.restore();
+  if (useOffscreen) {
+    canvasMgr.endOffscreenLayer(unitAlpha);
+  } else {
+    ctx.restore();
+  }
 
   if (!player.isDying) {
-    const playerName = storageMgr.data.playerName || 'Tank';
-    canvasMgr.drawPlayerNameAbove(x, y, playerName, radius);
-    canvasMgr.drawPlayerHealthBar(x, y, player.hp, player.maxHp, radius);
+    if (cloakAlpha > 0.12) {
+      ctx.save();
+      ctx.globalAlpha = cloakAlpha;
+      const playerName = storageMgr.data.playerName || 'Tank';
+      canvasMgr.drawPlayerNameAbove(x, y, playerName, radius);
+      canvasMgr.drawPlayerHealthBar(x, y, player.hp, player.maxHp, radius);
+      ctx.restore();
+    }
 
     if (player.dashTimer > 0) {
       const dashProgress = Math.max(0, player.dashTimer / (CONFIG.WEAPONS.smasherDashDuration || 0.45));
