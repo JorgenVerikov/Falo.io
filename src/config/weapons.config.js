@@ -26,17 +26,17 @@ export const BASIC_BARREL_BASE = {
  * [width, length, frontWidth, angleOffset, xOffset, yOffset] + multipliers.
  * Every tank shares the same base stats as the basic tank, adjusted via multipliers.
  *
- * @param {Object} geom - Barrel geometry { width, length, frontWidth, angleOffset, xOffset, yOffset, shootsBullet, playsRecoil }
+ * @param {Object} geom - Barrel geometry { width, length, frontWidth, angleOffset (degrees), xOffset, yOffset, shootsBullet, playsRecoil }
  * @param {Object} [multipliers={}] - Multipliers and projectile/drone overrides (damage, penetration, bulletSpeed, bulletSize, reload, spread, recoil, knockback, launchSpeed, bulletsPerShot, lifetime, fireDelay, bulletShape, bulletSides, bulletInnerRadius, bulletAngleOffset, bulletSpinSpeed, bulletStrokeWidth, bulletLineJoin, bulletVertices, bulletOptions, droneOptions)
  * @param {Object} [weaponExtra={}] - Weapon system extras (type, maxRack, heatPerShot, coolRate, overheatLockoutTime, maxEnergy, costPerShot, rechargeRate, bulletOptions, droneOptions, droneTurret)
  * @returns {Object} Complete turret & weapon configuration
  */
 export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}) {
-  // Extract and normalize geometry
+  // Extract and normalize geometry (angleOffset is specified in degrees in config)
   const width = geom.width ?? 20;
   const length = geom.length ?? 48;
   const frontWidth = geom.frontWidth ?? width;
-  const angleOffset = geom.angleOffset ?? 0;
+  const angleOffset = ((geom.angleOffset ?? 0) * Math.PI) / 180;
   const xOffset = geom.xOffset ?? 0;
   const yOffset = geom.yOffset ?? 0;
   const shootsBullet = geom.shootsBullet !== false;
@@ -70,11 +70,12 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
   const isTrap = Boolean(weaponExtra.isTrap ?? multipliers.isTrap ?? mergedBullet?.isTrap);
   const trapDrag = weaponExtra.trapDrag ?? multipliers.trapDrag;
   const isAutoTurret = Boolean(geom.isAutoTurret ?? weaponExtra.isAutoTurret ?? multipliers.isAutoTurret);
+  const uncontrolled = Boolean(geom.uncontrolled ?? weaponExtra.uncontrolled ?? multipliers.uncontrolled);
   const isAutoDrone = Boolean(geom.isAutoDrone ?? weaponExtra.isAutoDrone ?? multipliers.isAutoDrone);
   const mountRadius = geom.mountRadius ?? 11;
-  const autoRange = weaponExtra.autoRange ?? multipliers.autoRange;
-  const autoFovHalf = weaponExtra.autoFovHalf ?? multipliers.autoFovHalf;
-  const autoTurnSpeed = weaponExtra.autoTurnSpeed ?? multipliers.autoTurnSpeed;
+  const autoRange = weaponExtra.autoRange ?? multipliers.autoRange ?? geom.autoRange;
+  const autoFov = weaponExtra.autoFov ?? multipliers.autoFov ?? geom.autoFov;
+  const autoTurnSpeed = weaponExtra.autoTurnSpeed ?? multipliers.autoTurnSpeed ?? geom.autoTurnSpeed;
 
   const bulletShape = weaponExtra.bulletShape ?? multipliers.bulletShape ?? geom.bulletShape;
   const bulletSides = weaponExtra.bulletSides ?? multipliers.bulletSides ?? geom.bulletSides;
@@ -142,10 +143,11 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     lifetime,
     isTrap,
     isAutoTurret,
+    uncontrolled,
     isAutoDrone,
     ...(trapDrag !== undefined ? { trapDrag } : {}),
     ...(autoRange !== undefined ? { autoRange } : {}),
-    ...(autoFovHalf !== undefined ? { autoFovHalf } : {}),
+    ...(autoFov !== undefined ? { autoFov } : {}),
     ...(autoTurnSpeed !== undefined ? { autoTurnSpeed } : {}),
     ...optionalProjectileFields,
     ...weaponExtra
@@ -162,6 +164,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     playsRecoil,
     fireDelayTicks: Math.round(fireDelay * 60),
     isAutoTurret,
+    uncontrolled,
     isAutoDrone,
     mountRadius,
 
@@ -182,7 +185,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     isTrap,
     ...(trapDrag !== undefined ? { trapDrag } : {}),
     ...(autoRange !== undefined ? { autoRange } : {}),
-    ...(autoFovHalf !== undefined ? { autoFovHalf } : {}),
+    ...(autoFov !== undefined ? { autoFov } : {}),
     ...(autoTurnSpeed !== undefined ? { autoTurnSpeed } : {}),
     ...optionalProjectileFields,
 
@@ -198,7 +201,7 @@ export const WEAPONS_CONFIG = {
   trapStopSpeed: 3.0,
   trapSpinSpeed: 6.0,
   autoTurretRange: 760,
-  autoTurretFovHalf: Math.PI / 3,
+  autoTurretFov: 120,
   autoTurretTurnSpeed: 8.5,
   droneDrag: 7.5,
   droneTurnSpeed: 4.5,

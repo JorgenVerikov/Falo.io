@@ -47,13 +47,14 @@ export function drawTankPreview(ctx, chassisKey, spinAngle, playerFillColor = '#
     drawPreviewPolygon(ctx, 0, 0, outerRadius, chassis.outerArmor.sides, spinAngle * 0.5, chassis.outerArmor.color, chassis.outerArmor.stroke, 3);
   }
 
+  const isCenteredAuto = (t) => Boolean(t.isAutoTurret && (t.xOffset || 0) === 0 && (t.yOffset || 0) === 0);
   if (chassis.turrets) {
     const previewScale = 18 / (CONFIG.PLAYER.radius || 25);
-    chassis.turrets.forEach(turret => {
+    const drawTurret = (turret) => {
       ctx.save();
       ctx.rotate(turret.angleOffset || 0);
 
-      const bx = turret.isAutoTurret ? 18 : (turret.xOffset || 0) * previewScale;
+      const bx = (turret.xOffset || 0) * previewScale;
       const backWidth = turret.width * previewScale;
       const frontWidth = (turret.frontWidth || turret.width) * previewScale;
       const halfBack = backWidth / 2;
@@ -79,7 +80,7 @@ export function drawTankPreview(ctx, chassisKey, spinAngle, playerFillColor = '#
       if (turret.isAutoTurret) {
         const mountR = (turret.mountRadius || 11) * previewScale;
         ctx.beginPath();
-        ctx.arc(bx, 0, mountR, 0, Math.PI * 2);
+        ctx.arc(bx, tY, mountR, 0, Math.PI * 2);
         ctx.fillStyle = '#999999';
         ctx.fill();
         ctx.lineWidth = 2.5;
@@ -88,12 +89,20 @@ export function drawTankPreview(ctx, chassisKey, spinAngle, playerFillColor = '#
       }
 
       ctx.restore();
-    });
-  }
+    };
 
-  const radius = 18 * (chassis.radiusMultiplier || 1.0);
-  const sides = chassis.sides || 0;
-  drawPreviewPolygon(ctx, 0, 0, radius, sides, chassis.bodyAngleOffset || 0, playerFillColor, playerStrokeColor, 3.5);
+    chassis.turrets.filter(t => !isCenteredAuto(t)).forEach(drawTurret);
+
+    const radius = 18 * (chassis.radiusMultiplier || 1.0);
+    const sides = chassis.sides || 0;
+    drawPreviewPolygon(ctx, 0, 0, radius, sides, chassis.bodyAngleOffset || 0, playerFillColor, playerStrokeColor, 3.5);
+
+    chassis.turrets.filter(t => isCenteredAuto(t)).forEach(drawTurret);
+  } else {
+    const radius = 18 * (chassis.radiusMultiplier || 1.0);
+    const sides = chassis.sides || 0;
+    drawPreviewPolygon(ctx, 0, 0, radius, sides, chassis.bodyAngleOffset || 0, playerFillColor, playerStrokeColor, 3.5);
+  }
 
   ctx.restore();
 }
@@ -126,11 +135,12 @@ export function generateTankPreviewDataUrl(chassisKey, color = '#00b2e1', stroke
   const bodyRadius = 20 * (cfg.radiusMultiplier || 1.0) * baseScale;
   const armorRadius = cfg.outerArmor ? bodyRadius * (cfg.outerArmor.radiusMultiplier || 1.6) : 0;
 
+  const isCenteredAuto = (t) => Boolean(t.isAutoTurret && (t.xOffset || 0) === 0 && (t.yOffset || 0) === 0);
   let maxTurretExtent = 0;
   if (cfg.turrets && cfg.turrets.length > 0) {
     for (let i = 0; i < cfg.turrets.length; i++) {
       const t = cfg.turrets[i];
-      const xOff = t.isAutoTurret ? bodyRadius : ((t.xOffset || 0) * 0.82 * baseScale);
+      const xOff = (t.xOffset || 0) * 0.82 * baseScale;
       const tLen = (t.length || 48) * 0.82 * baseScale;
       const yOff = (t.yOffset || 0) * 0.82 * baseScale;
       const halfW = Math.max(t.width || 20, t.frontWidth || t.width || 20) * 0.41 * baseScale;
@@ -163,40 +173,45 @@ export function generateTankPreviewDataUrl(chassisKey, color = '#00b2e1', stroke
     );
   }
 
-  if (cfg.turrets && cfg.turrets.length > 0) {
-    for (let i = 0; i < cfg.turrets.length; i++) {
-      const t = cfg.turrets[i];
-      const angle = t.angleOffset || 0;
-      const tLen = (t.length || 48) * 0.82 * baseScale;
-      const tWidth = (t.width || 20) * 0.82 * baseScale;
-      const tFront = (t.frontWidth || t.width || 20) * 0.82 * baseScale;
-      const xOff = t.isAutoTurret ? bodyRadius : ((t.xOffset || 0) * 0.82 * baseScale);
-      const yOff = (t.yOffset || 0) * 0.82 * baseScale;
+  const drawPreviewTurret = (t) => {
+    const angle = t.angleOffset || 0;
+    const tLen = (t.length || 48) * 0.82 * baseScale;
+    const tWidth = (t.width || 20) * 0.82 * baseScale;
+    const tFront = (t.frontWidth || t.width || 20) * 0.82 * baseScale;
+    const xOff = (t.xOffset || 0) * 0.82 * baseScale;
+    const yOff = (t.yOffset || 0) * 0.82 * baseScale;
 
-      ctx.save();
-      ctx.rotate(angle);
-      ctx.fillStyle = '#999999';
-      ctx.strokeStyle = '#555555';
-      ctx.lineWidth = 2.5 * dpr;
-      ctx.lineJoin = 'miter';
+    ctx.save();
+    ctx.rotate(angle);
+    ctx.fillStyle = '#999999';
+    ctx.strokeStyle = '#555555';
+    ctx.lineWidth = 2.5 * dpr;
+    ctx.lineJoin = 'miter';
 
+    ctx.beginPath();
+    ctx.moveTo(xOff, yOff - tWidth / 2);
+    ctx.lineTo(xOff + tLen, yOff - tFront / 2);
+    ctx.lineTo(xOff + tLen, yOff + tFront / 2);
+    ctx.lineTo(xOff, yOff + tWidth / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    if (t.isAutoTurret) {
+      const mountR = (t.mountRadius || 11) * 0.82 * baseScale;
       ctx.beginPath();
-      ctx.moveTo(xOff, yOff - tWidth / 2);
-      ctx.lineTo(xOff + tLen, yOff - tFront / 2);
-      ctx.lineTo(xOff + tLen, yOff + tFront / 2);
-      ctx.lineTo(xOff, yOff + tWidth / 2);
-      ctx.closePath();
+      ctx.arc(xOff, yOff, mountR, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+    }
+    ctx.restore();
+  };
 
-      if (t.isAutoTurret) {
-        const mountR = (t.mountRadius || 11) * 0.82 * baseScale;
-        ctx.beginPath();
-        ctx.arc(xOff, 0, mountR, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+  if (cfg.turrets && cfg.turrets.length > 0) {
+    for (let i = 0; i < cfg.turrets.length; i++) {
+      if (!isCenteredAuto(cfg.turrets[i])) {
+        drawPreviewTurret(cfg.turrets[i]);
       }
-      ctx.restore();
     }
   }
 
@@ -211,6 +226,14 @@ export function generateTankPreviewDataUrl(chassisKey, color = '#00b2e1', stroke
     strokeColor,
     3 * dpr
   );
+
+  if (cfg.turrets && cfg.turrets.length > 0) {
+    for (let i = 0; i < cfg.turrets.length; i++) {
+      if (isCenteredAuto(cfg.turrets[i])) {
+        drawPreviewTurret(cfg.turrets[i]);
+      }
+    }
+  }
 
   ctx.restore();
 
@@ -232,14 +255,16 @@ export function generateTankSvg(chassisKey, color = '#00b2e1', stroke = null, si
     strokeColor = (foundTheme && foundTheme.stroke) ? foundTheme.stroke : computeStrokeColor(color);
   }
 
-  let turretsSvg = '';
+  const isCenteredAuto = (t) => Boolean(t.isAutoTurret && (t.xOffset || 0) === 0 && (t.yOffset || 0) === 0);
+  let underTurretsSvg = '';
+  let topTurretsSvg = '';
   if (cfg.turrets && cfg.turrets.length > 0) {
     cfg.turrets.forEach(t => {
       const angle = baseAngle + (((t.angleOffset || 0) * 180) / Math.PI);
       const tLen = (t.length || 48) * 0.82 * scale;
       const tWidth = (t.width || 20) * 0.82 * scale;
       const tFront = (t.frontWidth || t.width || 20) * 0.82 * scale;
-      const xOff = t.isAutoTurret ? bodyRadius : ((t.xOffset || 0) * 0.82 * scale);
+      const xOff = (t.xOffset || 0) * 0.82 * scale;
       const yOff = (t.yOffset || 0) * 0.82 * scale;
 
       const p1 = `${xOff},${yOff - tWidth / 2}`;
@@ -247,12 +272,14 @@ export function generateTankSvg(chassisKey, color = '#00b2e1', stroke = null, si
       const p3 = `${xOff + tLen},${yOff + tFront / 2}`;
       const p4 = `${xOff},${yOff + tWidth / 2}`;
       const mountSvg = t.isAutoTurret
-        ? `<circle cx="${xOff}" cy="0" r="${(t.mountRadius || 11) * 0.82 * scale}" fill="#999999" stroke="#555555" stroke-width="2.5"/>`
+        ? `<circle cx="${xOff}" cy="${yOff}" r="${(t.mountRadius || 11) * 0.82 * scale}" fill="#999999" stroke="#555555" stroke-width="2.5"/>`
         : '';
-      turretsSvg += `<g transform="translate(${center}, ${center}) rotate(${angle})">
+      const groupSvg = `<g transform="translate(${center}, ${center}) rotate(${angle})">
         <polygon points="${p1} ${p2} ${p3} ${p4}" fill="#999999" stroke="#555555" stroke-width="2.5" stroke-linejoin="miter"/>
         ${mountSvg}
       </g>`;
+      if (isCenteredAuto(t)) topTurretsSvg += groupSvg;
+      else underTurretsSvg += groupSvg;
     });
   }
 
@@ -291,8 +318,9 @@ export function generateTankSvg(chassisKey, color = '#00b2e1', stroke = null, si
         repeatCount="indefinite"
       />
       ${armorSvg}
-      ${turretsSvg}
+      ${underTurretsSvg}
       ${bodySvg}
+      ${topTurretsSvg}
     </g>
   </svg>`;
 }

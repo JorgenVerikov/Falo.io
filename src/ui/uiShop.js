@@ -296,7 +296,7 @@ export class ShopPreviewController {
 
     if (chassis.turrets && chassis.turrets.length > 0) {
       chassis.turrets.forEach(turret => {
-        const bxUnit = turret.isAutoTurret ? 1.0 : ((turret.xOffset || 0) / playerR);
+        const bxUnit = (turret.xOffset || 0) / playerR;
         const lenUnit = (turret.length || 48) / playerR;
         const yUnit = Math.abs(turret.yOffset || 0) / playerR;
         const halfWidthUnit = Math.max(turret.width || 20, turret.frontWidth || turret.width || 20) / (2 * playerR);
@@ -348,47 +348,50 @@ export class ShopPreviewController {
       );
     }
 
-    if (chassis.turrets && chassis.turrets.length > 0) {
-      chassis.turrets.forEach(turret => {
-        ctx.save();
-        ctx.rotate(this.tankAngle + (turret.angleOffset || 0));
+    const isCenteredAuto = (t) => Boolean(t.isAutoTurret && (t.xOffset || 0) === 0 && (t.yOffset || 0) === 0);
+    const drawTurret = (turret) => {
+      ctx.save();
+      ctx.rotate(this.tankAngle + (turret.angleOffset || 0));
 
-        const bx = turret.isAutoTurret ? baseRadius : (turret.xOffset || 0) * scale;
-        const backWidth = turret.width * scale;
-        const frontWidth = (turret.frontWidth || turret.width) * scale;
-        const halfBack = backWidth / 2;
-        const halfFront = frontWidth / 2;
-        const tLen = turret.length * scale;
-        const tY = (turret.yOffset || 0) * scale;
+      const bx = (turret.xOffset || 0) * scale;
+      const backWidth = turret.width * scale;
+      const frontWidth = (turret.frontWidth || turret.width) * scale;
+      const halfBack = backWidth / 2;
+      const halfFront = frontWidth / 2;
+      const tLen = turret.length * scale;
+      const tY = (turret.yOffset || 0) * scale;
 
-        ctx.fillStyle = '#999999';
-        ctx.strokeStyle = '#666666';
-        ctx.lineWidth = strokeWidth * 0.9;
+      ctx.fillStyle = '#999999';
+      ctx.strokeStyle = '#666666';
+      ctx.lineWidth = strokeWidth * 0.9;
 
+      ctx.beginPath();
+      ctx.moveTo(bx, tY - halfBack);
+      ctx.lineTo(bx + tLen, tY - halfFront);
+      ctx.lineTo(bx + tLen, tY + halfFront);
+      ctx.lineTo(bx, tY + halfBack);
+      ctx.closePath();
+
+      ctx.fill();
+      ctx.lineJoin = 'miter';
+      ctx.stroke();
+
+      if (turret.isAutoTurret) {
+        const mountR = (turret.mountRadius || 11) * scale;
         ctx.beginPath();
-        ctx.moveTo(bx, tY - halfBack);
-        ctx.lineTo(bx + tLen, tY - halfFront);
-        ctx.lineTo(bx + tLen, tY + halfFront);
-        ctx.lineTo(bx, tY + halfBack);
-        ctx.closePath();
-
+        ctx.arc(bx, tY, mountR, 0, Math.PI * 2);
+        ctx.fillStyle = '#999999';
         ctx.fill();
-        ctx.lineJoin = 'miter';
+        ctx.lineWidth = strokeWidth * 0.85;
+        ctx.strokeStyle = '#666666';
         ctx.stroke();
+      }
 
-        if (turret.isAutoTurret) {
-          const mountR = (turret.mountRadius || 11) * scale;
-          ctx.beginPath();
-          ctx.arc(bx, 0, mountR, 0, Math.PI * 2);
-          ctx.fillStyle = '#999999';
-          ctx.fill();
-          ctx.lineWidth = strokeWidth * 0.85;
-          ctx.strokeStyle = '#666666';
-          ctx.stroke();
-        }
+      ctx.restore();
+    };
 
-        ctx.restore();
-      });
+    if (chassis.turrets && chassis.turrets.length > 0) {
+      chassis.turrets.filter(t => !isCenteredAuto(t)).forEach(drawTurret);
     }
 
     drawPreviewPolygon(
@@ -399,6 +402,10 @@ export class ShopPreviewController {
       strokeColor,
       strokeWidth
     );
+
+    if (chassis.turrets && chassis.turrets.length > 0) {
+      chassis.turrets.filter(t => isCenteredAuto(t)).forEach(drawTurret);
+    }
 
     ctx.restore();
   }
@@ -719,10 +726,18 @@ export function renderTanksShop(ui, container, { animatePreview = false } = {}) 
     { key: 'battleship', name: 'Battleship', cost: CONFIG.CHASSIS.battleship?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.battleship?.reqLevel ?? 45, desc: CONFIG.CHASSIS.battleship?.desc || 'Four rapid mini-spawners streaming short-lived drones: half manual and half auto-guided.' },
     { key: 'ranger', name: 'Ranger', cost: CONFIG.CHASSIS.ranger?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.ranger?.reqLevel ?? 45, desc: CONFIG.CHASSIS.ranger?.desc || 'Extended Assassin rifle with a reinforced trapezoid base and the widest field of view.' },
     { key: 'stalker', name: 'Stalker', cost: CONFIG.CHASSIS.stalker?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.stalker?.reqLevel ?? 45, desc: CONFIG.CHASSIS.stalker?.desc || 'Long tapered stealth sniper that fades to invisibility even while moving; firing or taking damage reveals it.' },
+    { key: 'predator', name: 'Predator', cost: CONFIG.CHASSIS.predator?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.predator?.reqLevel ?? 45, desc: CONFIG.CHASSIS.predator?.desc || 'Triple stacked sniper cannons firing a three-round escalating burst; hold right-click or Shift to lock and focus vision farther out.' },
+    { key: 'streamliner', name: 'Streamliner', cost: CONFIG.CHASSIS.streamliner?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.streamliner?.reqLevel ?? 45, desc: CONFIG.CHASSIS.streamliner?.desc || 'Five equal-width overlapping barrels firing rapid small bullets in sequence like a continuous stream.' },
     { key: 'overlord', name: 'Overlord', cost: CONFIG.CHASSIS.overlord?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.overlord?.reqLevel ?? 45, desc: CONFIG.CHASSIS.overlord?.desc || 'Four equally spaced spawners deploy up to 12 controllable drones at double the Overseer rate.' },
     { key: 'necromancer', name: 'Necromancer', cost: CONFIG.CHASSIS.necromancer?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.necromancer?.reqLevel ?? 45, desc: CONFIG.CHASSIS.necromancer?.desc || 'Square chassis with two side spawners that deploys up to 4 starter Square Drones and infects Squares up to 36 drones.' },
-    { key: 'manager', name: 'Manager', cost: CONFIG.CHASSIS.manager?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.manager?.reqLevel ?? 45, desc: CONFIG.CHASSIS.manager?.desc || 'Single fast front spawner with up to 8 controllable drones and stationary stealth cloaking.' },
+    { key: 'manager', name: 'Manager', cost: CONFIG.CHASSIS.manager?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.manager?.reqLevel ?? 45, desc: CONFIG.CHASSIS.manager?.desc || 'Single fast front spawner with up to 8 controllable drones; fades to invisibility even while moving, briefly revealing itself when summoning a drone.' },
     { key: 'overtrapper', name: 'Overtrapper', cost: CONFIG.CHASSIS.overtrapper?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.overtrapper?.reqLevel ?? 45, desc: CONFIG.CHASSIS.overtrapper?.desc || 'Front trap launcher paired with two rear spawners maintaining 2 controllable and 2 auto-guided drones.' },
+    { key: 'tritrapper', name: 'Tri-Trapper', cost: CONFIG.CHASSIS.tritrapper?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.tritrapper?.reqLevel ?? 45, desc: CONFIG.CHASSIS.tritrapper?.desc || 'Three 120-degree trap launchers with faster reload and nullified recoil, trading trap lifespan and damage for dense defensive walls.' },
+    { key: 'gunnertrapper', name: 'Gunner Trapper', cost: CONFIG.CHASSIS.gunnertrapper?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.gunnertrapper?.reqLevel ?? 45, desc: CONFIG.CHASSIS.gunnertrapper?.desc || 'Front twin high-penetration gunner cannons paired with a reinforced rear trap launcher.' },
+    { key: 'megatrapper', name: 'Mega Trapper', cost: CONFIG.CHASSIS.megatrapper?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.megatrapper?.reqLevel ?? 45, desc: CONFIG.CHASSIS.megatrapper?.desc || 'Enlarged heavy launcher firing massive, highly durable Mega Traps with stronger recoil at a slower rate and shorter lifespan.' },
+    { key: 'autotrapper', name: 'Auto Trapper', cost: CONFIG.CHASSIS.autotrapper?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.autotrapper?.reqLevel ?? 45, desc: CONFIG.CHASSIS.autotrapper?.desc || 'Standard front trap launcher crowned with an uncontrolled, free-rotating top Auto Turret.' },
+    { key: 'hybrid', name: 'Hybrid', cost: CONFIG.CHASSIS.hybrid?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.hybrid?.reqLevel ?? 45, desc: CONFIG.CHASSIS.hybrid?.desc || 'Destroyer heavy cannon paired with a rear spawner that maintains 2 autonomous, uncontrollable drones.' },
+    { key: 'annihilator', name: 'Annihilator', cost: CONFIG.CHASSIS.annihilator?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.annihilator?.reqLevel ?? 45, desc: CONFIG.CHASSIS.annihilator?.desc || 'Enlarged full-width cannon firing colossal, high-penetration shells with extreme recoil at Destroyer reload.' },
     { key: 'factory', name: 'Factory', cost: CONFIG.CHASSIS.factory?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.factory?.reqLevel ?? 45, desc: CONFIG.CHASSIS.factory?.desc || 'Square chassis with a single front spawner deploying up to 6 armed Minions.' },
     { key: 'tesla', name: 'Tesla Surge', cost: CONFIG.CHASSIS.tesla?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.tesla?.reqLevel ?? 45, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
     { key: 'tripleshot', name: 'Triple Shot', cost: CONFIG.CHASSIS.tripleshot?.shopCost ?? 1000, reqLvl: 30, desc: 'Three front-spread cannons covering a wide arc with strong recoil.' },

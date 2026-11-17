@@ -73,7 +73,10 @@ const camera = {
   exitZoomTimer: 0,
   exitZoomDuration: 0.56,
   exitZoomStart: CONFIG.CAMERA.defaultZoom,
-  exitZoomEnd: CONFIG.CAMERA.defaultZoom * 0.42
+  exitZoomEnd: CONFIG.CAMERA.defaultZoom * 0.42,
+  isScoping: false,
+  scopeX: 0,
+  scopeY: 0
 };
 
 let exitTransitionTimeout = null;
@@ -126,6 +129,7 @@ const player = {
   spawnScale: 1.0,
   spawnAlpha: 1.0,
   cloakAlpha: 1.0,
+  sonarTimer: 0,
   lastAttacker: null,
   lastAttackerTimer: 0,
 
@@ -147,6 +151,7 @@ const player = {
     }
     if (chassisConfig && chassisConfig.stealth) {
       const bump = chassisConfig.stealth.damageRevealBump !== undefined ? chassisConfig.stealth.damageRevealBump : 0.55;
+      this.sonarTimer = 0;
       this.cloakAlpha = Math.min(1.0, Math.max(this.cloakAlpha ?? 1.0, 0.25) + bump);
     }
 
@@ -262,6 +267,7 @@ function unloadGame() {
   player.spawnScale = 1.0;
   player.spawnAlpha = 1.0;
   player.cloakAlpha = 1.0;
+  player.sonarTimer = 0;
   player.lastAttacker = null;
   player.lastAttackerTimer = 0;
 
@@ -271,6 +277,9 @@ function unloadGame() {
   camera.targetZoom = CONFIG.CAMERA.defaultZoom;
   camera.spawnZoomTimer = 0;
   camera.exitZoomTimer = 0;
+  camera.isScoping = false;
+  camera.scopeX = 0;
+  camera.scopeY = 0;
 
   if (canvasMgr) {
     if (canvasMgr.canvas) {
@@ -376,11 +385,15 @@ function loadAndStartGame() {
   player.spawnScale = 1.0;
   player.spawnAlpha = 1.0;
   player.cloakAlpha = 1.0;
+  player.sonarTimer = 0;
   player.lastAttacker = null;
   player.lastAttackerTimer = 0;
 
   camera.x = 0;
   camera.y = 0;
+  camera.isScoping = false;
+  camera.scopeX = 0;
+  camera.scopeY = 0;
 
   setActiveChassis('basic');
   applyCrewAndStatModifiers();
@@ -427,6 +440,7 @@ function triggerGameOver() {
   player.isDying = false;
   player.vx = 0;
   player.vy = 0;
+  camera.isScoping = false;
 
   if (mobileControls) {
     mobileControls.setInGameVisible(false);
@@ -926,6 +940,7 @@ function setupInputs() {
     input.mouse.isDown = false;
     input.mouse.isRightDown = false;
     input.keys = {};
+    camera.isScoping = false;
   });
 }
 
@@ -947,6 +962,8 @@ function setActiveChassis(chassisKey) {
   }
 
   weaponSys.loadChassisConfig(chassisKey);
+  player.sonarTimer = 0;
+  camera.isScoping = false;
   applyCrewAndStatModifiers();
 
   const chassisSelect = document.getElementById('adm-chassis-select');
@@ -1095,7 +1112,9 @@ function updatePlayer(dt) {
 
   const isMobileMode = Boolean(mobileControls && mobileControls.isMobile);
   const mobileFiring = Boolean(mobileControls && mobileControls.aimState.isFiring);
-  const pointerFiring = !isMobileMode && (input.mouse.isDown || input.mouse.isRightDown);
+  const hasCameraScope = Boolean(chassisConfig && chassisConfig.cameraScope) && !isMobileMode;
+  const isScopeHeld = hasCameraScope && (input.mouse.isRightDown || Boolean(input.keys && input.keys['shift']));
+  const pointerFiring = !isMobileMode && (input.mouse.isDown || (!hasCameraScope && input.mouse.isRightDown));
   const isFiring = pointerFiring || (input.keys && input.keys[' ']) || state.autoFire || mobileFiring;
 
   let droneMode = 'IDLE';
@@ -1151,23 +1170,60 @@ function updatePlayer(dt) {
     const autoFireBreaks = state.autoFire && !weaponSys.isDroneClass;
 
     if (autoFireBreaks || isMoving) {
+      player.sonarTimer = 0;
       player.cloakAlpha = Math.min(1.0, (player.cloakAlpha ?? 1.0) + ((1.0 - minAlpha) / fadeOutTime) * dt);
     } else if (weaponSys.firedThisFrame) {
+      player.sonarTimer = 0;
       const bump = sCfg.shotRevealBump !== undefined ? sCfg.shotRevealBump : 0.55;
       player.cloakAlpha = Math.min(1.0, Math.max(player.cloakAlpha ?? 1.0, 0.35) + bump);
+    } else if (weaponSys.summonedDroneThisFrame && sCfg.revealOnDroneSummon) {
+      const revealAlpha = sCfg.summonRevealAlpha !== undefined ? sCfg.summonRevealAlpha : 0.85;
+      player.cloakAlpha = Math.max(player.cloakAlpha ?? minAlpha, revealAlpha);
+      player.sonarTimer = Math.max(0.15, sCfg.summonFadeTime || 0.45);
+    } else if (player.sonarTimer > 0) {
+      player.sonarTimer = Math.max(0, player.sonarTimer - dt);
+      const summonFadeTime = Math.max(0.15, sCfg.summonFadeTime || 0.45);
+      player.cloakAlpha = Math.max(minAlpha, (player.cloakAlpha ?? 1.0) - ((1.0 - minAlpha) / summonFadeTime) * dt);
     } else {
       player.cloakAlpha = Math.max(minAlpha, (player.cloakAlpha ?? 1.0) - ((1.0 - minAlpha) / fadeInTime) * dt);
     }
   } else {
     player.cloakAlpha = 1.0;
+    player.sonarTimer = 0;
   }
 
   let camTargetX = player.x;
   let camTargetY = player.y;
 
-  if ((state.activeChassis === 'sniper' || state.activeChassis === 'assassin' || state.activeChassis === 'ranger' || state.activeChassis === 'stalker' || state.activeChassis === 'hunter') && !state.autoSpin && !isMobileMode) {
-    camTargetX += (input.mouse.worldX - player.x) * CONFIG.CAMERA.sniperLeanFactor;
-    camTargetY += (input.mouse.worldY - player.y) * CONFIG.CAMERA.sniperLeanFactor;
+  if (hasCameraScope) {
+    if (isScopeHeld) {
+      if (!camera.isScoping) {
+        camera.isScoping = true;
+        const dx = input.mouse.worldX - player.x;
+        const dy = input.mouse.worldY - player.y;
+        const dist = Math.hypot(dx, dy);
+        const maxShift = chassisConfig.cameraScope.maxDistance || 1100;
+        const mult = chassisConfig.cameraScope.distanceMultiplier || 1.45;
+        const shiftDist = Math.min(maxShift, dist * mult);
+        const dirAngle = dist > 1 ? Math.atan2(dy, dx) : player.angle;
+        camera.scopeX = player.x + Math.cos(dirAngle) * shiftDist;
+        camera.scopeY = player.y + Math.sin(dirAngle) * shiftDist;
+      }
+      camTargetX = camera.scopeX;
+      camTargetY = camera.scopeY;
+    } else {
+      camera.isScoping = false;
+      if (!state.autoSpin && !isMobileMode) {
+        camTargetX += (input.mouse.worldX - player.x) * CONFIG.CAMERA.sniperLeanFactor;
+        camTargetY += (input.mouse.worldY - player.y) * CONFIG.CAMERA.sniperLeanFactor;
+      }
+    }
+  } else {
+    camera.isScoping = false;
+    if ((state.activeChassis === 'sniper' || state.activeChassis === 'assassin' || state.activeChassis === 'ranger' || state.activeChassis === 'stalker' || state.activeChassis === 'hunter' || state.activeChassis === 'streamliner') && !state.autoSpin && !isMobileMode) {
+      camTargetX += (input.mouse.worldX - player.x) * CONFIG.CAMERA.sniperLeanFactor;
+      camTargetY += (input.mouse.worldY - player.y) * CONFIG.CAMERA.sniperLeanFactor;
+    }
   }
 
   if (player.isSpawning) {
@@ -1249,10 +1305,11 @@ function renderPlayerChassis() {
   const sizeScale = radius / (CONFIG.PLAYER.baseRadius || 25);
 
   const turrets = chassis.turrets || [];
+  const isCenteredAuto = (t) => Boolean(t.isAutoTurret && (t.xOffset || 0) === 0 && (t.yOffset || 0) === 0);
   let maxReach = radius * (chassis.outerArmor ? (chassis.outerArmor.radiusMultiplier || 1.5) : 1.5);
   for (let i = 0; i < turrets.length; i++) {
     const t = turrets[i];
-    const reach = ((t.isAutoTurret ? radius : 0) + ((t.xOffset || 0) + (t.length || 48) + Math.abs(t.yOffset || 0) + Math.max(t.width || 20, t.frontWidth || t.width || 20) * 0.5) * sizeScale);
+    const reach = ((Math.abs(t.xOffset || 0) + (t.length || 48) + Math.abs(t.yOffset || 0) + Math.max(t.width || 20, t.frontWidth || t.width || 20) * 0.5) * sizeScale);
     if (reach > maxReach) maxReach = reach;
   }
 
@@ -1278,15 +1335,16 @@ function renderPlayerChassis() {
     );
   }
 
-  for (let index = 0; index < turrets.length; index++) {
-    const turret = turrets[index];
+  const drawSingleTurret = (turret, index) => {
     const tState = weaponSys.turretStates[index];
     const recoil = tState ? tState.recoilOffset : 0;
 
     if (turret.isAutoTurret) {
       const mountAngle = angle + turret.angleOffset;
-      const mx = x + Math.cos(mountAngle) * radius;
-      const my = y + Math.sin(mountAngle) * radius;
+      const xOff = (turret.xOffset || 0) * sizeScale;
+      const yOff = (turret.yOffset || 0) * sizeScale;
+      const mx = x + Math.cos(mountAngle) * xOff - Math.sin(mountAngle) * yOff;
+      const my = y + Math.sin(mountAngle) * xOff + Math.cos(mountAngle) * yOff;
       const aimAngle = (tState && tState.worldAngle !== null && tState.worldAngle !== undefined) ? tState.worldAngle : mountAngle;
       const barrelLen = Math.max(4, (turret.length - recoil) * sizeScale);
       const barrelWidth = turret.width * sizeScale;
@@ -1295,7 +1353,7 @@ function renderPlayerChassis() {
 
       canvasMgr.drawTurretBarrel(mx, my, barrelWidth, barrelLen, aimAngle, 0, 0, frontWidth);
       canvasMgr.drawPolygon(mx, my, mountR, 0, 0, '#999999', '#727272', CONFIG.PLAYER.strokeWidth);
-      continue;
+      return;
     }
 
     const hasXOffset = (turret.xOffset || 0) > 0;
@@ -1308,6 +1366,12 @@ function renderPlayerChassis() {
     const yOff = (turret.yOffset || 0) * sizeScale;
 
     canvasMgr.drawTurretBarrel(x, y, barrelWidth, barrelLen, angle + turret.angleOffset, xOff, yOff, frontWidth);
+  };
+
+  for (let index = 0; index < turrets.length; index++) {
+    if (!isCenteredAuto(turrets[index])) {
+      drawSingleTurret(turrets[index], index);
+    }
   }
 
   canvasMgr.drawPolygon(
@@ -1318,6 +1382,12 @@ function renderPlayerChassis() {
     player.strokeColor,
     CONFIG.PLAYER.strokeWidth
   );
+
+  for (let index = 0; index < turrets.length; index++) {
+    if (isCenteredAuto(turrets[index])) {
+      drawSingleTurret(turrets[index], index);
+    }
+  }
 
   if (useOffscreen) {
     canvasMgr.endOffscreenLayer(unitAlpha);

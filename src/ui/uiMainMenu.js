@@ -150,7 +150,7 @@ export class MainMenuController {
 
     if (chassis.turrets && chassis.turrets.length > 0) {
       chassis.turrets.forEach(turret => {
-        const bxUnit = turret.isAutoTurret ? 1.0 : ((turret.xOffset || 0) / playerR);
+        const bxUnit = (turret.xOffset || 0) / playerR;
         const lenUnit = (turret.length || 48) / playerR;
         const yUnit = Math.abs(turret.yOffset || 0) / playerR;
         const halfWidthUnit = Math.max(turret.width || 20, turret.frontWidth || turret.width || 20) / (2 * playerR);
@@ -204,47 +204,50 @@ export class MainMenuController {
       );
     }
 
-    if (chassis.turrets && chassis.turrets.length > 0) {
-      chassis.turrets.forEach(turret => {
-        ctx.save();
-        ctx.rotate(this.tankAngle + (turret.angleOffset || 0));
+    const isCenteredAuto = (t) => Boolean(t.isAutoTurret && (t.xOffset || 0) === 0 && (t.yOffset || 0) === 0);
+    const drawTurret = (turret) => {
+      ctx.save();
+      ctx.rotate(this.tankAngle + (turret.angleOffset || 0));
 
-        const bx = turret.isAutoTurret ? baseRadius : (turret.xOffset || 0) * scale;
-        const backWidth = turret.width * scale;
-        const frontWidth = (turret.frontWidth || turret.width) * scale;
-        const halfBack = backWidth / 2;
-        const halfFront = frontWidth / 2;
-        const tLen = turret.length * scale;
-        const tY = (turret.yOffset || 0) * scale;
+      const bx = (turret.xOffset || 0) * scale;
+      const backWidth = turret.width * scale;
+      const frontWidth = (turret.frontWidth || turret.width) * scale;
+      const halfBack = backWidth / 2;
+      const halfFront = frontWidth / 2;
+      const tLen = turret.length * scale;
+      const tY = (turret.yOffset || 0) * scale;
 
-        ctx.fillStyle = '#999999';
-        ctx.strokeStyle = '#666666';
-        ctx.lineWidth = strokeWidth * 0.9;
+      ctx.fillStyle = '#999999';
+      ctx.strokeStyle = '#666666';
+      ctx.lineWidth = strokeWidth * 0.9;
 
+      ctx.beginPath();
+      ctx.moveTo(bx, tY - halfBack);
+      ctx.lineTo(bx + tLen, tY - halfFront);
+      ctx.lineTo(bx + tLen, tY + halfFront);
+      ctx.lineTo(bx, tY + halfBack);
+      ctx.closePath();
+
+      ctx.fill();
+      ctx.lineJoin = 'miter';
+      ctx.stroke();
+
+      if (turret.isAutoTurret) {
+        const mountR = (turret.mountRadius || 11) * scale;
         ctx.beginPath();
-        ctx.moveTo(bx, tY - halfBack);
-        ctx.lineTo(bx + tLen, tY - halfFront);
-        ctx.lineTo(bx + tLen, tY + halfFront);
-        ctx.lineTo(bx, tY + halfBack);
-        ctx.closePath();
-
+        ctx.arc(bx, tY, mountR, 0, Math.PI * 2);
+        ctx.fillStyle = '#999999';
         ctx.fill();
-        ctx.lineJoin = 'miter';
+        ctx.lineWidth = strokeWidth * 0.85;
+        ctx.strokeStyle = '#666666';
         ctx.stroke();
+      }
 
-        if (turret.isAutoTurret) {
-          const mountR = (turret.mountRadius || 11) * scale;
-          ctx.beginPath();
-          ctx.arc(bx, 0, mountR, 0, Math.PI * 2);
-          ctx.fillStyle = '#999999';
-          ctx.fill();
-          ctx.lineWidth = strokeWidth * 0.85;
-          ctx.strokeStyle = '#666666';
-          ctx.stroke();
-        }
+      ctx.restore();
+    };
 
-        ctx.restore();
-      });
+    if (chassis.turrets && chassis.turrets.length > 0) {
+      chassis.turrets.filter(t => !isCenteredAuto(t)).forEach(drawTurret);
     }
 
     drawPreviewPolygon(
@@ -255,6 +258,10 @@ export class MainMenuController {
       strokeColor,
       strokeWidth
     );
+
+    if (chassis.turrets && chassis.turrets.length > 0) {
+      chassis.turrets.filter(t => isCenteredAuto(t)).forEach(drawTurret);
+    }
 
     ctx.restore();
   }

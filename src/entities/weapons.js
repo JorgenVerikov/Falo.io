@@ -1070,11 +1070,12 @@ export class WeaponSystem {
         isTrap: Boolean(w.isTrap || t.isTrap),
         trapDrag: w.trapDrag ?? t.trapDrag,
         isAutoTurret: Boolean(t.isAutoTurret || w.isAutoTurret),
+        uncontrolled: Boolean(t.uncontrolled || w.uncontrolled),
         isAutoDrone: Boolean(t.isAutoDrone || w.isAutoDrone),
         maxDronesForType: w.maxDronesForType ?? t.maxDronesForType ?? null,
         mountRadius: t.mountRadius || 11,
         autoRange: w.autoRange ?? t.autoRange,
-        autoFovHalf: w.autoFovHalf ?? t.autoFovHalf,
+        autoFov: w.autoFov ?? t.autoFov,
         autoTurnSpeed: w.autoTurnSpeed ?? t.autoTurnSpeed,
         bulletOptions: extractBulletOptions(chassis.bulletProfile, extractBulletOptions(t, w)),
         droneOptions: t.droneOptions || w.droneOptions,
@@ -1220,6 +1221,7 @@ export class WeaponSystem {
     let totalRecoilImpulse = { x: 0, y: 0 };
     this.idleOrbitTime += dt;
     this.firedThisFrame = false;
+    this.summonedDroneThisFrame = false;
 
     // 1. Decay barrel recoil offset for all turrets
     this.turrets.forEach((turret, i) => {
@@ -1232,7 +1234,7 @@ export class WeaponSystem {
       // Visual-only recoil for non-shooting decorative turrets without a paired shooting barrel
       if (!turret.shootsBullet) {
         const hasPairedShooter = this.turrets.some(other =>
-          other.shootsBullet && Math.abs((other.angleOffset || 0) - (turret.angleOffset || 0)) < 0.01
+          other.shootsBullet && !other.isAutoTurret && Math.abs((other.angleOffset || 0) - (turret.angleOffset || 0)) < 0.01
         );
         if (!hasPairedShooter && turret.playsRecoil && isFiring && state.cooldownTimer <= 0) {
           state.cooldownTimer = turret.fireIntervalSec || 0.3;
@@ -1270,41 +1272,48 @@ export class WeaponSystem {
     // 2a. Auto-Turret Aiming & Target Acquisition (independent per turret)
     const normalizeAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
     const clampVal = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const autoSizeScale = (player && player.radius) ? (player.radius / CONFIG.PLAYER.radius) : 1.0;
     shootingTurrets.forEach(turret => {
       if (!turret.isAutoTurret) return;
       const state = this.turretStates[turret.index];
       const mountAngle = normalizeAngle(player.angle + (turret.angleOffset || 0));
-      const mountRadiusDist = player.radius || CONFIG.PLAYER.radius || 25;
-      const mx = player.x + Math.cos(mountAngle) * mountRadiusDist;
-      const my = player.y + Math.sin(mountAngle) * mountRadiusDist;
-      const fovHalf = turret.autoFovHalf || CONFIG.WEAPONS.autoTurretFovHalf || (Math.PI / 3);
+      const mountXOff = (turret.xOffset || 0) * autoSizeScale;
+      const mountYOff = (turret.yOffset || 0) * autoSizeScale;
+      const mx = player.x + Math.cos(mountAngle) * mountXOff - Math.sin(mountAngle) * mountYOff;
+      const my = player.y + Math.sin(mountAngle) * mountXOff + Math.cos(mountAngle) * mountYOff;
+      const autoFovDeg = turret.autoFov ?? CONFIG.WEAPONS.autoTurretFov ?? 120;
+      const isFullRotation = autoFovDeg >= 360;
+      const fovHalf = isFullRotation ? Math.PI : ((autoFovDeg * Math.PI) / 360);
       const autoRange = turret.autoRange || CONFIG.WEAPONS.autoTurretRange || 760;
       const autoRangeSq = autoRange * autoRange;
       const turnSpeed = turret.autoTurnSpeed || CONFIG.WEAPONS.autoTurretTurnSpeed || 8.5;
 
       if (state.worldAngle === null || state.worldAngle === undefined) {
         state.worldAngle = mountAngle;
-      } else {
+      } else if (!isFullRotation) {
         const clampedPrev = clampVal(normalizeAngle(state.worldAngle - mountAngle), -fovHalf, fovHalf);
         state.worldAngle = normalizeAngle(mountAngle + clampedPrev);
       }
 
       let desiredRelAngle = 0;
+      let desiredWorldAngle = mountAngle;
       let shouldFire = false;
       let manualControlled = false;
 
-      if (controlState && (controlState.mode === 'ATTRACT' || controlState.mode === 'REPEL')) {
+      if (!turret.uncontrolled && controlState && (controlState.mode === 'ATTRACT' || controlState.mode === 'REPEL')) {
         const cursorAngle = Math.atan2(controlState.targetY - my, controlState.targetX - mx);
         const relCursor = normalizeAngle(cursorAngle - mountAngle);
-        if (Math.abs(relCursor) <= fovHalf + 0.14) {
+        if (isFullRotation || Math.abs(relCursor) <= fovHalf + 0.14) {
           manualControlled = true;
           if (controlState.mode === 'ATTRACT') {
-            desiredRelAngle = clampVal(relCursor, -fovHalf, fovHalf);
-            const aimErr = Math.abs(normalizeAngle((mountAngle + desiredRelAngle) - state.worldAngle));
+            desiredRelAngle = isFullRotation ? relCursor : clampVal(relCursor, -fovHalf, fovHalf);
+            desiredWorldAngle = normalizeAngle(mountAngle + desiredRelAngle);
+            const aimErr = Math.abs(normalizeAngle(desiredWorldAngle - state.worldAngle));
             shouldFire = aimErr < 0.35;
           } else {
             desiredRelAngle = (relCursor >= 0) ? -fovHalf : fovHalf;
-            const aimErr = Math.abs(normalizeAngle((mountAngle + desiredRelAngle) - state.worldAngle));
+            desiredWorldAngle = normalizeAngle(mountAngle + desiredRelAngle);
+            const aimErr = Math.abs(normalizeAngle(desiredWorldAngle - state.worldAngle));
             shouldFire = aimErr < 0.35;
           }
         }
@@ -1313,6 +1322,7 @@ export class WeaponSystem {
       if (!manualControlled) {
         let bestDistSq = autoRangeSq;
         let bestRel = null;
+        let bestWorld = null;
 
         for (let i = 0; i < enemies.length; i++) {
           const e = enemies[i];
@@ -1321,10 +1331,12 @@ export class WeaponSystem {
           const dy = e.y - my;
           const dSq = dx * dx + dy * dy;
           if (dSq > bestDistSq) continue;
-          const rel = normalizeAngle(Math.atan2(dy, dx) - mountAngle);
-          if (Math.abs(rel) <= fovHalf) {
+          const worldA = Math.atan2(dy, dx);
+          const rel = normalizeAngle(worldA - mountAngle);
+          if (isFullRotation || Math.abs(rel) <= fovHalf) {
             bestDistSq = dSq;
             bestRel = rel;
+            bestWorld = worldA;
           }
         }
 
@@ -1336,29 +1348,40 @@ export class WeaponSystem {
             const dy = s.y - my;
             const dSq = dx * dx + dy * dy;
             if (dSq > bestDistSq) continue;
-            const rel = normalizeAngle(Math.atan2(dy, dx) - mountAngle);
-            if (Math.abs(rel) <= fovHalf) {
+            const worldA = Math.atan2(dy, dx);
+            const rel = normalizeAngle(worldA - mountAngle);
+            if (isFullRotation || Math.abs(rel) <= fovHalf) {
               bestDistSq = dSq;
               bestRel = rel;
+              bestWorld = worldA;
             }
           }
         }
 
         if (bestRel !== null) {
-          desiredRelAngle = clampVal(bestRel, -fovHalf, fovHalf);
-          const aimErr = Math.abs(normalizeAngle((mountAngle + desiredRelAngle) - state.worldAngle));
+          desiredRelAngle = isFullRotation ? bestRel : clampVal(bestRel, -fovHalf, fovHalf);
+          desiredWorldAngle = isFullRotation ? normalizeAngle(bestWorld) : normalizeAngle(mountAngle + desiredRelAngle);
+          const aimErr = Math.abs(normalizeAngle(desiredWorldAngle - state.worldAngle));
           shouldFire = aimErr < 0.35;
         } else {
           desiredRelAngle = 0;
+          desiredWorldAngle = mountAngle;
           shouldFire = false;
         }
       }
 
-      const curRel = clampVal(normalizeAngle(state.worldAngle - mountAngle), -fovHalf, fovHalf);
-      const diff = desiredRelAngle - curRel;
       const maxStep = turnSpeed * dt;
-      const nextRel = Math.abs(diff) <= maxStep ? desiredRelAngle : curRel + Math.sign(diff) * maxStep;
-      state.worldAngle = normalizeAngle(mountAngle + clampVal(nextRel, -fovHalf, fovHalf));
+      if (isFullRotation) {
+        const diff = normalizeAngle(desiredWorldAngle - state.worldAngle);
+        state.worldAngle = Math.abs(diff) <= maxStep
+          ? desiredWorldAngle
+          : normalizeAngle(state.worldAngle + Math.sign(diff) * maxStep);
+      } else {
+        const curRel = clampVal(normalizeAngle(state.worldAngle - mountAngle), -fovHalf, fovHalf);
+        const diff = desiredRelAngle - curRel;
+        const nextRel = Math.abs(diff) <= maxStep ? desiredRelAngle : curRel + Math.sign(diff) * maxStep;
+        state.worldAngle = normalizeAngle(mountAngle + clampVal(nextRel, -fovHalf, fovHalf));
+      }
       state.autoShouldFire = shouldFire;
     });
 
@@ -1763,6 +1786,7 @@ export class WeaponSystem {
         }
       )
     );
+    this.summonedDroneThisFrame = true;
   }
 
   getLivingDroneCount() {
@@ -1827,11 +1851,13 @@ export class WeaponSystem {
 
     if (turret.playsRecoil) {
       turretState.recoilOffset = turret.recoilKickAmount || 10;
-      this.turrets.forEach((other, idx) => {
-        if (!other.shootsBullet && other.playsRecoil && Math.abs((other.angleOffset || 0) - (turret.angleOffset || 0)) < 0.01) {
-          this.turretStates[idx].recoilOffset = other.recoilKickAmount || 10;
-        }
-      });
+      if (!turret.isAutoTurret) {
+        this.turrets.forEach((other, idx) => {
+          if (!other.shootsBullet && !other.isAutoTurret && other.playsRecoil && Math.abs((other.angleOffset || 0) - (turret.angleOffset || 0)) < 0.01) {
+            this.turretStates[idx].recoilOffset = other.recoilKickAmount || 10;
+          }
+        });
+      }
     }
 
     let impulse = { x: 0, y: 0 };
@@ -1852,9 +1878,10 @@ export class WeaponSystem {
       let spawnX;
       let spawnY;
       if (turret.isAutoTurret) {
-        const mountDist = player.radius || CONFIG.PLAYER.radius || 25;
-        const mx = player.x + Math.cos(mountAngle) * mountDist;
-        const my = player.y + Math.sin(mountAngle) * mountDist;
+        const mountXOff = (turret.xOffset || 0) * sizeScale;
+        const mountYOff = (turret.yOffset || 0) * sizeScale;
+        const mx = player.x + Math.cos(mountAngle) * mountXOff - Math.sin(mountAngle) * mountYOff;
+        const my = player.y + Math.sin(mountAngle) * mountXOff + Math.cos(mountAngle) * mountYOff;
         const tipLen = turret.length * sizeScale;
         spawnX = mx + Math.cos(fireAngle) * tipLen;
         spawnY = my + Math.sin(fireAngle) * tipLen;

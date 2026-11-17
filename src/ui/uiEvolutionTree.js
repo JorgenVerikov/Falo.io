@@ -1,7 +1,7 @@
 import { CONFIG, computeStrokeColor } from '../core/config.js';
 import { generateTankPreviewDataUrl, drawPreviewPolygon } from './uiPreviews.js';
 
-const WORLD_WIDTH = 2360;
+const WORLD_WIDTH = 3600;
 const WORLD_HEIGHT = 860;
 const NODE_RADIUS = 46;
 
@@ -13,44 +13,52 @@ const ROW_Y = {
 };
 
 const TIER_4_SLOTS = [
-  { key: 'triplet', col: -0.85 },
-  { key: 'pentashot', col: 0 },
-  { key: 'spreadshot', col: 0.85 },
-  { key: 'octotank', col: 1.7 },
-  { key: 'tripletwin', col: 2.55 },
-  { key: 'auto5', col: 4.0 },
-  { key: 'battleship', col: 5.1 },
-  { key: 'tesla', col: 6.15 },
-  { key: 'ranger', col: 7.05 },
-  { key: 'stalker', col: 7.90 },
-  { key: 'overlord', col: 8.75 },
-  { key: 'necromancer', col: 9.60 },
-  { key: 'manager', col: 10.45 },
-  { key: 'overtrapper', col: 11.30 },
-  { key: 'factory', col: 12.15 }
+  { key: 'triplet', col: 0 },
+  { key: 'pentashot', col: 1 },
+  { key: 'spreadshot', col: 2 },
+  { key: 'octotank', col: 3 },
+  { key: 'auto5', col: 4 },
+  { key: 'tripletwin', col: 5 },
+  { key: 'battleship', col: 6 },
+  { key: 'overlord', col: 7 },
+  { key: 'necromancer', col: 8 },
+  { key: 'manager', col: 9 },
+  { key: 'factory', col: 10 },
+  { key: 'overtrapper', col: 11 },
+  { key: 'tritrapper', col: 12 },
+  { key: 'megatrapper', col: 13 },
+  { key: 'autotrapper', col: 14 },
+  { key: 'ranger', col: 15 },
+  { key: 'stalker', col: 16 },
+  { key: 'predator', col: 17 },
+  { key: 'gunnertrapper', col: 18 },
+  { key: 'streamliner', col: 19 },
+  { key: 'hybrid', col: 20 },
+  { key: 'annihilator', col: 21 },
+  { key: 'tesla', col: 22.5 }
 ];
 
 const TIER_3_SLOTS = [
-  { key: 'tripleshot', col: 0 },
-  { key: 'quadtank', col: 1 },
-  { key: 'twinflank', col: 2 },
-  { key: 'triangle', col: 3 },
+  { key: 'tripleshot', col: 1 },
+  { key: 'quadtank', col: 3 },
   { key: 'auto3', col: 4 },
-  { key: 'smasher', col: 5.1 },
-  { key: 'assassin', col: 7.45 },
-  { key: 'overseer', col: 8.45 },
-  { key: 'hunter', col: 9.45 },
-  { key: 'trapper', col: 10.45 },
-  { key: 'destroyer', col: 11.8 },
-  { key: 'gunner', col: 12.8 },
-  { key: 'shotgun', col: 13.8 }
+  { key: 'triangle', col: 4.9 },
+  { key: 'twinflank', col: 5.8 },
+  { key: 'overseer', col: 8.5 },
+  { key: 'trapper', col: 12.5 },
+  { key: 'assassin', col: 15.5 },
+  { key: 'hunter', col: 17.5 },
+  { key: 'gunner', col: 18.5 },
+  { key: 'destroyer', col: 20.5 },
+  { key: 'shotgun', col: 21.5 },
+  { key: 'smasher', col: 22.5 }
 ];
 
 const TIER_2_SLOTS = [
-  { key: 'twin', col: 0.75 },
-  { key: 'flank', col: 2.95 },
-  { key: 'sniper', col: 8.95 },
-  { key: 'machinegun', col: 12.8 }
+  { key: 'twin', col: 2.0 },
+  { key: 'flank', col: 4.4 },
+  { key: 'sniper', col: 13.2 },
+  { key: 'machinegun', col: 20.0 }
 ];
 
 function getDisplayTier(chassis) {
@@ -64,14 +72,14 @@ function getDisplayTier(chassis) {
 }
 
 function buildTreeLayout() {
-  const padX = 215;
-  const colStep = 144;
+  const padX = 250;
+  const colStep = 138;
   const colToX = (col) => padX + col * colStep;
 
   const positions = {};
   const placed = new Set();
 
-  let maxCol = 13.8;
+  let maxCol = 22.5;
   TIER_4_SLOTS.forEach(slot => {
     if (CONFIG.CHASSIS[slot.key]) {
       positions[slot.key] = { x: colToX(slot.col), y: ROW_Y[4], tier: 4 };
@@ -94,7 +102,7 @@ function buildTreeLayout() {
   });
 
   if (CONFIG.CHASSIS.basic) {
-    positions.basic = { x: colToX(6.15), y: ROW_Y[1], tier: 1 };
+    positions.basic = { x: colToX(11.3), y: ROW_Y[1], tier: 1 };
     placed.add('basic');
   }
 
@@ -108,8 +116,8 @@ function buildTreeLayout() {
     placed.add(key);
   });
 
-  const maxNodeX = Math.max(...Object.values(positions).map(p => p.x), WORLD_WIDTH - padX);
-  const worldWidth = Math.max(WORLD_WIDTH, maxNodeX + padX);
+  const maxNodeX = Math.max(...Object.values(positions).map(p => p.x), WORLD_WIDTH - 180);
+  const worldWidth = Math.max(WORLD_WIDTH, maxNodeX + 180);
 
   const edges = [];
   Object.keys(CONFIG.CHASSIS).forEach(childKey => {
@@ -126,15 +134,15 @@ function buildTreeLayout() {
 }
 
 function getBusY(fromKey, toKey, fromPos, toPos) {
-  if (fromKey === 'basic' && toPos.tier >= 3) return 405;
   if (fromKey === 'basic') return 200;
-  if (fromKey === 'twin') return 385;
-  if (fromKey === 'flank') return 420;
-  if (fromKey === 'quadtank') return 580;
-  if (fromKey === 'twinflank') return 602;
-  if (fromKey === 'auto3') return 624;
-  if (fromKey === 'overseer') return 646;
-  if (fromKey === 'assassin') return 602;
+  if (fromKey === 'twin') return 380;
+  if (fromKey === 'flank') return 416;
+  if (fromKey === 'sniper' || fromKey === 'machinegun') return 398;
+  if (fromKey === 'trapper') return 580;
+  if (fromKey === 'quadtank' || fromKey === 'twinflank') return 590;
+  if (fromKey === 'auto3' || fromKey === 'overseer') return 616;
+  if (fromKey === 'tripleshot' || fromKey === 'assassin' || fromKey === 'hunter' || fromKey === 'destroyer') return 606;
+  if (fromKey === 'gunner') return 634;
   return (fromPos.y + toPos.y) / 2;
 }
 
@@ -191,7 +199,7 @@ export class EvolutionTreeController {
     this.ctx = this.previewCanvas ? this.previewCanvas.getContext('2d') : null;
 
     this.zoom = 1;
-    this.minZoom = 0.32;
+    this.minZoom = 0.25;
     this.maxZoom = 2.4;
     this.panX = 0;
     this.panY = 0;
@@ -732,7 +740,7 @@ export class EvolutionTreeController {
 
     if (chassis.turrets && chassis.turrets.length > 0) {
       chassis.turrets.forEach(turret => {
-        const bxUnit = turret.isAutoTurret ? 1.0 : ((turret.xOffset || 0) / playerR);
+        const bxUnit = (turret.xOffset || 0) / playerR;
         const lenUnit = (turret.length || 48) / playerR;
         const yUnit = Math.abs(turret.yOffset || 0) / playerR;
         const halfWidthUnit = Math.max(turret.width || 20, turret.frontWidth || turret.width || 20) / (2 * playerR);
@@ -783,47 +791,50 @@ export class EvolutionTreeController {
       );
     }
 
-    if (chassis.turrets && chassis.turrets.length > 0) {
-      chassis.turrets.forEach(turret => {
-        ctx.save();
-        ctx.rotate(this.tankAngle + (turret.angleOffset || 0));
+    const isCenteredAuto = (t) => Boolean(t.isAutoTurret && (t.xOffset || 0) === 0 && (t.yOffset || 0) === 0);
+    const drawTurret = (turret) => {
+      ctx.save();
+      ctx.rotate(this.tankAngle + (turret.angleOffset || 0));
 
-        const bx = turret.isAutoTurret ? baseRadius : (turret.xOffset || 0) * scale;
-        const backWidth = turret.width * scale;
-        const frontWidth = (turret.frontWidth || turret.width) * scale;
-        const halfBack = backWidth / 2;
-        const halfFront = frontWidth / 2;
-        const tLen = turret.length * scale;
-        const tY = (turret.yOffset || 0) * scale;
+      const bx = (turret.xOffset || 0) * scale;
+      const backWidth = turret.width * scale;
+      const frontWidth = (turret.frontWidth || turret.width) * scale;
+      const halfBack = backWidth / 2;
+      const halfFront = frontWidth / 2;
+      const tLen = turret.length * scale;
+      const tY = (turret.yOffset || 0) * scale;
 
-        ctx.fillStyle = '#999999';
-        ctx.strokeStyle = '#666666';
-        ctx.lineWidth = strokeWidth * 0.9;
+      ctx.fillStyle = '#999999';
+      ctx.strokeStyle = '#666666';
+      ctx.lineWidth = strokeWidth * 0.9;
 
+      ctx.beginPath();
+      ctx.moveTo(bx, tY - halfBack);
+      ctx.lineTo(bx + tLen, tY - halfFront);
+      ctx.lineTo(bx + tLen, tY + halfFront);
+      ctx.lineTo(bx, tY + halfBack);
+      ctx.closePath();
+
+      ctx.fill();
+      ctx.lineJoin = 'miter';
+      ctx.stroke();
+
+      if (turret.isAutoTurret) {
+        const mountR = (turret.mountRadius || 11) * scale;
         ctx.beginPath();
-        ctx.moveTo(bx, tY - halfBack);
-        ctx.lineTo(bx + tLen, tY - halfFront);
-        ctx.lineTo(bx + tLen, tY + halfFront);
-        ctx.lineTo(bx, tY + halfBack);
-        ctx.closePath();
-
+        ctx.arc(bx, tY, mountR, 0, Math.PI * 2);
+        ctx.fillStyle = '#999999';
         ctx.fill();
-        ctx.lineJoin = 'miter';
+        ctx.lineWidth = strokeWidth * 0.85;
+        ctx.strokeStyle = '#666666';
         ctx.stroke();
+      }
 
-        if (turret.isAutoTurret) {
-          const mountR = (turret.mountRadius || 11) * scale;
-          ctx.beginPath();
-          ctx.arc(bx, 0, mountR, 0, Math.PI * 2);
-          ctx.fillStyle = '#999999';
-          ctx.fill();
-          ctx.lineWidth = strokeWidth * 0.85;
-          ctx.strokeStyle = '#666666';
-          ctx.stroke();
-        }
+      ctx.restore();
+    };
 
-        ctx.restore();
-      });
+    if (chassis.turrets && chassis.turrets.length > 0) {
+      chassis.turrets.filter(t => !isCenteredAuto(t)).forEach(drawTurret);
     }
 
     drawPreviewPolygon(
@@ -834,6 +845,10 @@ export class EvolutionTreeController {
       strokeColor,
       strokeWidth
     );
+
+    if (chassis.turrets && chassis.turrets.length > 0) {
+      chassis.turrets.filter(t => isCenteredAuto(t)).forEach(drawTurret);
+    }
 
     ctx.restore();
   }

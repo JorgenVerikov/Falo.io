@@ -181,7 +181,7 @@ export const CHASSIS_CONFIG = {
         { type: 'READY_RACK', maxRack: 4, refillSpeed: 1.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 38, frontWidth: 20, angleOffset: Math.PI, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 38, frontWidth: 20, angleOffset: 180, xOffset: 0, yOffset: 0 },
         { damage: 1.0, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0.8, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'READY_RACK', maxRack: 4, refillSpeed: 1.0 }
       )
@@ -297,22 +297,22 @@ export const CHASSIS_CONFIG = {
     firingMode: 'simultaneous',
     turrets: [
       createBarrelTurret(
-        { width: 20, length: 42, frontWidth: 20, angleOffset: -Math.PI / 4, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 42, frontWidth: 20, angleOffset: -45, xOffset: 0, yOffset: 0 },
         { damage: 0.50, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 0.90, spread: 1, recoil: 0.75, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 2.0, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 42, frontWidth: 20, angleOffset: Math.PI / 4, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 42, frontWidth: 20, angleOffset: 45, xOffset: 0, yOffset: 0 },
         { damage: 0.50, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 0.90, spread: 1, recoil: 0.75, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 2.0, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: -Math.PI / 8, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: -22.5, xOffset: 0, yOffset: 0 },
         { damage: 0.50, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 0.90, spread: 1, recoil: 0.75, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 2.0, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: Math.PI / 8, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 22.5, xOffset: 0, yOffset: 0 },
         { damage: 0.50, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 0.90, spread: 1, recoil: 0.75, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 2.0, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
@@ -337,52 +337,52 @@ export const CHASSIS_CONFIG = {
     firingMode: 'simultaneous',
     turrets: [
       createBarrelTurret(
-        { width: 14, length: 33, frontWidth: 14, angleOffset: -(5 * Math.PI) / 12, xOffset: 0, yOffset: 0 },
+        { width: 14, length: 33, frontWidth: 14, angleOffset: -75, xOffset: 0, yOffset: 0 },
         { damage: 0.55, penetration: 1.0, bulletSpeed: 1, bulletSize: 0.85, reload: 2.0, spread: 1, recoil: 0.03, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.4, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 14, length: 33, frontWidth: 14, angleOffset: (5 * Math.PI) / 12, xOffset: 0, yOffset: 0 },
+        { width: 14, length: 33, frontWidth: 14, angleOffset: 75, xOffset: 0, yOffset: 0 },
         { damage: 0.55, penetration: 1.0, bulletSpeed: 1, bulletSize: 0.85, reload: 2.0, spread: 1, recoil: 0.03, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.4, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 14, length: 36, frontWidth: 14, angleOffset: -(4 * Math.PI) / 12, xOffset: 0, yOffset: 0 },
+        { width: 14, length: 36, frontWidth: 14, angleOffset: -60, xOffset: 0, yOffset: 0 },
         { damage: 0.55, penetration: 1.0, bulletSpeed: 1, bulletSize: 0.85, reload: 2.0, spread: 1, recoil: 0.03, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.4, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 14, length: 36, frontWidth: 14, angleOffset: (4 * Math.PI) / 12, xOffset: 0, yOffset: 0 },
+        { width: 14, length: 36, frontWidth: 14, angleOffset: 60, xOffset: 0, yOffset: 0 },
         { damage: 0.55, penetration: 1.0, bulletSpeed: 1, bulletSize: 0.85, reload: 2.0, spread: 1, recoil: 0.03, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.4, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 14, length: 39, frontWidth: 14, angleOffset: -(3 * Math.PI) / 12, xOffset: 0, yOffset: 0 },
+        { width: 14, length: 39, frontWidth: 14, angleOffset: -45, xOffset: 0, yOffset: 0 },
         { damage: 0.55, penetration: 1.0, bulletSpeed: 1, bulletSize: 0.85, reload: 2.0, spread: 1, recoil: 0.03, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.4, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 14, length: 39, frontWidth: 14, angleOffset: (3 * Math.PI) / 12, xOffset: 0, yOffset: 0 },
+        { width: 14, length: 39, frontWidth: 14, angleOffset: 45, xOffset: 0, yOffset: 0 },
         { damage: 0.55, penetration: 1.0, bulletSpeed: 1, bulletSize: 0.85, reload: 2.0, spread: 1, recoil: 0.03, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.4, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 14, length: 42, frontWidth: 14, angleOffset: -(2 * Math.PI) / 12, xOffset: 0, yOffset: 0 },
+        { width: 14, length: 42, frontWidth: 14, angleOffset: -30, xOffset: 0, yOffset: 0 },
         { damage: 0.55, penetration: 1.0, bulletSpeed: 1, bulletSize: 0.85, reload: 2.0, spread: 1, recoil: 0.03, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.4, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 14, length: 42, frontWidth: 14, angleOffset: (2 * Math.PI) / 12, xOffset: 0, yOffset: 0 },
+        { width: 14, length: 42, frontWidth: 14, angleOffset: 30, xOffset: 0, yOffset: 0 },
         { damage: 0.55, penetration: 1.0, bulletSpeed: 1, bulletSize: 0.85, reload: 2.0, spread: 1, recoil: 0.03, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.4, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 14, length: 45, frontWidth: 14, angleOffset: -Math.PI / 12, xOffset: 0, yOffset: 0 },
+        { width: 14, length: 45, frontWidth: 14, angleOffset: -15, xOffset: 0, yOffset: 0 },
         { damage: 0.55, penetration: 1.0, bulletSpeed: 1, bulletSize: 0.85, reload: 2.0, spread: 1, recoil: 0.03, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.4, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 14, length: 45, frontWidth: 14, angleOffset: Math.PI / 12, xOffset: 0, yOffset: 0 },
+        { width: 14, length: 45, frontWidth: 14, angleOffset: 15, xOffset: 0, yOffset: 0 },
         { damage: 0.55, penetration: 1.0, bulletSpeed: 1, bulletSize: 0.85, reload: 2.0, spread: 1, recoil: 0.03, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.4, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
@@ -412,37 +412,37 @@ export const CHASSIS_CONFIG = {
         { type: 'THERMAL', heatPerShot: 1.25, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: Math.PI / 2, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 90, xOffset: 0, yOffset: 0 },
         { damage: 0.65, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.25, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: Math.PI, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 180, xOffset: 0, yOffset: 0 },
         { damage: 0.65, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.25, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: -Math.PI / 2, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: -90, xOffset: 0, yOffset: 0 },
         { damage: 0.65, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.25, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: Math.PI / 4, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 45, xOffset: 0, yOffset: 0 },
         { damage: 0.65, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0.5, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.25, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: (3 * Math.PI) / 4, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 135, xOffset: 0, yOffset: 0 },
         { damage: 0.65, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0.5, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.25, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: -(3 * Math.PI) / 4, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: -135, xOffset: 0, yOffset: 0 },
         { damage: 0.65, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0.5, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.25, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: -Math.PI / 4, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: -45, xOffset: 0, yOffset: 0 },
         { damage: 0.65, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0.5, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.25, coolRate: 16, overheatLockoutTime: 2.0 }
       )
@@ -464,29 +464,29 @@ export const CHASSIS_CONFIG = {
     autoSpinSpeed: 0.55,
     turrets: [
       createBarrelTurret(
-        { width: 15, length: 26, frontWidth: 15, angleOffset: 0, xOffset: 0, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
+        { width: 15, length: 26, frontWidth: 15, angleOffset: 0, xOffset: 25, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
         { damage: 0.40, penetration: 0.50, bulletSpeed: 1.2, bulletSize: 1.0, reload: 0.9, spread: 0.5, recoil: 0.15, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
-        { type: 'THERMAL', heatPerShot: 1.5, coolRate: 16, overheatLockoutTime: 2.0, isAutoTurret: true, autoFovHalf: (85 * Math.PI) / 180 }
+        { type: 'THERMAL', heatPerShot: 1.5, coolRate: 16, overheatLockoutTime: 2.0, autoFov: 170 }
       ),
       createBarrelTurret(
-        { width: 15, length: 26, frontWidth: 15, angleOffset: (2 * Math.PI) / 5, xOffset: 0, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
+        { width: 15, length: 26, frontWidth: 15, angleOffset: 72, xOffset: 25, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
         { damage: 0.40, penetration: 0.50, bulletSpeed: 1.2, bulletSize: 1.0, reload: 0.9, spread: 0.5, recoil: 0.15, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
-        { type: 'THERMAL', heatPerShot: 1.5, coolRate: 16, overheatLockoutTime: 2.0, isAutoTurret: true, autoFovHalf: (85 * Math.PI) / 180 }
+        { type: 'THERMAL', heatPerShot: 1.5, coolRate: 16, overheatLockoutTime: 2.0, autoFov: 170 }
       ),
       createBarrelTurret(
-        { width: 15, length: 26, frontWidth: 15, angleOffset: (4 * Math.PI) / 5, xOffset: 0, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
+        { width: 15, length: 26, frontWidth: 15, angleOffset: 144, xOffset: 25, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
         { damage: 0.40, penetration: 0.50, bulletSpeed: 1.2, bulletSize: 1.0, reload: 0.9, spread: 0.5, recoil: 0.15, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
-        { type: 'THERMAL', heatPerShot: 1.5, coolRate: 16, overheatLockoutTime: 2.0, isAutoTurret: true, autoFovHalf: (85 * Math.PI) / 180 }
+        { type: 'THERMAL', heatPerShot: 1.5, coolRate: 16, overheatLockoutTime: 2.0, autoFov: 170 }
       ),
       createBarrelTurret(
-        { width: 15, length: 26, frontWidth: 15, angleOffset: -(4 * Math.PI) / 5, xOffset: 0, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
+        { width: 15, length: 26, frontWidth: 15, angleOffset: -144, xOffset: 25, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
         { damage: 0.40, penetration: 0.50, bulletSpeed: 1.2, bulletSize: 1.0, reload: 0.9, spread: 0.5, recoil: 0.15, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
-        { type: 'THERMAL', heatPerShot: 1.5, coolRate: 16, overheatLockoutTime: 2.0, isAutoTurret: true, autoFovHalf: (85 * Math.PI) / 180 }
+        { type: 'THERMAL', heatPerShot: 1.5, coolRate: 16, overheatLockoutTime: 2.0, autoFov: 170 }
       ),
       createBarrelTurret(
-        { width: 15, length: 26, frontWidth: 15, angleOffset: -(2 * Math.PI) / 5, xOffset: 0, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
+        { width: 15, length: 26, frontWidth: 15, angleOffset: -72, xOffset: 25, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
         { damage: 0.40, penetration: 0.50, bulletSpeed: 1.2, bulletSize: 1.0, reload: 0.9, spread: 0.5, recoil: 0.15, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
-        { type: 'THERMAL', heatPerShot: 1.5, coolRate: 16, overheatLockoutTime: 2.0, isAutoTurret: true, autoFovHalf: (85 * Math.PI) / 180 }
+        { type: 'THERMAL', heatPerShot: 1.5, coolRate: 16, overheatLockoutTime: 2.0, autoFov: 170 }
       )
     ]
   },
@@ -514,22 +514,22 @@ export const CHASSIS_CONFIG = {
         { type: 'THERMAL', heatPerShot: 1.65, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: (2 * Math.PI) / 3, xOffset: 0, yOffset: -13 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 120, xOffset: 0, yOffset: -13 },
         { damage: 0.60, penetration: 0.90, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.65, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: (2 * Math.PI) / 3, xOffset: 0, yOffset: 13 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 120, xOffset: 0, yOffset: 13 },
         { damage: 0.60, penetration: 0.90, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0.5, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.65, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: -(2 * Math.PI) / 3, xOffset: 0, yOffset: -13 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: -120, xOffset: 0, yOffset: -13 },
         { damage: 0.60, penetration: 0.90, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.65, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: -(2 * Math.PI) / 3, xOffset: 0, yOffset: 13 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: -120, xOffset: 0, yOffset: 13 },
         { damage: 0.60, penetration: 0.90, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0.5, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.65, coolRate: 16, overheatLockoutTime: 2.0 }
       )
@@ -556,22 +556,22 @@ export const CHASSIS_CONFIG = {
     },
     turrets: [
       createBarrelTurret(
-        { width: 24, length: 37, frontWidth: 14, angleOffset: Math.PI / 2, xOffset: 0, yOffset: -10, isAutoDrone: false },
+        { width: 24, length: 37, frontWidth: 14, angleOffset: 90, xOffset: 0, yOffset: -10, isAutoDrone: false },
         { damage: 0.15, penetration: 1.0, bulletSpeed: 1.2, bulletSize: 0.65, reload: 0.45, spread: 0.2, recoil: 0, knockback: 0.5, launchSpeed: 1, bulletsPerShot: 1, lifetime: 4.2, fireDelay: 0 },
         { type: 'DRONE_SPAWNER', maxDrones: 48, isAutoDrone: false }
       ),
       createBarrelTurret(
-        { width: 24, length: 37, frontWidth: 14, angleOffset: Math.PI / 2, xOffset: 0, yOffset: 10, isAutoDrone: true },
+        { width: 24, length: 37, frontWidth: 14, angleOffset: 90, xOffset: 0, yOffset: 10, isAutoDrone: true },
         { damage: 0.15, penetration: 1.0, bulletSpeed: 1.2, bulletSize: 0.65, reload: 0.45, spread: 0.2, recoil: 0, knockback: 0.5, launchSpeed: 1, bulletsPerShot: 1, lifetime: 4.2, fireDelay: 0 },
         { type: 'DRONE_SPAWNER', maxDrones: 48, isAutoDrone: true }
       ),
       createBarrelTurret(
-        { width: 24, length: 37, frontWidth: 14, angleOffset: -Math.PI / 2, xOffset: 0, yOffset: -10, isAutoDrone: true },
+        { width: 24, length: 37, frontWidth: 14, angleOffset: -90, xOffset: 0, yOffset: -10, isAutoDrone: true },
         { damage: 0.15, penetration: 1.0, bulletSpeed: 1.2, bulletSize: 0.65, reload: 0.45, spread: 0.2, recoil: 0, knockback: 0.5, launchSpeed: 1, bulletsPerShot: 1, lifetime: 4.2, fireDelay: 0 },
         { type: 'DRONE_SPAWNER', maxDrones: 48, isAutoDrone: true }
       ),
       createBarrelTurret(
-        { width: 24, length: 37, frontWidth: 14, angleOffset: -Math.PI / 2, xOffset: 0, yOffset: 10, isAutoDrone: false },
+        { width: 24, length: 37, frontWidth: 14, angleOffset: -90, xOffset: 0, yOffset: 10, isAutoDrone: false },
         { damage: 0.15, penetration: 1.0, bulletSpeed: 1.2, bulletSize: 0.65, reload: 0.45, spread: 0.2, recoil: 0, knockback: 0.5, launchSpeed: 1, bulletsPerShot: 1, lifetime: 4.2, fireDelay: 0 },
         { type: 'DRONE_SPAWNER', maxDrones: 48, isAutoDrone: false }
       )
@@ -627,6 +627,80 @@ export const CHASSIS_CONFIG = {
     ]
   },
 
+  predator: {
+    name: 'Predator',
+    desc: 'Triple stacked sniper cannons firing a three-round escalating burst; hold right-click or Shift to lock and focus vision farther out.',
+    reqLevel: 45,
+    tier: 3,
+    upgradesFrom: ['hunter'],
+    shopCost: 1500,
+    cameraZoom: 0.70,
+    cameraScope: {
+      distanceMultiplier: 1.45,
+      maxDistance: 1100
+    },
+    sides: 0,
+    radiusMultiplier: 1.0,
+    firingMode: 'alternating',
+    turrets: [
+      createBarrelTurret(
+        { width: 20, length: 64, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 0.80, penetration: 1.0, bulletSpeed: 1.45, bulletSize: 0.65, reload: 2.85, spread: 0.4, recoil: 0.15, knockback: 1.1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.4, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'READY_RACK', maxRack: 1, refillSpeed: 1.20 }
+      ),
+      createBarrelTurret(
+        { width: 28, length: 54, frontWidth: 28, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 0.85, penetration: 1.05, bulletSpeed: 1.45, bulletSize: 0.75, reload: 2.85, spread: 0.2, recoil: 0.15, knockback: 1.2, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.4, fireDelay: 0.05, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'READY_RACK', maxRack: 1, refillSpeed: 1.20 }
+      ),
+      createBarrelTurret(
+        { width: 36, length: 44, frontWidth: 36, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 0.90, penetration: 1.10, bulletSpeed: 1.45, bulletSize: 0.85, reload: 2.85, spread: 0, recoil: 0.15, knockback: 1.3, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.4, fireDelay: 0.10, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'READY_RACK', maxRack: 1, refillSpeed: 1.20 }
+      )
+    ]
+  },
+
+  streamliner: {
+    name: 'Streamliner',
+    desc: 'Five equal-width overlapping barrels firing rapid small bullets in sequence like a continuous stream.',
+    reqLevel: 45,
+    tier: 3,
+    upgradesFrom: ['hunter', 'gunner'],
+    shopCost: 1500,
+    cameraZoom: 0.76,
+    sides: 0,
+    radiusMultiplier: 1.0,
+    firingMode: 'alternating',
+    turrets: [
+      createBarrelTurret(
+        { width: 24, length: 58, frontWidth: 24, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 0.36, penetration: 0.50, bulletSpeed: 1.25, bulletSize: 0.52, reload: 0.65, spread: 0.5, recoil: 0.08, knockback: 0.55, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'THERMAL', heatPerShot: 1.35, coolRate: 16, overheatLockoutTime: 2.0 }
+      ),
+      createBarrelTurret(
+        { width: 24, length: 52, frontWidth: 24, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 0.36, penetration: 0.50, bulletSpeed: 1.25, bulletSize: 0.52, reload: 0.65, spread: 0.5, recoil: 0.08, knockback: 0.55, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0.2, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'THERMAL', heatPerShot: 1.35, coolRate: 16, overheatLockoutTime: 2.0 }
+      ),
+      createBarrelTurret(
+        { width: 24, length: 46, frontWidth: 24, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 0.36, penetration: 0.50, bulletSpeed: 1.25, bulletSize: 0.52, reload: 0.65, spread: 0.5, recoil: 0.08, knockback: 0.55, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0.4, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'THERMAL', heatPerShot: 1.35, coolRate: 16, overheatLockoutTime: 2.0 }
+      ),
+      createBarrelTurret(
+        { width: 24, length: 40, frontWidth: 24, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 0.36, penetration: 0.50, bulletSpeed: 1.25, bulletSize: 0.52, reload: 0.65, spread: 0.5, recoil: 0.08, knockback: 0.55, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0.6, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'THERMAL', heatPerShot: 1.35, coolRate: 16, overheatLockoutTime: 2.0 }
+      ),
+      createBarrelTurret(
+        { width: 24, length: 34, frontWidth: 24, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 0.36, penetration: 0.50, bulletSpeed: 1.25, bulletSize: 0.52, reload: 0.65, spread: 0.5, recoil: 0.08, knockback: 0.55, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0.8, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'THERMAL', heatPerShot: 1.35, coolRate: 16, overheatLockoutTime: 2.0 }
+      )
+    ]
+  },
+
   overlord: {
     name: 'Overlord',
     desc: 'Four equally spaced spawners deploy up to 12 controllable drones at double the Overseer rate.',
@@ -651,17 +725,17 @@ export const CHASSIS_CONFIG = {
         { type: 'DRONE_SPAWNER', maxDrones: 12 }
       ),
       createBarrelTurret(
-        { width: 20, length: 35, frontWidth: 35, angleOffset: Math.PI / 2, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 35, frontWidth: 35, angleOffset: 90, xOffset: 0, yOffset: 0 },
         { damage: 0.70, penetration: 2.0, bulletSpeed: 0.8, bulletSize: 1.2, reload: 2.5, spread: 0, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 9999, fireDelay: 0 },
         { type: 'DRONE_SPAWNER', maxDrones: 12 }
       ),
       createBarrelTurret(
-        { width: 20, length: 35, frontWidth: 35, angleOffset: Math.PI, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 35, frontWidth: 35, angleOffset: 180, xOffset: 0, yOffset: 0 },
         { damage: 0.70, penetration: 2.0, bulletSpeed: 0.8, bulletSize: 1.2, reload: 2.5, spread: 0, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 9999, fireDelay: 0 },
         { type: 'DRONE_SPAWNER', maxDrones: 12 }
       ),
       createBarrelTurret(
-        { width: 20, length: 35, frontWidth: 35, angleOffset: -Math.PI / 2, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 35, frontWidth: 35, angleOffset: -90, xOffset: 0, yOffset: 0 },
         { damage: 0.70, penetration: 2.0, bulletSpeed: 0.8, bulletSize: 1.2, reload: 2.5, spread: 0, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 9999, fireDelay: 0 },
         { type: 'DRONE_SPAWNER', maxDrones: 12 }
       )
@@ -704,11 +778,11 @@ export const CHASSIS_CONFIG = {
     },
     turrets: [
       createBarrelTurret(
-        { width: 22, length: 28, frontWidth: 35, angleOffset: Math.PI / 2, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: false },
+        { width: 22, length: 28, frontWidth: 35, angleOffset: 90, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: false },
         { damage: 1.68, penetration: 2.0, bulletSpeed: 0.76, bulletSize: 1.2, reload: 1.0, spread: 0, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 9999, fireDelay: 0 }
       ),
       createBarrelTurret(
-        { width: 22, length: 28, frontWidth: 35, angleOffset: -Math.PI / 2, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: false },
+        { width: 22, length: 28, frontWidth: 35, angleOffset: -90, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: false },
         { damage: 1.68, penetration: 2.0, bulletSpeed: 0.76, bulletSize: 1.2, reload: 1.0, spread: 0, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 9999, fireDelay: 0 }
       )
     ]
@@ -716,7 +790,7 @@ export const CHASSIS_CONFIG = {
 
   manager: {
     name: 'Manager',
-    desc: 'Single fast front spawner with up to 8 controllable drones and stationary stealth cloaking.',
+    desc: 'Single fast front spawner with up to 8 controllable drones; fades to invisibility even while moving, briefly revealing itself when summoning a drone.',
     reqLevel: 45,
     tier: 3,
     upgradesFrom: ['overseer'],
@@ -727,12 +801,15 @@ export const CHASSIS_CONFIG = {
     isDroneClass: true,
     maxDrones: 8,
     stealth: {
-      fadeInTime: 1.5,
-      fadeOutTime: 0.35,
+      fadeInTime: 2.0,
+      fadeOutTime: 0.4,
       minAlpha: 0.06,
       shotRevealBump: 0.55,
-      damageRevealBump: 0.70,
-      requireStationary: true
+      damageRevealBump: 0.55,
+      requireStationary: false,
+      revealOnDroneSummon: true,
+      summonRevealAlpha: 0.85,
+      summonFadeTime: 0.45
     },
     statLabelOverrides: {
       shellSpeed: 'Drone Speed',
@@ -771,12 +848,12 @@ export const CHASSIS_CONFIG = {
         { type: 'READY_RACK', maxRack: 5, refillSpeed: 1.0, isTrap: true }
       ),
       createBarrelTurret(
-        { width: 20, length: 35, frontWidth: 35, angleOffset: (2 * Math.PI) / 3, xOffset: 0, yOffset: 0, isAutoDrone: false },
+        { width: 20, length: 35, frontWidth: 35, angleOffset: 120, xOffset: 0, yOffset: 0, isAutoDrone: false },
         { damage: 0.70, penetration: 2.0, bulletSpeed: 0.9, bulletSize: 1.2, reload: 2.5, spread: 0, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 9999, fireDelay: 0 },
         { type: 'DRONE_SPAWNER', maxDrones: 4, maxDronesForType: 2, isAutoDrone: false }
       ),
       createBarrelTurret(
-        { width: 20, length: 35, frontWidth: 35, angleOffset: -(2 * Math.PI) / 3, xOffset: 0, yOffset: 0, isAutoDrone: true },
+        { width: 20, length: 35, frontWidth: 35, angleOffset: -120, xOffset: 0, yOffset: 0, isAutoDrone: true },
         { damage: 0.70, penetration: 2.0, bulletSpeed: 0.9, bulletSize: 1.2, reload: 2.5, spread: 0, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 9999, fireDelay: 0 },
         { type: 'DRONE_SPAWNER', maxDrones: 4, maxDronesForType: 2, isAutoDrone: true }
       )
@@ -851,7 +928,7 @@ export const CHASSIS_CONFIG = {
     firingMode: 'simultaneous',
     turrets: [
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: -Math.PI / 4, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: -45, xOffset: 0, yOffset: 0 },
         { damage: 0.70, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0.6, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 3.4, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
@@ -861,7 +938,7 @@ export const CHASSIS_CONFIG = {
         { type: 'THERMAL', heatPerShot: 3.4, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: Math.PI / 4, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 45, xOffset: 0, yOffset: 0 },
         { damage: 0.70, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0.6, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 3.4, coolRate: 16, overheatLockoutTime: 2.0 }
       )
@@ -886,17 +963,17 @@ export const CHASSIS_CONFIG = {
         { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: Math.PI / 2, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 90, xOffset: 0, yOffset: 0 },
         { damage: 0.75, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: Math.PI, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 180, xOffset: 0, yOffset: 0 },
         { damage: 0.75, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: -Math.PI / 2, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: -90, xOffset: 0, yOffset: 0 },
         { damage: 0.75, penetration: 1.0, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0 }
       )
@@ -921,7 +998,7 @@ export const CHASSIS_CONFIG = {
         { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: Math.PI, xOffset: 0, yOffset: -13 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 180, xOffset: 0, yOffset: -13 },
         { damage: 0.60, penetration: 0.90, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
@@ -931,7 +1008,7 @@ export const CHASSIS_CONFIG = {
         { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 48, frontWidth: 20, angleOffset: Math.PI, xOffset: 0, yOffset: 13 },
+        { width: 20, length: 48, frontWidth: 20, angleOffset: 180, xOffset: 0, yOffset: 13 },
         { damage: 0.60, penetration: 0.90, bulletSpeed: 1, bulletSize: 1, reload: 1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3, fireDelay: 0.5, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0 }
       )
@@ -976,12 +1053,12 @@ export const CHASSIS_CONFIG = {
     },
     turrets: [
       createBarrelTurret(
-        { width: 20, length: 35, frontWidth: 35, angleOffset: Math.PI / 2, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 35, frontWidth: 35, angleOffset: 90, xOffset: 0, yOffset: 0 },
         { damage: 0.70, penetration: 2.0, bulletSpeed: 0.8, bulletSize: 1.2, reload: 2.5, spread: 0, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 9999, fireDelay: 0 },
         { type: 'DRONE_SPAWNER', maxDrones: 8 }
       ),
       createBarrelTurret(
-        { width: 20, length: 35, frontWidth: 35, angleOffset: -Math.PI / 2, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 35, frontWidth: 35, angleOffset: -90, xOffset: 0, yOffset: 0 },
         { damage: 0.70, penetration: 2.0, bulletSpeed: 0.8, bulletSize: 1.2, reload: 2.5, spread: 0, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 9999, fireDelay: 0 },
         { type: 'DRONE_SPAWNER', maxDrones: 8 }
       )
@@ -1025,13 +1102,140 @@ export const CHASSIS_CONFIG = {
     radiusMultiplier: 1.0,
     turrets: [
       createBarrelTurret(
-        { width: 20, length: 34, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: true },
+        { width: 20, length: 30, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: true },
         { damage: 1, penetration: 1, bulletSpeed: 1, bulletSize: 1, reload: 0.75, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 22, fireDelay: 0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 14, frontWidth: 38, angleOffset: 0, xOffset: 34, yOffset: 0, shootsBullet: true, playsRecoil: true },
+        { width: 20, length: 14, frontWidth: 38, angleOffset: 0, xOffset: 30, yOffset: 0, shootsBullet: true, playsRecoil: true },
         { damage: 1.4, penetration: 4.5, bulletSpeed: 2.2, bulletSize: 1.45, reload: 0.75, spread: 1.5, recoil: 0.45, knockback: 1.2, launchSpeed: 1, bulletsPerShot: 1, lifetime: 22, fireDelay: 0, bulletShape: 'trap', bulletSides: 3, bulletInnerRadius: 0.40, bulletAngleOffset: 0 },
         { type: 'READY_RACK', maxRack: 5, refillSpeed: 1.0, isTrap: true }
+      )
+    ]
+  },
+
+  tritrapper: {
+    name: 'Tri-Trapper',
+    desc: 'Three 120-degree trap launchers with faster reload and nullified recoil, trading trap lifespan and damage for dense defensive walls.',
+    reqLevel: 45,
+    tier: 3,
+    upgradesFrom: ['trapper'],
+    shopCost: 1500,
+    cameraZoom: 0.76,
+    sides: 0,
+    radiusMultiplier: 1.0,
+    firingMode: 'simultaneous',
+    turrets: [
+      createBarrelTurret(
+        { width: 20, length: 30, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: true },
+        { damage: 1, penetration: 1, bulletSpeed: 1, bulletSize: 1, reload: 0.55, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 10, fireDelay: 0 }
+      ),
+      createBarrelTurret(
+        { width: 20, length: 14, frontWidth: 38, angleOffset: 0, xOffset: 30, yOffset: 0, shootsBullet: true, playsRecoil: true },
+        { damage: 0.96, penetration: 4.5, bulletSpeed: 2.2, bulletSize: 1.45, reload: 0.55, spread: 1.5, recoil: 0, knockback: 1.2, launchSpeed: 1, bulletsPerShot: 1, lifetime: 10, fireDelay: 0, bulletShape: 'trap', bulletSides: 3, bulletInnerRadius: 0.40, bulletAngleOffset: 0 },
+        { type: 'READY_RACK', maxRack: 6, refillSpeed: 1.35, isTrap: true }
+      ),
+      createBarrelTurret(
+        { width: 20, length: 30, frontWidth: 20, angleOffset: 120, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: true },
+        { damage: 1, penetration: 1, bulletSpeed: 1, bulletSize: 1, reload: 0.55, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 10, fireDelay: 0 }
+      ),
+      createBarrelTurret(
+        { width: 20, length: 14, frontWidth: 38, angleOffset: 120, xOffset: 30, yOffset: 0, shootsBullet: true, playsRecoil: true },
+        { damage: 0.96, penetration: 4.5, bulletSpeed: 2.2, bulletSize: 1.45, reload: 0.55, spread: 1.5, recoil: 0, knockback: 1.2, launchSpeed: 1, bulletsPerShot: 1, lifetime: 10, fireDelay: 0, bulletShape: 'trap', bulletSides: 3, bulletInnerRadius: 0.40, bulletAngleOffset: 0 },
+        { type: 'READY_RACK', maxRack: 6, refillSpeed: 1.35, isTrap: true }
+      ),
+      createBarrelTurret(
+        { width: 20, length: 30, frontWidth: 20, angleOffset: -120, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: true },
+        { damage: 1, penetration: 1, bulletSpeed: 1, bulletSize: 1, reload: 0.55, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 10, fireDelay: 0 }
+      ),
+      createBarrelTurret(
+        { width: 20, length: 14, frontWidth: 38, angleOffset: -120, xOffset: 30, yOffset: 0, shootsBullet: true, playsRecoil: true },
+        { damage: 0.96, penetration: 4.5, bulletSpeed: 2.2, bulletSize: 1.45, reload: 0.55, spread: 1.5, recoil: 0, knockback: 1.2, launchSpeed: 1, bulletsPerShot: 1, lifetime: 10, fireDelay: 0, bulletShape: 'trap', bulletSides: 3, bulletInnerRadius: 0.40, bulletAngleOffset: 0 },
+        { type: 'READY_RACK', maxRack: 6, refillSpeed: 1.35, isTrap: true }
+      )
+    ]
+  },
+
+  gunnertrapper: {
+    name: 'Gunner Trapper',
+    desc: 'Front twin high-penetration gunner cannons paired with a reinforced rear trap launcher.',
+    reqLevel: 45,
+    tier: 3,
+    upgradesFrom: ['trapper', 'gunner'],
+    shopCost: 1500,
+    cameraZoom: 0.78,
+    sides: 0,
+    radiusMultiplier: 1.0,
+    firingMode: 'alternating',
+    turrets: [
+      createBarrelTurret(
+        { width: 11, length: 40, frontWidth: 11, angleOffset: 0, xOffset: 0, yOffset: -8 },
+        { damage: 0.50, penetration: 1.0, bulletSpeed: 1.30, bulletSize: 0.85, reload: 0.90, spread: 1.4, recoil: 0.10, knockback: 0.6, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'THERMAL', heatPerShot: 3.0, coolRate: 16, overheatLockoutTime: 2.0 }
+      ),
+      createBarrelTurret(
+        { width: 11, length: 40, frontWidth: 11, angleOffset: 0, xOffset: 0, yOffset: 8 },
+        { damage: 0.50, penetration: 1.0, bulletSpeed: 1.30, bulletSize: 0.85, reload: 0.90, spread: 1.4, recoil: 0.10, knockback: 0.6, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0.5, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'THERMAL', heatPerShot: 3.0, coolRate: 16, overheatLockoutTime: 2.0 }
+      ),
+      createBarrelTurret(
+        { width: 24, length: 30, frontWidth: 24, angleOffset: 180, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: true },
+        { damage: 1, penetration: 1, bulletSpeed: 1, bulletSize: 1, reload: 1.1, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 22, fireDelay: 0 }
+      ),
+      createBarrelTurret(
+        { width: 24, length: 15, frontWidth: 44, angleOffset: 180, xOffset: 30, yOffset: 0, shootsBullet: true, playsRecoil: true },
+        { damage: 1.4, penetration: 5.4, bulletSpeed: 2.2, bulletSize: 1.45, reload: 1.1, spread: 1.5, recoil: 0.45, knockback: 1.2, launchSpeed: 1, bulletsPerShot: 1, lifetime: 22, fireDelay: 0, bulletShape: 'trap', bulletSides: 3, bulletInnerRadius: 0.40, bulletAngleOffset: 0 },
+        { type: 'READY_RACK', maxRack: 4, refillSpeed: 0.90, isTrap: true }
+      )
+    ]
+  },
+
+  megatrapper: {
+    name: 'Mega Trapper',
+    desc: 'Enlarged heavy launcher firing massive, highly durable Mega Traps with stronger recoil at a slower rate and shorter lifespan.',
+    reqLevel: 45,
+    tier: 3,
+    upgradesFrom: ['trapper'],
+    shopCost: 1500,
+    cameraZoom: 0.74,
+    sides: 0,
+    radiusMultiplier: 1.0,
+    turrets: [
+      createBarrelTurret(
+        { width: 34, length: 30, frontWidth: 34, angleOffset: 0, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: true },
+        { damage: 1, penetration: 1, bulletSpeed: 1, bulletSize: 1, reload: 1.35, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 14, fireDelay: 0 }
+      ),
+      createBarrelTurret(
+        { width: 34, length: 18, frontWidth: 58, angleOffset: 0, xOffset: 30, yOffset: 0, shootsBullet: true, playsRecoil: true },
+        { damage: 2.4, penetration: 6.5, bulletSpeed: 2.5, bulletSize: 1.55, reload: 1.35, spread: 1.2, recoil: 1.25, knockback: 0.9, launchSpeed: 1, bulletsPerShot: 1, lifetime: 14, fireDelay: 0, bulletShape: 'trap', bulletSides: 3, bulletInnerRadius: 0.40, bulletAngleOffset: 0 },
+        { type: 'READY_RACK', maxRack: 3, refillSpeed: 0.85, isTrap: true }
+      )
+    ]
+  },
+
+  autotrapper: {
+    name: 'Auto Trapper',
+    desc: 'Standard front trap launcher crowned with an uncontrolled, free-rotating top Auto Turret.',
+    reqLevel: 45,
+    tier: 3,
+    upgradesFrom: ['trapper'],
+    shopCost: 1500,
+    cameraZoom: 0.75,
+    sides: 0,
+    radiusMultiplier: 1.0,
+    turrets: [
+      createBarrelTurret(
+        { width: 20, length: 30, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: true },
+        { damage: 1, penetration: 1, bulletSpeed: 1, bulletSize: 1, reload: 0.75, spread: 1, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 22, fireDelay: 0 }
+      ),
+      createBarrelTurret(
+        { width: 20, length: 14, frontWidth: 38, angleOffset: 0, xOffset: 30, yOffset: 0, shootsBullet: true, playsRecoil: true },
+        { damage: 1.4, penetration: 4.5, bulletSpeed: 2.2, bulletSize: 1.45, reload: 0.75, spread: 1.5, recoil: 0.45, knockback: 1.2, launchSpeed: 1, bulletsPerShot: 1, lifetime: 22, fireDelay: 0, bulletShape: 'trap', bulletSides: 3, bulletInnerRadius: 0.40, bulletAngleOffset: 0 },
+        { type: 'READY_RACK', maxRack: 5, refillSpeed: 1.0, isTrap: true }
+      ),
+      createBarrelTurret(
+        { width: 15, length: 26, frontWidth: 15, angleOffset: 180, xOffset: 0, yOffset: 0, isAutoTurret: true, uncontrolled: true, mountRadius: 11 },
+        { damage: 0.70, penetration: 1.0, bulletSpeed: 1.25, bulletSize: 1.0, reload: 0.85, spread: 0.5, recoil: 0.08, knockback: 0.85, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.2, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0, autoFov: 360, autoRange: 780 }
       )
     ]
   },
@@ -1050,6 +1254,51 @@ export const CHASSIS_CONFIG = {
       createBarrelTurret(
         { width: 38, length: 46, frontWidth: 38, angleOffset: 0, xOffset: 0, yOffset: 0 },
         { damage: 3.0, penetration: 2.0, bulletSpeed: 0.7, bulletSize: 1.05, reload: 1.5, spread: 0.2, recoil: 4.5, knockback: 2.0, launchSpeed: 1, bulletsPerShot: 1, lifetime: 4.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'READY_RACK', maxRack: 2, refillSpeed: 1.25 }
+      )
+    ]
+  },
+
+  hybrid: {
+    name: 'Hybrid',
+    desc: 'Destroyer heavy cannon paired with a rear spawner that maintains 2 autonomous, uncontrollable drones.',
+    reqLevel: 45,
+    tier: 3,
+    upgradesFrom: ['destroyer'],
+    shopCost: 1500,
+    cameraZoom: 0.78,
+    sides: 0,
+    radiusMultiplier: 1.0,
+    isDroneClass: true,
+    maxDrones: 2,
+    turrets: [
+      createBarrelTurret(
+        { width: 38, length: 46, frontWidth: 38, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 3.0, penetration: 2.0, bulletSpeed: 0.7, bulletSize: 1.05, reload: 1.5, spread: 0.2, recoil: 4.5, knockback: 2.0, launchSpeed: 1, bulletsPerShot: 1, lifetime: 4.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        { type: 'READY_RACK', maxRack: 2, refillSpeed: 1.25 }
+      ),
+      createBarrelTurret(
+        { width: 20, length: 35, frontWidth: 35, angleOffset: 180, xOffset: 0, yOffset: 0 },
+        { damage: 0.45, penetration: 1.5, bulletSpeed: 0.95, bulletSize: 1.0, reload: 3.6, spread: 0, recoil: 0, knockback: 1, launchSpeed: 1, bulletsPerShot: 1, lifetime: 9999, fireDelay: 0 },
+        { type: 'DRONE_SPAWNER', maxDrones: 2, isAutoDrone: true }
+      )
+    ]
+  },
+
+  annihilator: {
+    name: 'Annihilator',
+    desc: 'Enlarged full-width cannon firing colossal, high-penetration shells with extreme recoil at Destroyer reload.',
+    reqLevel: 45,
+    tier: 3,
+    upgradesFrom: ['destroyer'],
+    shopCost: 1500,
+    cameraZoom: 0.78,
+    sides: 0,
+    radiusMultiplier: 1.0,
+    turrets: [
+      createBarrelTurret(
+        { width: 48, length: 46, frontWidth: 48, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 3.25, penetration: 2.4, bulletSpeed: 0.7, bulletSize: 1.1, reload: 1.5, spread: 0.2, recoil: 6.2, knockback: 2.4, launchSpeed: 1, bulletsPerShot: 1, lifetime: 4.2, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'READY_RACK', maxRack: 2, refillSpeed: 1.25 }
       )
     ]
@@ -1139,12 +1388,12 @@ export const CHASSIS_CONFIG = {
         { type: 'THERMAL', heatPerShot: 2.0, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 42, frontWidth: 20, angleOffset: (5 * Math.PI) / 6, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 42, frontWidth: 20, angleOffset: 150, xOffset: 0, yOffset: 0 },
         { damage: 0.2, penetration: 0.2, bulletSpeed: 1.0, bulletSize: 1.0, reload: 1.0, spread: 1.0, recoil: 1.1, knockback: 0.5, launchSpeed: 1, bulletsPerShot: 1, lifetime: 1.5, fireDelay: 0.5, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.0, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 20, length: 42, frontWidth: 20, angleOffset: -(5 * Math.PI) / 6, xOffset: 0, yOffset: 0 },
+        { width: 20, length: 42, frontWidth: 20, angleOffset: -150, xOffset: 0, yOffset: 0 },
         { damage: 0.2, penetration: 0.2, bulletSpeed: 1.0, bulletSize: 1.0, reload: 1.0, spread: 1.0, recoil: 1.1, knockback: 0.5, launchSpeed: 1, bulletsPerShot: 1, lifetime: 1.5, fireDelay: 0.5, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
         { type: 'THERMAL', heatPerShot: 1.0, coolRate: 16, overheatLockoutTime: 2.0 }
       )
@@ -1166,19 +1415,19 @@ export const CHASSIS_CONFIG = {
     autoSpinSpeed: 0.55,
     turrets: [
       createBarrelTurret(
-        { width: 15, length: 26, frontWidth: 15, angleOffset: 0, xOffset: 0, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
+        { width: 15, length: 26, frontWidth: 15, angleOffset: 0, xOffset: 25, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
         { damage: 0.5, penetration: 0.5, bulletSpeed: 1.2, bulletSize: 1.0, reload: 0.9, spread: 0.5, recoil: 0.15, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
-        { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0, isAutoTurret: true }
+        { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 15, length: 26, frontWidth: 15, angleOffset: (2 * Math.PI) / 3, xOffset: 0, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
+        { width: 15, length: 26, frontWidth: 15, angleOffset: 120, xOffset: 25, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
         { damage: 0.5, penetration: 0.5, bulletSpeed: 1.2, bulletSize: 1.0, reload: 0.9, spread: 0.5, recoil: 0.15, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
-        { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0, isAutoTurret: true }
+        { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0 }
       ),
       createBarrelTurret(
-        { width: 15, length: 26, frontWidth: 15, angleOffset: -(2 * Math.PI) / 3, xOffset: 0, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
+        { width: 15, length: 26, frontWidth: 15, angleOffset: -120, xOffset: 25, yOffset: 0, isAutoTurret: true, mountRadius: 11 },
         { damage: 0.5, penetration: 0.5, bulletSpeed: 1.2, bulletSize: 1.0, reload: 0.9, spread: 0.5, recoil: 0.15, knockback: 0.8, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
-        { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0, isAutoTurret: true }
+        { type: 'THERMAL', heatPerShot: 2.5, coolRate: 16, overheatLockoutTime: 2.0 }
       )
     ]
   }

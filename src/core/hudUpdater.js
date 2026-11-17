@@ -324,7 +324,7 @@ export class HUDUpdater {
         };
       };
 
-      const isSniperFamily = (weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'hunter');
+      const isSniperFamily = (weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'hunter' || weaponSys.chassisKey === 'predator');
       const bulletRacks = readyRackTurrets.filter(t => !t.isTrap);
       const trapRacks = readyRackTurrets.filter(t => t.isTrap);
 
@@ -366,7 +366,7 @@ export class HUDUpdater {
       gauges.push({
         kind: 'rack',
         mode: 'rack',
-        title: (weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'hunter') ? 'BREECH LOADER' : 'READY-RACK SYSTEM',
+        title: (weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'hunter' || weaponSys.chassisKey === 'predator') ? 'BREECH LOADER' : 'READY-RACK SYSTEM',
         maxRack: weaponSys.maxRack || 0,
         curRack: weaponSys.currentRack || 0,
         isReloading: (weaponSys.reloadTimer || 0) > 0,
