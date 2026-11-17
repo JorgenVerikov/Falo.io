@@ -1561,98 +1561,100 @@ export class AllyTank {
     const downedDim = this.isDowned ? 0.62 : 1.0;
     const cloakAlpha = this.isDowned ? 1.0 : (this.cloakAlpha !== undefined ? this.cloakAlpha : 1.0);
     const unitAlpha = Math.max(0, Math.min(1.0, deathAlpha * cloakAlpha * downedDim));
-    if (unitAlpha <= 0.002) return;
+    if (this.isDying && deathAlpha <= 0.002) return;
 
-    const turrets = chassis.turrets || [];
-    const armorLayers = getOuterArmorLayers(chassis);
-    let maxReach = radius * 1.5;
-    for (let i = 0; i < armorLayers.length; i++) {
-      maxReach = Math.max(maxReach, radius * (armorLayers[i].radiusMultiplier || 1.5));
-    }
-    for (let i = 0; i < turrets.length; i++) {
-      const t = turrets[i];
-      const reach = ((Math.abs(t.xOffset || 0) + (t.length || 48) + Math.abs(t.yOffset || 0) + Math.max(t.width || 20, t.frontWidth || t.width || 20) * 0.5) * sizeScale);
-      if (reach > maxReach) maxReach = reach;
-    }
+    if (unitAlpha > 0.002) {
+      const turrets = chassis.turrets || [];
+      const armorLayers = getOuterArmorLayers(chassis);
+      let maxReach = radius * 1.5;
+      for (let i = 0; i < armorLayers.length; i++) {
+        maxReach = Math.max(maxReach, radius * (armorLayers[i].radiusMultiplier || 1.5));
+      }
+      for (let i = 0; i < turrets.length; i++) {
+        const t = turrets[i];
+        const reach = ((Math.abs(t.xOffset || 0) + (t.length || 48) + Math.abs(t.yOffset || 0) + Math.max(t.width || 20, t.frontWidth || t.width || 20) * 0.5) * sizeScale);
+        if (reach > maxReach) maxReach = reach;
+      }
 
-    const useOffscreen = unitAlpha < 0.995 && typeof canvasMgr.beginOffscreenLayer === 'function';
-    if (useOffscreen) {
-      canvasMgr.beginOffscreenLayer(x, y, Math.max(96, Math.ceil(maxReach + 18)), 2);
-    } else {
-      ctx.save();
-      ctx.globalAlpha = unitAlpha;
-    }
+      const useOffscreen = unitAlpha < 0.995 && typeof canvasMgr.beginOffscreenLayer === 'function';
+      if (useOffscreen) {
+        canvasMgr.beginOffscreenLayer(x, y, Math.max(96, Math.ceil(maxReach + 18)), 2);
+      } else {
+        ctx.save();
+        ctx.globalAlpha = unitAlpha;
+      }
 
-    for (let i = 0; i < armorLayers.length; i++) {
-      const layer = armorLayers[i];
-      const outerRadius = radius * (layer.radiusMultiplier || 1.55);
-      const innerRadius = layer.innerRadiusMultiplier ? radius * layer.innerRadiusMultiplier : 0;
-      const layerAngle = (layer.initialAngle || 0) + this.outerArmorTime * (layer.spinSpeed || 0);
-      canvasMgr.drawPolygon(
-        x, y, outerRadius,
-        layer.sides,
-        layerAngle,
-        layer.color,
-        layer.stroke,
-        CONFIG.PLAYER.strokeWidth,
-        innerRadius
-      );
-    }
+      for (let i = 0; i < armorLayers.length; i++) {
+        const layer = armorLayers[i];
+        const outerRadius = radius * (layer.radiusMultiplier || 1.55);
+        const innerRadius = layer.innerRadiusMultiplier ? radius * layer.innerRadiusMultiplier : 0;
+        const layerAngle = (layer.initialAngle || 0) + this.outerArmorTime * (layer.spinSpeed || 0);
+        canvasMgr.drawPolygon(
+          x, y, outerRadius,
+          layer.sides,
+          layerAngle,
+          layer.color,
+          layer.stroke,
+          CONFIG.PLAYER.strokeWidth,
+          innerRadius
+        );
+      }
 
-    const drawSingleTurret = (turret, index) => {
-      const tState = this.weaponSys.turretStates[index];
-      const recoil = tState ? tState.recoilOffset : 0;
+      const drawSingleTurret = (turret, index) => {
+        const tState = this.weaponSys.turretStates[index];
+        const recoil = tState ? tState.recoilOffset : 0;
 
-      if (turret.isAutoTurret) {
-        const mountAngle = angle + turret.angleOffset;
-        const xOff = (turret.xOffset || 0) * sizeScale;
-        const yOff = (turret.yOffset || 0) * sizeScale;
-        const mx = x + Math.cos(mountAngle) * xOff - Math.sin(mountAngle) * yOff;
-        const my = y + Math.sin(mountAngle) * xOff + Math.cos(mountAngle) * yOff;
-        const aimAngle = (tState && tState.worldAngle !== null && tState.worldAngle !== undefined) ? tState.worldAngle : mountAngle;
-        const barrelLen = Math.max(4, (turret.length - recoil) * sizeScale);
+        if (turret.isAutoTurret) {
+          const mountAngle = angle + turret.angleOffset;
+          const xOff = (turret.xOffset || 0) * sizeScale;
+          const yOff = (turret.yOffset || 0) * sizeScale;
+          const mx = x + Math.cos(mountAngle) * xOff - Math.sin(mountAngle) * yOff;
+          const my = y + Math.sin(mountAngle) * xOff + Math.cos(mountAngle) * yOff;
+          const aimAngle = (tState && tState.worldAngle !== null && tState.worldAngle !== undefined) ? tState.worldAngle : mountAngle;
+          const barrelLen = Math.max(4, (turret.length - recoil) * sizeScale);
+          const barrelWidth = turret.width * sizeScale;
+          const frontWidth = (turret.frontWidth || turret.width) * sizeScale;
+          const mountR = (turret.mountRadius || 11) * sizeScale;
+
+          canvasMgr.drawTurretBarrel(mx, my, barrelWidth, barrelLen, aimAngle, 0, 0, frontWidth);
+          canvasMgr.drawPolygon(mx, my, mountR, 0, 0, '#999999', '#727272', CONFIG.PLAYER.strokeWidth);
+          return;
+        }
+
+        const hasXOffset = (turret.xOffset || 0) > 0;
+        const barrelLen = hasXOffset
+          ? Math.max(4, turret.length * sizeScale)
+          : Math.max(4, (turret.length - recoil) * sizeScale);
         const barrelWidth = turret.width * sizeScale;
         const frontWidth = (turret.frontWidth || turret.width) * sizeScale;
-        const mountR = (turret.mountRadius || 11) * sizeScale;
+        const xOff = (hasXOffset ? Math.max(0, (turret.xOffset || 0) - recoil) : (turret.xOffset || 0)) * sizeScale;
+        const yOff = (turret.yOffset || 0) * sizeScale;
 
-        canvasMgr.drawTurretBarrel(mx, my, barrelWidth, barrelLen, aimAngle, 0, 0, frontWidth);
-        canvasMgr.drawPolygon(mx, my, mountR, 0, 0, '#999999', '#727272', CONFIG.PLAYER.strokeWidth);
-        return;
+        canvasMgr.drawTurretBarrel(x, y, barrelWidth, barrelLen, angle + turret.angleOffset, xOff, yOff, frontWidth);
+      };
+
+      const renderParts = getTankRenderParts(chassis, turrets);
+      for (let i = 0; i < renderParts.length; i++) {
+        const part = renderParts[i];
+        if (part.type === 'body') {
+          canvasMgr.drawPolygon(
+            x, y, radius,
+            chassis.sides,
+            angle + (chassis.bodyAngleOffset || 0),
+            this.fillColor,
+            this.strokeColor,
+            CONFIG.PLAYER.strokeWidth
+          );
+        } else {
+          drawSingleTurret(part.turret, part.index);
+        }
       }
 
-      const hasXOffset = (turret.xOffset || 0) > 0;
-      const barrelLen = hasXOffset
-        ? Math.max(4, turret.length * sizeScale)
-        : Math.max(4, (turret.length - recoil) * sizeScale);
-      const barrelWidth = turret.width * sizeScale;
-      const frontWidth = (turret.frontWidth || turret.width) * sizeScale;
-      const xOff = (hasXOffset ? Math.max(0, (turret.xOffset || 0) - recoil) : (turret.xOffset || 0)) * sizeScale;
-      const yOff = (turret.yOffset || 0) * sizeScale;
-
-      canvasMgr.drawTurretBarrel(x, y, barrelWidth, barrelLen, angle + turret.angleOffset, xOff, yOff, frontWidth);
-    };
-
-    const renderParts = getTankRenderParts(chassis, turrets);
-    for (let i = 0; i < renderParts.length; i++) {
-      const part = renderParts[i];
-      if (part.type === 'body') {
-        canvasMgr.drawPolygon(
-          x, y, radius,
-          chassis.sides,
-          angle + (chassis.bodyAngleOffset || 0),
-          this.fillColor,
-          this.strokeColor,
-          CONFIG.PLAYER.strokeWidth
-        );
+      if (useOffscreen) {
+        canvasMgr.endOffscreenLayer(unitAlpha);
       } else {
-        drawSingleTurret(part.turret, part.index);
+        ctx.restore();
       }
-    }
-
-    if (useOffscreen) {
-      canvasMgr.endOffscreenLayer(unitAlpha);
-    } else {
-      ctx.restore();
     }
 
     if (!this.isDying) {
@@ -1669,19 +1671,17 @@ export class AllyTank {
         ctx.restore();
       }
 
-      if (cloakAlpha > 0.12) {
-        ctx.save();
-        ctx.globalAlpha = cloakAlpha;
-        const label = `${this.name} · ${chassis.name}`;
-        canvasMgr.drawPlayerNameAbove(x, y, label, radius);
-        if (!this.isDowned) {
-          canvasMgr.drawPlayerHealthBar(x, y, this.hp, this.maxHp, radius);
-        }
-        ctx.restore();
+      ctx.save();
+      ctx.globalAlpha = 1.0;
+      const label = `${this.name} · ${chassis.name}`;
+      canvasMgr.drawPlayerNameAbove(x, y, label, radius);
+      if (!this.isDowned) {
+        canvasMgr.drawPlayerHealthBar(x, y, this.hp, this.maxHp, radius);
       }
+      ctx.restore();
 
-      if (this.chatText && this.chatTimer > 0 && cloakAlpha > 0.12) {
-        this.drawSpeechBubble(ctx, cloakAlpha);
+      if (this.chatText && this.chatTimer > 0) {
+        this.drawSpeechBubble(ctx, Math.max(0.8, cloakAlpha));
       }
     }
   }

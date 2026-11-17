@@ -24,6 +24,12 @@ export class HUDUpdater {
     this.allyItemViews = [];
     this.prevDownedHidden = null;
     this.prevDownedSignature = '';
+
+    this.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false;
+    this.swayVx = 0;
+    this.swayVy = 0;
+    this.mouseNx = 0;
+    this.mouseNy = 0;
   }
 
   ensureElements() {
@@ -31,6 +37,7 @@ export class HUDUpdater {
     const primaryTitle = document.getElementById('weapon-title');
     const primarySlotRoot = primaryTitle ? primaryTitle.closest('.weapon-gauge-slot') : null;
     this.els = {
+      uiContainer: document.getElementById('ui-container'),
       fpsCounter: document.getElementById('fps-counter'),
       scoreDisplay: document.getElementById('score-display'),
       nameDisplay: document.getElementById('player-name-display'),
@@ -149,9 +156,90 @@ export class HUDUpdater {
     return view;
   }
 
-  update(state, player, waveMgr, weaponSys, storageMgr, uiMgr) {
+  resetMotion() {
+    this.swayVx = 0;
+    this.swayVy = 0;
+    this.mouseNx = 0;
+    this.mouseNy = 0;
+    const root = document.documentElement;
+    if (root) {
+      root.style.setProperty('--hud-tx', '0px');
+      root.style.setProperty('--hud-ty', '0px');
+      root.style.setProperty('--hud-rx', '0deg');
+      root.style.setProperty('--hud-ry', '0deg');
+      root.style.setProperty('--hud-rz', '0deg');
+    }
+  }
+
+  updateMotion(dt, player, input, isMobile = false) {
+    const root = document.documentElement;
+    if (!root) return;
+
+    if (this.reducedMotion) {
+      this.resetMotion();
+      return;
+    }
+
+    const safeDt = Math.min(0.05, Math.max(0.001, dt || (1 / 60)));
+    const velLerp = 1 - Math.exp(-8.5 * safeDt);
+    const rawVx = (player && !player.isDying && !player.isDowned) ? (player.vx || 0) : 0;
+    const rawVy = (player && !player.isDying && !player.isDowned) ? (player.vy || 0) : 0;
+
+    this.swayVx += (rawVx - this.swayVx) * velLerp;
+    this.swayVy += (rawVy - this.swayVy) * velLerp;
+
+    const normVx = Math.tanh(this.swayVx / 165);
+    const normVy = Math.tanh(this.swayVy / 165);
+
+    const moveScale = isMobile ? 0.7 : 1.0;
+    const moveTx = (-normVx * 10.5) * moveScale;
+    const moveTy = (-normVy * 8.0) * moveScale;
+    const moveRx = (-normVy * 1.3) * moveScale;
+    const moveRy = (normVx * 1.6) * moveScale;
+    const moveRz = (-normVx * 0.75) * moveScale;
+
+    let mouseTx = 0;
+    let mouseTy = 0;
+    let mouseRx = 0;
+    let mouseRy = 0;
+    let mouseRz = 0;
+
+    if (!isMobile && input && input.mouse) {
+      const w = window.innerWidth || 1;
+      const h = window.innerHeight || 1;
+      const targetMx = Math.max(-1, Math.min(1, ((input.mouse.screenX ?? w * 0.5) / w - 0.5) * 2));
+      const targetMy = Math.max(-1, Math.min(1, ((input.mouse.screenY ?? h * 0.5) / h - 0.5) * 2));
+      const mouseLerp = 1 - Math.exp(-10 * safeDt);
+      this.mouseNx += (targetMx - this.mouseNx) * mouseLerp;
+      this.mouseNy += (targetMy - this.mouseNy) * mouseLerp;
+
+      // Lighter version of the main menu camera parallax & lean
+      mouseTx = -this.mouseNx * 10.0;
+      mouseTy = -this.mouseNy * 6.0;
+      mouseRy = -this.mouseNx * 1.1;
+      mouseRx = this.mouseNy * 1.4;
+      mouseRz = -this.mouseNx * 0.45 + this.mouseNy * 0.18;
+    }
+
+    const totalTx = moveTx + mouseTx;
+    const totalTy = moveTy + mouseTy;
+    const totalRx = moveRx + mouseRx;
+    const totalRy = moveRy + mouseRy;
+    const totalRz = moveRz + mouseRz;
+
+    root.style.setProperty('--hud-tx', `${totalTx.toFixed(2)}px`);
+    root.style.setProperty('--hud-ty', `${totalTy.toFixed(2)}px`);
+    root.style.setProperty('--hud-rx', `${totalRx.toFixed(2)}deg`);
+    root.style.setProperty('--hud-ry', `${totalRy.toFixed(2)}deg`);
+    root.style.setProperty('--hud-rz', `${totalRz.toFixed(2)}deg`);
+  }
+
+  update(state, player, waveMgr, weaponSys, storageMgr, uiMgr, motionCtx = null) {
     if (state.inMenu || !state.isPlaying || state.isGameOver) return;
     const els = this.ensureElements();
+    if (motionCtx) {
+      this.updateMotion(motionCtx.dt, player, motionCtx.input, motionCtx.isMobile);
+    }
 
     const roundedFps = Math.round(state.fps);
     if (roundedFps !== this.prevFps) {

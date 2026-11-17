@@ -309,43 +309,56 @@ export class MainMenuController {
 
       if (this.rightPanel) {
         if (isPortraitNarrow) {
-          const panelRy = effNx * 1.8;
-          const panelRx = 9 + effNy * 1.6;
-          const panelTx = -effNx * 3;
-          const panelTy = effNy * 2;
+          const panelRy = -effNx * 2.5;
+          const panelRx = 8 + effNy * 2.5;
+          const panelRz = -effNx * 0.6;
+          const panelTx = -effNx * 14;
+          const panelTy = -effNy * 9;
+          const panelTz = effNy * 12;
           this.rightPanel.style.transform =
-            `perspective(760px) translate3d(${panelTx.toFixed(2)}px, ${panelTy.toFixed(2)}px, 0) rotateY(${panelRy.toFixed(2)}deg) rotateX(${panelRx.toFixed(2)}deg)`;
+            `perspective(880px) translate3d(${panelTx.toFixed(2)}px, ${panelTy.toFixed(2)}px, ${panelTz.toFixed(2)}px) rotateY(${panelRy.toFixed(2)}deg) rotateX(${panelRx.toFixed(2)}deg) rotateZ(${panelRz.toFixed(2)}deg)`;
         } else {
-          const baseRy = isCompactLandscape ? -12.0 : -14.5;
-          const panelRy = baseRy - effNx * 2.4;
-          const panelRx = effNy * 1.9;
-          const panelTx = -effNx * 4;
-          const panelTy = effNy * 2;
+          const baseRy = isCompactLandscape ? -9.5 : -11.0;
+          const rightProximity = Math.max(0, Math.min(1, (effNx + 0.15) / 1.15));
+          const easedProximity = rightProximity * rightProximity * (3 - 2 * rightProximity);
+          const panelRy = baseRy - effNx * 2.6;
+          const panelRx = 0.6 + effNy * 3.4;
+          const panelRz = -0.5 - effNx * 1.15 + effNy * 0.45;
+          const panelTx = -effNx * 28;
+          const panelTy = -effNy * 17;
+          const panelTz = effNx * 22 + easedProximity * 18;
           this.rightPanel.style.transform =
-            `perspective(680px) translate3d(${panelTx.toFixed(2)}px, ${panelTy.toFixed(2)}px, 0) rotateY(${panelRy.toFixed(2)}deg) rotateX(${panelRx.toFixed(2)}deg)`;
+            `perspective(900px) translate3d(${panelTx.toFixed(2)}px, ${panelTy.toFixed(2)}px, ${panelTz.toFixed(2)}px) rotateY(${panelRy.toFixed(2)}deg) rotateX(${panelRx.toFixed(2)}deg) rotateZ(${panelRz.toFixed(2)}deg)`;
         }
       }
 
       if (this.tankWrap) {
-        const tx = -effNx * 5;
-        const ty = effNy * 4 + Math.sin(this.swayTime * 1.05) * 3.0;
+        const tankTx = -effNx * 22;
+        const tankTy = -effNy * 14 + Math.sin(this.swayTime * 1.05) * 3.0;
+        const tankTz = isPortraitNarrow ? 0 : (-effNx * 10);
+        const tankRy = isPortraitNarrow ? (-effNx * 2.0) : (3.5 - effNx * 2.5);
+        const tankRx = effNy * 2.8;
+        const tankRz = -effNx * 0.7;
         this.tankWrap.style.transform =
-          `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0)`;
+          `perspective(900px) translate3d(${tankTx.toFixed(2)}px, ${tankTy.toFixed(2)}px, ${tankTz.toFixed(2)}px) rotateY(${tankRy.toFixed(2)}deg) rotateX(${tankRx.toFixed(2)}deg) rotateZ(${tankRz.toFixed(2)}deg)`;
       }
 
       if (this.authContainer) {
         if (isDesktop) {
-          const authTx = effNx * 6;
-          const authTy = effNy * 4;
-          const authRy = 14 - effNx * 2.2;
-          const authRx = 5 + effNy * 1.6;
+          const authTx = -effNx * 12;
+          const authTy = -effNy * 8;
+          const authTz = -effNx * 12;
+          const authRy = 12.5 - effNx * 2.6;
+          const authRx = 5 + effNy * 2.6;
           this.authContainer.style.setProperty('--auth-tx', `${authTx.toFixed(2)}px`);
           this.authContainer.style.setProperty('--auth-ty', `${authTy.toFixed(2)}px`);
+          this.authContainer.style.setProperty('--auth-tz', `${authTz.toFixed(2)}px`);
           this.authContainer.style.setProperty('--auth-rx', `${authRx.toFixed(2)}deg`);
           this.authContainer.style.setProperty('--auth-ry', `${authRy.toFixed(2)}deg`);
         } else {
           this.authContainer.style.setProperty('--auth-tx', '0px');
           this.authContainer.style.setProperty('--auth-ty', '0px');
+          this.authContainer.style.setProperty('--auth-tz', '0px');
           this.authContainer.style.setProperty('--auth-rx', '0deg');
           this.authContainer.style.setProperty('--auth-ry', '0deg');
         }
@@ -353,26 +366,31 @@ export class MainMenuController {
 
       if (this.fullscreenBtn) {
         if (isDesktop) {
-          const fsTx = effNx * 5;
-          const fsTy = effNy * 2.5;
-          const fsRy = 14 - effNx * 2.2;
-          const fsRx = -5 + effNy * 1.6;
+          const fsTx = -effNx * 11;
+          const fsTy = -effNy * 8;
+          const fsTz = -effNx * 12;
+          const fsRy = 12.5 - effNx * 2.6;
+          const fsRx = -5 + effNy * 2.6;
           this.fullscreenBtn.style.setProperty('--fs-tx', `${fsTx.toFixed(2)}px`);
           this.fullscreenBtn.style.setProperty('--fs-ty', `${fsTy.toFixed(2)}px`);
+          this.fullscreenBtn.style.setProperty('--fs-tz', `${fsTz.toFixed(2)}px`);
           this.fullscreenBtn.style.setProperty('--fs-rx', `${fsRx.toFixed(2)}deg`);
           this.fullscreenBtn.style.setProperty('--fs-ry', `${fsRy.toFixed(2)}deg`);
         } else {
           this.fullscreenBtn.style.setProperty('--fs-tx', '0px');
           this.fullscreenBtn.style.setProperty('--fs-ty', '0px');
+          this.fullscreenBtn.style.setProperty('--fs-tz', '0px');
           this.fullscreenBtn.style.setProperty('--fs-rx', '0deg');
           this.fullscreenBtn.style.setProperty('--fs-ry', '0deg');
         }
       }
 
       if (this.overlay) {
-        const bgX = -effNx * 16;
-        const bgY = -effNy * 14;
-        this.overlay.style.backgroundPosition = `0 0, ${bgX.toFixed(1)}px ${bgY.toFixed(1)}px, ${bgX.toFixed(1)}px ${bgY.toFixed(1)}px`;
+        const bgX = -effNx * 14;
+        const bgY = -effNy * 11;
+        const glowX = -effNx * 7;
+        const glowY = -effNy * 5;
+        this.overlay.style.backgroundPosition = `${glowX.toFixed(1)}px ${glowY.toFixed(1)}px, ${bgX.toFixed(1)}px ${bgY.toFixed(1)}px, ${bgX.toFixed(1)}px ${bgY.toFixed(1)}px`;
       }
     }
 

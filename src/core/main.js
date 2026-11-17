@@ -327,6 +327,9 @@ function unloadGame() {
       uiMgr.hideAdminPanel();
     }
   }
+  if (hudUpdater) {
+    hudUpdater.resetMotion();
+  }
 }
 
 function returnToMenu(destination = 'menu') {
@@ -464,6 +467,9 @@ function loadAndStartGame() {
     mobileControls.setInGameVisible(true);
     mobileControls.syncToggleStates(state.autoFire, state.autoSpin);
   }
+  if (hudUpdater) {
+    hudUpdater.resetMotion();
+  }
   if (uiMgr) {
     uiMgr.showInGameHUD();
     uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints, state.activeChassis);
@@ -524,6 +530,9 @@ function triggerGameOver() {
   weaponSys.drones = [];
   weaponSys.activeDroneCount = 0;
 
+  if (hudUpdater) {
+    hudUpdater.resetMotion();
+  }
   if (uiMgr) {
     uiMgr.hideInGameHUD();
     uiMgr.showGameOver(finalScore, finalWave, coinsEarned);
@@ -1561,7 +1570,11 @@ function gameLoop(timestamp) {
     canvasMgr.endCamera();
 
     if (state.isPlaying && !state.isGameOver) {
-      hudUpdater.update(state, player, waveMgr, weaponSys, storageMgr, uiMgr);
+      hudUpdater.update(state, player, waveMgr, weaponSys, storageMgr, uiMgr, {
+        dt,
+        input,
+        isMobile: Boolean(mobileControls && mobileControls.isMobile)
+      });
     }
   }
 
