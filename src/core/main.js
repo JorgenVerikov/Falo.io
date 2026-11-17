@@ -1,5 +1,7 @@
 import { CanvasManager } from './canvas.js';
-import { WeaponSystem, WEAPON_TYPE, extractBulletOptions } from '../entities/weapons.js';
+import { WeaponSystem } from '../entities/weapons.js';
+import { syncUnitChassisAndStats } from '../entities/unitModifiers.js';
+import { AllyCommunicationSystem } from '../entities/allyComms.js';
 import { WaveManager } from '../systems/waveManager.js';
 import { StorageManager } from './storage.js';
 import { UIManager } from '../ui/ui.js';
@@ -41,6 +43,7 @@ const state = {
   godMode: false,
   autoFire: false,
   autoSpin: false,
+  squadStance: 'AUTO',
 
   level: 1,
   xp: 0,
@@ -134,9 +137,15 @@ const player = {
   sonarTimer: 0,
   lastAttacker: null,
   lastAttackerTimer: 0,
+  isDowned: false,
+  downedTimer: 0,
+  reviveProgress: 0,
+  isBeingRevived: false,
+  activeReviveTargetName: '',
+  activeReviveProgress: 0,
 
   takeDamage(amount, chassisKey, attacker = null) {
-    if (this.isDying || this.dashTimer > 0 || this.iFrameTimer > 0 || state.isGameOver || state.inMenu || state.godMode) return;
+    if (this.isDying || this.isDowned || this.dashTimer > 0 || this.iFrameTimer > 0 || state.isGameOver || state.inMenu || state.godMode) return;
 
     const chassisConfig = CONFIG.CHASSIS[chassisKey];
     const resistance = chassisConfig && chassisConfig.damageResistance !== undefined
@@ -159,11 +168,26 @@ const player = {
 
     if (this.hp <= 0) {
       this.hp = 0;
-      this.isDying = true;
-      this.deathTimer = 0;
-      this.deathScale = 1.0;
-      this.deathAlpha = 1.0;
-      waveMgr.spawnShatterParticles(this.x, this.y, this.fillColor, 16);
+      const standingAllies = (waveMgr && waveMgr.allies)
+        ? waveMgr.allies.filter(a => a && !a.dead && !a.destroyed && !a.isDying && !a.isDowned)
+        : [];
+      if (standingAllies.length > 0) {
+        this.isDowned = true;
+        this.downedTimer = CONFIG.ALLIES.bleedoutDuration || 15.0;
+        this.reviveProgress = 0;
+        this.isBeingRevived = false;
+        this.cloakAlpha = 1.0;
+        weaponSys.projectiles = [];
+        weaponSys.drones = [];
+        weaponSys.activeDroneCount = 0;
+        waveMgr.spawnShatterParticles(this.x, this.y, this.fillColor, 12);
+        AllyCommunicationSystem.onUnitDowned(this, waveMgr.allies, true);
+        if (uiMgr) {
+          uiMgr.showToast('DOWNED! WAIT FOR AN ALLY TO REVIVE YOU (15s)');
+        }
+      } else {
+        triggerSquadWipe();
+      }
     }
   }
 };
@@ -272,6 +296,12 @@ function unloadGame() {
   player.sonarTimer = 0;
   player.lastAttacker = null;
   player.lastAttackerTimer = 0;
+  player.isDowned = false;
+  player.downedTimer = 0;
+  player.reviveProgress = 0;
+  player.isBeingRevived = false;
+  player.activeReviveTargetName = '';
+  player.activeReviveProgress = 0;
 
   camera.x = 0;
   camera.y = 0;
@@ -390,6 +420,12 @@ function loadAndStartGame() {
   player.sonarTimer = 0;
   player.lastAttacker = null;
   player.lastAttackerTimer = 0;
+  player.isDowned = false;
+  player.downedTimer = 0;
+  player.reviveProgress = 0;
+  player.isBeingRevived = false;
+  player.activeReviveTargetName = '';
+  player.activeReviveProgress = 0;
 
   camera.x = 0;
   camera.y = 0;
@@ -419,8 +455,10 @@ function loadAndStartGame() {
   waveMgr.score = 0;
   state.lastAnnouncedGraceWave = 0;
   state.lastAnnouncedUpgradeWave = 0;
+  state.squadStance = 'AUTO';
   waveMgr.clearAll();
   waveMgr.startWave(1);
+  waveMgr.spawnAlliesForRun(player, storageMgr.data, state.level, state.activeChassis);
   if (mobileControls) {
     mobileControls.setInGameVisible(true);
     mobileControls.syncToggleStates(state.autoFire, state.autoSpin);
@@ -430,6 +468,26 @@ function loadAndStartGame() {
     uiMgr.updateXPBar(state.level, state.xp, state.xpToNext, state.statPoints, state.activeChassis);
     uiMgr.renderStatUpgrades(state.stats, state.statPoints, handleStatUpgrade, state.activeChassis);
     checkEvolutionProgression();
+  }
+}
+
+function triggerSquadWipe() {
+  if (player.isDying || state.isGameOver) return;
+  player.hp = 0;
+  player.isDowned = false;
+  player.isDying = true;
+  player.deathTimer = 0;
+  player.deathScale = 1.0;
+  player.deathAlpha = 1.0;
+  waveMgr.spawnShatterParticles(player.x, player.y, player.fillColor, 16);
+
+  if (waveMgr && waveMgr.allies) {
+    for (let i = 0; i < waveMgr.allies.length; i++) {
+      const a = waveMgr.allies[i];
+      if (a && !a.dead && !a.destroyed && !a.isDying) {
+        a.killPermanently(waveMgr);
+      }
+    }
   }
 }
 
@@ -497,6 +555,11 @@ function addXP(amount, isDirect = false) {
   if (leveledUp) {
     applyCrewAndStatModifiers();
     checkEvolutionProgression();
+    if (waveMgr && waveMgr.allies && waveMgr.allies.length > 0) {
+      const unlocked = storageMgr.data.unlockedChassis || ['basic'];
+      const crew = storageMgr.data.crewLevels || {};
+      waveMgr.allies.forEach(a => a.syncLevelAndProgression(state.level, unlocked, crew, false, state.activeChassis, waveMgr.allies, waveMgr.waveNumber));
+    }
   }
 }
 
@@ -528,8 +591,6 @@ function handleStatUpgrade(statKey) {
 
 function applyCrewAndStatModifiers() {
   const crew = storageMgr.data.crewLevels;
-  const inc = CONFIG.PLAYER.statIncrements;
-
   const activeColorKey = storageMgr.data.activeColor || 'default';
 
   if (activeColorKey === 'custom') {
@@ -543,285 +604,26 @@ function applyCrewAndStatModifiers() {
     player.strokeColor = '#0083a8';
   }
 
-  const growthCfg = CONFIG.PLAYER.growthScaling;
-  const growthLevel = Math.min(growthCfg.maxGrowthLevel, state.level);
-  const baseDiameter = growthCfg.baseDiameter || 50;
-  const growthExponent = growthCfg.growthExponent || 1.01;
-  const tankDiameter = baseDiameter * Math.pow(growthExponent, growthLevel - 1);
-  const chassisConfig = CONFIG.CHASSIS[state.activeChassis];
-  player.radius = (tankDiameter / 2) * ((chassisConfig && chassisConfig.radiusMultiplier) || 1.0);
-
-  const levelZoomMult = 1.0 + (growthLevel - 1) * growthCfg.cameraZoomIncreasePerLevel;
-  camera.targetZoom = ((chassisConfig.cameraZoom || CONFIG.CAMERA.defaultZoom) / levelZoomMult) * getViewportZoomFactor();
-
-  const previousMaxHp = player.maxHp;
-  const maxHpStat = state.stats.maxHp || 0;
-  const hpFromLevel = (state.level - 1) * CONFIG.PLAYER.hpPerLevel;
-  const hpFromStat = maxHpStat * CONFIG.PLAYER.hpPerStatPoint;
-  const calculatedMaxHp = CONFIG.PLAYER.baseMaxHp + hpFromLevel + hpFromStat;
-
-  if (state.godMode) {
-    player.maxHp = Infinity;
-    player.hp = Infinity;
-  } else {
-    if (previousMaxHp && Number.isFinite(previousMaxHp) && previousMaxHp > 0 && calculatedMaxHp > 0) {
-      if (player.hp >= previousMaxHp - 0.01) {
-        player.hp = calculatedMaxHp;
-      } else {
-        const healthRatio = Math.max(0, player.hp / previousMaxHp);
-        player.hp = Math.min(calculatedMaxHp, healthRatio * calculatedMaxHp);
-      }
-    } else {
-      player.hp = calculatedMaxHp;
-    }
-    player.maxHp = calculatedMaxHp;
-  }
-
-  const driverMult = 1.0 + (crew.driver * CONFIG.CREW.driverBonus) + (state.stats.moveSpeed * inc.moveSpeedMult);
-  player.accel = CONFIG.PLAYER.acceleration * driverMult * (chassisConfig.speedMultiplier || 1.0);
-
-  const reloadStat = state.stats.reloadSpeed || 0;
-  const loaderCrewLvl = crew.loader || 0;
-  const loaderCrewMult = Math.max(0.2, 1.0 - (loaderCrewLvl * CONFIG.CREW.loaderBonus));
-
-  const gunnerCrewLvl = crew.gunner || 0;
-  const gunnerCrewMult = 1.0 + (gunnerCrewLvl * CONFIG.CREW.gunnerBonus);
-
-  const dmgStat = state.stats.shellDamage || 0;
-  const penStat = state.stats.shellPenetration || 0;
-  const speedStat = state.stats.shellSpeed || 0;
-
-  const rCfg = CONFIG.WEAPONS.reloadScaling;
-  const baseCfg = CONFIG.WEAPONS.basicBarrelBase || {
-    damage: 7.0,
-    penetration: 2.0,
-    bulletSpeed: 160,
-    bulletSize: 9,
-    baseReloadTicks: 120,
-    fireRateTicks: 80,
-    spread: 0.04,
-    recoil: 45,
-    lifetime: 3.0
-  };
-
-  weaponSys.turrets.forEach((turret, index) => {
-    const chassisTurrets = CONFIG.CHASSIS[state.activeChassis].turrets || [];
-    const turretConfig = chassisTurrets[index] || {};
-    const baseW = turretConfig.weapon || CONFIG.CHASSIS[state.activeChassis].weapon || {};
-
-    const mDamage = (turretConfig.damage !== undefined) ? turretConfig.damage : 1.0;
-    const mPen = (turretConfig.penetration !== undefined) ? turretConfig.penetration : 1.0;
-    const mSpeed = (turretConfig.bulletSpeed !== undefined) ? turretConfig.bulletSpeed : 1.0;
-    const mSize = (turretConfig.bulletSize !== undefined) ? turretConfig.bulletSize : 1.0;
-    const mReload = (turretConfig.reload !== undefined) ? turretConfig.reload : 1.0;
-    const mSpread = (turretConfig.spread !== undefined) ? turretConfig.spread : 1.0;
-    const mRecoil = (turretConfig.recoil !== undefined) ? turretConfig.recoil : 1.0;
-    const mLaunch = (turretConfig.launchSpeed !== undefined) ? turretConfig.launchSpeed : 1.0;
-
-    turret.damageMult = mDamage;
-    turret.penetrationMult = mPen;
-    turret.bulletSpeedMult = mSpeed;
-    turret.bulletSizeMult = mSize;
-    turret.reloadMult = mReload;
-    turret.spreadMult = mSpread;
-    turret.recoilMult = mRecoil;
-    turret.launchSpeedMult = mLaunch;
-    turret.bulletsPerShot = baseW.bulletsPerShot ?? turretConfig.bulletsPerShot ?? 1;
-    turret.lifetime = baseW.lifetime ?? turretConfig.lifetime ?? baseCfg.lifetime ?? 3.0;
-
-    const baseFireRateTicks = (baseW.fireRateTicks !== undefined) ? baseW.fireRateTicks : Math.round(baseCfg.fireRateTicks * mReload);
-    const reloadFireRateMult = 1.0 + (reloadStat * (rCfg.fireRateScalePerPoint || 0.08));
-    const baseFireSec = baseFireRateTicks / 60;
-    turret.fireIntervalSec = Math.max(rCfg.minFireIntervalSec || 0.20, (baseFireSec / reloadFireRateMult) * loaderCrewMult);
-
-    if (!turret.shootsBullet) return;
-
-    const baseDmgVal = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * mDamage;
-    turret.damage = baseDmgVal * gunnerCrewMult;
-
-    const basePenVal = (baseCfg.penetration + (penStat * inc.shellPenMult)) * mPen;
-    turret.penetration = basePenVal * gunnerCrewMult;
-
-    const baseSpeedVal = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * mSpeed * mLaunch;
-    turret.shellSpeed = baseSpeedVal * gunnerCrewMult;
-
-    const chassisCfg = CONFIG.CHASSIS[state.activeChassis] || {};
-    const cannonBaseWidth = (turretConfig.width !== undefined) ? turretConfig.width : (turret.width !== undefined ? turret.width : 20);
-    const customRadius = baseW.bulletRadius ?? turretConfig.bulletRadius ?? turretConfig.bullet?.radius ?? turretConfig.bulletOptions?.radius;
-    const baseBulletRadius = (customRadius !== undefined) ? customRadius : ((cannonBaseWidth / 20) * (baseCfg.bulletSize || 9));
-    const globalBulletSizeMult = (CONFIG.WEAPONS && CONFIG.WEAPONS.bulletSizeMultiplier !== undefined) ? CONFIG.WEAPONS.bulletSizeMultiplier : 1.0;
-    const chassisBulletSizeMult = (chassisCfg.bulletSizeMultiplier !== undefined) ? chassisCfg.bulletSizeMultiplier : 1.0;
-    turret.shellRadius = (baseW.shellRadius !== undefined && baseW.bulletRadius === undefined && turretConfig.bulletRadius === undefined)
-      ? Math.round(baseW.shellRadius * chassisBulletSizeMult * globalBulletSizeMult * 10) / 10
-      : Math.round(baseBulletRadius * mSize * chassisBulletSizeMult * globalBulletSizeMult * 10) / 10;
-
-    turret.recoil = (baseCfg.recoil || 45) * mRecoil;
-    turret.spread = (baseCfg.spread || 0.04) * mSpread;
-
-    const rackFactor = (turret.type === WEAPON_TYPE.READY_RACK) ? (rCfg.rackReloadFactor || 1.50) : 1.0;
-    const baseReloadTicks = (baseW.baseReloadTicks !== undefined) ? baseW.baseReloadTicks : Math.round(baseCfg.baseReloadTicks * mReload);
-    const rrCfg = (CONFIG.PLAYER && CONFIG.PLAYER.readyRack) || {};
-    const globalRefillMult = (rrCfg.refillSpeedMultiplier !== undefined) ? rrCfg.refillSpeedMultiplier : 1.0;
-    const chassisRefillMult = (chassisCfg.readyRackRefillSpeed !== undefined) ? chassisCfg.readyRackRefillSpeed : 1.0;
-    const turretRefillSpeed = (baseW.refillSpeed !== undefined) ? baseW.refillSpeed : 1.0;
-    const combinedRefillSpeed = Math.max(0.05, globalRefillMult * chassisRefillMult * turretRefillSpeed);
-
-    let baseReloadSec;
-    if (turret.type === WEAPON_TYPE.READY_RACK && baseW.refillSec !== undefined) {
-      baseReloadSec = baseW.refillSec;
-    } else if (turret.type === WEAPON_TYPE.READY_RACK && rrCfg.baseRefillSec !== undefined) {
-      baseReloadSec = rrCfg.baseRefillSec * mReload;
-    } else {
-      baseReloadSec = (baseReloadTicks / 60) * rackFactor;
-    }
-    if (turret.type === WEAPON_TYPE.READY_RACK) {
-      baseReloadSec /= combinedRefillSpeed;
-    }
-
-    const minReloadSec = (turret.type === WEAPON_TYPE.READY_RACK && baseW.minRefillSec !== undefined)
-      ? baseW.minRefillSec
-      : ((turret.type === WEAPON_TYPE.READY_RACK && rrCfg.minRefillSec !== undefined)
-          ? rrCfg.minRefillSec
-          : (rCfg.minReloadIntervalSec || 0.75));
-    const reloadSpeedMult = 1.0 + (reloadStat * (rCfg.reloadSpeedScalePerPoint || 0.06));
-    turret.reloadIntervalSec = Math.max(minReloadSec, (baseReloadSec / reloadSpeedMult) * loaderCrewMult);
-
-    turret.coolRate = (baseW.coolRate || 22) * (1.0 + (reloadStat * (rCfg.thermalCoolRateStatScaling || 0.12))) / loaderCrewMult;
-    turret.heatPerShot = (baseW.heatPerShot || 6) / (1.0 + (reloadStat * (rCfg.thermalHeatReductionStatScaling || 0.05)));
-    turret.rechargeRate = (baseW.rechargeRate || 20) * (1.0 + (reloadStat * (rCfg.energyRechargeStatScaling || 0.10))) / loaderCrewMult;
-
-    if (turret.missileProfile) {
-      const mDmgBase = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * gunnerCrewMult;
-      const mPenBase = (baseCfg.penetration + (penStat * inc.shellPenMult)) * gunnerCrewMult;
-      const mSpdBase = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * gunnerCrewMult;
-      turret.missileStats = {
-        baseDamage: mDmgBase,
-        basePenetration: mPenBase,
-        baseSpeed: mSpdBase,
-        reloadFireRateMult,
-        loaderCrewMult,
-        maxSpeed: mSpdBase * (turret.missileProfile.maxSpeedMultiplier || 1.0)
-      };
-    }
+  const chassisConfig = syncUnitChassisAndStats({
+    unit: player,
+    weaponSys,
+    chassisKey: state.activeChassis,
+    level: state.level,
+    stats: state.stats,
+    crewLevels: crew,
+    godMode: state.godMode
   });
 
-  if (weaponSys.turrets.length === 0 && (weaponSys.type === WEAPON_TYPE.COOLDOWN || weaponSys.type === WEAPON_TYPE.ENERGY)) {
-    const chassis = CONFIG.CHASSIS[state.activeChassis];
-    const baseW = (chassis && chassis.weapon) ? chassis.weapon : {};
-
-    const cooldownTicks = baseW.cooldownTicks || baseW.baseReloadTicks || 100;
-    const baseCooldownSec = (baseW.cooldownSec !== undefined) ? baseW.cooldownSec : (cooldownTicks / 60);
-    weaponSys.cooldownDurationSec = Math.max(0.4, baseCooldownSec * loaderCrewMult);
-    weaponSys.fireIntervalSec = weaponSys.cooldownDurationSec;
-  }
-
-  if (chassisConfig.baseMaxDrones !== undefined) {
-    const perReload = chassisConfig.dronesPerReloadPoint || 0;
-    weaponSys.maxDrones = chassisConfig.baseMaxDrones + (reloadStat * perReload);
-  }
-
-  if (weaponSys.infectSquares) {
-    const profile = chassisConfig.droneProfile || { damage: 1.68, penetration: 2.0, bulletSpeed: 0.76, radius: 15 };
-    const nDmg = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * (profile.damage ?? 1.68) * gunnerCrewMult;
-    const nPen = (baseCfg.penetration + (penStat * inc.shellPenMult)) * (profile.penetration ?? 2.0) * gunnerCrewMult;
-    const nSpd = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * (profile.bulletSpeed ?? 0.76) * gunnerCrewMult;
-    weaponSys.necromancerStats = {
-      damage: nDmg,
-      penetration: nPen,
-      speed: nSpd,
-      radius: profile.radius ?? 15
-    };
-  }
-
-  const mProfile = chassisConfig.minionBulletProfile || chassisConfig.droneBulletProfile || null;
-  if (weaponSys.isFactoryClass || (weaponSys.isDroneClass && mProfile)) {
-    const effProfile = mProfile || {
-      damage: 0.40,
-      penetration: 0.40,
-      bulletSpeed: 0.80,
-      fireRateTicks: 80,
-      radius: 5.0,
-      lifetime: 1.35
-    };
-    const mDmg = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * (effProfile.damage ?? 0.40) * gunnerCrewMult;
-    const mPen = (baseCfg.penetration + (penStat * inc.shellPenMult)) * (effProfile.penetration ?? 0.40) * gunnerCrewMult;
-    const mSpd = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * (effProfile.bulletSpeed ?? 0.80) * gunnerCrewMult;
-    const baseFireRateTicks = effProfile.fireRateTicks || baseCfg.fireRateTicks || 80;
-    const reloadFireRateMult = 1.0 + (reloadStat * (rCfg.fireRateScalePerPoint || 0.08));
-    const baseFireSec = baseFireRateTicks / 60;
-    const mFireIntervalSec = Math.max(rCfg.minFireIntervalSec || 0.20, (baseFireSec / reloadFireRateMult) * loaderCrewMult);
-    const sizeScale = (player && player.radius) ? (player.radius / CONFIG.PLAYER.radius) : 1.0;
-    const minionSizeRatio = sizeScale / ((chassisConfig && chassisConfig.radiusMultiplier) || 1.25);
-    weaponSys.minionBulletStats = {
-      damage: mDmg,
-      penetration: mPen,
-      speed: mSpd,
-      fireIntervalSec: mFireIntervalSec,
-      radius: (effProfile.radius ?? 5.0) * minionSizeRatio,
-      lifetime: effProfile.lifetime ?? 1.35,
-      bulletOptions: extractBulletOptions(effProfile)
-    };
-  }
-
-  if (weaponSys.drones && weaponSys.drones.length > 0) {
-    if (weaponSys.infectSquares && weaponSys.necromancerStats) {
-      const nStats = weaponSys.necromancerStats;
-      for (let i = 0; i < weaponSys.drones.length; i++) {
-        const d = weaponSys.drones[i];
-        d.speed = nStats.speed * (d.speedMultiplier ?? 1.0);
-        d.damage = nStats.damage;
-        if (nStats.penetration > d.maxPenetration) {
-          d.penetration += (nStats.penetration - d.maxPenetration);
-          d.maxPenetration = nStats.penetration;
-        }
-        if (weaponSys.minionBulletStats) {
-          d.minionBulletStats = weaponSys.minionBulletStats;
-        }
-        d.color = d.customColor || player.fillColor;
-        d.strokeColor = d.customStrokeColor || player.strokeColor;
-      }
-    } else if (weaponSys.isFactoryClass) {
-      const fallbackTurret = weaponSys.turrets.find(t => t.type === WEAPON_TYPE.DRONE_SPAWNER) || weaponSys.turrets[0];
-      for (let i = 0; i < weaponSys.drones.length; i++) {
-        const d = weaponSys.drones[i];
-        const droneTurret = (d.turretIndex !== null && d.turretIndex !== undefined && weaponSys.turrets[d.turretIndex])
-          ? weaponSys.turrets[d.turretIndex]
-          : fallbackTurret;
-        if (droneTurret) {
-          d.speed = droneTurret.shellSpeed * (d.speedMultiplier ?? 1.0);
-          d.damage = droneTurret.damage;
-          if (droneTurret.penetration > d.maxPenetration) {
-            d.penetration += (droneTurret.penetration - d.maxPenetration);
-            d.maxPenetration = droneTurret.penetration;
-          }
-        }
-        if ((d.isMinion || (d.turrets && d.turrets.length > 0)) && weaponSys.minionBulletStats) {
-          d.minionBulletStats = weaponSys.minionBulletStats;
-        }
-        d.color = d.customColor || player.fillColor;
-        d.strokeColor = d.customStrokeColor || player.strokeColor;
-      }
-    } else if (weaponSys.turrets.length > 0) {
-      const fallbackTurret = weaponSys.turrets.find(t => t.type === WEAPON_TYPE.DRONE_SPAWNER) || weaponSys.turrets[0];
-      for (let i = 0; i < weaponSys.drones.length; i++) {
-        const d = weaponSys.drones[i];
-        const droneTurret = (d.turretIndex !== null && d.turretIndex !== undefined && weaponSys.turrets[d.turretIndex])
-          ? weaponSys.turrets[d.turretIndex]
-          : fallbackTurret;
-        d.speed = droneTurret.shellSpeed * (d.speedMultiplier ?? 1.0);
-        d.damage = droneTurret.damage;
-        if (droneTurret.penetration > d.maxPenetration) {
-          d.penetration += (droneTurret.penetration - d.maxPenetration);
-          d.maxPenetration = droneTurret.penetration;
-        }
-        if (weaponSys.minionBulletStats) {
-          d.minionBulletStats = weaponSys.minionBulletStats;
-        }
-        d.color = d.customColor || player.fillColor;
-        d.strokeColor = d.customStrokeColor || player.strokeColor;
-      }
+  if (waveMgr && waveMgr.allies && waveMgr.allies.length > 0) {
+    for (let i = 0; i < waveMgr.allies.length; i++) {
+      waveMgr.allies[i].setColorTheme(player.fillColor, player.strokeColor);
     }
   }
+
+  const growthCfg = CONFIG.PLAYER.growthScaling;
+  const growthLevel = Math.min(growthCfg.maxGrowthLevel, state.level);
+  const levelZoomMult = 1.0 + (growthLevel - 1) * growthCfg.cameraZoomIncreasePerLevel;
+  camera.targetZoom = ((chassisConfig.cameraZoom || CONFIG.CAMERA.defaultZoom) / levelZoomMult) * getViewportZoomFactor();
 }
 
 function toggleAutoFire() {
@@ -842,13 +644,19 @@ function toggleAutoSpin() {
   }
 }
 
+function cycleSquadStance() {
+  if (state.isGameOver || state.inMenu || !waveMgr.allies || waveMgr.allies.length === 0) return;
+  const order = ['AUTO', 'FOLLOW', 'AGGRESSIVE', 'FARM'];
+  const idx = order.indexOf(state.squadStance);
+  state.squadStance = order[(idx + 1) % order.length];
+  if (uiMgr) {
+    uiMgr.showToast(`SQUAD ORDER: ${state.squadStance}`);
+  }
+}
+
 function selfDestructPlayer() {
   if (state.isGameOver || state.inMenu || player.isDying) return;
-  player.hp = 0;
-  player.isDying = true;
-  player.deathTimer = 0;
-  player.deathScale = 1.0;
-  player.deathAlpha = 1.0;
+  triggerSquadWipe();
   state.autoFire = false;
   state.autoSpin = false;
   if (mobileControls) {
@@ -863,6 +671,14 @@ function selfDestructPlayer() {
 
 function setupInputs() {
   window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  const stanceBtn = document.getElementById('ally-stance-btn');
+  if (stanceBtn) {
+    stanceBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cycleSquadStance();
+    });
+  }
 
   window.addEventListener('keydown', (e) => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
@@ -914,6 +730,7 @@ function setupInputs() {
 
     if (lower === 'e') toggleAutoFire();
     if (lower === 'c') toggleAutoSpin();
+    if (lower === 'g' && !e.repeat) cycleSquadStance();
     if (lower === 'o') selfDestructPlayer();
     if (lower === 'n') uiMgr.toggleEvolutionPanel();
     if (lower === 'u') uiMgr.toggleStatPanel();
@@ -1067,6 +884,24 @@ function updatePlayer(dt) {
 
     if (player.deathTimer >= player.deathDuration) {
       triggerGameOver();
+    }
+    return;
+  }
+
+  if (player.isDowned) {
+    player.vx *= Math.max(0, 1 - 6.0 * dt);
+    player.vy *= Math.max(0, 1 - 6.0 * dt);
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+    player.cloakAlpha = 1.0;
+
+    camera.x += (player.x - camera.x) * CONFIG.CAMERA.smoothness;
+    camera.y += (player.y - camera.y) * CONFIG.CAMERA.smoothness;
+    camera.zoom += (camera.targetZoom - camera.zoom) * CONFIG.CAMERA.zoomLerpSpeed;
+
+    player.downedTimer = Math.max(0, player.downedTimer - dt);
+    if (player.downedTimer <= 0) {
+      triggerSquadWipe();
     }
     return;
   }
@@ -1332,10 +1167,10 @@ function renderPlayerChassis() {
     return;
   }
 
-  const cloakAlpha = (player.cloakAlpha !== undefined) ? player.cloakAlpha : 1.0;
+  const cloakAlpha = player.isDowned ? 1.0 : ((player.cloakAlpha !== undefined) ? player.cloakAlpha : 1.0);
   const stateAlpha = player.isDying
     ? player.deathAlpha
-    : (player.isSpawning ? player.spawnAlpha : 1.0);
+    : (player.isDowned ? 0.62 : (player.isSpawning ? player.spawnAlpha : 1.0));
   const unitAlpha = Math.max(0, Math.min(1.0, stateAlpha * cloakAlpha));
   if (unitAlpha <= 0.002) {
     return;
@@ -1475,6 +1310,185 @@ function renderPlayerChassis() {
   }
 }
 
+function updateRevivesAndSquadWipe(dt) {
+  if (!waveMgr || !waveMgr.allies || waveMgr.allies.length === 0) {
+    player.activeReviveTargetName = '';
+    player.activeReviveProgress = 0;
+    return;
+  }
+
+  const allies = waveMgr.allies;
+  const reviveRadius = CONFIG.ALLIES.reviveRadius || 105;
+  const reviveRadiusSq = reviveRadius * reviveRadius;
+  const reviveDuration = CONFIG.ALLIES.reviveDuration || 5.0;
+  const decayRate = CONFIG.ALLIES.reviveDecayRate || 0.4;
+
+  // Squad Wipe Check: if player is downed and all hired allies are downed/dead -> kill all immediately
+  if (player.isDowned && !player.isDying) {
+    const allAlliesDownOrDead = allies.every(a => !a || a.isDowned || a.dead || a.isDying || a.destroyed);
+    if (allAlliesDownOrDead) {
+      triggerSquadWipe();
+      return;
+    }
+  }
+
+  // Reviving the Player (requires >=1 standing ally inside reviveRadius)
+  if (player.isDowned && !player.isDying) {
+    let allyHelping = false;
+    for (let i = 0; i < allies.length; i++) {
+      const a = allies[i];
+      if (!a || a.dead || a.destroyed || a.isDying || a.isDowned) continue;
+      const dx = a.x - player.x;
+      const dy = a.y - player.y;
+      if (dx * dx + dy * dy <= reviveRadiusSq) {
+        allyHelping = true;
+        break;
+      }
+    }
+
+    if (allyHelping) {
+      player.isBeingRevived = true;
+      player.reviveProgress = Math.min(reviveDuration, player.reviveProgress + dt);
+      if (player.reviveProgress >= reviveDuration) {
+        player.isDowned = false;
+        player.downedTimer = 0;
+        player.reviveProgress = 0;
+        player.isBeingRevived = false;
+        player.hp = Math.max(1, Math.round(player.maxHp * (CONFIG.ALLIES.reviveHpRatio || 0.5)));
+        player.iFrameTimer = CONFIG.ALLIES.iFrameAfterRevive || 2.0;
+        player.timeSinceLastDamage = 0;
+        waveMgr.spawnShatterParticles(player.x, player.y, '#34d399', 16);
+        AllyCommunicationSystem.onUnitRevived(player, allies, true);
+        if (uiMgr) uiMgr.showToast('REVIVED BY SQUAD!');
+      }
+    } else {
+      player.isBeingRevived = false;
+      player.reviveProgress = Math.max(0, player.reviveProgress - dt * decayRate);
+    }
+  } else {
+    player.isBeingRevived = false;
+    player.reviveProgress = 0;
+  }
+
+  // Reviving Downed Allies (by standing player OR standing ally inside reviveRadius)
+  player.activeReviveTargetName = '';
+  player.activeReviveProgress = 0;
+  const isPlayerStanding = !player.isDowned && !player.isDying;
+
+  for (let i = 0; i < allies.length; i++) {
+    const ally = allies[i];
+    if (!ally || !ally.isDowned || ally.dead || ally.isDying || ally.destroyed) continue;
+
+    let playerHelping = false;
+    if (isPlayerStanding) {
+      const pdx = player.x - ally.x;
+      const pdy = player.y - ally.y;
+      if (pdx * pdx + pdy * pdy <= reviveRadiusSq) {
+        playerHelping = true;
+      }
+    }
+
+    let allyHelping = false;
+    for (let j = 0; j < allies.length; j++) {
+      if (i === j) continue;
+      const helper = allies[j];
+      if (!helper || helper.dead || helper.destroyed || helper.isDying || helper.isDowned) continue;
+      const hdx = helper.x - ally.x;
+      const hdy = helper.y - ally.y;
+      if (hdx * hdx + hdy * hdy <= reviveRadiusSq) {
+        allyHelping = true;
+        break;
+      }
+    }
+
+    if (playerHelping || allyHelping) {
+      ally.isBeingRevived = true;
+      ally.reviveProgress = Math.min(reviveDuration, ally.reviveProgress + dt);
+      if (playerHelping) {
+        player.activeReviveTargetName = ally.name;
+        player.activeReviveProgress = Math.min(1, ally.reviveProgress / reviveDuration);
+      }
+      if (ally.reviveProgress >= reviveDuration) {
+        ally.revive(waveMgr, allies);
+        if (uiMgr && playerHelping) {
+          uiMgr.showToast(`REVIVED ${ally.name.toUpperCase()}!`);
+        }
+      }
+    } else {
+      ally.isBeingRevived = false;
+      ally.reviveProgress = Math.max(0, ally.reviveProgress - dt * decayRate);
+    }
+  }
+}
+
+function renderReviveIndicators(ctx) {
+  const reviveRadius = CONFIG.ALLIES.reviveRadius || 105;
+  const reviveDuration = CONFIG.ALLIES.reviveDuration || 5.0;
+  const bleedoutDuration = CONFIG.ALLIES.bleedoutDuration || 15.0;
+
+  const drawUnitDownedRing = (unit, label) => {
+    if (!unit || !unit.isDowned || unit.isDying || unit.dead || unit.destroyed) return;
+
+    const bleedRatio = Math.max(0, Math.min(1, unit.downedTimer / bleedoutDuration));
+    const revRatio = Math.max(0, Math.min(1, unit.reviveProgress / reviveDuration));
+    const pulse = 0.72 + Math.sin(performance.now() * 0.008) * 0.28;
+
+    ctx.save();
+    // Outer Revive Zone Circle
+    ctx.beginPath();
+    ctx.arc(unit.x, unit.y, reviveRadius, 0, Math.PI * 2);
+    ctx.fillStyle = unit.isBeingRevived ? 'rgba(52, 211, 153, 0.10)' : 'rgba(239, 68, 68, 0.08)';
+    ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([8, 6]);
+    ctx.strokeStyle = unit.isBeingRevived
+      ? `rgba(52, 211, 153, ${0.85 * pulse})`
+      : `rgba(248, 113, 113, ${0.75 * pulse})`;
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Inner Bleedout Arc around tank
+    const arcR = (unit.radius || 25) + 12;
+    ctx.beginPath();
+    ctx.arc(unit.x, unit.y, arcR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * bleedRatio);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#ef4444';
+    ctx.stroke();
+
+    // Revive Progress Arc (bright green)
+    if (revRatio > 0.005) {
+      ctx.beginPath();
+      ctx.arc(unit.x, unit.y, arcR + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * revRatio);
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#34d399';
+      ctx.stroke();
+    }
+
+    // Status Text below tank
+    ctx.font = "900 12px 'Ubuntu', sans-serif";
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const statusText = unit.isBeingRevived
+      ? `REVIVING ${Math.round(revRatio * 100)}%`
+      : `${label} DOWNED ${Math.ceil(unit.downedTimer)}s`;
+    const textY = unit.y + (unit.radius || 25) + 26;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.strokeText(statusText, unit.x, textY);
+    ctx.fillStyle = unit.isBeingRevived ? '#6ee7b7' : '#fca5a5';
+    ctx.fillText(statusText, unit.x, textY);
+    ctx.restore();
+  };
+
+  drawUnitDownedRing(player, 'YOU');
+  if (waveMgr && waveMgr.allies) {
+    for (let i = 0; i < waveMgr.allies.length; i++) {
+      const a = waveMgr.allies[i];
+      if (a && a.isDowned) drawUnitDownedRing(a, a.name.toUpperCase());
+    }
+  }
+}
+
 function gameLoop(timestamp) {
   const dt = Math.min((timestamp - state.lastFrameTime) / 1000, 0.1);
   state.lastFrameTime = timestamp;
@@ -1484,7 +1498,28 @@ function gameLoop(timestamp) {
     const prevScore = waveMgr.score;
     updatePlayer(dt);
 
-    waveMgr.update(dt, player, weaponSys, state.activeChassis, state.stats);
+    if (waveMgr.allies && waveMgr.allies.length > 0) {
+      let needsLevelSync = false;
+      for (let i = 0; i < waveMgr.allies.length; i++) {
+        const a = waveMgr.allies[i];
+        if (a && !a.dead && !a.destroyed && a.level !== state.level) {
+          needsLevelSync = true;
+          break;
+        }
+      }
+      if (needsLevelSync) {
+        const unlocked = storageMgr.data.unlockedChassis || ['basic'];
+        const crew = storageMgr.data.crewLevels || {};
+        waveMgr.allies.forEach(a => a.syncLevelAndProgression(state.level, unlocked, crew, false, state.activeChassis, waveMgr.allies, waveMgr.waveNumber));
+      }
+    }
+
+    waveMgr.update(dt, player, weaponSys, state.activeChassis, state.stats, {
+      squadStance: state.squadStance,
+      crewLevels: storageMgr.data.crewLevels
+    });
+
+    updateRevivesAndSquadWipe(dt);
 
     if (waveMgr.score > prevScore) {
       addXP(waveMgr.score - prevScore);
@@ -1520,6 +1555,7 @@ function gameLoop(timestamp) {
     waveMgr.draw(canvasMgr);
     weaponSys.draw(canvasMgr.ctx);
     renderPlayerChassis();
+    renderReviveIndicators(canvasMgr.ctx);
     canvasMgr.endCamera();
 
     if (state.isPlaying && !state.isGameOver) {

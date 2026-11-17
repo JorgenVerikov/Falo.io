@@ -1,5 +1,6 @@
 import { CONFIG } from '../core/config.js';
 import { ResourceShape, EnemyUnit, Particle } from '../entities/enemy.js';
+import { AllyTank } from '../entities/allyTank.js';
 import { PhysicsSystem } from './physics.js';
 
 export class WaveManager {
@@ -16,6 +17,7 @@ export class WaveManager {
 
     this.shapes = [];
     this.enemies = [];
+    this.allies = [];
     this.particles = [];
     this.enemyBullets = [];
     this.nextSquadId = 1;
@@ -26,6 +28,7 @@ export class WaveManager {
   clearAll() {
     this.shapes = [];
     this.enemies = [];
+    this.allies = [];
     this.particles = [];
     this.enemyBullets = [];
     this.enemyQueue = [];
@@ -34,6 +37,31 @@ export class WaveManager {
     this.spawnTimer = 0;
     this.isBreak = false;
     this.score = 0;
+  }
+
+  spawnAlliesForRun(player, storageData, initialLevel = 1, playerChassis = 'basic') {
+    this.allies = [];
+    const hired = Array.isArray(storageData?.hiredAllies) ? storageData.hiredAllies.slice(0, CONFIG.ALLIES?.maxAllies || 3) : [];
+    if (hired.length === 0) return;
+
+    const unlockedChassis = storageData?.unlockedChassis || ['basic'];
+    const crewLevels = storageData?.crewLevels || {};
+    const playerColor = {
+      fill: player?.fillColor || '#00b2e1',
+      stroke: player?.strokeColor || '#0083a8'
+    };
+
+    for (let i = 0; i < hired.length; i++) {
+      const slotCfg = hired[i];
+      const angle = ((i - (hired.length - 1) / 2) * 0.95) + Math.PI * 0.85;
+      const dist = 120;
+      const ax = (player?.x || 0) + Math.cos(angle) * dist;
+      const ay = (player?.y || 0) + Math.sin(angle) * dist;
+
+      const ally = new AllyTank(slotCfg, i, ax, ay, unlockedChassis, playerColor, playerChassis);
+      ally.syncLevelAndProgression(initialLevel, unlockedChassis, crewLevels, false, playerChassis, this.allies, this.waveNumber);
+      this.allies.push(ally);
+    }
   }
 
   clearShapes() {
@@ -130,7 +158,7 @@ export class WaveManager {
     }
   }
 
-  update(dt, player, playerWeapon, activeChassisKey, playerStats = {}) {
+  update(dt, player, playerWeapon, activeChassisKey, playerStats = {}, extraCtx = {}) {
     if (this.isPaused) return;
 
     if (this.graceTimer > 0) {
@@ -163,12 +191,33 @@ export class WaveManager {
 
     this.maintainShapes(player);
 
+    const allyCtx = {
+      player,
+      allies: this.allies,
+      enemies: this.enemies,
+      shapes: this.shapes,
+      enemyBullets: this.enemyBullets,
+      waveMgr: this,
+      squadStance: extraCtx.squadStance || 'AUTO',
+      crewLevels: extraCtx.crewLevels || {}
+    };
+    for (let i = 0; i < this.allies.length; i++) {
+      this.allies[i].update(dt, allyCtx);
+    }
+
     const rawProjectiles = (playerWeapon && playerWeapon.projectiles) ? playerWeapon.projectiles : [];
     const rawDrones = (playerWeapon && playerWeapon.drones) ? playerWeapon.drones : [];
-    const playerProjectiles = rawDrones.length > 0 ? rawProjectiles.concat(rawDrones) : rawProjectiles;
+    let playerProjectiles = rawDrones.length > 0 ? rawProjectiles.concat(rawDrones) : rawProjectiles.slice();
+    for (let i = 0; i < this.allies.length; i++) {
+      const a = this.allies[i];
+      if (!a || a.dead || a.destroyed || !a.weaponSys) continue;
+      if (a.weaponSys.projectiles?.length) playerProjectiles = playerProjectiles.concat(a.weaponSys.projectiles);
+      if (a.weaponSys.drones?.length) playerProjectiles = playerProjectiles.concat(a.weaponSys.drones);
+    }
+
     for (const s of this.shapes) s.update(dt, this);
     const totalRemainingEnemies = this.getRemainingEnemyCount();
-    for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerStats.moveSpeed || 0, this.enemies, playerProjectiles, totalRemainingEnemies, this.shapes);
+    for (const e of this.enemies) e.update(dt, player, this.enemyBullets, playerStats.moveSpeed || 0, this.enemies, playerProjectiles, totalRemainingEnemies, this.shapes, this.allies);
     for (const b of this.enemyBullets) b.update(dt);
 
     // Despawn retreating enemies when they reach or exceed distance threshold from the player so wave does not get stuck
@@ -371,6 +420,7 @@ export class WaveManager {
 
   draw(canvasMgr) {
     for (const s of this.shapes) s.draw(canvasMgr);
+    for (const a of this.allies) a.draw(canvasMgr);
     for (const e of this.enemies) e.draw(canvasMgr);
     for (const b of this.enemyBullets) b.draw(canvasMgr.ctx);
     for (const p of this.particles) p.draw(canvasMgr.ctx);

@@ -565,6 +565,10 @@ export class UIManager {
     if (this.faloPanel) this.faloPanel.classList.add('hidden');
     if (this.statPanel) this.statPanel.classList.add('hidden');
     if (this.statCornerTab) this.statCornerTab.classList.add('hidden');
+    const squadHud = document.getElementById('ally-squad-hud');
+    if (squadHud) squadHud.classList.add('hidden');
+    const downedBanner = document.getElementById('downed-status-banner');
+    if (downedBanner) downedBanner.classList.add('hidden');
   }
 
   showMainMenu({ animateEntrance = false } = {}) {

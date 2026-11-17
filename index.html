@@ -25,9 +25,24 @@
       <div class="hud-row"><span class="hud-label">SCORE</span><span id="score-display" class="hud-val">0</span></div>
     </div>
 
+    <div id="ally-squad-hud" class="hud-panel ally-squad-hud hidden">
+      <div class="ally-squad-header">
+        <span class="ally-squad-title">SQUAD</span>
+        <button id="ally-stance-btn" class="ally-stance-btn" type="button" title="Cycle Squad Order [G]">AUTO [G]</button>
+      </div>
+      <div id="ally-squad-list" class="ally-squad-list"></div>
+    </div>
+
     <div id="wave-banner" class="hud-panel center-top">
       <div id="wave-status" class="wave-title">WAVE 1</div>
       <div id="wave-timer-text" class="wave-timer">ENEMIES REMAINING: 4</div>
+    </div>
+
+    <div id="downed-status-banner" class="hud-panel downed-status-banner hidden">
+      <div id="downed-status-text" class="downed-status-text">DOWNED</div>
+      <div class="downed-progress-track">
+        <div id="downed-progress-fill" class="downed-progress-fill"></div>
+      </div>
     </div>
 
     <!-- Falo Evolution Upgrade Panel -->

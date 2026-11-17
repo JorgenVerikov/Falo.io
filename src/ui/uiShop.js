@@ -951,7 +951,180 @@ export function createTankCard(ui, tank, coins, unlocked, playerPaintColor, play
 export function renderCrewShop(ui, container, { animatePreview = false } = {}) {
   const coins = ui.storage.data.coins;
   const levels = ui.storage.data.crewLevels || {};
+  const hiredAllies = Array.isArray(ui.storage.data.hiredAllies) ? ui.storage.data.hiredAllies : [];
+  const unlockedChassis = ui.storage.data.unlockedChassis || ['basic'];
+  const maxAllies = CONFIG.ALLIES?.maxAllies || 3;
+  const slotCosts = CONFIG.ALLIES?.slotCosts || [600, 1200, 2000];
 
+  const activeColorKey = ui.storage.data.activeColor || 'default';
+  const playerPaintColor = (activeColorKey === 'custom')
+    ? (ui.storage.data.customColor || '#00b2e1')
+    : (CONFIG.COLOR_THEMES[activeColorKey]?.color || '#00b2e1');
+  const playerPaintStroke = (activeColorKey === 'custom')
+    ? computeStrokeColor(playerPaintColor)
+    : (CONFIG.COLOR_THEMES[activeColorKey]?.stroke || '#0083a8');
+
+  // --- SECTION 0: ALLIED SQUAD (MAX 3) ---
+  const squadSection = document.createElement('div');
+  squadSection.className = 'falo-shop-section';
+  squadSection.style.setProperty('--section-idx', '0');
+  squadSection.innerHTML = `
+    <div class="falo-section-header">
+      <div class="falo-section-title-wrap">
+        <div class="falo-section-title">ALLIED SQUAD (MAX ${maxAllies})</div>
+        <span class="falo-ends-in-tag">${hiredAllies.length} / ${maxAllies} ACTIVE · ADAPTIVE AI · SHARES LEVEL &amp; UNLOCKS</span>
+      </div>
+    </div>
+    <div class="falo-crew-list falo-ally-list" id="allied-squad-grid"></div>
+  `;
+
+  const squadGrid = squadSection.querySelector('#allied-squad-grid');
+  const savedKey = ui.selectedShopItemByTab?.crew;
+  let fallbackSelectFn = null;
+  let matchedSelectFn = null;
+
+  const unlockedCount = unlockedChassis.length;
+  for (let slotIdx = 0; slotIdx < maxAllies; slotIdx++) {
+    const hired = hiredAllies[slotIdx] || null;
+    const isNextHireSlot = !hired && slotIdx === hiredAllies.length;
+    const cost = slotCosts[slotIdx] || 1200;
+    const canAfford = coins >= cost;
+
+    const row = document.createElement('div');
+    row.className = 'falo-crew-row falo-ally-row falo-shop-tilt-card';
+    row.style.borderColor = hired ? playerPaintStroke : '#64748b';
+    row.style.backgroundImage = `
+      linear-gradient(to right, ${playerPaintColor}1f 1px, transparent 1px),
+      linear-gradient(to bottom, ${playerPaintColor}1f 1px, transparent 1px)
+    `;
+    row.style.backgroundSize = '16px 16px';
+
+    if (hired) {
+      row.innerHTML = `
+        <div class="falo-crew-icon-col">
+          ${generateTankSvg('basic', playerPaintColor, playerPaintStroke, 58)}
+        </div>
+        <div class="falo-crew-info-col">
+          <div class="falo-crew-top-row">
+            <div class="falo-crew-name-group">
+              <span class="falo-crew-name">Slot ${slotIdx + 1}: ${hired.name}</span>
+              <span class="falo-crew-desc">an Allied tank that will cooperate with you in the battle</span>
+            </div>
+            <div class="falo-crew-stats-group">
+              <span class="falo-crew-lvl-tag">HIRED</span>
+            </div>
+          </div>
+        </div>
+        <div class="falo-crew-action-col">
+          <button type="button" class="falo-ally-dismiss-btn">DISMISS</button>
+        </div>
+      `;
+
+      const dismissAction = () => {
+        if (ui.storage.dismissAlly(slotIdx)) {
+          ui.showToast(`DISMISSED ALLY ${hired.name.toUpperCase()}`);
+          renderShopContent(ui);
+        }
+      };
+
+      const dismissBtn = row.querySelector('.falo-ally-dismiss-btn');
+      ['mousedown', 'pointerdown'].forEach(evt => {
+        dismissBtn.addEventListener(evt, (e) => e.stopPropagation());
+      });
+      dismissBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dismissAction();
+      });
+
+      const previewData = {
+        kind: 'tank',
+        key: 'basic',
+        name: hired.name,
+        metaText: `Ally Slot ${slotIdx + 1} · Autonomous Adaptive Build`,
+        desc: `Shares your level, XP, paint theme, and ${unlockedCount} unlocked tanks. Dynamically adapts its evolutions and stat distribution to complement your squad during each run, and revives downed teammates in 5s.`,
+        color: playerPaintColor,
+        stroke: playerPaintStroke,
+        btnClass: 'unlocked',
+        btnHtml: 'DISMISS ALLY',
+        btnDisabled: false,
+        onAction: dismissAction
+      };
+
+      const selectForPreview = attachCardDynamicInteractions(ui, row, previewData);
+      row._selectForPreview = selectForPreview;
+      if (!fallbackSelectFn) fallbackSelectFn = selectForPreview;
+      if (savedKey === `ally_slot_${slotIdx}`) matchedSelectFn = selectForPreview;
+    } else {
+      const hireAction = () => {
+        if (!isNextHireSlot) {
+          ui.showToast(`HIRE ALLY SLOT ${hiredAllies.length + 1} FIRST`);
+          return;
+        }
+        if (canAfford) {
+          if (ui.storage.hireAlly(cost, 'auto')) {
+            ui.showToast(`HIRED ALLIED TANK (SLOT ${slotIdx + 1})`);
+            if (!ui.selectedShopItemByTab) ui.selectedShopItemByTab = {};
+            ui.selectedShopItemByTab.crew = `ally_slot_${slotIdx}`;
+            renderShopContent(ui);
+          }
+        } else {
+          ui.showToast(`NEED ${(cost - coins).toLocaleString()} MORE COINS`);
+        }
+      };
+
+      row.innerHTML = `
+        <div class="falo-crew-icon-col">
+          ${generateTankSvg('basic', isNextHireSlot ? playerPaintColor : '#64748b', isNextHireSlot ? playerPaintStroke : '#475569', 54)}
+        </div>
+        <div class="falo-crew-info-col">
+          <div class="falo-crew-top-row">
+            <div class="falo-crew-name-group">
+              <span class="falo-crew-name">Ally Slot ${slotIdx + 1}</span>
+              <span class="falo-crew-desc">${isNextHireSlot ? 'Hire an AI squadmate that decides its own evolutions, fights alongside you, and revives downed teammates.' : `Requires hiring Slot ${slotIdx} first.`}</span>
+            </div>
+            <div class="falo-crew-stats-group">
+              <span class="falo-crew-lvl-tag">${isNextHireSlot ? 'AVAILABLE' : 'LOCKED ORDER'}</span>
+            </div>
+          </div>
+        </div>
+        <div class="falo-crew-action-col">
+          ${isNextHireSlot
+            ? `<span class="falo-card-status-label is-price ${canAfford ? '' : 'is-unaffordable'}">
+                <span class="falo-coin-icon"></span>${cost.toLocaleString()}
+               </span>`
+            : `<span class="falo-card-status-label is-unaffordable">SLOT ${slotIdx} REQ</span>`
+          }
+        </div>
+      `;
+
+      const previewData = {
+        kind: 'tank',
+        key: 'basic',
+        name: `Hire Ally Slot ${slotIdx + 1}`,
+        metaText: `Squad Cap: ${hiredAllies.length} / ${maxAllies} · Total Squad Size: ${hiredAllies.length + 1} / 4`,
+        desc: 'Allied tanks share your level, XP, and paint theme, make independent evolution and build decisions from tanks you own, dodge enemy fire, and enable the 15s downed / 5s revive mechanic.',
+        color: isNextHireSlot ? playerPaintColor : '#64748b',
+        stroke: isNextHireSlot ? playerPaintStroke : '#475569',
+        btnClass: (isNextHireSlot && canAfford) ? '' : 'disabled',
+        btnHtml: isNextHireSlot
+          ? `HIRE <span class="falo-coin-icon"></span>${cost.toLocaleString()}`
+          : `FILL SLOT ${slotIdx} FIRST`,
+        btnDisabled: !isNextHireSlot,
+        onAction: hireAction
+      };
+
+      const selectForPreview = attachCardDynamicInteractions(ui, row, previewData);
+      row._selectForPreview = selectForPreview;
+      if (!fallbackSelectFn) fallbackSelectFn = selectForPreview;
+      if (savedKey === `ally_slot_${slotIdx}`) matchedSelectFn = selectForPreview;
+    }
+
+    squadGrid.appendChild(row);
+  }
+
+  container.appendChild(squadSection);
+
+  // --- SECTION 1: ALL CREW BARRACKS ---
   const crewList = [
     { key: 'commander', name: 'Commander', baseCost: 150, color: '#f59e0b', border: '#d97706', desc: '+10% Bonus XP & Coin earnings per level', getBonus: (lvl) => `+${lvl * 10}% XP & Coins` },
     { key: 'gunner', name: 'Gunner', baseCost: 150, color: '#a855f7', border: '#7e22ce', desc: '+5% Velocity, Damage & Penetration per level', getBonus: (lvl) => `+${lvl * 5}% Bullet Stats` },
@@ -961,7 +1134,7 @@ export function renderCrewShop(ui, container, { animatePreview = false } = {}) {
 
   const allSection = document.createElement('div');
   allSection.className = 'falo-shop-section';
-  allSection.style.setProperty('--section-idx', '0');
+  allSection.style.setProperty('--section-idx', '1');
   allSection.innerHTML = `
     <div class="falo-section-header">
       <div class="falo-section-title">ALL CREW BARRACKS</div>
@@ -984,10 +1157,6 @@ export function renderCrewShop(ui, container, { animatePreview = false } = {}) {
   const allGrid = allSection.querySelector('#all-crew-grid');
   const displayCrew = [...crewList];
   sortShopItems(displayCrew, ui.shopSort);
-
-  const savedKey = ui.selectedShopItemByTab?.crew;
-  let fallbackSelectFn = null;
-  let matchedSelectFn = null;
 
   displayCrew.forEach(c => {
     const card = createCrewCard(ui, c, coins, levels);

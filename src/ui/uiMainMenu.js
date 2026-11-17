@@ -276,7 +276,7 @@ export class MainMenuController {
       this.resizeCanvas();
     }
 
-    const lerp = 1 - Math.exp(-9 * dt);
+    const lerp = 1 - Math.exp(-10 * dt);
     this.curNx += (this.targetNx - this.curNx) * lerp;
     this.curNy += (this.targetNy - this.curNy) * lerp;
     this.spinAngle += dt * 0.8;
@@ -299,61 +299,66 @@ export class MainMenuController {
     this.swayTime += dt;
 
     if (!this.reducedMotion) {
-      const swayNx = Math.sin(this.swayTime * 0.58) * 0.16 + Math.sin(this.swayTime * 1.13) * 0.05;
-      const swayNy = Math.cos(this.swayTime * 0.44) * 0.14 + Math.cos(this.swayTime * 0.91) * 0.04;
-      const swayRoll = Math.sin(this.swayTime * 0.5) * 0.45;
+      const swayNx = Math.sin(this.swayTime * 0.65) * 0.1;
+      const swayNy = Math.cos(this.swayTime * 0.5) * 0.08;
       const effNx = this.curNx + swayNx;
       const effNy = this.curNy + swayNy;
+      const isDesktop = window.innerWidth > 820;
 
       if (this.rightPanel) {
-        const isCompact = window.innerWidth <= 960;
-        const baseRotY = isCompact ? -6 : -18;
-        const baseRotX = isCompact ? 1 : 2.5;
-        const baseRotZ = isCompact ? -0.8 : -1.6;
-        const panelRotY = baseRotY + effNx * 5.0;
-        const panelRotX = baseRotX - effNy * 3.8;
-        const panelRotZ = baseRotZ + swayRoll;
-        const shiftX = effNx * 10;
-        const shiftY = effNy * 7;
+        const panelRy = -3.8 - effNx * 2.2;
+        const panelRx = effNy * 1.8;
+        const panelTx = -effNx * 4;
+        const panelTy = effNy * 2;
         this.rightPanel.style.transform =
-          `perspective(880px) translate3d(${shiftX.toFixed(2)}px, ${shiftY.toFixed(2)}px, 0) rotateY(${panelRotY.toFixed(2)}deg) rotateX(${panelRotX.toFixed(2)}deg) rotateZ(${panelRotZ.toFixed(2)}deg)`;
+          `perspective(950px) translate3d(${panelTx.toFixed(2)}px, ${panelTy.toFixed(2)}px, 0) rotateY(${panelRy.toFixed(2)}deg) rotateX(${panelRx.toFixed(2)}deg)`;
       }
 
       if (this.tankWrap) {
-        const tx = effNx * 15;
-        const ty = effNy * 11 + Math.sin(this.swayTime * 0.85) * 4.5;
-        const tankRotY = effNx * 4;
-        const tankRotX = -effNy * 3;
+        const tx = -effNx * 5;
+        const ty = effNy * 4 + Math.sin(this.swayTime * 1.05) * 3.0;
         this.tankWrap.style.transform =
-          `perspective(1200px) translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) rotateY(${tankRotY.toFixed(2)}deg) rotateX(${tankRotX.toFixed(2)}deg)`;
+          `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0)`;
       }
 
       if (this.authContainer) {
-        const authTx = effNx * 10;
-        const authTy = effNy * 8;
-        const baseAuthRotY = window.innerWidth <= 960 ? 3 : 8;
-        const authRy = baseAuthRotY + effNx * 4.5;
-        const authRx = -effNy * 3.6;
-        this.authContainer.style.setProperty('--auth-tx', `${authTx.toFixed(2)}px`);
-        this.authContainer.style.setProperty('--auth-ty', `${authTy.toFixed(2)}px`);
-        this.authContainer.style.setProperty('--auth-rx', `${authRx.toFixed(2)}deg`);
-        this.authContainer.style.setProperty('--auth-ry', `${authRy.toFixed(2)}deg`);
+        if (isDesktop) {
+          const authTx = effNx * 6;
+          const authTy = effNy * 4;
+          const authRy = -effNx * 2.2;
+          const authRx = effNy * 1.6;
+          this.authContainer.style.setProperty('--auth-tx', `${authTx.toFixed(2)}px`);
+          this.authContainer.style.setProperty('--auth-ty', `${authTy.toFixed(2)}px`);
+          this.authContainer.style.setProperty('--auth-rx', `${authRx.toFixed(2)}deg`);
+          this.authContainer.style.setProperty('--auth-ry', `${authRy.toFixed(2)}deg`);
+        } else {
+          this.authContainer.style.setProperty('--auth-tx', '0px');
+          this.authContainer.style.setProperty('--auth-ty', '0px');
+          this.authContainer.style.setProperty('--auth-rx', '0deg');
+          this.authContainer.style.setProperty('--auth-ry', '0deg');
+        }
       }
 
       if (this.fullscreenBtn) {
-        const fsTx = effNx * 9;
-        const fsTy = effNy * 7;
-        const baseFsRotY = window.innerWidth <= 960 ? 3 : 8;
-        const fsRy = baseFsRotY + effNx * 4.5;
-        const fsRx = -effNy * 3.6;
-        this.fullscreenBtn.style.setProperty('--fs-tx', `${fsTx.toFixed(2)}px`);
-        this.fullscreenBtn.style.setProperty('--fs-ty', `${fsTy.toFixed(2)}px`);
-        this.fullscreenBtn.style.setProperty('--fs-rx', `${fsRx.toFixed(2)}deg`);
-        this.fullscreenBtn.style.setProperty('--fs-ry', `${fsRy.toFixed(2)}deg`);
+        if (isDesktop) {
+          const fsTx = effNx * 5;
+          const fsTy = effNy * 2.5;
+          const fsRy = -effNx * 2.2;
+          const fsRx = effNy * 1.6;
+          this.fullscreenBtn.style.setProperty('--fs-tx', `${fsTx.toFixed(2)}px`);
+          this.fullscreenBtn.style.setProperty('--fs-ty', `${fsTy.toFixed(2)}px`);
+          this.fullscreenBtn.style.setProperty('--fs-rx', `${fsRx.toFixed(2)}deg`);
+          this.fullscreenBtn.style.setProperty('--fs-ry', `${fsRy.toFixed(2)}deg`);
+        } else {
+          this.fullscreenBtn.style.setProperty('--fs-tx', '0px');
+          this.fullscreenBtn.style.setProperty('--fs-ty', '0px');
+          this.fullscreenBtn.style.setProperty('--fs-rx', '0deg');
+          this.fullscreenBtn.style.setProperty('--fs-ry', '0deg');
+        }
       }
 
       if (this.overlay) {
-        const bgX = -effNx * 18;
+        const bgX = -effNx * 16;
         const bgY = -effNy * 14;
         this.overlay.style.backgroundPosition = `0 0, ${bgX.toFixed(1)}px ${bgY.toFixed(1)}px, ${bgX.toFixed(1)}px ${bgY.toFixed(1)}px`;
       }

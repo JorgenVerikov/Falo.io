@@ -25,7 +25,8 @@ const DEFAULT_DATA = {
     gunner: 0,
     driver: 0,
     commander: 0
-  }
+  },
+  hiredAllies: []
 };
 
 export class StorageManager {
@@ -97,7 +98,15 @@ export class StorageManager {
       activeChassis: data.activeChassis || 'basic',
       unlockedColors: normalizedUnlocked,
       activeColor,
-      crewLevels: { ...DEFAULT_DATA.crewLevels, ...(data.crewLevels || {}) }
+      crewLevels: { ...DEFAULT_DATA.crewLevels, ...(data.crewLevels || {}) },
+      hiredAllies: Array.isArray(data.hiredAllies)
+        ? data.hiredAllies.slice(0, 3).map((ally, idx) => ({
+            id: ally?.id || `ally_${idx + 1}`,
+            name: (typeof ally?.name === 'string' && ally.name.trim()) ? ally.name.trim().slice(0, 18) : `Unit ${idx + 1}`,
+            buildPref: typeof ally?.buildPref === 'string' ? ally.buildPref : 'auto',
+            colorIdx: typeof ally?.colorIdx === 'number' ? ally.colorIdx : idx
+          }))
+        : []
     };
   }
 
@@ -342,6 +351,46 @@ export class StorageManager {
     return false;
   }
 
+  hireAlly(cost, buildPref = 'auto', callsign = null) {
+    if (!Array.isArray(this.data.hiredAllies)) this.data.hiredAllies = [];
+    if (this.data.hiredAllies.length >= 3) return false;
+    if (this.data.coins < cost) return false;
+
+    const usedNames = new Set(this.data.hiredAllies.map(a => a.name));
+    const pool = ['Vanguard', 'Specter', 'Bulwark', 'Viper', 'Aegis', 'Striker'];
+    const pickedName = callsign || pool.find(n => !usedNames.has(n)) || `Ally ${this.data.hiredAllies.length + 1}`;
+    const usedColorIdxs = new Set(this.data.hiredAllies.map(a => a.colorIdx));
+    let colorIdx = 0;
+    while (usedColorIdxs.has(colorIdx) && colorIdx < 3) colorIdx++;
+
+    this.data.coins -= cost;
+    this.data.hiredAllies.push({
+      id: `ally_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      name: pickedName,
+      buildPref: buildPref || 'auto',
+      colorIdx: colorIdx % 3
+    });
+    this.save();
+    return true;
+  }
+
+  dismissAlly(slotIndex) {
+    if (!Array.isArray(this.data.hiredAllies)) return false;
+    if (slotIndex < 0 || slotIndex >= this.data.hiredAllies.length) return false;
+    this.data.hiredAllies.splice(slotIndex, 1);
+    this.save();
+    return true;
+  }
+
+  setAllyBuildPreference(slotIndex, buildPref) {
+    if (!Array.isArray(this.data.hiredAllies)) return false;
+    const ally = this.data.hiredAllies[slotIndex];
+    if (!ally) return false;
+    ally.buildPref = buildPref || 'auto';
+    this.save();
+    return true;
+  }
+
   /**
    * Admin modification of persistent user data (crew upgrades, coins, stats, unlocks)
    */
@@ -382,6 +431,9 @@ export class StorageManager {
     }
     if (updates.activeColor) {
       this.data.activeColor = updates.activeColor;
+    }
+    if (Array.isArray(updates.hiredAllies)) {
+      this.data.hiredAllies = updates.hiredAllies.slice(0, 3);
     }
 
     this.save();

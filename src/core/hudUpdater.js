@@ -18,6 +18,12 @@ export class HUDUpdater {
     this.prevMultiGauge = null;
     this.slotViews = [];
     this.pillHiddenOnce = false;
+    this.prevSquadHidden = null;
+    this.prevStanceText = '';
+    this.prevSquadSignature = '';
+    this.allyItemViews = [];
+    this.prevDownedHidden = null;
+    this.prevDownedSignature = '';
   }
 
   ensureElements() {
@@ -41,7 +47,13 @@ export class HUDUpdater {
       barWrapper: document.getElementById('gauge-bar-wrapper'),
       barFill: document.getElementById('gauge-bar-fill'),
       barText: document.getElementById('gauge-text'),
-      overheatBanner: document.getElementById('overheat-banner')
+      overheatBanner: document.getElementById('overheat-banner'),
+      allySquadHud: document.getElementById('ally-squad-hud'),
+      allyStanceBtn: document.getElementById('ally-stance-btn'),
+      allySquadList: document.getElementById('ally-squad-list'),
+      downedBanner: document.getElementById('downed-status-banner'),
+      downedText: document.getElementById('downed-status-text'),
+      downedFill: document.getElementById('downed-progress-fill')
     };
 
     if (primaryTitle && this.els.rackContainer && this.els.barWrapper && this.els.barFill && this.els.barText && this.els.overheatBanner) {
@@ -226,6 +238,167 @@ export class HUDUpdater {
     }
 
     this.updateWeaponHUD(els, state, player, weaponSys);
+    this.updateSquadHUD(els, state, waveMgr);
+    this.updateDownedBanner(els, player);
+  }
+
+  updateSquadHUD(els, state, waveMgr) {
+    if (!els.allySquadHud) return;
+    const allies = (waveMgr && Array.isArray(waveMgr.allies)) ? waveMgr.allies : [];
+    const shouldHide = allies.length === 0;
+    if (shouldHide !== this.prevSquadHidden) {
+      this.prevSquadHidden = shouldHide;
+      els.allySquadHud.classList.toggle('hidden', shouldHide);
+    }
+    if (shouldHide) return;
+
+    const stance = state.squadStance || 'AUTO';
+    const stanceLabel = `${stance} [G]`;
+    if (els.allyStanceBtn && stanceLabel !== this.prevStanceText) {
+      this.prevStanceText = stanceLabel;
+      els.allyStanceBtn.textContent = stanceLabel;
+    }
+
+    if (!els.allySquadList) return;
+
+    let sig = `${allies.length}`;
+    const rowsData = [];
+    for (let i = 0; i < allies.length; i++) {
+      const a = allies[i];
+      const chassisName = CONFIG.CHASSIS[a.activeChassis]?.name || 'Basic Tank';
+      const maxHp = Math.max(1, a.maxHp || 1);
+      const hpPct = (a.dead || a.destroyed || a.isDying || a.isDowned)
+        ? 0
+        : Math.max(0, Math.min(100, Math.round((a.hp / maxHp) * 100)));
+
+      let stateLabel = 'READY';
+      let stateClass = 'is-ready';
+      if (a.dead || a.destroyed || a.isDying) {
+        stateLabel = 'DEAD';
+        stateClass = 'is-dead';
+      } else if (a.isDowned) {
+        if (a.isBeingRevived) {
+          const revPct = Math.round(((a.reviveProgress || 0) / (CONFIG.ALLIES.reviveDuration || 5.0)) * 100);
+          stateLabel = `REV ${revPct}%`;
+          stateClass = 'is-reviving';
+        } else {
+          stateLabel = `DOWN ${Math.ceil(a.downedTimer || 0)}s`;
+          stateClass = 'is-downed';
+        }
+      } else if (a.currentTask === 'REVIVE') {
+        stateLabel = 'REVIVING';
+        stateClass = 'is-reviving';
+      } else if (a.currentTask === 'COMBAT') {
+        stateLabel = 'COMBAT';
+      } else if (a.currentTask === 'FARM') {
+        stateLabel = 'FARM';
+      } else if (a.currentTask === 'FOLLOW' || a.currentTask === 'ESCORT') {
+        stateLabel = 'ESCORT';
+      }
+
+      const rowSig = `${a.name}|${chassisName}|${hpPct}|${stateLabel}|${stateClass}|${a.fillColor}`;
+      sig += `;${rowSig}`;
+      rowsData.push({
+        name: a.name,
+        chassisName,
+        hpPct,
+        stateLabel,
+        stateClass,
+        color: a.fillColor || '#38bdf8'
+      });
+    }
+
+    if (sig === this.prevSquadSignature) return;
+    this.prevSquadSignature = sig;
+
+    while (this.allyItemViews.length < rowsData.length) {
+      const item = document.createElement('div');
+      item.className = 'ally-hud-item';
+      item.innerHTML = `
+        <div class="ally-hud-top">
+          <span class="ally-hud-identity">
+            <span class="ally-hud-dot"></span>
+            <span class="ally-hud-name"></span>
+          </span>
+          <span class="ally-hud-state"></span>
+        </div>
+        <div class="ally-hud-chassis"></div>
+        <div class="ally-hud-hp-track">
+          <div class="ally-hud-hp-fill"></div>
+        </div>
+      `;
+      els.allySquadList.appendChild(item);
+      this.allyItemViews.push({
+        root: item,
+        dot: item.querySelector('.ally-hud-dot'),
+        name: item.querySelector('.ally-hud-name'),
+        state: item.querySelector('.ally-hud-state'),
+        chassis: item.querySelector('.ally-hud-chassis'),
+        hpFill: item.querySelector('.ally-hud-hp-fill')
+      });
+    }
+
+    for (let i = 0; i < this.allyItemViews.length; i++) {
+      const view = this.allyItemViews[i];
+      if (i >= rowsData.length) {
+        view.root.classList.add('hidden');
+        continue;
+      }
+      const d = rowsData[i];
+      view.root.classList.remove('hidden', 'is-downed', 'is-dead', 'is-reviving', 'is-ready');
+      view.root.classList.add(d.stateClass);
+      view.dot.style.backgroundColor = d.color;
+      view.name.textContent = d.name;
+      view.state.textContent = d.stateLabel;
+      view.chassis.textContent = d.chassisName;
+      view.hpFill.style.width = `${d.hpPct}%`;
+      view.hpFill.style.backgroundColor = d.color;
+    }
+  }
+
+  updateDownedBanner(els, player) {
+    if (!els.downedBanner || !els.downedText || !els.downedFill) return;
+    const revDuration = CONFIG.ALLIES.reviveDuration || 5.0;
+    const bleedDuration = CONFIG.ALLIES.bleedoutDuration || 15.0;
+
+    let visible = false;
+    let text = '';
+    let pct = 0;
+    let isReviving = false;
+
+    if (player.isDowned && !player.isDying) {
+      visible = true;
+      if (player.isBeingRevived) {
+        isReviving = true;
+        pct = Math.max(0, Math.min(100, ((player.reviveProgress || 0) / revDuration) * 100));
+        text = `BEING REVIVED BY SQUAD · ${Math.round(pct)}%`;
+      } else {
+        pct = Math.max(0, Math.min(100, ((player.downedTimer || 0) / bleedDuration) * 100));
+        text = `DOWNED · BLEEDOUT IN ${Math.ceil(player.downedTimer || 0)}s`;
+      }
+    } else if (player.activeReviveTargetName) {
+      visible = true;
+      isReviving = true;
+      pct = Math.max(0, Math.min(100, (player.activeReviveProgress || 0) * 100));
+      text = `REVIVING ${player.activeReviveTargetName.toUpperCase()} · ${Math.round(pct)}%`;
+    }
+
+    const hide = !visible;
+    if (hide !== this.prevDownedHidden) {
+      this.prevDownedHidden = hide;
+      els.downedBanner.classList.toggle('hidden', hide);
+    }
+    if (!visible) return;
+
+    const roundedPct = Math.round(pct);
+    const sig = `${text}|${roundedPct}|${isReviving ? 1 : 0}`;
+    if (sig === this.prevDownedSignature) return;
+    this.prevDownedSignature = sig;
+
+    els.downedText.textContent = text;
+    els.downedFill.style.width = `${pct.toFixed(1)}%`;
+    els.downedBanner.classList.toggle('is-reviving', isReviving);
+    els.downedBanner.classList.toggle('is-bleeding', !isReviving);
   }
 
   buildWeaponGauges(state, player, weaponSys) {

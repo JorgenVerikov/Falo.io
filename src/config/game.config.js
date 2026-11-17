@@ -76,3 +76,156 @@ Object.defineProperty(COLOR_THEMES, 'classic', {
   writable: true,
   configurable: true
 });
+
+export const ALLY_CONFIG = {
+  maxAllies: 3,
+  slotCosts: [600, 1200, 2000],
+  bleedoutDuration: 15.0,
+  reviveDuration: 5.0,
+  reviveRadius: 105,
+  reviveDecayRate: 0.4,
+  reviveHpRatio: 0.5,
+  iFrameAfterRevive: 2.0,
+  callsigns: ['Vanguard', 'Specter', 'Bulwark', 'Viper', 'Aegis', 'Striker'],
+  slotColors: [
+    { fill: '#38bdf8', stroke: '#0284c7' },
+    { fill: '#2dd4bf', stroke: '#0d9488' },
+    { fill: '#818cf8', stroke: '#4f46e5' }
+  ]
+};
+
+// Canonical Diep.io stat builds mapped to [regenRate, maxHp, bodyDamage, shellSpeed, shellPenetration, shellDamage, reloadSpeed, moveSpeed]
+export const ALLY_BUILDS = {
+  auto: {
+    key: 'auto',
+    name: 'Auto-Adaptive',
+    role: 'adaptive',
+    buildCode: 'Dynamic',
+    desc: 'Selects an unlocked tank build complementary to your squad.',
+    targetPath: [],
+    stats: [1, 2, 2, 6, 7, 7, 4, 4],
+    statPriority: ['shellPenetration', 'shellDamage', 'shellSpeed', 'reloadSpeed', 'moveSpeed', 'maxHp', 'bodyDamage', 'regenRate']
+  },
+  rammer_booster: {
+    key: 'rammer_booster',
+    name: 'Rammer Booster',
+    role: 'rammer',
+    buildCode: '5/7/7/0/0/0/7/7',
+    desc: 'High-speed body rammer using thruster recoil to intercept enemies.',
+    targetPath: ['flank', 'triangle', 'booster'],
+    fallbackTargets: ['fighter', 'triangle', 'spike', 'smasher'],
+    stats: [5, 7, 7, 0, 0, 0, 7, 7],
+    statPriority: ['moveSpeed', 'bodyDamage', 'maxHp', 'reloadSpeed', 'regenRate']
+  },
+  overlord_drone: {
+    key: 'overlord_drone',
+    name: 'Overlord Drone',
+    role: 'drone',
+    buildCode: '0/2/3/7/7/7/0/7',
+    desc: 'Commands high-speed drones for offensive strikes and ally defense.',
+    targetPath: ['sniper', 'overseer', 'overlord'],
+    fallbackTargets: ['manager', 'factory', 'overseer'],
+    stats: [0, 2, 3, 7, 7, 7, 0, 7],
+    statPriority: ['shellSpeed', 'shellPenetration', 'shellDamage', 'moveSpeed', 'bodyDamage', 'maxHp']
+  },
+  auto_gunner: {
+    key: 'auto_gunner',
+    name: 'Auto Gunner',
+    role: 'bullet',
+    buildCode: '0/0/0/5/7/7/7/7',
+    desc: 'Rapid stream of penetrating bullets with an independent auto turret.',
+    targetPath: ['machinegun', 'gunner', 'autogunner'],
+    fallbackTargets: ['streamliner', 'gunnertrapper', 'gunner'],
+    stats: [0, 0, 0, 5, 7, 7, 7, 7],
+    statPriority: ['shellPenetration', 'shellDamage', 'reloadSpeed', 'shellSpeed', 'moveSpeed']
+  },
+  bullet_spammer: {
+    key: 'bullet_spammer',
+    name: 'Penta / Triplet',
+    role: 'bullet',
+    buildCode: '0/0/0/5/7/7/7/7',
+    desc: 'Heavy frontal or wide-arc suppressive bullet wall build.',
+    targetPath: ['twin', 'tripleshot', 'pentashot'],
+    fallbackTargets: ['triplet', 'spreadshot', 'sprayer', 'tripleshot'],
+    stats: [0, 0, 0, 5, 7, 7, 7, 7],
+    statPriority: ['shellPenetration', 'shellDamage', 'reloadSpeed', 'shellSpeed', 'moveSpeed']
+  },
+  sniper_ranger: {
+    key: 'sniper_ranger',
+    name: 'Ranger Sniper',
+    role: 'sniper',
+    buildCode: '0/0/0/7/7/7/5/7',
+    desc: 'Long-range precision glass cannon with high bullet velocity.',
+    targetPath: ['sniper', 'assassin', 'ranger'],
+    fallbackTargets: ['stalker', 'predator', 'assassin'],
+    stats: [0, 0, 0, 7, 7, 7, 5, 7],
+    statPriority: ['shellSpeed', 'shellPenetration', 'shellDamage', 'reloadSpeed', 'moveSpeed']
+  },
+  destroyer_heavy: {
+    key: 'destroyer_heavy',
+    name: 'Annihilator / Firework',
+    role: 'ambush',
+    buildCode: '0/2/3/7/7/7/7/0',
+    desc: 'Massive high-damage heavy shells or airburst firework rockets.',
+    targetPath: ['machinegun', 'destroyer', 'annihilator'],
+    fallbackTargets: ['hybrid', 'firework', 'rocketeer', 'destroyer'],
+    stats: [0, 2, 3, 7, 7, 7, 7, 0],
+    statPriority: ['shellPenetration', 'shellDamage', 'shellSpeed', 'reloadSpeed', 'bodyDamage', 'maxHp']
+  },
+  dual_shotgun: {
+    key: 'dual_shotgun',
+    name: 'Dual-Barrel Shotgun',
+    role: 'skirmisher',
+    buildCode: '0/2/2/6/6/6/5/6',
+    desc: 'Close-to-mid range twin pellet burst skirmisher.',
+    targetPath: ['machinegun', 'shotgun', 'dualbarrel'],
+    fallbackTargets: ['pelletshot', 'shotgun'],
+    stats: [0, 2, 2, 6, 6, 6, 5, 6],
+    statPriority: ['shellPenetration', 'shellDamage', 'reloadSpeed', 'shellSpeed', 'moveSpeed', 'maxHp', 'bodyDamage']
+  },
+  spike_rammer: {
+    key: 'spike_rammer',
+    name: 'Spike / Landmine',
+    role: 'rammer',
+    buildCode: '3/10/10/0/0/0/0/10',
+    desc: 'Armored close-quarters Vanguard using Smasher surge dashes.',
+    targetPath: ['smasher', 'spike'],
+    fallbackTargets: ['landmine', 'autosmasher', 'smasher'],
+    stats: [3, 10, 10, 0, 0, 0, 0, 10],
+    statPriority: ['bodyDamage', 'maxHp', 'moveSpeed', 'regenRate']
+  },
+  auto_trapper: {
+    key: 'auto_trapper',
+    name: 'Trapper Support',
+    role: 'support',
+    buildCode: '0/2/0/5/7/7/7/5',
+    desc: 'Deploys defensive traps around the squad while laying down auto fire.',
+    targetPath: ['sniper', 'trapper', 'autotrapper'],
+    fallbackTargets: ['gunnertrapper', 'tritrapper', 'overtrapper', 'trapper'],
+    stats: [0, 2, 0, 5, 7, 7, 7, 5],
+    statPriority: ['shellPenetration', 'shellDamage', 'reloadSpeed', 'shellSpeed', 'moveSpeed', 'maxHp']
+  },
+  necromancer_swarm: {
+    key: 'necromancer_swarm',
+    name: 'Necromancer Swarm',
+    role: 'drone',
+    buildCode: '0/0/0/7/7/7/6/6',
+    desc: 'Prioritizes resource squares to build a massive protective drone fleet.',
+    targetPath: ['sniper', 'overseer', 'necromancer'],
+    fallbackTargets: ['overlord', 'battleship', 'overseer'],
+    stats: [0, 0, 0, 7, 7, 7, 6, 6],
+    statPriority: ['shellSpeed', 'shellPenetration', 'shellDamage', 'reloadSpeed', 'moveSpeed']
+  },
+  fighter_dragon: {
+    key: 'fighter_dragon',
+    name: 'Fighter Skirmisher',
+    role: 'skirmisher',
+    buildCode: '0/2/3/0/7/7/7/7',
+    desc: 'High-agility strafing tri-angle fighter with strong side cannons.',
+    targetPath: ['flank', 'triangle', 'fighter'],
+    fallbackTargets: ['booster', 'triangle', 'autotank'],
+    stats: [0, 2, 3, 0, 7, 7, 7, 7],
+    statPriority: ['shellPenetration', 'shellDamage', 'reloadSpeed', 'moveSpeed', 'bodyDamage', 'maxHp']
+  }
+};
+

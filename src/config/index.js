@@ -8,7 +8,7 @@ import { ENEMY_CONFIG, ENEMY_UPGRADE_CONFIG, getEnemyUpgradesForWave } from './e
 import { SHAPES_CONFIG } from './shapes.config.js';
 import { ARENA_CONFIG, CAMERA_CONFIG, WAVE_CONFIG, VFX_CONFIG } from './environment.config.js';
 import { BASIC_BARREL_BASE, createBarrelTurret, WEAPONS_CONFIG, getTankRenderParts, getOuterArmorLayers } from './weapons.config.js';
-import { CREW_CONFIG, META_CONFIG, COLOR_THEMES, computeStrokeColor } from './game.config.js';
+import { CREW_CONFIG, META_CONFIG, COLOR_THEMES, computeStrokeColor, ALLY_CONFIG, ALLY_BUILDS } from './game.config.js';
 
 export {
   PLAYER_CONFIG,
@@ -31,6 +31,8 @@ export {
   META_CONFIG,
   COLOR_THEMES,
   computeStrokeColor,
+  ALLY_CONFIG,
+  ALLY_BUILDS,
   getXPRequiredForLevel,
   FALO_LEVEL_SCORES,
   getTotalXPForLevel
@@ -50,5 +52,7 @@ export const CONFIG = {
   VFX: VFX_CONFIG,
   COLOR_THEMES: COLOR_THEMES,
   EVOLUTION: EVOLUTION_CONFIG,
-  CHASSIS: CHASSIS_CONFIG
+  CHASSIS: CHASSIS_CONFIG,
+  ALLIES: ALLY_CONFIG,
+  ALLY_BUILDS: ALLY_BUILDS
 };

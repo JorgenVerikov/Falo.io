@@ -864,8 +864,9 @@ body.theme-light .enemy-upgrade-pill {
   font-size: calc(11px * var(--ui-scale));
   font-weight: 800;
   will-change: transform;
-  transform: perspective(900px) translate3d(var(--auth-tx, 0px), var(--auth-ty, 0px), 0) rotateX(var(--auth-rx, 0deg)) rotateY(var(--auth-ry, 0deg)) skewX(-9deg) rotate(0.9deg) scale(1);
-  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.18s ease, box-shadow 0.18s ease;
+  transform: perspective(900px) translate3d(var(--auth-tx, 0px), var(--auth-ty, 0px), 0) rotateX(var(--auth-rx, 0deg)) rotateY(var(--auth-ry, 0deg)) skewX(-9deg) rotate(0.9deg);
+  scale: 1;
+  transition: scale 0.16s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .auth-status-container > * {
@@ -873,7 +874,8 @@ body.theme-light .enemy-upgrade-pill {
 }
 
 .auth-status-container:hover {
-  transform: perspective(900px) translate3d(var(--auth-tx, 0px), var(--auth-ty, 0px), 0) rotateX(var(--auth-rx, 0deg)) rotateY(var(--auth-ry, 0deg)) skewX(-9deg) rotate(0.4deg) scale(1.05);
+  transform: perspective(900px) translate3d(var(--auth-tx, 0px), var(--auth-ty, 0px), 0) rotateX(var(--auth-rx, 0deg)) rotateY(var(--auth-ry, 0deg)) skewX(-9deg) rotate(0.4deg);
+  scale: 1.05;
   border-color: rgba(0, 178, 225, 0.65);
   box-shadow: 7px 8px 0 rgba(0, 0, 0, 0.5), 0 12px 26px rgba(0, 0, 0, 0.42);
 }
@@ -952,8 +954,9 @@ body.theme-light .enemy-upgrade-pill {
   backdrop-filter: blur(6px);
   box-shadow: 5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 20px rgba(0, 0, 0, 0.32);
   will-change: transform;
-  transform: perspective(900px) translate3d(var(--fs-tx, 0px), var(--fs-ty, 0px), 0) rotateX(var(--fs-rx, 0deg)) rotateY(var(--fs-ry, 0deg)) skewX(-10deg) rotate(-1.5deg) scale(1);
-  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.18s ease, background-color 0.16s ease, box-shadow 0.18s ease;
+  transform: perspective(900px) translate3d(var(--fs-tx, 0px), var(--fs-ty, 0px), 0) rotateX(var(--fs-rx, 0deg)) rotateY(var(--fs-ry, 0deg)) skewX(-10deg) rotate(-1.5deg);
+  scale: 1;
+  transition: scale 0.16s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.18s ease, background-color 0.16s ease, box-shadow 0.18s ease;
 }
 
 .menu-fullscreen-btn > * {
@@ -961,13 +964,15 @@ body.theme-light .enemy-upgrade-pill {
 }
 
 .menu-fullscreen-btn:hover {
-  transform: perspective(900px) translate3d(var(--fs-tx, 0px), var(--fs-ty, 0px), 0) rotateX(var(--fs-rx, 0deg)) rotateY(var(--fs-ry, 0deg)) skewX(-10deg) rotate(-2.2deg) scale(1.06);
+  transform: perspective(900px) translate3d(var(--fs-tx, 0px), var(--fs-ty, 0px), 0) rotateX(var(--fs-rx, 0deg)) rotateY(var(--fs-ry, 0deg)) skewX(-10deg) rotate(-2.2deg);
+  scale: 1.06;
   border-color: rgba(0, 178, 225, 0.78);
   box-shadow: 7px 8px 0 rgba(0, 0, 0, 0.5), 0 12px 26px rgba(0, 0, 0, 0.42);
 }
 
 .menu-fullscreen-btn:active {
-  transform: perspective(900px) translate3d(var(--fs-tx, 0px), var(--fs-ty, 0px), 0) rotateX(var(--fs-rx, 0deg)) rotateY(var(--fs-ry, 0deg)) skewX(-10deg) rotate(-1.2deg) scale(0.97);
+  transform: perspective(900px) translate3d(var(--fs-tx, 0px), var(--fs-ty, 0px), 0) rotateX(var(--fs-rx, 0deg)) rotateY(var(--fs-ry, 0deg)) skewX(-10deg) rotate(-1.2deg);
+  scale: 0.97;
 }
 
 .menu-fullscreen-btn.active {
@@ -1145,7 +1150,7 @@ body.theme-light #main-menu-overlay.modal-overlay {
   align-items: stretch;
   transform-origin: center center;
   transform-style: preserve-3d;
-  transform: perspective(880px) rotateY(-18deg) rotateX(2.5deg) rotateZ(-1.6deg);
+  transform: perspective(950px) rotateY(-3.8deg);
   will-change: transform;
 }
 
@@ -4975,7 +4980,7 @@ body.is-mobile .center-hud.has-multi-gauges .shell-pip {
   }
 
   .main-menu-right-panel {
-    transform: perspective(880px) rotateY(-16deg) rotateX(2deg) rotateZ(-1.4deg) !important;
+    transform: perspective(950px) rotateY(-3.8deg) !important;
   }
 
   .main-menu-tile,
@@ -6773,6 +6778,335 @@ body.theme-light .shop-preview-desc {
   }
 }
 
+/* ========================================================
+   ALLIED SQUAD CONTROLS (CREW TAB) & IN-GAME SQUAD HUD
+   ======================================================== */
+
+.falo-ally-controls-row {
+  display: flex;
+  align-items: center;
+  gap: calc(10px * var(--ui-scale));
+  flex-wrap: wrap;
+}
+
+.falo-ally-select-label {
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.falo-ally-build-select {
+  flex: 1;
+  min-width: calc(180px * var(--ui-scale));
+  max-width: calc(320px * var(--ui-scale));
+  padding: calc(6px * var(--ui-scale)) calc(10px * var(--ui-scale));
+  border-radius: calc(6px * var(--ui-scale));
+  border: calc(2px * var(--ui-scale)) solid #94a3b8;
+  background-color: #ffffff;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: calc(12px * var(--ui-scale));
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.falo-ally-build-select:focus {
+  outline: none;
+  border-color: #00b2e1;
+}
+
+.falo-ally-dismiss-btn {
+  padding: calc(7px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  border-radius: calc(6px * var(--ui-scale));
+  border: calc(2px * var(--ui-scale)) solid #7f1d1d;
+  border-bottom-width: calc(4px * var(--ui-scale));
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: calc(11.5px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.7px;
+  cursor: pointer;
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+
+.falo-ally-dismiss-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.falo-ally-dismiss-btn:active {
+  transform: translateY(1px);
+}
+
+/* In-Game Top-Right Squad HUD */
+.ally-squad-hud {
+  position: fixed;
+  top: calc(82px * var(--ui-scale));
+  right: calc(16px * var(--ui-scale));
+  width: calc(210px * var(--ui-scale));
+  display: flex;
+  flex-direction: column;
+  gap: calc(7px * var(--ui-scale));
+  transform: skewX(-10deg);
+  z-index: 44;
+  padding: calc(8px * var(--ui-scale)) calc(12px * var(--ui-scale));
+}
+
+.ally-squad-hud > * {
+  transform: skewX(10deg);
+}
+
+.ally-squad-hud.hidden {
+  display: none !important;
+}
+
+.ally-squad-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(8px * var(--ui-scale));
+  padding-bottom: calc(4px * var(--ui-scale));
+  border-bottom: 1.5px solid rgba(148, 163, 184, 0.25);
+}
+
+.ally-squad-title {
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  color: #94a3b8;
+}
+
+.ally-stance-btn {
+  padding: calc(2px * var(--ui-scale)) calc(7px * var(--ui-scale));
+  border-radius: calc(3px * var(--ui-scale));
+  border: calc(1.8px * var(--ui-scale)) solid #0b1924;
+  border-bottom-width: calc(3px * var(--ui-scale));
+  background: linear-gradient(125deg, #00c4f4 0%, #008bb5 100%);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: calc(9.5px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  text-shadow: 1px 1px 0 rgba(0, 40, 56, 0.55);
+}
+
+.ally-stance-btn:hover {
+  filter: brightness(1.08);
+}
+
+.ally-squad-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(6px * var(--ui-scale));
+}
+
+.ally-hud-item {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--ui-scale));
+  transition: opacity 0.16s ease;
+}
+
+.ally-hud-item.is-dead {
+  opacity: 0.48;
+}
+
+.ally-hud-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(6px * var(--ui-scale));
+}
+
+.ally-hud-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(5px * var(--ui-scale));
+  min-width: 0;
+}
+
+.ally-hud-dot {
+  width: calc(8px * var(--ui-scale));
+  height: calc(8px * var(--ui-scale));
+  border-radius: 50%;
+  border: 1.5px solid rgba(15, 23, 42, 0.75);
+  flex-shrink: 0;
+}
+
+.ally-hud-name {
+  font-size: calc(11.5px * var(--ui-scale));
+  font-weight: 900;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ally-hud-state {
+  font-size: calc(9.5px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: #7dd3fc;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.ally-hud-item.is-downed .ally-hud-state {
+  color: #fca5a5;
+}
+
+.ally-hud-item.is-dead .ally-hud-state {
+  color: #94a3b8;
+}
+
+.ally-hud-item.is-reviving .ally-hud-state {
+  color: #6ee7b7;
+}
+
+.ally-hud-chassis {
+  font-size: calc(9.5px * var(--ui-scale));
+  font-weight: 700;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ally-hud-hp-track {
+  width: 100%;
+  height: calc(5px * var(--ui-scale));
+  background: rgba(15, 23, 42, 0.75);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.ally-hud-hp-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 999px;
+  transition: width 0.14s ease;
+}
+
+/* Downed & Reviving Status Banner */
+.downed-status-banner {
+  position: fixed;
+  top: calc(86px * var(--ui-scale));
+  left: 50%;
+  transform: translateX(-50%) skewX(-10deg);
+  min-width: calc(270px * var(--ui-scale));
+  max-width: calc(92vw);
+  padding: calc(8px * var(--ui-scale)) calc(18px * var(--ui-scale));
+  z-index: 52;
+  display: flex;
+  flex-direction: column;
+  gap: calc(5px * var(--ui-scale));
+  pointer-events: none;
+}
+
+.downed-status-banner > * {
+  transform: skewX(10deg);
+}
+
+.downed-status-banner.hidden {
+  display: none !important;
+}
+
+.downed-status-banner.is-bleeding {
+  border-bottom-color: #dc2626;
+}
+
+.downed-status-banner.is-reviving {
+  border-bottom-color: #10b981;
+}
+
+.downed-status-text {
+  text-align: center;
+  font-size: calc(11.5px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.9px;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.downed-status-banner.is-bleeding .downed-status-text {
+  color: #fca5a5;
+}
+
+.downed-status-banner.is-reviving .downed-status-text {
+  color: #6ee7b7;
+}
+
+.downed-progress-track {
+  width: 100%;
+  height: calc(7px * var(--ui-scale));
+  background: rgba(15, 23, 42, 0.85);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.downed-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  transition: width 0.08s linear;
+}
+
+.downed-status-banner.is-bleeding .downed-progress-fill {
+  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+}
+
+.downed-status-banner.is-reviving .downed-progress-fill {
+  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+}
+
+/* Light Theme Adjustments for Squad HUD & Downed Banner */
+body.theme-light .ally-squad-title {
+  color: #475569;
+}
+
+body.theme-light .ally-hud-name {
+  color: #0f172a;
+}
+
+body.theme-light .ally-hud-chassis {
+  color: #475569;
+}
+
+body.theme-light .ally-hud-state {
+  color: #0284c7;
+}
+
+body.theme-light .ally-hud-item.is-downed .ally-hud-state {
+  color: #dc2626;
+}
+
+body.theme-light .ally-hud-item.is-reviving .ally-hud-state {
+  color: #059669;
+}
+
+body.theme-light .downed-status-banner.is-bleeding .downed-status-text {
+  color: #dc2626;
+}
+
+body.theme-light .downed-status-banner.is-reviving .downed-status-text {
+  color: #047857;
+}
+
+@media (max-width: 640px) {
+  .ally-squad-hud {
+    width: calc(168px * var(--ui-scale));
+    top: calc(74px * var(--ui-scale));
+    right: calc(10px * var(--ui-scale));
+    padding: calc(6px * var(--ui-scale)) calc(9px * var(--ui-scale));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .falo-armory-window .falo-shop-header-left,
   .falo-armory-window .falo-shop-header-right,
@@ -6812,7 +7146,9 @@ body.theme-light .shop-preview-desc {
   .xp-bar-fill,
   .shell-pip,
   .gauge-bar-fill,
-  .modal-btn {
+  .modal-btn,
+  .ally-hud-hp-fill,
+  .downed-progress-fill {
     transition: none !important;
   }
 

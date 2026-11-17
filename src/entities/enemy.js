@@ -356,7 +356,7 @@ export class EnemyUnit {
     }
   }
 
-  update(dt, player, enemyBullets, playerMoveSpeedStat = 0, allEnemies = [], playerProjectiles = [], remainingWaveEnemies = null, shapes = []) {
+  update(dt, playerArg, enemyBullets, playerMoveSpeedStat = 0, allEnemies = [], playerProjectiles = [], remainingWaveEnemies = null, shapes = [], allies = []) {
     this.allEnemiesRef = allEnemies;
 
     if (this.chatCooldown > 0) this.chatCooldown -= dt;
@@ -383,6 +383,32 @@ export class EnemyUnit {
         this.destroyed = true;
       }
       return;
+    }
+
+    // Select closest standing squad member (player or living non-downed ally)
+    let player = playerArg;
+    if (allies && allies.length > 0) {
+      let bestTarget = null;
+      let bestScore = Infinity;
+
+      const considerCandidate = (cand) => {
+        if (!cand || cand.dead || cand.destroyed || cand.isDying || cand.isDowned) return;
+        const dist = Math.hypot(cand.x - this.x, cand.y - this.y);
+        const isCloaked = (cand.cloakAlpha !== undefined && cand.cloakAlpha < 0.25) && dist > (this.radius + (cand.radius || 25) + 32);
+        const score = dist + (isCloaked ? 450 : 0);
+        if (score < bestScore) {
+          bestScore = score;
+          bestTarget = cand;
+        }
+      };
+
+      considerCandidate(playerArg);
+      for (let i = 0; i < allies.length; i++) {
+        considerCandidate(allies[i]);
+      }
+      if (bestTarget) {
+        player = bestTarget;
+      }
     }
 
     const nowMs = performance.now();
