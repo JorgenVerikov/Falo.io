@@ -9,7 +9,7 @@ import { CONFIG } from '../core/config.js';
 export const ALLY_CHAT_CALLOUTS = {
   SPAWNED: [
     'Alright, who are we flattening today?',
-    'Try not to hog all the XP, {player}.',
+    'Here we go, keep an eye out.',
     'Fresh paint, zero dents. Let us keep it that way.',
     'Follow my lead—actually wait, you drive.',
     'Snacks packed, cannons ready. Let us roll.',
@@ -20,25 +20,31 @@ export const ALLY_CHAT_CALLOUTS = {
     'Ooh, hello {chassis}!',
     'Wait till they get a load of {chassis}.',
     'Finally outgrew that old barrel!',
-    'New {chassis}, feeling dangerous.',
+    'I\'m a {chassis} now, feeling dangerous.',
     'Oh yeah, now we are talking!',
-    'Check out the upgrade, {player}!'
+    'Check out the upgrade, {player}!',
+    'Factory new, Baby.',
+    'New style, new guns.',
+    'So... That took us how many levels now?',
+    'Sweet! New chassis!',
+    'This is Awesome.'
   ],
   PLAYER_DOWNED: [
-    'Whoa, {player} is down! Coming to get you!',
+    '{player} is down! Get them fast!',
     'Hang tight {player}, squad is on the way!',
-    'Back off {player}! Moving in to pick you up!',
-    'Do not check out on us yet, {player}!'
+    'Damn it! {player} is down!',
+    'Do not check out on us yet, {player}!',
+    'Hey! {player} is down! Cover me damn it!'
   ],
   ALLY_DOWNED: [
-    '{mate} is down! Hold on, I have got you!',
-    'Hang in there {mate}, patching you up!',
-    'Not losing {mate} today—moving in!',
-    'Hold tight {mate}, coming to grab you!'
+    '{mate} is down! Hold on!',
+    'Hang in there {mate}, it\'s not your time yet!',
+    'Not losing you today, {mate}!',
+    'Hold tight {mate}!'
   ],
   REVIVING: [
     'Hold still, duct tape works wonders...',
-    'Almost got you back on your treads!',
+    'Almost got you back on your treads...',
     'Stay with me, nearly patched up!',
     'Do not move, gluing your turret back on.',
     'Just a few more bolts, hang in there!'
@@ -47,13 +53,13 @@ export const ALLY_CHAT_CALLOUTS = {
     'Whoa, way too close. Thanks!',
     'Back in one piece! Who hit me?!',
     'Appreciate the save! Now where is that guy...',
-    'Still kicking! Round two!',
+    'Still kicking! Let\'s bite back!',
     'Okay, I owe somebody a shape for that one.'
   ],
   THREAT_SPOTTED: [
     'Heads up, we have got company!',
     'Ooh, target practice just pulled up!',
-    'Found the red team! Moving in!',
+    'Found the enemy team! Moving in!',
     'Here comes the welcome wagon.',
     'More hostiles—pick a lane!'
   ],
@@ -105,11 +111,11 @@ export const ALLY_CHAT_CALLOUTS = {
     'Hey! Nobody shoots {player} like that!'
   ],
   FARMING: [
-    'Free XP! Do not mind if I do.',
-    'Crunch time—tasty polygons.',
+    'Do not mind if I do.',
+    'Crunch time—tasty polygons...',
     'Grabbing a quick level before things get spicy.',
     'Leaving crumbs for nobody!',
-    'Shapes everywhere and all mine.'
+    'Shapes everywhere and its all mine.'
   ],
   BANTER_SQUAD: [
     'So, {player}, we getting paid overtime for Wave {wave}?',
@@ -126,11 +132,11 @@ export const ALLY_CHAT_CALLOUTS = {
     'Keep talking and you are on revive duty, {mate}.',
     'Hey, I heard that, {mate}!',
     'Wait till the boss shows up, {mate}.',
-    'You wish, {mate}!'
+    'You wish, {mate}!',
   ],
   LOW_MORALE: [
     'Ow, okay, taking a breather behind you!',
-    'Hull is rattled—give me five seconds!',
+    'We\'re Hit!',
     'Note to self: stop face-tanking shells.',
     'Need a second to patch these dents!'
   ],
@@ -153,25 +159,25 @@ export const ALLY_CHAT_CALLOUTS = {
     'Hey! Little busy bleeding out over here!'
   ],
   WAVE_CLEAR: [
-    'Wave {wave} dusted! Nice work, squad.',
+    'Wave {wave} cleared... Nice work, squad.',
     'Too easy! Bring on the next wave!',
-    'Anyone hurt? Just my pride. Good wave!',
-    'Clean sweep! Catch your breath, {player}.'
+    'Anyone hurt? No? Good.',
+    'Clean sweep.. Catch your breaths.'
   ],
   STANCE_FOLLOW: [
-    'Tightening up on your wing, {player}!',
+    'Tightening up on your wing, {player}.',
     'Sticking close—nobody gets past us.',
     'On your hip, {player}!'
   ],
   STANCE_AGGRESSIVE: [
     'Gloves off! Chasing everything in sight!',
     'Say less—going hunting!',
-    'Letting the barrels eat!'
+    'They are so dead!'
   ],
   STANCE_FARM: [
-    'Shape harvest time! Keep them coming.',
-    'Mowing polygons—be right back!',
-    'Farming mode: zero shapes left standing!'
+    'Harvest time! Keep them coming.',
+    'Mowing polygons... be right back!',
+    'Zero shapes left standing!'
   ],
   STANCE_AUTO: [
     'Back to winging it!',

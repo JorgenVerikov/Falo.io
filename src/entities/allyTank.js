@@ -64,7 +64,7 @@ const ROLE_STAT_PROFILES = {
     priority: ['moveSpeed', 'reloadSpeed', 'shellPenetration', 'shellDamage', 'shellSpeed', 'maxHp', 'bodyDamage', 'regenRate']
   },
   bullet: {
-    stats: [0, 0, 0, 5, 7, 7, 7, 7],
+    stats: [0, 0, 0, 7, 7, 7, 7, 5],
     priority: ['shellPenetration', 'shellDamage', 'reloadSpeed', 'shellSpeed', 'moveSpeed', 'maxHp', 'bodyDamage', 'regenRate']
   }
 };

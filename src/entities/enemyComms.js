@@ -7,13 +7,16 @@ export const ENEMY_CHAT_CALLOUTS = {
     "Man down! Keep firing!",
     "They got one of ours!",
     "Avenge them!",
-    "Stay focused! One down!"
+    "Stay focused! One down!",
+    "Damn it! They got one of us!",
+    "Keep moving! Don't let your guard down!"
   ],
   ALLY_DOWN_LOW: [
     "Another one down?! Pull back!",
     "They got another one! Back up!",
     "We're losing people! Fall back!",
-    "Our line is breaking!"
+    "Our line is breaking!",
+    "We're dropping like flies! Move back! Get out of here!"
   ],
   ORDER_BACK_UP: [
     "Fall back! Regroup!",
@@ -32,7 +35,10 @@ export const ENEMY_CHAT_CALLOUTS = {
     "Watch your spacing! Move!",
     "We're taking too much fire!",
     "They're tearing right through us!",
-    "You're getting too close, idiot!"
+    "You're getting too close, idiot!",
+    "What the hell are they made out of?!",
+    "I didn't sign up for this!",
+    "They're dangerous!"
   ],
   CHEER: [
     "Direct hit! They're cracking!",
@@ -40,7 +46,8 @@ export const ENEMY_CHAT_CALLOUTS = {
     "We got this! Push forward!",
     "Outstanding hit! Keep firing!",
     "Target hull compromised!",
-    "Yes! Break their hull!"
+    "Yes! Break their hull!",
+    "Go go go! Keep going!"
   ],
   TAUNT: [
     "They can't stop all of us!",
@@ -64,7 +71,8 @@ export const ENEMY_CHAT_CALLOUTS = {
     "I don't wanna die here!",
     "Run for your lives!",
     "Stay away from me!",
-    "We never stood a chance!"
+    "We never stood a chance!",
+    "No, Please! Have mercy!"
   ],
   LAST_STAND: [
     "I'm taking you down with me!",
@@ -73,7 +81,7 @@ export const ENEMY_CHAT_CALLOUTS = {
     "To the bitter end!",
     "You won't leave here alive either!",
     "Last stand! All power to weapons!",
-    "Come and get me!"
+    "Come and get me, damn it!",
   ],
   FLANK: [
     "Flank them!",
