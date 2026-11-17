@@ -28,10 +28,23 @@
     <div id="ally-squad-hud" class="hud-panel ally-squad-hud hidden">
       <div class="ally-squad-header">
         <span class="ally-squad-title">SQUAD</span>
-        <button id="ally-stance-btn" class="ally-stance-btn" type="button" title="Cycle Squad Order [G]">AUTO [G]</button>
+        <div class="ally-squad-actions">
+          <button id="ally-stance-btn" class="ally-stance-btn" type="button" title="Cycle Squad Order [G]">AUTO [G]</button>
+          <button id="ally-squad-toggle-btn" class="ally-squad-toggle-btn" type="button" title="Minimize Squad Panel [Tab]" aria-expanded="true">
+            <span class="ally-squad-toggle-key">TAB</span>
+            <span id="ally-squad-toggle-icon" class="ally-squad-toggle-icon" aria-hidden="true">▸</span>
+          </button>
+        </div>
       </div>
       <div id="ally-squad-list" class="ally-squad-list"></div>
     </div>
+
+    <button id="ally-squad-corner-tab" class="ally-squad-corner-tab hidden" type="button" title="Expand Squad Panel [Tab]" aria-expanded="false">
+      <span class="ally-squad-corner-arrow" aria-hidden="true">◂</span>
+      <span class="ally-squad-corner-label">SQUAD</span>
+      <span id="ally-squad-corner-count" class="ally-squad-corner-count"></span>
+      <span class="ally-squad-corner-key">TAB</span>
+    </button>
 
     <div id="wave-banner" class="hud-panel center-top">
       <div id="wave-status" class="wave-title">WAVE 1</div>
@@ -322,7 +335,7 @@
         <div class="falo-shop-header-right">
           <div class="falo-coins-chip falo-settings-status-chip">
             <span class="settings-chip-dot"></span>
-            <span id="settings-header-summary" class="chip-coins-amount">LIGHT · 100%</span>
+            <span id="settings-header-summary" class="chip-coins-amount">LIGHT · 100% · 240Hz</span>
           </div>
           <button id="close-settings-btn" class="falo-shop-close-btn" title="Close Settings">✕</button>
         </div>
@@ -415,6 +428,44 @@
                     <option value="1.15">1.15</option>
                     <option value="1.25">1.25</option>
                   </select>
+                  <select id="refresh-rate-select" class="hidden">
+                    <option value="60">60</option>
+                    <option value="90">90</option>
+                    <option value="120">120</option>
+                    <option value="144">144</option>
+                    <option value="165">165</option>
+                    <option value="240">240</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Refresh Rate Section -->
+              <div class="falo-shop-section" style="--section-idx: 2;">
+                <div class="falo-section-header">
+                  <div class="falo-section-title-wrap">
+                    <div class="falo-section-title">
+                      DISPLAY &amp; REFRESH RATE
+                    </div>
+                  </div>
+                </div>
+
+                <div id="settings-refresh-card" class="settings-scale-bar-container falo-card falo-shop-tilt-card rarity-common">
+                  <div class="scale-bar-header">
+                    <div>
+                      <div class="falo-card-title" style="margin: 0;">TARGET REFRESH RATE</div>
+                      <div class="falo-card-subdesc" style="margin: 2px 0 0 0;">Cap maximum frame rate from 60Hz up to 240Hz (actual FPS depends on display and browser vsync).</div>
+                    </div>
+                    <div id="current-refresh-badge" class="settings-scale-chip">240Hz (Max)</div>
+                  </div>
+
+                  <div class="scale-chips-row">
+                    <button class="scale-chip-btn refresh-chip-btn" type="button" data-refresh="60">60Hz (Standard)</button>
+                    <button class="scale-chip-btn refresh-chip-btn" type="button" data-refresh="90">90Hz</button>
+                    <button class="scale-chip-btn refresh-chip-btn" type="button" data-refresh="120">120Hz</button>
+                    <button class="scale-chip-btn refresh-chip-btn" type="button" data-refresh="144">144Hz</button>
+                    <button class="scale-chip-btn refresh-chip-btn" type="button" data-refresh="165">165Hz</button>
+                    <button class="scale-chip-btn refresh-chip-btn" type="button" data-refresh="240">240Hz (Max)</button>
+                  </div>
                 </div>
               </div>
             </div>

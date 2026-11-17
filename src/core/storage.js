@@ -4,6 +4,24 @@ const GUEST_STORAGE_KEY = 'FALO_GUEST_SAVE_DATA_V1';
 const LEGACY_STORAGE_KEY = 'FALO_SURVIVAL_SAVE_DATA_V6';
 const USER_CACHE_PREFIX = 'FALO_USER_CACHE_';
 
+const REFRESH_RATE_PRESETS = [60, 90, 120, 144, 165, 240];
+
+export function normalizeRefreshRate(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 240;
+  const clamped = Math.max(60, Math.min(240, num));
+  let closest = REFRESH_RATE_PRESETS[0];
+  let bestDiff = Math.abs(clamped - closest);
+  for (let i = 1; i < REFRESH_RATE_PRESETS.length; i++) {
+    const diff = Math.abs(clamped - REFRESH_RATE_PRESETS[i]);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      closest = REFRESH_RATE_PRESETS[i];
+    }
+  }
+  return closest;
+}
+
 const DEFAULT_DATA = {
   playerName: 'Player',
   coins: 0,
@@ -18,7 +36,9 @@ const DEFAULT_DATA = {
   settings: {
     theme: 'light',
     uiScale: 1.0,
-    _explicitTheme: false
+    refreshRate: 240,
+    _explicitTheme: false,
+    _explicitRefreshRate: false
   },
   crewLevels: {
     loader: 0,
@@ -74,6 +94,9 @@ export class StorageManager {
   mergeWithDefaults(data = {}) {
     const rawSettings = data.settings || {};
     const effectiveTheme = rawSettings._explicitTheme ? (rawSettings.theme || 'light') : 'light';
+    const effectiveRefresh = rawSettings._explicitRefreshRate
+      ? normalizeRefreshRate(rawSettings.refreshRate)
+      : 240;
 
     const rawUnlocked = data.unlockedColors || ['default'];
     const normalizedUnlocked = Array.from(new Set(
@@ -92,7 +115,8 @@ export class StorageManager {
       settings: {
         ...DEFAULT_DATA.settings,
         ...rawSettings,
-        theme: effectiveTheme
+        theme: effectiveTheme,
+        refreshRate: effectiveRefresh
       },
       unlockedChassis: Array.from(new Set(['basic', ...(data.unlockedChassis || [])])),
       activeChassis: data.activeChassis || 'basic',
@@ -334,9 +358,15 @@ export class StorageManager {
     return false;
   }
 
-  saveSettings(theme, uiScale) {
+  saveSettings(theme, uiScale, refreshRate) {
     this.data.settings.theme = theme;
     this.data.settings.uiScale = uiScale;
+    if (refreshRate !== undefined) {
+      this.data.settings.refreshRate = normalizeRefreshRate(refreshRate);
+      this.data.settings._explicitRefreshRate = true;
+    } else {
+      this.data.settings.refreshRate = normalizeRefreshRate(this.data.settings.refreshRate);
+    }
     this.data.settings._explicitTheme = true;
     this.save();
   }

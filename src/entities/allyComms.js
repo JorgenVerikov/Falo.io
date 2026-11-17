@@ -187,7 +187,6 @@ export class AllyCommunicationSystem {
   static canSpeak(unit, allowDowned = false) {
     if (!unit || unit.dead || unit.destroyed || unit.isDying) return false;
     if (unit.isDowned && !allowDowned) return false;
-    if (unit.cloakAlpha !== undefined && unit.cloakAlpha < 0.28 && !allowDowned) return false;
     return true;
   }
 

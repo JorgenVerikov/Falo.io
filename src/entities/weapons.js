@@ -1205,6 +1205,7 @@ export class WeaponSystem {
     this.isFactoryClass = Boolean(chassis.isFactoryClass);
     this.unlimitedDrones = Boolean(chassis.unlimitedDrones);
     this.infectSquares = Boolean(chassis.infectSquares);
+    this.alwaysAutoSpin = Boolean(chassis.alwaysAutoSpin);
     this.starterDroneCap = chassis.starterDroneCap || 0;
     this.maxDrones = chassis.maxDrones || 0;
     const baseCfg = CONFIG.WEAPONS.basicBarrelBase || { damage: 7.0, penetration: 2.0, bulletSpeed: 160, fireRateTicks: 80 };
@@ -1462,6 +1463,22 @@ export class WeaponSystem {
       this.maxEnergy = 0;
       this.costPerShot = 0;
       this.rechargeRate = 0;
+      this.cooldownTimer = 0;
+    }
+
+    this.hasDashAbility = Boolean(
+      chassis.hasDashAbility ||
+      key === 'smasher' ||
+      (this.turrets.length === 0 && chassis.weapon && (chassis.weapon.type === WEAPON_TYPE.COOLDOWN || chassis.weapon.type === WEAPON_TYPE.ENERGY))
+    );
+    if (this.hasDashAbility) {
+      const dashSec = chassis.dashCooldownSec ?? (chassis.weapon && chassis.weapon.cooldownSec);
+      const cooldownTicks = (chassis.weapon && (chassis.weapon.cooldownTicks || chassis.weapon.baseReloadTicks)) || 100;
+      const baseCooldownSec = (dashSec !== undefined) ? dashSec : (cooldownTicks / 60);
+      this.cooldownDurationSec = Math.max(0.4, baseCooldownSec);
+      if (!pTurret) {
+        this.fireIntervalSec = this.cooldownDurationSec;
+      }
       this.cooldownTimer = 0;
     }
   }
@@ -1809,7 +1826,7 @@ export class WeaponSystem {
     }
 
     // Process Smasher kinetic dash cooldown ability
-    if (this.chassisKey === 'smasher' || (this.turrets.length === 0 && (this.type === WEAPON_TYPE.COOLDOWN || this.type === WEAPON_TYPE.ENERGY))) {
+    if (this.hasDashAbility || this.chassisKey === 'smasher' || (this.turrets.length === 0 && (this.type === WEAPON_TYPE.COOLDOWN || this.type === WEAPON_TYPE.ENERGY))) {
       if (this.cooldownTimer > 0) {
         this.cooldownTimer -= dt;
         if (this.cooldownTimer < 0) this.cooldownTimer = 0;
@@ -1822,8 +1839,16 @@ export class WeaponSystem {
         this.cooldownTimer = cooldownDuration;
         player.dashTimer = CONFIG.WEAPONS.smasherDashDuration || 0.45;
         const surgeForce = CONFIG.WEAPONS.smasherDashForce || 450;
-        totalRecoilImpulse.x += Math.cos(player.angle) * surgeForce;
-        totalRecoilImpulse.y += Math.sin(player.angle) * surgeForce;
+        let dashAngle = player.angle;
+        if (this.alwaysAutoSpin && controlState && controlState.targetX !== undefined && controlState.targetY !== undefined) {
+          const dx = controlState.targetX - player.x;
+          const dy = controlState.targetY - player.y;
+          if (dx * dx + dy * dy > 1) {
+            dashAngle = Math.atan2(dy, dx);
+          }
+        }
+        totalRecoilImpulse.x += Math.cos(dashAngle) * surgeForce;
+        totalRecoilImpulse.y += Math.sin(dashAngle) * surgeForce;
       }
     }
 
@@ -1967,6 +1992,7 @@ export class WeaponSystem {
               player.lastAttacker &&
               !player.lastAttacker.dead &&
               !player.lastAttacker.destroyed &&
+              (player.lastAttacker.cloakAlpha === undefined || player.lastAttacker.cloakAlpha >= 0.25) &&
               (player.lastAttackerTimer || 0) > 0
             ) {
               const apDx = player.lastAttacker.x - player.x;
@@ -1980,6 +2006,7 @@ export class WeaponSystem {
               for (let j = 0; j < enemies.length; j++) {
                 const e = enemies[j];
                 if (e.dead || e.destroyed) continue;
+                if (e.cloakAlpha !== undefined && e.cloakAlpha < 0.25) continue;
                 const epDx = e.x - player.x;
                 const epDy = e.y - player.y;
                 if (epDx * epDx + epDy * epDy > guardRangeSq) continue;

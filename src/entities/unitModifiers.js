@@ -184,12 +184,15 @@ export function syncUnitChassisAndStats({
     }
   });
 
-  if (weaponSys.turrets.length === 0 && (weaponSys.type === WEAPON_TYPE.COOLDOWN || weaponSys.type === WEAPON_TYPE.ENERGY)) {
+  if (weaponSys.hasDashAbility || (weaponSys.turrets.length === 0 && (weaponSys.type === WEAPON_TYPE.COOLDOWN || weaponSys.type === WEAPON_TYPE.ENERGY))) {
     const baseW = chassisConfig.weapon || {};
+    const dashSec = chassisConfig.dashCooldownSec ?? baseW.cooldownSec;
     const cooldownTicks = baseW.cooldownTicks || baseW.baseReloadTicks || 100;
-    const baseCooldownSec = (baseW.cooldownSec !== undefined) ? baseW.cooldownSec : (cooldownTicks / 60);
+    const baseCooldownSec = (dashSec !== undefined) ? dashSec : (cooldownTicks / 60);
     weaponSys.cooldownDurationSec = Math.max(0.4, baseCooldownSec * loaderCrewMult);
-    weaponSys.fireIntervalSec = weaponSys.cooldownDurationSec;
+    if (weaponSys.turrets.length === 0) {
+      weaponSys.fireIntervalSec = weaponSys.cooldownDurationSec;
+    }
   }
 
   if (chassisConfig.baseMaxDrones !== undefined) {

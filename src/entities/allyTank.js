@@ -1367,13 +1367,15 @@ export class AllyTank {
       }
 
       // Smasher Kinetic Surge Dash Trigger (only ram-dash when healthy enough)
-      if (this.weaponSys.turrets.length === 0 && (this.weaponSys.type === WEAPON_TYPE.COOLDOWN || this.weaponSys.type === WEAPON_TYPE.ENERGY)) {
+      if (this.weaponSys.hasDashAbility || (this.weaponSys.turrets.length === 0 && (this.weaponSys.type === WEAPON_TYPE.COOLDOWN || this.weaponSys.type === WEAPON_TYPE.ENERGY))) {
         const targetDist = Math.hypot(combatTarget.x - this.x, combatTarget.y - this.y);
         const rushDist = reviveTarget ? Math.hypot(reviveTarget.x - this.x, reviveTarget.y - this.y) : 0;
         const dashDesired = reviveTarget
           ? Math.atan2(reviveTarget.y - this.y, reviveTarget.x - this.x)
           : desiredAngle;
-        const dashAlign = Math.abs(Math.atan2(Math.sin(dashDesired - this.angle), Math.cos(dashDesired - this.angle)));
+        const dashAlign = chassisConfig.alwaysAutoSpin
+          ? 0
+          : Math.abs(Math.atan2(Math.sin(dashDesired - this.angle), Math.cos(dashDesired - this.angle)));
         if (((reviveTarget && rushDist > 160 && this.weaponSys.cooldownTimer <= 0) ||
             (canSafelyRam(combatTarget) && targetDist > 110 && targetDist < 380 && this.weaponSys.cooldownTimer <= 0)) &&
             dashAlign < 0.45) {

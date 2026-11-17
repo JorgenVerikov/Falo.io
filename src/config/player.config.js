@@ -315,7 +315,7 @@ export const CHASSIS_CONFIG = {
 
   autosmasher: {
     name: 'Auto Smasher',
-    desc: 'Smasher mounted with a mouse-steerable top Auto Turret and a 10-point upgrade cap across all 8 stats.',
+    desc: 'Smasher mounted with a mouse-steerable top Auto Turret, Kinetic Surge Dash, and a 10-point upgrade cap across all 8 stats.',
     reqLevel: 45,
     tier: 3,
     upgradesFrom: ['smasher'],
@@ -328,6 +328,8 @@ export const CHASSIS_CONFIG = {
     damageResistance: 0.5,
     alwaysAutoSpin: true,
     autoSpinSpeed: 0.45,
+    hasDashAbility: true,
+    dashCooldownSec: 4,
     statRules: {
       maxStatLevel: 10,
       blockBulletStats: false

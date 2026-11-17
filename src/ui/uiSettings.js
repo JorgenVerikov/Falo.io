@@ -1,4 +1,5 @@
 import { CONFIG, computeStrokeColor } from '../core/config.js';
+import { normalizeRefreshRate } from '../core/storage.js';
 import { generateTankSvg, drawPreviewPolygon } from './uiPreviews.js';
 
 const SETTINGS_TAB_ORDER = ['display', 'controls'];
@@ -554,6 +555,57 @@ export class SettingsPreviewController {
       ctx.fillText(`${Math.round(scaleMult * 100)}%`, x + cardW - badgeW * 0.5 - 10, y + 10 + badgeH * 0.5 + 0.5);
     }
 
+    if (this.currentItem.kind === 'refresh') {
+      const hz = normalizeRefreshRate(this.currentItem.refreshRate || 240);
+      const ratio = (hz - 60) / (240 - 60);
+      const sweepSpeed = 1.4 + ratio * 3.8;
+      const sweepAngle = (this.swayTime * sweepSpeed) % (Math.PI * 2);
+
+      // Motion cadence arc around tank
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, tankR + 14, sweepAngle, sweepAngle + Math.PI * 0.85);
+      ctx.strokeStyle = isLight ? 'rgba(0, 178, 225, 0.85)' : 'rgba(56, 189, 248, 0.9)';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, tankR + 21, -sweepAngle * 0.7, -sweepAngle * 0.7 + Math.PI * 0.55);
+      ctx.strokeStyle = isLight ? 'rgba(2, 132, 199, 0.42)' : 'rgba(168, 85, 247, 0.52)';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      ctx.restore();
+
+      // Refresh badge top-right
+      const badgeW = 68;
+      const badgeH = 22;
+      ctx.fillStyle = '#00b2e1';
+      ctx.beginPath();
+      ctx.roundRect(x + cardW - badgeW - 10, y + 10, badgeW, badgeH, 5);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 11.5px Ubuntu, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${hz}Hz`, x + cardW - badgeW * 0.5 - 10, y + 10 + badgeH * 0.5 + 0.5);
+
+      // Frame interval pill bottom-center
+      const frameMs = (1000 / hz).toFixed(1);
+      const barW = 136;
+      const barH = 18;
+      const barX = cx - barW * 0.5;
+      const barY = y + cardH - 12 - barH;
+      ctx.fillStyle = isLight ? 'rgba(30, 41, 59, 0.78)' : 'rgba(15, 23, 42, 0.88)';
+      ctx.beginPath();
+      ctx.roundRect(barX, barY, barW, barH, 5);
+      ctx.fill();
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = '800 10px Ubuntu, sans-serif';
+      ctx.fillText(`${frameMs} ms / frame`, cx, barY + barH * 0.5 + 0.5);
+    }
+
     ctx.restore();
 
     // Crisp outer frame border
@@ -738,6 +790,32 @@ function buildScalePreviewData(ui, scaleVal) {
   };
 }
 
+function buildRefreshRatePreviewData(ui, refreshVal) {
+  const hz = normalizeRefreshRate(refreshVal);
+  const activeHz = normalizeRefreshRate(ui.storage?.data?.settings?.refreshRate || 240);
+  const isActive = activeHz === hz;
+  const tierLabel = hz === 60 ? 'Standard Cap' : (hz >= 240 ? 'Ultra High Refresh' : 'High Refresh Cap');
+  return {
+    kind: 'refresh',
+    key: `refresh-${hz}`,
+    refreshRate: hz,
+    name: `Refresh Rate · ${hz}Hz`,
+    metaText: `Frame Pacing · ${tierLabel}`,
+    desc: `Caps simulation and arena rendering up to ${hz} frames per second (${(1000 / hz).toFixed(1)} ms interval), limited by your display refresh rate.`,
+    btnClass: isActive ? 'equipped' : 'equip-ready',
+    btnHtml: isActive ? 'ACTIVE RATE' : `APPLY ${hz}Hz`,
+    btnDisabled: isActive,
+    onAction: () => {
+      if (isActive) return;
+      const currentTheme = ui.storage.data.settings?.theme || 'light';
+      const currentScale = parseFloat(ui.storage.data.settings?.uiScale || 1.0);
+      ui.storage.saveSettings(currentTheme, currentScale, hz);
+      ui.applySettings();
+      ui.showToast(`REFRESH RATE SET TO ${hz}Hz`);
+    }
+  };
+}
+
 function buildControlPreviewData(ui, controlKey) {
   const item = CONTROL_ITEMS[controlKey] || CONTROL_ITEMS.move;
   const isEsc = controlKey === 'esc';
@@ -774,6 +852,11 @@ function selectActiveTabDefaultPreview(ui, { animate = false } = {}) {
     document.querySelectorAll('#settings-modal .is-preview-active').forEach(el => el.classList.remove('is-preview-active'));
     scaleCard?.classList.add('is-preview-active');
     controller.setPreviewItem(buildScalePreviewData(ui, savedDisplay.scale), { animate });
+  } else if (savedDisplay?.kind === 'refresh') {
+    const refreshCard = document.getElementById('settings-refresh-card');
+    document.querySelectorAll('#settings-modal .is-preview-active').forEach(el => el.classList.remove('is-preview-active'));
+    refreshCard?.classList.add('is-preview-active');
+    controller.setPreviewItem(buildRefreshRatePreviewData(ui, savedDisplay.refreshRate), { animate });
   } else {
     const themeKey = savedDisplay?.themeKey || ui.storage?.data?.settings?.theme || 'light';
     const card = document.getElementById(themeKey === 'dark' ? 'theme-card-dark' : 'theme-card-light');
@@ -786,11 +869,12 @@ function selectActiveTabDefaultPreview(ui, { animate = false } = {}) {
 export function syncSettingsView(ui) {
   const theme = ui.storage?.data?.settings?.theme || 'light';
   const scale = parseFloat(ui.storage?.data?.settings?.uiScale || 1.0);
+  const hz = normalizeRefreshRate(ui.storage?.data?.settings?.refreshRate || 240);
   const pct = Math.round(scale * 100);
 
   const summaryEl = document.getElementById('settings-header-summary');
   if (summaryEl) {
-    summaryEl.textContent = `${theme === 'light' ? 'LIGHT' : 'DARK'} · ${pct}%`;
+    summaryEl.textContent = `${theme === 'light' ? 'LIGHT' : 'DARK'} · ${pct}% · ${hz}Hz`;
   }
 
   const lightCard = document.getElementById('theme-card-light');
@@ -828,6 +912,8 @@ export function syncSettingsView(ui) {
       controller.setPreviewItem(buildThemePreviewData(ui, controller.currentItem.themeKey), { animate: false });
     } else if (controller.currentItem.kind === 'scale') {
       controller.setPreviewItem(buildScalePreviewData(ui, controller.currentItem.scale), { animate: false });
+    } else if (controller.currentItem.kind === 'refresh') {
+      controller.setPreviewItem(buildRefreshRatePreviewData(ui, controller.currentItem.refreshRate), { animate: false });
     }
   }
   controller.syncSlantGeometry();
@@ -1007,6 +1093,39 @@ export function initSettingsUI(ui) {
       ui.storage.saveSettings(currentTheme, scaleVal);
       ui.applySettings();
       ui.showToast(`UI SCALE SET TO ${Math.round(scaleVal * 100)}%`);
+    });
+  });
+
+  // Refresh rate card & chips dynamic hover + click
+  const refreshCard = document.getElementById('settings-refresh-card');
+  const previewRefresh = (hzVal) => {
+    const hz = normalizeRefreshRate(hzVal);
+    ui.selectedSettingsPreviewByTab.display = { kind: 'refresh', refreshRate: hz };
+    setActivePreviewCard(refreshCard);
+    controller.setPreviewItem(buildRefreshRatePreviewData(ui, hz), { animate: true });
+  };
+
+  refreshCard?.addEventListener('mouseenter', () => {
+    const currentHz = normalizeRefreshRate(ui.storage?.data?.settings?.refreshRate || 240);
+    if (ui.selectedSettingsPreviewByTab.display?.kind !== 'refresh') {
+      previewRefresh(currentHz);
+    }
+  });
+
+  document.querySelectorAll('.refresh-chip-btn').forEach(chip => {
+    const hzVal = parseInt(chip.getAttribute('data-refresh'), 10);
+    if (isNaN(hzVal)) return;
+    const hz = normalizeRefreshRate(hzVal);
+
+    chip.addEventListener('mouseenter', () => previewRefresh(hz));
+    chip.addEventListener('focusin', () => previewRefresh(hz));
+    chip.addEventListener('click', () => {
+      previewRefresh(hz);
+      const currentTheme = ui.storage.data.settings?.theme || 'light';
+      const currentScale = parseFloat(ui.storage.data.settings?.uiScale || 1.0);
+      ui.storage.saveSettings(currentTheme, currentScale, hz);
+      ui.applySettings();
+      ui.showToast(`REFRESH RATE SET TO ${hz}Hz`);
     });
   });
 

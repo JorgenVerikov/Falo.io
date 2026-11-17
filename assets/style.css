@@ -7080,27 +7080,118 @@ body.theme-light .shop-preview-rename-input {
   position: fixed;
   top: calc(84px * var(--ui-scale));
   right: calc(16px * var(--ui-scale));
-  width: calc(238px * var(--ui-scale));
+  width: calc(254px * var(--ui-scale));
   display: flex;
   flex-direction: column;
   gap: calc(8px * var(--ui-scale));
   transform-origin: right center;
   transform: perspective(900px) translate3d(var(--hud-tx, 0px), var(--hud-ty, 0px), 0) rotateY(calc(-7.5deg + var(--hud-ry, 0deg))) rotateX(calc(-1.2deg + var(--hud-rx, 0deg))) rotateZ(var(--hud-rz, 0deg));
-  will-change: transform;
+  will-change: transform, translate, opacity;
+  translate: 0 0;
+  opacity: 1;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), translate 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 44;
-  padding: calc(11px * var(--ui-scale)) calc(15px * var(--ui-scale));
+  padding: calc(10px * var(--ui-scale)) calc(14px * var(--ui-scale));
   box-sizing: border-box;
+  pointer-events: auto;
 }
 
 .ally-squad-hud.hidden {
   display: none !important;
 }
 
+.ally-squad-hud.is-minimized {
+  translate: calc(100% + 28px * var(--ui-scale)) 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ally-squad-corner-tab {
+  position: fixed;
+  top: calc(84px * var(--ui-scale));
+  right: calc(16px * var(--ui-scale));
+  height: calc(30px * var(--ui-scale));
+  padding: 0 calc(11px * var(--ui-scale));
+  background: linear-gradient(130deg, #252a34 0%, #171a21 100%);
+  border: calc(2px * var(--ui-scale)) solid #0e1116;
+  border-bottom-width: calc(3.5px * var(--ui-scale));
+  border-bottom-color: #007a9e;
+  border-radius: calc(3px * var(--ui-scale));
+  transform-origin: right center;
+  transform: perspective(640px) translate3d(var(--hud-tx, 0px), var(--hud-ty, 0px), 0) rotateY(calc(-12deg + var(--hud-ry, 0deg))) rotateX(calc(-1.5deg + var(--hud-rx, 0deg))) rotateZ(var(--hud-rz, 0deg)) skewX(-10deg);
+  will-change: transform, translate, opacity;
+  scale: 1;
+  translate: 115% 0;
+  opacity: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(6px * var(--ui-scale));
+  cursor: pointer;
+  z-index: 44;
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), translate 0.22s cubic-bezier(0.16, 1, 0.3, 1), scale 0.14s ease, filter 0.14s ease;
+  box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.42);
+  pointer-events: none;
+  font-family: inherit;
+}
+
+.ally-squad-corner-tab.hidden {
+  display: none !important;
+}
+
+.ally-squad-corner-tab.is-visible {
+  translate: 0 0;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ally-squad-corner-tab.is-visible:hover {
+  translate: -3px 0;
+  scale: 1.04;
+  filter: brightness(1.08);
+}
+
+.ally-squad-corner-tab > * {
+  transform: skewX(10deg);
+}
+
+.ally-squad-corner-arrow {
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 900;
+  color: #38bdf8;
+  line-height: 1;
+}
+
+.ally-squad-corner-label {
+  font-size: calc(11.5px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #f8fafc;
+}
+
+.ally-squad-corner-count {
+  font-size: calc(10.5px * var(--ui-scale));
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: #7dd3fc;
+}
+
+.ally-squad-corner-key {
+  padding: calc(1.5px * var(--ui-scale)) calc(4.5px * var(--ui-scale));
+  border-radius: calc(2.5px * var(--ui-scale));
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  font-size: calc(9px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: #cbd5e1;
+}
+
 .ally-squad-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: calc(9px * var(--ui-scale));
+  gap: calc(6px * var(--ui-scale));
   width: 100%;
   padding-bottom: calc(6px * var(--ui-scale));
   border-bottom: 1.5px solid rgba(148, 163, 184, 0.25);
@@ -7111,6 +7202,13 @@ body.theme-light .shop-preview-rename-input {
   font-weight: 900;
   letter-spacing: 1.2px;
   color: #94a3b8;
+}
+
+.ally-squad-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(5px * var(--ui-scale));
+  flex-shrink: 0;
 }
 
 .ally-stance-btn {
@@ -7126,7 +7224,6 @@ body.theme-light .shop-preview-rename-input {
   letter-spacing: 0.6px;
   cursor: pointer;
   transform: skewX(-8deg);
-  margin-right: calc(2px * var(--ui-scale));
   text-shadow: 1px 1px 0 rgba(0, 40, 56, 0.55);
 }
 
@@ -7134,10 +7231,40 @@ body.theme-light .shop-preview-rename-input {
   filter: brightness(1.08);
 }
 
+.ally-squad-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(3px * var(--ui-scale));
+  padding: calc(3px * var(--ui-scale)) calc(6px * var(--ui-scale));
+  border-radius: calc(3px * var(--ui-scale));
+  border: calc(1.8px * var(--ui-scale)) solid #1e293b;
+  border-bottom-width: calc(3.2px * var(--ui-scale));
+  background: rgba(30, 41, 59, 0.9);
+  color: #cbd5e1;
+  font-family: inherit;
+  font-size: calc(9.5px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+  cursor: pointer;
+  transform: skewX(-8deg);
+}
+
+.ally-squad-toggle-btn:hover {
+  filter: brightness(1.15);
+  color: #ffffff;
+}
+
+.ally-squad-toggle-icon {
+  font-size: calc(11.5px * var(--ui-scale));
+  line-height: 1;
+}
+
 .ally-squad-list {
   display: flex;
   flex-direction: column;
-  gap: calc(7px * var(--ui-scale));
+  gap: calc(8px * var(--ui-scale));
   width: 100%;
 }
 
@@ -7205,6 +7332,13 @@ body.theme-light .shop-preview-rename-input {
   color: #6ee7b7;
 }
 
+.ally-hud-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(6px * var(--ui-scale));
+}
+
 .ally-hud-chassis {
   font-size: calc(10.5px * var(--ui-scale));
   font-weight: 700;
@@ -7212,6 +7346,14 @@ body.theme-light .shop-preview-rename-input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ally-hud-pts {
+  font-size: calc(9.5px * var(--ui-scale));
+  font-weight: 800;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
 .ally-hud-hp-track {
@@ -7228,6 +7370,56 @@ body.theme-light .shop-preview-rename-input {
   width: 100%;
   border-radius: 999px;
   transition: width 0.14s ease;
+}
+
+.ally-hud-stats {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: calc(3px * var(--ui-scale));
+  margin-top: calc(1px * var(--ui-scale));
+}
+
+.ally-stat-pip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(1.5px * var(--ui-scale));
+  min-width: 0;
+}
+
+.ally-stat-val {
+  font-size: calc(9px * var(--ui-scale));
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--stat-color, #94a3b8);
+}
+
+.ally-stat-pip.is-zero .ally-stat-val {
+  color: #64748b;
+  opacity: 0.7;
+}
+
+.ally-stat-pip.is-blocked .ally-stat-val {
+  color: #475569;
+  opacity: 0.55;
+}
+
+.ally-stat-bar-track {
+  width: 100%;
+  height: calc(3.5px * var(--ui-scale));
+  background: rgba(15, 23, 42, 0.85);
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.ally-stat-bar-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 1px;
+  transition: width 0.18s ease;
 }
 
 /* Downed & Reviving Status Banner */
@@ -7310,12 +7502,53 @@ body.theme-light .ally-squad-title {
   color: #475569;
 }
 
+body.theme-light .ally-squad-corner-tab {
+  background: linear-gradient(130deg, #f8fafc 0%, #e2e8f0 100%);
+  border-color: #475569;
+  border-bottom-color: #0284c7;
+}
+
+body.theme-light .ally-squad-corner-label {
+  color: #0f172a;
+}
+
+body.theme-light .ally-squad-corner-arrow,
+body.theme-light .ally-squad-corner-count {
+  color: #0284c7;
+}
+
+body.theme-light .ally-squad-corner-key {
+  background: #cbd5e1;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+body.theme-light .ally-squad-toggle-btn {
+  background: #e2e8f0;
+  border-color: #64748b;
+  color: #334155;
+}
+
+body.theme-light .ally-squad-toggle-btn:hover {
+  color: #0f172a;
+}
+
 body.theme-light .ally-hud-name {
   color: #0f172a;
 }
 
-body.theme-light .ally-hud-chassis {
+body.theme-light .ally-hud-chassis,
+body.theme-light .ally-hud-pts {
   color: #475569;
+}
+
+body.theme-light .ally-stat-pip.is-zero .ally-stat-val {
+  color: #64748b;
+}
+
+body.theme-light .ally-stat-bar-track {
+  background: rgba(148, 163, 184, 0.35);
+  border-color: rgba(100, 116, 139, 0.3);
 }
 
 body.theme-light .ally-hud-state {
@@ -7340,10 +7573,28 @@ body.theme-light .downed-status-banner.is-reviving .downed-status-text {
 
 @media (max-width: 640px) {
   .ally-squad-hud {
-    width: calc(188px * var(--ui-scale));
+    width: calc(206px * var(--ui-scale));
     top: calc(74px * var(--ui-scale));
     right: calc(10px * var(--ui-scale));
-    padding: calc(8px * var(--ui-scale)) calc(12px * var(--ui-scale));
+    padding: calc(8px * var(--ui-scale)) calc(10px * var(--ui-scale));
+  }
+
+  .ally-squad-corner-tab {
+    top: calc(74px * var(--ui-scale));
+    right: calc(10px * var(--ui-scale));
+  }
+
+  .ally-squad-toggle-key,
+  .ally-squad-corner-key {
+    display: none;
+  }
+
+  .ally-hud-stats {
+    gap: calc(2px * var(--ui-scale));
+  }
+
+  .ally-stat-val {
+    font-size: calc(8px * var(--ui-scale));
   }
 }
 
@@ -7398,7 +7649,10 @@ body.theme-light .downed-status-banner.is-reviving .downed-status-text {
   .shell-pip,
   .gauge-bar-fill,
   .modal-btn,
+  .ally-squad-hud,
+  .ally-squad-corner-tab,
   .ally-hud-hp-fill,
+  .ally-stat-bar-fill,
   .downed-progress-fill {
     transition: none !important;
   }

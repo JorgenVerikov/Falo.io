@@ -15,6 +15,7 @@ export const CAMERA_CONFIG = {
   defaultZoom: 0.85,
   smoothness: 0.06,
   zoomLerpSpeed: 0.05,
+  globalLeanFactor: 0.04,
   sniperLeanFactor: 0.10
 };
 
@@ -24,6 +25,8 @@ export const WAVE_CONFIG = {
   growthFactor: 1.25,
   maxEnemyCount: 150,   // Maximum enemies that can spawn in a wave
   spawnInterval: 1.1,
+  minSpawnInterval: 0.2,
+  spawnIntervalDecay: 0.91,
   graceDuration: 20,    // 20 seconds grace period
   graceInterval: 5,     // Grace period occurs every 5 waves (Wave 1, 5, 10, 15, etc.)
   retreatDespawnThreshold: 1200 // Distance from player where retreating enemies despawn so wave doesn't get stuck

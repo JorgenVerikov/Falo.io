@@ -2,6 +2,7 @@
  * UI Engine: Core HUD, Menus, Authentication, Edge Hover Triggers & Panel Orchestration
  */
 import { CONFIG, getTotalXPForLevel, computeStrokeColor } from '../core/config.js';
+import { normalizeRefreshRate } from '../core/storage.js';
 import { signInEmail, signUpEmail, signInWithGoogle, signOut, onAuthStateChange } from '../core/auth.js';
 import {
   drawTankPreview,
@@ -453,6 +454,15 @@ export class UIManager {
       this.applySettings();
     });
 
+    document.getElementById('refresh-rate-select')?.addEventListener('change', (e) => {
+      this.storage.saveSettings(
+        document.getElementById('theme-select')?.value || 'light',
+        parseFloat(document.getElementById('ui-scale-select')?.value || 1.0),
+        parseInt(e.target.value, 10)
+      );
+      this.applySettings();
+    });
+
     document.getElementById('close-admin-btn').addEventListener('click', () => this.hideAdminPanel());
 
     document.getElementById('falo-ignore-btn').addEventListener('click', () => {
@@ -490,6 +500,7 @@ export class UIManager {
     const s = this.storage.data.settings;
     const theme = s.theme || 'light';
     const scale = parseFloat(s.uiScale) || 1.0;
+    const refreshRate = normalizeRefreshRate(s.refreshRate || 240);
     this.userUiScale = scale;
 
     this.canvasMgr.setTheme(theme);
@@ -509,9 +520,20 @@ export class UIManager {
       scaleBadge.textContent = `${Math.round(scale * 100)}% (${scale === 1.0 ? 'Default' : scale < 1.0 ? 'Compact' : 'Large'})`;
     }
 
-    document.querySelectorAll('.scale-chip-btn').forEach(chip => {
+    document.querySelectorAll('.scale-chip-btn:not(.refresh-chip-btn)').forEach(chip => {
       const chipVal = parseFloat(chip.getAttribute('data-scale'));
       chip.classList.toggle('active', Math.abs(chipVal - scale) < 0.05);
+    });
+
+    const refreshBadge = document.getElementById('current-refresh-badge');
+    if (refreshBadge) {
+      const suffix = refreshRate === 60 ? 'Standard' : (refreshRate >= 240 ? 'Max' : 'High');
+      refreshBadge.textContent = `${refreshRate}Hz (${suffix})`;
+    }
+
+    document.querySelectorAll('.refresh-chip-btn').forEach(chip => {
+      const chipHz = parseInt(chip.getAttribute('data-refresh'), 10);
+      chip.classList.toggle('active', chipHz === refreshRate);
     });
 
     const themeSelect = document.getElementById('theme-select');
@@ -528,6 +550,11 @@ export class UIManager {
         }
       }
       if (!matched) scaleSelect.value = scale.toFixed(1);
+    }
+
+    const refreshSelect = document.getElementById('refresh-rate-select');
+    if (refreshSelect) {
+      refreshSelect.value = String(refreshRate);
     }
   }
 
@@ -576,6 +603,8 @@ export class UIManager {
     if (this.statCornerTab) this.statCornerTab.classList.add('hidden');
     const squadHud = document.getElementById('ally-squad-hud');
     if (squadHud) squadHud.classList.add('hidden');
+    const squadCornerTab = document.getElementById('ally-squad-corner-tab');
+    if (squadCornerTab) squadCornerTab.classList.add('hidden');
     const downedBanner = document.getElementById('downed-status-banner');
     if (downedBanner) downedBanner.classList.add('hidden');
   }

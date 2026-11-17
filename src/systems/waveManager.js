@@ -161,15 +161,24 @@ export class WaveManager {
     }
   }
 
+  getSpawnInterval(waveNum = this.waveNumber) {
+    const base = (CONFIG.WAVE && CONFIG.WAVE.spawnInterval !== undefined) ? CONFIG.WAVE.spawnInterval : 1.1;
+    const minInterval = (CONFIG.WAVE && CONFIG.WAVE.minSpawnInterval !== undefined) ? CONFIG.WAVE.minSpawnInterval : 0.2;
+    const decay = (CONFIG.WAVE && CONFIG.WAVE.spawnIntervalDecay !== undefined) ? CONFIG.WAVE.spawnIntervalDecay : 0.91;
+    const w = Math.max(1, waveNum || 1);
+    return Math.max(minInterval, base * Math.pow(decay, w - 1));
+  }
+
   update(dt, player, playerWeapon, activeChassisKey, playerStats = {}, extraCtx = {}) {
     if (this.isPaused) return;
 
     if (this.graceTimer > 0) {
       this.graceTimer -= dt;
     } else if (!this.isBreak && this.enemyQueue.length > 0) {
+      const spawnInterval = this.getSpawnInterval();
       this.spawnTimer += dt;
-      if (this.spawnTimer >= CONFIG.WAVE.spawnInterval) {
-        this.spawnTimer = 0;
+      if (this.spawnTimer >= spawnInterval) {
+        this.spawnTimer = Math.min(spawnInterval * 0.5, this.spawnTimer - spawnInterval);
         const archetype = this.enemyQueue.shift();
         const cfg = CONFIG.ENEMIES[archetype];
         if (cfg && Array.isArray(cfg.squadSizes) && cfg.squadSizes.length > 0) {

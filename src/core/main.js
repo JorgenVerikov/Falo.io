@@ -3,7 +3,7 @@ import { WeaponSystem } from '../entities/weapons.js';
 import { syncUnitChassisAndStats } from '../entities/unitModifiers.js';
 import { AllyCommunicationSystem } from '../entities/allyComms.js';
 import { WaveManager } from '../systems/waveManager.js';
-import { StorageManager } from './storage.js';
+import { StorageManager, normalizeRefreshRate } from './storage.js';
 import { UIManager } from '../ui/ui.js';
 import { CONFIG, getXPRequiredForLevel, getTotalXPForLevel, computeStrokeColor, getTankRenderParts, getOuterArmorLayers } from './config.js';
 import { HUDUpdater } from './hudUpdater.js';
@@ -36,6 +36,7 @@ const state = {
   outerArmorTime: 0,
   fps: 60,
   lastFrameTime: performance.now(),
+  lastCapTime: performance.now(),
   isGameOver: false,
   inMenu: true,
   isPlaying: false,
@@ -44,6 +45,7 @@ const state = {
   autoFire: false,
   autoSpin: false,
   squadStance: 'AUTO',
+  squadHudMinimized: false,
 
   level: 1,
   xp: 0,
@@ -258,6 +260,9 @@ async function initGame() {
   };
 
   uiMgr.showMainMenu();
+  const now = performance.now();
+  state.lastFrameTime = now;
+  state.lastCapTime = now;
   requestAnimationFrame(gameLoop);
 }
 
@@ -460,6 +465,7 @@ function loadAndStartGame() {
   state.lastAnnouncedGraceWave = 0;
   state.lastAnnouncedUpgradeWave = 0;
   state.squadStance = 'AUTO';
+  state.squadHudMinimized = false;
   waveMgr.clearAll();
   waveMgr.startWave(1);
   waveMgr.spawnAlliesForRun(player, storageMgr.data, state.level, state.activeChassis);
@@ -665,6 +671,11 @@ function cycleSquadStance() {
   AllyCommunicationSystem.onStanceChanged(state.squadStance, waveMgr.allies, player);
 }
 
+function toggleSquadHud() {
+  if (state.isGameOver || state.inMenu || !state.isPlaying || !waveMgr.allies || waveMgr.allies.length === 0) return;
+  state.squadHudMinimized = !state.squadHudMinimized;
+}
+
 function selfDestructPlayer() {
   if (state.isGameOver || state.inMenu || player.isDying) return;
   triggerSquadWipe();
@@ -687,7 +698,26 @@ function setupInputs() {
   if (stanceBtn) {
     stanceBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      stanceBtn.blur();
       cycleSquadStance();
+    });
+  }
+
+  const squadToggleBtn = document.getElementById('ally-squad-toggle-btn');
+  if (squadToggleBtn) {
+    squadToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      squadToggleBtn.blur();
+      toggleSquadHud();
+    });
+  }
+
+  const squadCornerTab = document.getElementById('ally-squad-corner-tab');
+  if (squadCornerTab) {
+    squadCornerTab.addEventListener('click', (e) => {
+      e.stopPropagation();
+      squadCornerTab.blur();
+      toggleSquadHud();
     });
   }
 
@@ -734,6 +764,21 @@ function setupInputs() {
 
     if (state.inMenu || !state.isPlaying || state.isGameOver) {
       return;
+    }
+
+    if (e.key === 'Tab') {
+      const hasOpenModal =
+        (uiMgr.adminPassModal && !uiMgr.adminPassModal.classList.contains('hidden')) ||
+        (uiMgr.adminModal && !uiMgr.adminModal.classList.contains('hidden')) ||
+        (uiMgr.settingsModal && !uiMgr.settingsModal.classList.contains('hidden')) ||
+        (uiMgr.armoryModal && !uiMgr.armoryModal.classList.contains('hidden')) ||
+        (uiMgr.evolutionTreeModal && !uiMgr.evolutionTreeModal.classList.contains('hidden')) ||
+        (uiMgr.authModal && !uiMgr.authModal.classList.contains('hidden'));
+      if (!hasOpenModal) {
+        e.preventDefault();
+        if (!e.repeat) toggleSquadHud();
+        return;
+      }
     }
 
     const lower = e.key.toLowerCase();
@@ -890,8 +935,9 @@ function updatePlayer(dt) {
     player.vx *= 0.94;
     player.vy *= 0.94;
 
-    camera.x += (player.x - camera.x) * CONFIG.CAMERA.smoothness;
-    camera.y += (player.y - camera.y) * CONFIG.CAMERA.smoothness;
+    const camSmoothAlpha = 1 - Math.pow(1 - CONFIG.CAMERA.smoothness, dt * 60);
+    camera.x += (player.x - camera.x) * camSmoothAlpha;
+    camera.y += (player.y - camera.y) * camSmoothAlpha;
 
     if (player.deathTimer >= player.deathDuration) {
       triggerGameOver();
@@ -906,9 +952,11 @@ function updatePlayer(dt) {
     player.y += player.vy * dt;
     player.cloakAlpha = 1.0;
 
-    camera.x += (player.x - camera.x) * CONFIG.CAMERA.smoothness;
-    camera.y += (player.y - camera.y) * CONFIG.CAMERA.smoothness;
-    camera.zoom += (camera.targetZoom - camera.zoom) * CONFIG.CAMERA.zoomLerpSpeed;
+    const camSmoothAlpha = 1 - Math.pow(1 - CONFIG.CAMERA.smoothness, dt * 60);
+    const zoomAlpha = 1 - Math.pow(1 - CONFIG.CAMERA.zoomLerpSpeed, dt * 60);
+    camera.x += (player.x - camera.x) * camSmoothAlpha;
+    camera.y += (player.y - camera.y) * camSmoothAlpha;
+    camera.zoom += (camera.targetZoom - camera.zoom) * zoomAlpha;
 
     player.downedTimer = Math.max(0, player.downedTimer - dt);
     if (player.downedTimer <= 0) {
@@ -1085,34 +1133,38 @@ function updatePlayer(dt) {
   let camTargetX = player.x;
   let camTargetY = player.y;
 
-  if (hasCameraScope) {
-    if (isScopeHeld) {
-      if (!camera.isScoping) {
-        camera.isScoping = true;
-        const dx = input.mouse.worldX - player.x;
-        const dy = input.mouse.worldY - player.y;
-        const dist = Math.hypot(dx, dy);
-        const maxShift = chassisConfig.cameraScope.maxDistance || 1100;
-        const mult = chassisConfig.cameraScope.distanceMultiplier || 1.45;
-        const shiftDist = Math.min(maxShift, dist * mult);
-        const dirAngle = dist > 1 ? Math.atan2(dy, dx) : player.angle;
-        camera.scopeX = player.x + Math.cos(dirAngle) * shiftDist;
-        camera.scopeY = player.y + Math.sin(dirAngle) * shiftDist;
-      }
-      camTargetX = camera.scopeX;
-      camTargetY = camera.scopeY;
-    } else {
-      camera.isScoping = false;
-      if (!state.autoSpin && !isMobileMode) {
-        camTargetX += (input.mouse.worldX - player.x) * CONFIG.CAMERA.sniperLeanFactor;
-        camTargetY += (input.mouse.worldY - player.y) * CONFIG.CAMERA.sniperLeanFactor;
-      }
+  const isSniperLeanChassis =
+    hasCameraScope ||
+    state.activeChassis === 'sniper' ||
+    state.activeChassis === 'assassin' ||
+    state.activeChassis === 'ranger' ||
+    state.activeChassis === 'stalker' ||
+    state.activeChassis === 'hunter' ||
+    state.activeChassis === 'streamliner';
+
+  if (hasCameraScope && isScopeHeld) {
+    if (!camera.isScoping) {
+      camera.isScoping = true;
+      const dx = input.mouse.worldX - player.x;
+      const dy = input.mouse.worldY - player.y;
+      const dist = Math.hypot(dx, dy);
+      const maxShift = chassisConfig.cameraScope.maxDistance || 1100;
+      const mult = chassisConfig.cameraScope.distanceMultiplier || 1.45;
+      const shiftDist = Math.min(maxShift, dist * mult);
+      const dirAngle = dist > 1 ? Math.atan2(dy, dx) : player.angle;
+      camera.scopeX = player.x + Math.cos(dirAngle) * shiftDist;
+      camera.scopeY = player.y + Math.sin(dirAngle) * shiftDist;
     }
+    camTargetX = camera.scopeX;
+    camTargetY = camera.scopeY;
   } else {
     camera.isScoping = false;
-    if ((state.activeChassis === 'sniper' || state.activeChassis === 'assassin' || state.activeChassis === 'ranger' || state.activeChassis === 'stalker' || state.activeChassis === 'hunter' || state.activeChassis === 'streamliner') && !state.autoSpin && !isMobileMode) {
-      camTargetX += (input.mouse.worldX - player.x) * CONFIG.CAMERA.sniperLeanFactor;
-      camTargetY += (input.mouse.worldY - player.y) * CONFIG.CAMERA.sniperLeanFactor;
+    if (!state.autoSpin && !isMobileMode) {
+      const leanFactor = isSniperLeanChassis
+        ? CONFIG.CAMERA.sniperLeanFactor
+        : (CONFIG.CAMERA.globalLeanFactor ?? 0.04);
+      camTargetX += (input.mouse.worldX - player.x) * leanFactor;
+      camTargetY += (input.mouse.worldY - player.y) * leanFactor;
     }
   }
 
@@ -1129,8 +1181,9 @@ function updatePlayer(dt) {
     }
   }
 
-  camera.x += (camTargetX - camera.x) * CONFIG.CAMERA.smoothness;
-  camera.y += (camTargetY - camera.y) * CONFIG.CAMERA.smoothness;
+  const camSmoothAlpha = 1 - Math.pow(1 - CONFIG.CAMERA.smoothness, dt * 60);
+  camera.x += (camTargetX - camera.x) * camSmoothAlpha;
+  camera.y += (camTargetY - camera.y) * camSmoothAlpha;
 
   if (camera.spawnZoomTimer > 0) {
     camera.spawnZoomTimer = Math.max(0, camera.spawnZoomTimer - dt);
@@ -1143,7 +1196,8 @@ function updatePlayer(dt) {
       canvasMgr.canvas.style.filter = blurPx > 0.08 ? `blur(${blurPx.toFixed(2)}px)` : '';
     }
   } else {
-    camera.zoom += (camera.targetZoom - camera.zoom) * CONFIG.CAMERA.zoomLerpSpeed;
+    const zoomAlpha = 1 - Math.pow(1 - CONFIG.CAMERA.zoomLerpSpeed, dt * 60);
+    camera.zoom += (camera.targetZoom - camera.zoom) * zoomAlpha;
   }
 
   input.mouse.worldX = (input.mouse.screenX - canvasMgr.width / 2) / camera.zoom + camera.x;
@@ -1501,9 +1555,34 @@ function renderReviveIndicators(ctx) {
 }
 
 function gameLoop(timestamp) {
-  const dt = Math.min((timestamp - state.lastFrameTime) / 1000, 0.1);
+  const targetHz = normalizeRefreshRate(storageMgr.data?.settings?.refreshRate || 240);
+
+  if (targetHz < 240) {
+    const frameInterval = 1000 / targetHz;
+    const vsyncTolerance = Math.min(2.0, frameInterval * 0.14);
+    const capElapsed = timestamp - state.lastCapTime;
+
+    if (capElapsed < frameInterval - vsyncTolerance) {
+      requestAnimationFrame(gameLoop);
+      return;
+    }
+
+    if (capElapsed > frameInterval * 2.5) {
+      state.lastCapTime = timestamp;
+    } else {
+      state.lastCapTime += frameInterval;
+    }
+  } else {
+    state.lastCapTime = timestamp;
+  }
+
+  const rawDt = Math.max(0.0005, (timestamp - state.lastFrameTime) / 1000);
+  const dt = Math.min(rawDt, 0.1);
   state.lastFrameTime = timestamp;
-  state.fps = 1 / dt;
+  if (rawDt < 0.25) {
+    const instantFps = 1 / rawDt;
+    state.fps = state.fps * 0.85 + instantFps * 0.15;
+  }
 
   if (state.isPlaying && !state.isGameOver && !state.inMenu) {
     const prevScore = waveMgr.score;

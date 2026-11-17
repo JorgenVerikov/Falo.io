@@ -19,6 +19,8 @@ export class HUDUpdater {
     this.slotViews = [];
     this.pillHiddenOnce = false;
     this.prevSquadHidden = null;
+    this.prevSquadMinimized = null;
+    this.prevSquadCornerCount = '';
     this.prevStanceText = '';
     this.prevSquadSignature = '';
     this.allyItemViews = [];
@@ -57,6 +59,10 @@ export class HUDUpdater {
       overheatBanner: document.getElementById('overheat-banner'),
       allySquadHud: document.getElementById('ally-squad-hud'),
       allyStanceBtn: document.getElementById('ally-stance-btn'),
+      allySquadToggleBtn: document.getElementById('ally-squad-toggle-btn'),
+      allySquadToggleIcon: document.getElementById('ally-squad-toggle-icon'),
+      allySquadCornerTab: document.getElementById('ally-squad-corner-tab'),
+      allySquadCornerCount: document.getElementById('ally-squad-corner-count'),
       allySquadList: document.getElementById('ally-squad-list'),
       downedBanner: document.getElementById('downed-status-banner'),
       downedText: document.getElementById('downed-status-text'),
@@ -334,11 +340,43 @@ export class HUDUpdater {
     if (!els.allySquadHud) return;
     const allies = (waveMgr && Array.isArray(waveMgr.allies)) ? waveMgr.allies : [];
     const shouldHide = allies.length === 0;
-    if (shouldHide !== this.prevSquadHidden) {
+    const domHidden = els.allySquadHud.classList.contains('hidden');
+    if (shouldHide !== this.prevSquadHidden || domHidden !== shouldHide) {
       this.prevSquadHidden = shouldHide;
       els.allySquadHud.classList.toggle('hidden', shouldHide);
+      if (els.allySquadCornerTab) {
+        els.allySquadCornerTab.classList.toggle('hidden', shouldHide);
+      }
     }
     if (shouldHide) return;
+
+    const isMinimized = Boolean(state.squadHudMinimized);
+    if (isMinimized !== this.prevSquadMinimized) {
+      this.prevSquadMinimized = isMinimized;
+      els.allySquadHud.classList.toggle('is-minimized', isMinimized);
+      if (els.allySquadCornerTab) {
+        els.allySquadCornerTab.classList.toggle('is-visible', isMinimized);
+        els.allySquadCornerTab.setAttribute('aria-expanded', isMinimized ? 'false' : 'true');
+      }
+      if (els.allySquadToggleBtn) {
+        els.allySquadToggleBtn.setAttribute('aria-expanded', isMinimized ? 'false' : 'true');
+        els.allySquadToggleBtn.title = isMinimized ? 'Expand Squad Panel [Tab]' : 'Minimize Squad Panel [Tab]';
+      }
+      if (els.allySquadToggleIcon) {
+        els.allySquadToggleIcon.textContent = isMinimized ? '◂' : '▸';
+      }
+    }
+
+    let livingAllies = 0;
+    for (let i = 0; i < allies.length; i++) {
+      const a = allies[i];
+      if (!a.dead && !a.destroyed && !a.isDying) livingAllies++;
+    }
+    const cornerCountStr = `${livingAllies}/${allies.length}`;
+    if (els.allySquadCornerCount && cornerCountStr !== this.prevSquadCornerCount) {
+      this.prevSquadCornerCount = cornerCountStr;
+      els.allySquadCornerCount.textContent = cornerCountStr;
+    }
 
     const stance = state.squadStance || 'AUTO';
     const stanceLabel = `${stance} [G]`;
@@ -349,11 +387,15 @@ export class HUDUpdater {
 
     if (!els.allySquadList) return;
 
+    const statDefs = CONFIG.PLAYER.statDefinitions || [];
+    const smasherCfg = CONFIG.PLAYER.smasherRules || { maxStatLevel: 10, blockedStats: [] };
+
     let sig = `${allies.length}`;
     const rowsData = [];
     for (let i = 0; i < allies.length; i++) {
       const a = allies[i];
-      const chassisName = CONFIG.CHASSIS[a.activeChassis]?.name || 'Basic Tank';
+      const chassisCfg = CONFIG.CHASSIS[a.activeChassis] || {};
+      const chassisName = chassisCfg.name || 'Basic Tank';
       const maxHp = Math.max(1, a.maxHp || 1);
       const hpPct = (a.dead || a.destroyed || a.isDying || a.isDowned)
         ? 0
@@ -384,15 +426,40 @@ export class HUDUpdater {
         stateLabel = 'ESCORT';
       }
 
-      const rowSig = `${a.name}|${chassisName}|${hpPct}|${stateLabel}|${stateClass}|${a.fillColor}`;
+      const statRules = chassisCfg.statRules || null;
+      const blockBullets = statRules ? Boolean(statRules.blockBulletStats) : (a.activeChassis === 'smasher');
+      const maxStatCap = Math.max(1, statRules?.maxStatLevel || (a.activeChassis === 'smasher' ? smasherCfg.maxStatLevel : CONFIG.PLAYER.maxStatLevel) || 7);
+      const statEntries = [];
+      let totalPts = 0;
+      let statSig = '';
+      for (let sIdx = 0; sIdx < statDefs.length; sIdx++) {
+        const def = statDefs[sIdx];
+        const blocked = blockBullets && smasherCfg.blockedStats.includes(def.key);
+        const val = blocked ? 0 : (a.stats?.[def.key] || 0);
+        if (!blocked) totalPts += val;
+        const pct = blocked ? 0 : Math.max(0, Math.min(100, (val / maxStatCap) * 100));
+        statEntries.push({
+          label: def.label,
+          color: def.color,
+          val,
+          blocked,
+          maxCap: maxStatCap,
+          pct
+        });
+        statSig += blocked ? 'x' : String(val);
+      }
+
+      const rowSig = `${a.name}|${a.activeChassis}|${hpPct}|${stateLabel}|${stateClass}|${a.fillColor}|${statSig}`;
       sig += `;${rowSig}`;
       rowsData.push({
         name: a.name,
         chassisName,
+        totalPts,
         hpPct,
         stateLabel,
         stateClass,
-        color: a.fillColor || '#38bdf8'
+        color: a.fillColor || '#38bdf8',
+        stats: statEntries
       });
     }
 
@@ -402,6 +469,12 @@ export class HUDUpdater {
     while (this.allyItemViews.length < rowsData.length) {
       const item = document.createElement('div');
       item.className = 'ally-hud-item';
+      const pipsHtml = statDefs.map((def) => `
+        <div class="ally-stat-pip" style="--stat-color: ${def.color};">
+          <span class="ally-stat-val">0</span>
+          <span class="ally-stat-bar-track"><span class="ally-stat-bar-fill" style="background: ${def.color};"></span></span>
+        </div>
+      `).join('');
       item.innerHTML = `
         <div class="ally-hud-top">
           <span class="ally-hud-identity">
@@ -410,19 +483,30 @@ export class HUDUpdater {
           </span>
           <span class="ally-hud-state"></span>
         </div>
-        <div class="ally-hud-chassis"></div>
+        <div class="ally-hud-sub">
+          <span class="ally-hud-chassis"></span>
+          <span class="ally-hud-pts"></span>
+        </div>
         <div class="ally-hud-hp-track">
           <div class="ally-hud-hp-fill"></div>
         </div>
+        <div class="ally-hud-stats">${pipsHtml}</div>
       `;
       els.allySquadList.appendChild(item);
+      const pipNodes = Array.from(item.querySelectorAll('.ally-stat-pip')).map((pipEl) => ({
+        root: pipEl,
+        val: pipEl.querySelector('.ally-stat-val'),
+        fill: pipEl.querySelector('.ally-stat-bar-fill')
+      }));
       this.allyItemViews.push({
         root: item,
         dot: item.querySelector('.ally-hud-dot'),
         name: item.querySelector('.ally-hud-name'),
         state: item.querySelector('.ally-hud-state'),
         chassis: item.querySelector('.ally-hud-chassis'),
-        hpFill: item.querySelector('.ally-hud-hp-fill')
+        pts: item.querySelector('.ally-hud-pts'),
+        hpFill: item.querySelector('.ally-hud-hp-fill'),
+        statPips: pipNodes
       });
     }
 
@@ -439,8 +523,22 @@ export class HUDUpdater {
       view.name.textContent = d.name;
       view.state.textContent = d.stateLabel;
       view.chassis.textContent = d.chassisName;
+      if (view.pts) view.pts.textContent = `${d.totalPts} PTS`;
       view.hpFill.style.width = `${d.hpPct}%`;
       view.hpFill.style.backgroundColor = d.color;
+
+      if (view.statPips) {
+        for (let sIdx = 0; sIdx < view.statPips.length; sIdx++) {
+          const pip = view.statPips[sIdx];
+          const sData = d.stats[sIdx];
+          if (!pip || !sData) continue;
+          pip.root.classList.toggle('is-blocked', sData.blocked);
+          pip.root.classList.toggle('is-zero', !sData.blocked && sData.val <= 0);
+          pip.root.title = sData.blocked ? `${sData.label}: Blocked` : `${sData.label}: ${sData.val}/${sData.maxCap}`;
+          pip.val.textContent = sData.blocked ? '×' : String(sData.val);
+          pip.fill.style.width = `${sData.pct}%`;
+        }
+      }
     }
   }
 
@@ -496,15 +594,16 @@ export class HUDUpdater {
     const hasShootingTurrets = shootingTurrets.length > 0;
     const hasDroneTurrets = shootingTurrets.some(t => t.type === WEAPON_TYPE.DRONE_SPAWNER);
     const isDroneSystem = hasDroneTurrets || Boolean(weaponSys.isDroneClass) || Boolean(weaponSys.infectSquares);
-    const isSmasherAbility = (state.activeChassis === 'smasher') || (!hasShootingTurrets && !isDroneSystem && (weaponSys.type === WEAPON_TYPE.COOLDOWN || weaponSys.type === WEAPON_TYPE.ENERGY));
+    const isSmasherAbility = Boolean(weaponSys.hasDashAbility) || (state.activeChassis === 'smasher') || (!hasShootingTurrets && !isDroneSystem && (weaponSys.type === WEAPON_TYPE.COOLDOWN || weaponSys.type === WEAPON_TYPE.ENERGY));
     const fillColor = player.fillColor || '#00e5ff';
+    const gauges = [];
 
     if (isSmasherAbility) {
       const cooldown = weaponSys.cooldownTimer || 0;
       const maxCooldown = weaponSys.cooldownDurationSec || 1.67;
       if (cooldown > 0) {
         const cdPct = Math.max(0, Math.min(100, (1.0 - (cooldown / maxCooldown)) * 100));
-        return [{
+        gauges.push({
           kind: 'bar',
           mode: 'smasher',
           title: 'KINETIC SURGE DASH',
@@ -513,18 +612,22 @@ export class HUDUpdater {
           bg: '#475569',
           txt: `COOLDOWN: ${cooldown.toFixed(1)}s`,
           hideOverheat: true
-        }];
+        });
+      } else {
+        gauges.push({
+          kind: 'bar',
+          mode: 'smasher',
+          title: 'KINETIC SURGE DASH',
+          pctStr: '100%',
+          cls: 'gauge-bar-fill ready',
+          bg: '#00e5ff',
+          txt: 'READY',
+          hideOverheat: true
+        });
       }
-      return [{
-        kind: 'bar',
-        mode: 'smasher',
-        title: 'KINETIC SURGE DASH',
-        pctStr: '100%',
-        cls: 'gauge-bar-fill ready',
-        bg: '#00e5ff',
-        txt: 'READY',
-        hideOverheat: true
-      }];
+      if (!hasShootingTurrets && !isDroneSystem) {
+        return gauges;
+      }
     }
 
     if (!hasShootingTurrets && !isDroneSystem) {
@@ -534,8 +637,6 @@ export class HUDUpdater {
         title: 'NO TURRETS AVAILABLE'
       }];
     }
-
-    const gauges = [];
 
     // 1. Barrel Thermal Gauge (one shared heat gauge across all thermal cannons)
     const hasThermal = shootingTurrets.some(t => t.type === WEAPON_TYPE.THERMAL) || (!hasShootingTurrets && weaponSys.type === WEAPON_TYPE.THERMAL);
