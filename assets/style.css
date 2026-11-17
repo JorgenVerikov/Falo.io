@@ -49,7 +49,8 @@ html, body {
   position: fixed;
   top: calc(78px * var(--ui-scale));
   left: 50%;
-  transform: translateX(-50%) skewX(-10deg);
+  transform-origin: top center;
+  transform: perspective(680px) translateX(-50%) rotateX(-9deg) skewX(-10deg);
   background: linear-gradient(135deg, #f8575e 0%, #d9383f 100%);
   border: calc(2.5px * var(--ui-scale)) solid #240c0f;
   border-bottom-width: calc(4.5px * var(--ui-scale));
@@ -74,7 +75,7 @@ html, body {
 .toast-banner.hidden {
   display: block !important;
   opacity: 0;
-  transform: translate(-50%, -14px) skewX(-10deg);
+  transform: perspective(680px) translate(-50%, -14px) rotateX(-9deg) skewX(-10deg);
   pointer-events: none;
 }
 
@@ -97,12 +98,9 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: calc(3px * var(--ui-scale));
-  transform: skewX(-10deg);
+  transform-origin: right top;
+  transform: perspective(640px) rotateY(-14deg) rotateX(-4deg);
   z-index: 45;
-}
-
-#top-left-hud > * {
-  transform: skewX(10deg);
 }
 
 .hud-row {
@@ -124,7 +122,8 @@ html, body {
   position: fixed;
   top: calc(16px * var(--ui-scale));
   left: 50%;
-  transform: translateX(-50%) skewX(-10deg);
+  transform-origin: top center;
+  transform: perspective(680px) translateX(-50%) rotateX(-11deg) skewX(-10deg);
   text-align: center;
   min-width: calc(210px * var(--ui-scale));
   padding: calc(7px * var(--ui-scale)) calc(20px * var(--ui-scale));
@@ -186,30 +185,32 @@ body.theme-light .enemy-upgrade-pill {
   left: calc(16px * var(--ui-scale));
   display: flex;
   flex-direction: column;
-  gap: calc(7px * var(--ui-scale));
+  gap: calc(8px * var(--ui-scale));
   pointer-events: auto;
   z-index: 50;
+  transform-origin: left top;
+  transform-style: preserve-3d;
   transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
   opacity: 1;
-  transform: translateX(0);
+  transform: perspective(680px) translate3d(0, 0, 0) rotateY(13deg) rotateX(-5deg);
 }
 
 #falo-upgrade-panel.hidden {
   display: flex !important;
   opacity: 0;
-  transform: translateX(-20px);
+  transform: perspective(680px) translate3d(-20px, 0, 0) rotateY(13deg) rotateX(-5deg);
   pointer-events: none;
 }
 
 .falo-panel-header {
   width: fit-content;
-  padding: calc(4px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  padding: calc(5px * var(--ui-scale)) calc(16px * var(--ui-scale));
   background: linear-gradient(125deg, #00c4f4 0%, #009ac4 68%, #0082a8 100%);
   border: calc(2.5px * var(--ui-scale)) solid #0b1924;
-  border-bottom-width: calc(4px * var(--ui-scale));
+  border-bottom-width: calc(4.5px * var(--ui-scale));
   border-bottom-color: #005873;
-  border-radius: calc(3px * var(--ui-scale));
-  font-size: calc(13px * var(--ui-scale));
+  border-radius: calc(3.5px * var(--ui-scale));
+  font-size: calc(14.5px * var(--ui-scale));
   font-weight: 900;
   letter-spacing: 1.4px;
   text-transform: uppercase;
@@ -226,27 +227,27 @@ body.theme-light .enemy-upgrade-pill {
 .falo-upgrade-grid {
   display: grid;
   grid-auto-flow: column;
-  grid-template-rows: repeat(3, calc(82px * var(--ui-scale)));
-  grid-auto-columns: calc(82px * var(--ui-scale));
-  gap: calc(8px * var(--ui-scale));
+  grid-template-rows: repeat(3, calc(94px * var(--ui-scale)));
+  grid-auto-columns: calc(94px * var(--ui-scale));
+  gap: calc(9px * var(--ui-scale));
   width: fit-content;
 }
 
 #falo-upgrade-panel .falo-card {
   position: relative;
-  width: calc(82px * var(--ui-scale));
-  height: calc(82px * var(--ui-scale));
+  width: calc(94px * var(--ui-scale));
+  height: calc(94px * var(--ui-scale));
   background: linear-gradient(155deg, #2b313d 0%, #1a1e26 100%);
   border: calc(2.5px * var(--ui-scale)) solid #0e1116;
-  border-bottom-width: calc(5px * var(--ui-scale));
+  border-bottom-width: calc(5.5px * var(--ui-scale));
   border-bottom-color: #090b0e;
-  border-radius: calc(4px * var(--ui-scale));
+  border-radius: calc(4.5px * var(--ui-scale));
   cursor: pointer;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   align-items: center;
-  padding: calc(4px * var(--ui-scale));
+  padding: calc(5px * var(--ui-scale));
   transform: skewX(-5deg);
   transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.14s ease, box-shadow 0.16s ease, filter 0.14s ease;
   box-shadow: 4px 5px 0 rgba(0, 0, 0, 0.42);
@@ -277,8 +278,8 @@ body.theme-light .enemy-upgrade-pill {
   top: 43%;
   left: 50%;
   transform: translate(-50%, -50%) skewX(5deg);
-  width: calc(110px * var(--ui-scale));
-  height: calc(110px * var(--ui-scale));
+  width: calc(124px * var(--ui-scale));
+  height: calc(124px * var(--ui-scale));
   pointer-events: none;
   overflow: visible;
 }
@@ -287,7 +288,7 @@ body.theme-light .enemy-upgrade-pill {
   position: absolute;
   top: -6px;
   right: -6px;
-  font-size: calc(8px * var(--ui-scale));
+  font-size: calc(9px * var(--ui-scale));
   font-weight: 900;
   letter-spacing: 0.5px;
   padding: 2px 5px;
@@ -303,7 +304,7 @@ body.theme-light .enemy-upgrade-pill {
 }
 
 .falo-card-name {
-  font-size: calc(10px * var(--ui-scale));
+  font-size: calc(11.5px * var(--ui-scale));
   font-weight: 900;
   text-align: center;
   color: #ffffff;
@@ -315,19 +316,19 @@ body.theme-light .enemy-upgrade-pill {
 }
 
 .falo-ignore-btn {
-  margin-top: calc(3px * var(--ui-scale));
+  margin-top: calc(4px * var(--ui-scale));
   background: linear-gradient(130deg, #3b4252 0%, #242933 100%);
   border: calc(2.5px * var(--ui-scale)) solid #0e1116;
-  border-bottom-width: calc(4.5px * var(--ui-scale));
+  border-bottom-width: calc(5px * var(--ui-scale));
   border-bottom-color: #090b0e;
   border-radius: calc(4px * var(--ui-scale));
   color: #f3f6fa;
   font-family: 'Ubuntu', sans-serif;
   font-weight: 900;
-  font-size: calc(11px * var(--ui-scale));
+  font-size: calc(12.5px * var(--ui-scale));
   letter-spacing: 1.1px;
   text-transform: uppercase;
-  padding: calc(5px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  padding: calc(6px * var(--ui-scale)) calc(16px * var(--ui-scale));
   cursor: pointer;
   text-shadow: none;
   -webkit-text-stroke: 0;
@@ -354,17 +355,19 @@ body.theme-light .enemy-upgrade-pill {
   position: fixed;
   bottom: calc(12px * var(--ui-scale));
   left: calc(14px * var(--ui-scale));
-  width: calc(188px * var(--ui-scale));
+  width: calc(214px * var(--ui-scale));
   display: flex;
   flex-direction: column;
-  gap: calc(3px * var(--ui-scale));
+  gap: calc(3.5px * var(--ui-scale));
   padding: 0;
   background: transparent;
   border: none;
   box-shadow: none;
+  transform-origin: left bottom;
+  transform-style: preserve-3d;
   transition: opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   opacity: 1;
-  transform: translateX(0);
+  transform: perspective(660px) translateX(0) rotateY(15deg) rotateX(5deg);
   z-index: 50;
   pointer-events: auto;
 }
@@ -372,23 +375,23 @@ body.theme-light .enemy-upgrade-pill {
 .bottom-left-panel.hidden {
   display: flex !important;
   opacity: 0;
-  transform: translateX(-115%);
+  transform: perspective(660px) translateX(-115%) rotateY(15deg) rotateX(5deg);
   pointer-events: none;
 }
 
 /* Floating angled point count badge above bars (e.g. x33) */
 .stat-points-badge {
   position: absolute;
-  top: calc(-24px * var(--ui-scale));
+  top: calc(-27px * var(--ui-scale));
   right: calc(4px * var(--ui-scale));
   transform: rotate(-16deg) skewX(-8deg);
   transform-origin: center center;
   font-family: 'Ubuntu', sans-serif;
   font-weight: 900;
-  font-size: calc(19px * var(--ui-scale));
+  font-size: calc(22px * var(--ui-scale));
   font-variant-numeric: tabular-nums;
   color: #00c4f4;
-  -webkit-text-stroke: calc(1.5px * var(--ui-scale)) #0e1116;
+  -webkit-text-stroke: calc(1.6px * var(--ui-scale)) #0e1116;
   paint-order: stroke fill;
   text-shadow:
     -1.5px -1.5px 0 #0e1116,
@@ -411,14 +414,15 @@ body.theme-light .enemy-upgrade-pill {
   position: fixed;
   bottom: calc(12px * var(--ui-scale));
   left: calc(14px * var(--ui-scale));
-  height: calc(24px * var(--ui-scale));
-  padding: 0 calc(10px * var(--ui-scale));
+  height: calc(27px * var(--ui-scale));
+  padding: 0 calc(12px * var(--ui-scale));
   background: linear-gradient(130deg, #252a34 0%, #171a21 100%);
   border: calc(2px * var(--ui-scale)) solid #0e1116;
   border-bottom-width: calc(3.5px * var(--ui-scale));
   border-bottom-color: #007a9e;
   border-radius: calc(3px * var(--ui-scale));
-  transform: skewX(-10deg);
+  transform-origin: left bottom;
+  transform: perspective(640px) rotateY(14deg) rotateX(5deg) skewX(-10deg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -430,7 +434,7 @@ body.theme-light .enemy-upgrade-pill {
 }
 
 .stat-corner-tab:hover {
-  transform: translateY(-2px) skewX(-10deg) scale(1.06);
+  transform: perspective(640px) translateY(-2px) rotateY(14deg) rotateX(5deg) skewX(-10deg) scale(1.06);
 }
 
 .stat-corner-tab.hidden {
@@ -440,7 +444,7 @@ body.theme-light .enemy-upgrade-pill {
 .stat-corner-badge {
   font-family: 'Ubuntu', sans-serif;
   font-weight: 900;
-  font-size: calc(11.5px * var(--ui-scale));
+  font-size: calc(13px * var(--ui-scale));
   font-variant-numeric: tabular-nums;
   color: #ffffff;
   transform: skewX(10deg);
@@ -451,7 +455,7 @@ body.theme-light .enemy-upgrade-pill {
 .stat-upgrade-list {
   display: flex;
   flex-direction: column;
-  gap: calc(3px * var(--ui-scale));
+  gap: calc(3.5px * var(--ui-scale));
 }
 
 /* Each Angled Tactical Stat Bar */
@@ -459,11 +463,11 @@ body.theme-light .enemy-upgrade-pill {
   position: relative;
   display: flex;
   align-items: stretch;
-  height: calc(19px * var(--ui-scale));
+  height: calc(22px * var(--ui-scale));
   width: 100%;
   background: linear-gradient(130deg, #252a34 0%, #171a21 100%);
   border: calc(2px * var(--ui-scale)) solid #0e1116;
-  border-bottom-width: calc(3.5px * var(--ui-scale));
+  border-bottom-width: calc(3.8px * var(--ui-scale));
   border-bottom-color: #090b0e;
   border-radius: calc(3px * var(--ui-scale));
   overflow: hidden;
@@ -504,8 +508,8 @@ body.theme-light .enemy-upgrade-pill {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding-left: calc(9px * var(--ui-scale));
-  padding-right: calc(6px * var(--ui-scale));
+  padding-left: calc(10px * var(--ui-scale));
+  padding-right: calc(7px * var(--ui-scale));
   transform: skewX(11deg);
   pointer-events: none;
   user-select: none;
@@ -513,7 +517,7 @@ body.theme-light .enemy-upgrade-pill {
 
 .stat-bar-label {
   font-family: 'Ubuntu', sans-serif;
-  font-size: calc(9.5px * var(--ui-scale));
+  font-size: calc(11px * var(--ui-scale));
   font-weight: 900;
   color: #ffffff;
   white-space: nowrap;
@@ -531,7 +535,7 @@ body.theme-light .enemy-upgrade-pill {
 
 .stat-bar-hotkey {
   font-family: 'Ubuntu', sans-serif;
-  font-size: calc(9px * var(--ui-scale));
+  font-size: calc(10.5px * var(--ui-scale));
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   color: #ffffff;
@@ -552,7 +556,7 @@ body.theme-light .enemy-upgrade-pill {
 .stat-btn-plus {
   position: relative;
   z-index: 3;
-  width: calc(23px * var(--ui-scale));
+  width: calc(26px * var(--ui-scale));
   height: 100%;
   display: flex;
   align-items: center;
@@ -577,7 +581,7 @@ body.theme-light .enemy-upgrade-pill {
 .stat-plus-symbol {
   font-family: 'Ubuntu', sans-serif;
   font-weight: 900;
-  font-size: calc(13px * var(--ui-scale));
+  font-size: calc(15px * var(--ui-scale));
   color: #0e1116;
   line-height: 1;
   display: flex;
@@ -592,7 +596,9 @@ body.theme-light .enemy-upgrade-pill {
   position: fixed;
   bottom: calc(16px * var(--ui-scale));
   left: 50%;
-  transform: translateX(-50%);
+  transform-origin: bottom center;
+  transform-style: preserve-3d;
+  transform: perspective(720px) translateX(-50%) rotateX(11deg);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -694,8 +700,7 @@ body.theme-light .enemy-upgrade-pill {
 }
 
 .center-hud.has-multi-gauges {
-  padding-top: calc(6px * var(--ui-scale));
-  padding-bottom: calc(6px * var(--ui-scale));
+  padding: calc(6px * var(--ui-scale)) calc(18px * var(--ui-scale));
 }
 
 .weapon-gauge-slot {
@@ -864,7 +869,8 @@ body.theme-light .enemy-upgrade-pill {
   font-size: calc(11px * var(--ui-scale));
   font-weight: 800;
   will-change: transform;
-  transform: perspective(900px) translate3d(var(--auth-tx, 0px), var(--auth-ty, 0px), 0) rotateX(var(--auth-rx, 0deg)) rotateY(var(--auth-ry, 0deg)) skewX(-9deg) rotate(0.9deg);
+  transform-origin: left bottom;
+  transform: perspective(660px) translate3d(var(--auth-tx, 0px), var(--auth-ty, 0px), 0) rotateX(var(--auth-rx, 5deg)) rotateY(var(--auth-ry, 14deg)) skewX(-9deg);
   scale: 1;
   transition: scale 0.16s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.18s ease, box-shadow 0.18s ease;
 }
@@ -874,7 +880,7 @@ body.theme-light .enemy-upgrade-pill {
 }
 
 .auth-status-container:hover {
-  transform: perspective(900px) translate3d(var(--auth-tx, 0px), var(--auth-ty, 0px), 0) rotateX(var(--auth-rx, 0deg)) rotateY(var(--auth-ry, 0deg)) skewX(-9deg) rotate(0.4deg);
+  transform: perspective(660px) translate3d(var(--auth-tx, 0px), var(--auth-ty, 0px), 0) rotateX(var(--auth-rx, 5deg)) rotateY(var(--auth-ry, 14deg)) skewX(-9deg);
   scale: 1.05;
   border-color: rgba(0, 178, 225, 0.65);
   box-shadow: 7px 8px 0 rgba(0, 0, 0, 0.5), 0 12px 26px rgba(0, 0, 0, 0.42);
@@ -954,7 +960,8 @@ body.theme-light .enemy-upgrade-pill {
   backdrop-filter: blur(6px);
   box-shadow: 5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 20px rgba(0, 0, 0, 0.32);
   will-change: transform;
-  transform: perspective(900px) translate3d(var(--fs-tx, 0px), var(--fs-ty, 0px), 0) rotateX(var(--fs-rx, 0deg)) rotateY(var(--fs-ry, 0deg)) skewX(-10deg) rotate(-1.5deg);
+  transform-origin: left top;
+  transform: perspective(660px) translate3d(var(--fs-tx, 0px), var(--fs-ty, 0px), 0) rotateX(var(--fs-rx, -5deg)) rotateY(var(--fs-ry, 14deg)) skewX(-10deg);
   scale: 1;
   transition: scale 0.16s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.18s ease, background-color 0.16s ease, box-shadow 0.18s ease;
 }
@@ -964,14 +971,14 @@ body.theme-light .enemy-upgrade-pill {
 }
 
 .menu-fullscreen-btn:hover {
-  transform: perspective(900px) translate3d(var(--fs-tx, 0px), var(--fs-ty, 0px), 0) rotateX(var(--fs-rx, 0deg)) rotateY(var(--fs-ry, 0deg)) skewX(-10deg) rotate(-2.2deg);
+  transform: perspective(660px) translate3d(var(--fs-tx, 0px), var(--fs-ty, 0px), 0) rotateX(var(--fs-rx, -5deg)) rotateY(var(--fs-ry, 14deg)) skewX(-10deg);
   scale: 1.06;
   border-color: rgba(0, 178, 225, 0.78);
   box-shadow: 7px 8px 0 rgba(0, 0, 0, 0.5), 0 12px 26px rgba(0, 0, 0, 0.42);
 }
 
 .menu-fullscreen-btn:active {
-  transform: perspective(900px) translate3d(var(--fs-tx, 0px), var(--fs-ty, 0px), 0) rotateX(var(--fs-rx, 0deg)) rotateY(var(--fs-ry, 0deg)) skewX(-10deg) rotate(-1.2deg);
+  transform: perspective(660px) translate3d(var(--fs-tx, 0px), var(--fs-ty, 0px), 0) rotateX(var(--fs-rx, -5deg)) rotateY(var(--fs-ry, 14deg)) skewX(-10deg);
   scale: 0.97;
 }
 
@@ -1144,31 +1151,31 @@ body.theme-light #main-menu-overlay.modal-overlay {
 .main-menu-right-panel {
   position: relative;
   z-index: 20;
-  width: min(calc(470px * var(--ui-scale)), calc(100vw - 56px));
+  width: min(calc(535px * var(--ui-scale)), calc(100vw - 56px));
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  transform-origin: center center;
+  transform-origin: right center;
   transform-style: preserve-3d;
-  transform: perspective(950px) rotateY(-3.8deg);
+  transform: perspective(680px) rotateY(-14.5deg);
   will-change: transform;
 }
 
 .main-menu-brand {
   text-align: right;
-  margin-bottom: calc(10px * var(--ui-scale));
+  margin-bottom: calc(12px * var(--ui-scale));
   padding-right: calc(4px * var(--ui-scale));
   transform: skewX(-11deg);
 }
 
 .main-menu-title {
   font-family: 'Ubuntu', sans-serif;
-  font-size: calc(44px * var(--ui-scale));
+  font-size: calc(50px * var(--ui-scale));
   font-weight: 900;
   line-height: 1;
   letter-spacing: 3px;
   color: #00b2e1;
-  -webkit-text-stroke: calc(2px * var(--ui-scale)) #15181e;
+  -webkit-text-stroke: calc(2.2px * var(--ui-scale)) #15181e;
   paint-order: stroke fill;
   text-shadow:
     -2px -2px 0 #15181e,
@@ -1182,7 +1189,7 @@ body.theme-light #main-menu-overlay.modal-overlay {
 
 .main-menu-sub {
   font-family: 'Ubuntu', sans-serif;
-  font-size: calc(12.5px * var(--ui-scale));
+  font-size: calc(14px * var(--ui-scale));
   font-weight: 800;
   letter-spacing: 1.8px;
   color: #d6dce4;
@@ -1193,13 +1200,13 @@ body.theme-light #main-menu-overlay.modal-overlay {
      1.5px -1.5px 0 #15181e,
     -1.5px  1.5px 0 #15181e,
      1.5px  1.5px 0 #15181e;
-  margin-top: calc(4px * var(--ui-scale));
+  margin-top: calc(5px * var(--ui-scale));
   user-select: none;
 }
 
 /* Main Menu Player Name Input (Directly above Deploy) */
 .player-name-wrapper {
-  margin-bottom: calc(11px * var(--ui-scale));
+  margin-bottom: calc(13px * var(--ui-scale));
   width: 100%;
   transform: translateX(calc(-12px * var(--ui-scale)));
   transform-style: preserve-3d;
@@ -1209,10 +1216,10 @@ body.theme-light #main-menu-overlay.modal-overlay {
   width: 100%;
   background: rgba(20, 22, 27, 0.94);
   border: calc(2.5px * var(--ui-scale)) solid rgba(255, 255, 255, 0.22);
-  border-bottom: calc(4px * var(--ui-scale)) solid #007a9e;
+  border-bottom: calc(4.5px * var(--ui-scale)) solid #007a9e;
   border-radius: 3px;
-  padding: calc(10px * var(--ui-scale)) calc(18px * var(--ui-scale));
-  font-size: calc(14.5px * var(--ui-scale));
+  padding: calc(11.5px * var(--ui-scale)) calc(20px * var(--ui-scale));
+  font-size: calc(16.5px * var(--ui-scale));
   font-weight: 900;
   color: #ffffff;
   text-align: center;
@@ -1239,14 +1246,14 @@ body.theme-light #main-menu-overlay.modal-overlay {
 .main-menu-actions {
   display: flex;
   flex-direction: column;
-  gap: calc(11px * var(--ui-scale));
+  gap: calc(13px * var(--ui-scale));
   transform-style: preserve-3d;
 }
 
 .main-menu-tile-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: calc(11px * var(--ui-scale));
+  gap: calc(13px * var(--ui-scale));
   transform-style: preserve-3d;
 }
 
@@ -1260,12 +1267,12 @@ body.theme-light #main-menu-overlay.modal-overlay {
   justify-content: space-between;
   width: 100%;
   border-radius: calc(3px * var(--ui-scale));
-  padding: calc(14px * var(--ui-scale)) calc(20px * var(--ui-scale));
+  padding: calc(16px * var(--ui-scale)) calc(22px * var(--ui-scale));
   font-family: 'Ubuntu', sans-serif;
   text-align: left;
   cursor: pointer;
   border: calc(3px * var(--ui-scale)) solid #111419;
-  border-bottom-width: calc(5.5px * var(--ui-scale));
+  border-bottom-width: calc(6px * var(--ui-scale));
   box-shadow: 5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 20px rgba(0, 0, 0, 0.32);
   transform-origin: center center;
   transform: translateX(var(--tile-tx)) skewX(-11deg);
@@ -1293,19 +1300,19 @@ body.theme-light #main-menu-overlay.modal-overlay {
   z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: calc(3px * var(--ui-scale));
+  gap: calc(3.5px * var(--ui-scale));
   transform: skewX(7deg);
 }
 
 .tile-title {
-  font-size: calc(21px * var(--ui-scale));
+  font-size: calc(24px * var(--ui-scale));
   font-weight: 900;
   letter-spacing: 1.5px;
   line-height: 1.08;
 }
 
 .tile-sub {
-  font-size: calc(10.5px * var(--ui-scale));
+  font-size: calc(12px * var(--ui-scale));
   font-weight: 800;
   letter-spacing: 1.2px;
   opacity: 0.82;
@@ -1313,10 +1320,10 @@ body.theme-light #main-menu-overlay.modal-overlay {
 
 .tile-watermark {
   position: absolute;
-  right: calc(12px * var(--ui-scale));
+  right: calc(14px * var(--ui-scale));
   top: 50%;
-  width: calc(64px * var(--ui-scale));
-  height: calc(64px * var(--ui-scale));
+  width: calc(72px * var(--ui-scale));
+  height: calc(72px * var(--ui-scale));
   opacity: 0.17;
   pointer-events: none;
   transform: translateY(-50%) skewX(6deg);
@@ -1331,7 +1338,7 @@ body.theme-light #main-menu-overlay.modal-overlay {
 /* Row 1: Primary Hero Tile (Deploy) */
 .tile-deploy {
   --tile-tx: calc(-6px * var(--ui-scale));
-  min-height: calc(82px * var(--ui-scale));
+  min-height: calc(94px * var(--ui-scale));
   background: linear-gradient(125deg, #00c4f4 0%, #009ac4 68%, #0082a8 100%);
   border-color: #0b1924;
   border-bottom-color: #005873;
@@ -1339,7 +1346,7 @@ body.theme-light #main-menu-overlay.modal-overlay {
 }
 
 .tile-deploy .tile-title {
-  font-size: calc(28px * var(--ui-scale));
+  font-size: calc(32px * var(--ui-scale));
   letter-spacing: 2.2px;
   text-shadow: 2px 3px 0 rgba(0, 40, 56, 0.55);
 }
@@ -1350,9 +1357,9 @@ body.theme-light #main-menu-overlay.modal-overlay {
 }
 
 .tile-deploy .tile-watermark {
-  width: calc(68px * var(--ui-scale));
-  height: calc(68px * var(--ui-scale));
-  right: calc(16px * var(--ui-scale));
+  width: calc(78px * var(--ui-scale));
+  height: calc(78px * var(--ui-scale));
+  right: calc(18px * var(--ui-scale));
   opacity: 0.22;
 }
 
@@ -1360,8 +1367,8 @@ body.theme-light #main-menu-overlay.modal-overlay {
 .tile-armory,
 .tile-evo {
   --tile-tx: calc(0px * var(--ui-scale));
-  min-height: calc(74px * var(--ui-scale));
-  padding: calc(13px * var(--ui-scale)) calc(16px * var(--ui-scale));
+  min-height: calc(84px * var(--ui-scale));
+  padding: calc(15px * var(--ui-scale)) calc(18px * var(--ui-scale));
   background: linear-gradient(165deg, #f8fafc 0%, #e2e7ef 100%);
   border-color: #161a22;
   border-bottom-color: #5b6370;
@@ -1370,26 +1377,26 @@ body.theme-light #main-menu-overlay.modal-overlay {
 
 .tile-armory .tile-content,
 .tile-evo .tile-content {
-  padding-right: calc(34px * var(--ui-scale));
+  padding-right: calc(38px * var(--ui-scale));
 }
 
 .tile-armory .tile-title,
 .tile-evo .tile-title {
-  font-size: calc(15.5px * var(--ui-scale));
+  font-size: calc(17.5px * var(--ui-scale));
   letter-spacing: 0.8px;
 }
 
 .tile-armory .tile-sub,
 .tile-evo .tile-sub {
   color: #475569;
-  font-size: calc(9.8px * var(--ui-scale));
+  font-size: calc(11px * var(--ui-scale));
 }
 
 .tile-armory .tile-watermark,
 .tile-evo .tile-watermark {
-  width: calc(46px * var(--ui-scale));
-  height: calc(46px * var(--ui-scale));
-  right: calc(12px * var(--ui-scale));
+  width: calc(52px * var(--ui-scale));
+  height: calc(52px * var(--ui-scale));
+  right: calc(14px * var(--ui-scale));
   color: #1e293b;
   opacity: 0.13;
 }
@@ -1397,7 +1404,7 @@ body.theme-light #main-menu-overlay.modal-overlay {
 /* Row 3: Wide Slate Tile (Settings) */
 .tile-settings {
   --tile-tx: calc(6px * var(--ui-scale));
-  min-height: calc(60px * var(--ui-scale));
+  min-height: calc(68px * var(--ui-scale));
   background: linear-gradient(130deg, #2d333f 0%, #1b1f27 100%);
   border-color: #0e1116;
   border-bottom-color: #090b0e;
@@ -1405,7 +1412,7 @@ body.theme-light #main-menu-overlay.modal-overlay {
 }
 
 .tile-settings .tile-title {
-  font-size: calc(18px * var(--ui-scale));
+  font-size: calc(20.5px * var(--ui-scale));
 }
 
 .tile-settings .tile-sub {
@@ -1413,9 +1420,9 @@ body.theme-light #main-menu-overlay.modal-overlay {
 }
 
 .tile-settings .tile-watermark {
-  width: calc(44px * var(--ui-scale));
-  height: calc(44px * var(--ui-scale));
-  right: calc(16px * var(--ui-scale));
+  width: calc(50px * var(--ui-scale));
+  height: calc(50px * var(--ui-scale));
+  right: calc(18px * var(--ui-scale));
   opacity: 0.16;
 }
 
@@ -4647,7 +4654,8 @@ body.is-mobile #falo-upgrade-panel {
   top: calc(16px + 44px * var(--ui-scale));
   left: 50%;
   right: auto;
-  transform: translateX(-50%);
+  transform-origin: top center;
+  transform: perspective(720px) translateX(-50%) rotateX(-8deg);
   padding: 8px 12px 4px;
   align-items: center;
   max-width: calc(100vw - 20px);
@@ -4661,7 +4669,7 @@ body.is-mobile #falo-upgrade-panel::-webkit-scrollbar {
 }
 
 body.is-mobile #falo-upgrade-panel.hidden {
-  transform: translate(-50%, -14px);
+  transform: perspective(720px) translate(-50%, -14px) rotateX(-8deg);
 }
 
 body.is-mobile .falo-panel-header {
@@ -4677,7 +4685,7 @@ body.is-mobile .falo-upgrade-grid {
 body.is-mobile .bottom-left-panel {
   bottom: calc(clamp(116px, 29vmin, 156px) + 22px);
   left: 12px;
-  width: calc(165px * var(--ui-scale));
+  width: calc(186px * var(--ui-scale));
 }
 
 body.is-mobile .stat-corner-tab {
@@ -4804,6 +4812,11 @@ body.is-mobile .center-hud.has-multi-gauges .shell-pip {
     right: 16px;
     bottom: 10px;
     justify-content: space-between;
+    transform: none;
+  }
+
+  .auth-status-container:hover {
+    transform: none;
   }
 
   .menu-fullscreen-btn {
@@ -4811,6 +4824,12 @@ body.is-mobile .center-hud.has-multi-gauges .shell-pip {
     left: 14px;
     padding: 7px 11px;
     font-size: 10px;
+    transform: skewX(-10deg);
+  }
+
+  .menu-fullscreen-btn:hover,
+  .menu-fullscreen-btn:active {
+    transform: skewX(-10deg);
   }
 }
 
@@ -4833,6 +4852,8 @@ body.is-mobile .center-hud.has-multi-gauges .shell-pip {
 
   .main-menu-right-panel {
     width: min(440px, 100%);
+    transform-origin: bottom center;
+    transform: perspective(760px) rotateX(9deg);
   }
 
   .main-menu-brand {
@@ -4894,6 +4915,8 @@ body.is-mobile .center-hud.has-multi-gauges .shell-pip {
 
   .main-menu-right-panel {
     width: min(410px, 54vw);
+    transform-origin: right center;
+    transform: perspective(680px) rotateY(-12deg);
   }
 
   .main-menu-brand {
@@ -4973,14 +4996,30 @@ body.is-mobile .center-hud.has-multi-gauges .shell-pip {
   }
 
   .main-menu-scene,
-  .main-menu-hero-tank-wrap,
-  .auth-status-container,
-  .menu-fullscreen-btn {
+  .main-menu-hero-tank-wrap {
     transform: none !important;
   }
 
+  .auth-status-container {
+    transform: perspective(660px) rotateX(5deg) rotateY(14deg) skewX(-9deg) !important;
+  }
+
+  .menu-fullscreen-btn {
+    transform: perspective(660px) rotateX(-5deg) rotateY(14deg) skewX(-10deg) !important;
+  }
+
   .main-menu-right-panel {
-    transform: perspective(950px) rotateY(-3.8deg) !important;
+    transform: perspective(680px) rotateY(-14.5deg) !important;
+  }
+
+  @media (max-width: 820px) and (min-height: 461px) {
+    .main-menu-right-panel {
+      transform: perspective(760px) rotateX(9deg) !important;
+    }
+    .auth-status-container,
+    .menu-fullscreen-btn {
+      transform: none !important;
+    }
   }
 
   .main-menu-tile,
@@ -5953,7 +5992,7 @@ body.theme-light .falo-shop-body {
   position: relative;
   z-index: 2;
   margin-left: 0;
-  padding: calc(20px * var(--ui-scale)) calc(28px * var(--ui-scale)) calc(28px * var(--ui-scale)) calc(26px * var(--ui-scale));
+  padding: calc(44px * var(--ui-scale)) calc(34px * var(--ui-scale)) calc(36px * var(--ui-scale)) calc(48px * var(--ui-scale));
   overflow-y: auto;
   overflow-x: hidden;
   transform: none;
@@ -5971,6 +6010,8 @@ body.theme-light .falo-shop-body {
   display: flex;
   flex-direction: column;
   gap: calc(24px * var(--ui-scale));
+  transform-origin: left center;
+  transform: perspective(960px) rotateY(6deg);
   will-change: transform;
 }
 
@@ -6438,6 +6479,7 @@ body.theme-light .shop-slanted-scrollbar {
 
 .shop-preview-info.is-tab-leaving-left .shop-preview-header-block,
 .shop-preview-info.is-tab-leaving-left .shop-preview-desc,
+.shop-preview-info.is-tab-leaving-left .shop-preview-rename-wrap,
 .shop-preview-info.is-tab-leaving-left .shop-preview-action-btn {
   opacity: 0;
   translate: -14px 0;
@@ -6446,6 +6488,7 @@ body.theme-light .shop-slanted-scrollbar {
 
 .shop-preview-info.is-tab-leaving-right .shop-preview-header-block,
 .shop-preview-info.is-tab-leaving-right .shop-preview-desc,
+.shop-preview-info.is-tab-leaving-right .shop-preview-rename-wrap,
 .shop-preview-info.is-tab-leaving-right .shop-preview-action-btn {
   opacity: 0;
   translate: 14px 0;
@@ -6454,12 +6497,14 @@ body.theme-light .shop-slanted-scrollbar {
 
 .shop-preview-info.is-tab-entering-right .shop-preview-header-block,
 .shop-preview-info.is-tab-entering-right .shop-preview-desc,
+.shop-preview-info.is-tab-entering-right .shop-preview-rename-wrap,
 .shop-preview-info.is-tab-entering-right .shop-preview-action-btn {
   animation: shopInfoEnterFromRight 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .shop-preview-info.is-tab-entering-left .shop-preview-header-block,
 .shop-preview-info.is-tab-entering-left .shop-preview-desc,
+.shop-preview-info.is-tab-entering-left .shop-preview-rename-wrap,
 .shop-preview-info.is-tab-entering-left .shop-preview-action-btn {
   animation: shopInfoEnterFromLeft 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -6522,6 +6567,8 @@ body.theme-light .shop-slanted-scrollbar {
   gap: calc(10px * var(--ui-scale));
   padding-top: calc(12px * var(--ui-scale));
   border-top: 2px solid rgba(255, 255, 255, 0.1);
+  transform-origin: right center;
+  transform: perspective(920px) rotateY(-5deg) rotateX(1deg);
   will-change: transform;
 }
 
@@ -6698,6 +6745,7 @@ body.theme-light .shop-preview-desc {
     padding-top: 0;
     border-top: none;
     gap: 5px;
+    transform: none !important;
   }
 
   .shop-preview-name {
@@ -6832,6 +6880,179 @@ body.theme-light .shop-preview-desc {
   transition: filter 0.12s ease, transform 0.12s ease;
 }
 
+.falo-card.falo-ally-card .falo-card-subdesc {
+  margin-top: 0;
+  min-height: calc(38px * var(--ui-scale));
+}
+
+.falo-card.falo-ally-card .falo-card-status-row {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: calc(6px * var(--ui-scale));
+}
+
+.falo-ally-btn-group {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(5px * var(--ui-scale));
+}
+
+.falo-card.falo-ally-card .falo-ally-rename-btn,
+.falo-card.falo-ally-card .falo-ally-dismiss-btn {
+  padding: calc(4px * var(--ui-scale)) calc(8px * var(--ui-scale));
+  border-bottom-width: calc(3px * var(--ui-scale));
+  font-size: calc(10px * var(--ui-scale));
+  border-radius: calc(5px * var(--ui-scale));
+  font-family: inherit;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  color: #ffffff;
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+
+.falo-card.falo-ally-card .falo-ally-rename-btn {
+  border: calc(2px * var(--ui-scale)) solid #007a9e;
+  border-bottom-width: calc(3px * var(--ui-scale));
+  background: linear-gradient(135deg, #00b2e1 0%, #0284c7 100%);
+}
+
+.falo-card.falo-ally-card .falo-ally-rename-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.falo-card.falo-ally-card .falo-ally-rename-btn:active {
+  transform: translateY(1px);
+}
+
+.falo-ally-rename-inline {
+  display: flex;
+  align-items: center;
+  gap: calc(4px * var(--ui-scale));
+  min-height: calc(38px * var(--ui-scale));
+}
+
+.falo-ally-rename-inline.hidden {
+  display: none !important;
+}
+
+.falo-ally-rename-input {
+  flex: 1;
+  min-width: 0;
+  padding: calc(4px * var(--ui-scale)) calc(7px * var(--ui-scale));
+  border-radius: calc(5px * var(--ui-scale));
+  border: calc(2px * var(--ui-scale)) solid #94a3b8;
+  background-color: #ffffff;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 800;
+}
+
+.falo-ally-rename-input:focus {
+  outline: none;
+  border-color: #00b2e1;
+}
+
+.falo-ally-rename-save-btn,
+.falo-ally-rename-cancel-btn {
+  padding: calc(4px * var(--ui-scale)) calc(7px * var(--ui-scale));
+  border-radius: calc(5px * var(--ui-scale));
+  border: calc(2px * var(--ui-scale)) solid #047857;
+  border-bottom-width: calc(3px * var(--ui-scale));
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: calc(10px * var(--ui-scale));
+  font-weight: 900;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.falo-ally-rename-cancel-btn {
+  border-color: #475569;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+}
+
+.shop-preview-rename-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: calc(5px * var(--ui-scale));
+  width: 100%;
+}
+
+.shop-preview-rename-wrap.hidden {
+  display: none !important;
+}
+
+.shop-preview-rename-label {
+  font-size: calc(10.5px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.7px;
+  color: #94a3b8;
+}
+
+body.theme-light .shop-preview-rename-label {
+  color: #475569;
+}
+
+.shop-preview-rename-row {
+  display: flex;
+  align-items: stretch;
+  gap: calc(8px * var(--ui-scale));
+  width: 100%;
+}
+
+.shop-preview-rename-input {
+  flex: 1;
+  min-width: 0;
+  padding: calc(7px * var(--ui-scale)) calc(10px * var(--ui-scale));
+  border-radius: calc(6px * var(--ui-scale));
+  border: calc(2px * var(--ui-scale)) solid rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+  font-family: inherit;
+  font-size: calc(12.5px * var(--ui-scale));
+  font-weight: 800;
+}
+
+.shop-preview-rename-input:focus {
+  outline: none;
+  border-color: #00b2e1;
+}
+
+body.theme-light .shop-preview-rename-input {
+  background: #ffffff;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.shop-preview-rename-btn {
+  padding: calc(7px * var(--ui-scale)) calc(12px * var(--ui-scale));
+  border-radius: calc(6px * var(--ui-scale));
+  border: calc(2px * var(--ui-scale)) solid #007a9e;
+  border-bottom-width: calc(4px * var(--ui-scale));
+  background: linear-gradient(135deg, #00b2e1 0%, #0284c7 100%);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.7px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+
+.shop-preview-rename-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.shop-preview-rename-btn:active {
+  transform: translateY(1px);
+}
+
 .falo-ally-dismiss-btn:hover {
   filter: brightness(1.08);
   transform: translateY(-1px);
@@ -6844,19 +7065,17 @@ body.theme-light .shop-preview-desc {
 /* In-Game Top-Right Squad HUD */
 .ally-squad-hud {
   position: fixed;
-  top: calc(82px * var(--ui-scale));
+  top: calc(84px * var(--ui-scale));
   right: calc(16px * var(--ui-scale));
-  width: calc(210px * var(--ui-scale));
+  width: calc(238px * var(--ui-scale));
   display: flex;
   flex-direction: column;
-  gap: calc(7px * var(--ui-scale));
-  transform: skewX(-10deg);
+  gap: calc(8px * var(--ui-scale));
+  transform-origin: right top;
+  transform: perspective(640px) rotateY(-14deg) rotateX(-3deg);
   z-index: 44;
-  padding: calc(8px * var(--ui-scale)) calc(12px * var(--ui-scale));
-}
-
-.ally-squad-hud > * {
-  transform: skewX(10deg);
+  padding: calc(11px * var(--ui-scale)) calc(15px * var(--ui-scale));
+  box-sizing: border-box;
 }
 
 .ally-squad-hud.hidden {
@@ -6867,30 +7086,33 @@ body.theme-light .shop-preview-desc {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: calc(8px * var(--ui-scale));
-  padding-bottom: calc(4px * var(--ui-scale));
+  gap: calc(9px * var(--ui-scale));
+  width: 100%;
+  padding-bottom: calc(6px * var(--ui-scale));
   border-bottom: 1.5px solid rgba(148, 163, 184, 0.25);
 }
 
 .ally-squad-title {
-  font-size: calc(11px * var(--ui-scale));
+  font-size: calc(12.5px * var(--ui-scale));
   font-weight: 900;
   letter-spacing: 1.2px;
   color: #94a3b8;
 }
 
 .ally-stance-btn {
-  padding: calc(2px * var(--ui-scale)) calc(7px * var(--ui-scale));
+  padding: calc(3px * var(--ui-scale)) calc(9px * var(--ui-scale));
   border-radius: calc(3px * var(--ui-scale));
   border: calc(1.8px * var(--ui-scale)) solid #0b1924;
-  border-bottom-width: calc(3px * var(--ui-scale));
+  border-bottom-width: calc(3.2px * var(--ui-scale));
   background: linear-gradient(125deg, #00c4f4 0%, #008bb5 100%);
   color: #ffffff;
   font-family: inherit;
-  font-size: calc(9.5px * var(--ui-scale));
+  font-size: calc(10.5px * var(--ui-scale));
   font-weight: 900;
   letter-spacing: 0.6px;
   cursor: pointer;
+  transform: skewX(-8deg);
+  margin-right: calc(2px * var(--ui-scale));
   text-shadow: 1px 1px 0 rgba(0, 40, 56, 0.55);
 }
 
@@ -6901,13 +7123,15 @@ body.theme-light .shop-preview-desc {
 .ally-squad-list {
   display: flex;
   flex-direction: column;
-  gap: calc(6px * var(--ui-scale));
+  gap: calc(7px * var(--ui-scale));
+  width: 100%;
 }
 
 .ally-hud-item {
   display: flex;
   flex-direction: column;
-  gap: calc(2px * var(--ui-scale));
+  gap: calc(3px * var(--ui-scale));
+  width: 100%;
   transition: opacity 0.16s ease;
 }
 
@@ -6925,20 +7149,20 @@ body.theme-light .shop-preview-desc {
 .ally-hud-identity {
   display: inline-flex;
   align-items: center;
-  gap: calc(5px * var(--ui-scale));
+  gap: calc(6px * var(--ui-scale));
   min-width: 0;
 }
 
 .ally-hud-dot {
-  width: calc(8px * var(--ui-scale));
-  height: calc(8px * var(--ui-scale));
+  width: calc(9px * var(--ui-scale));
+  height: calc(9px * var(--ui-scale));
   border-radius: 50%;
   border: 1.5px solid rgba(15, 23, 42, 0.75);
   flex-shrink: 0;
 }
 
 .ally-hud-name {
-  font-size: calc(11.5px * var(--ui-scale));
+  font-size: calc(13px * var(--ui-scale));
   font-weight: 900;
   color: #f8fafc;
   white-space: nowrap;
@@ -6947,7 +7171,7 @@ body.theme-light .shop-preview-desc {
 }
 
 .ally-hud-state {
-  font-size: calc(9.5px * var(--ui-scale));
+  font-size: calc(10.5px * var(--ui-scale));
   font-weight: 900;
   letter-spacing: 0.5px;
   color: #7dd3fc;
@@ -6968,7 +7192,7 @@ body.theme-light .shop-preview-desc {
 }
 
 .ally-hud-chassis {
-  font-size: calc(9.5px * var(--ui-scale));
+  font-size: calc(10.5px * var(--ui-scale));
   font-weight: 700;
   color: #94a3b8;
   white-space: nowrap;
@@ -6978,7 +7202,7 @@ body.theme-light .shop-preview-desc {
 
 .ally-hud-hp-track {
   width: 100%;
-  height: calc(5px * var(--ui-scale));
+  height: calc(6px * var(--ui-scale));
   background: rgba(15, 23, 42, 0.75);
   border-radius: 999px;
   overflow: hidden;
@@ -6997,7 +7221,8 @@ body.theme-light .shop-preview-desc {
   position: fixed;
   top: calc(86px * var(--ui-scale));
   left: 50%;
-  transform: translateX(-50%) skewX(-10deg);
+  transform-origin: top center;
+  transform: perspective(680px) translateX(-50%) rotateX(-9deg) skewX(-10deg);
   min-width: calc(270px * var(--ui-scale));
   max-width: calc(92vw);
   padding: calc(8px * var(--ui-scale)) calc(18px * var(--ui-scale));
@@ -7100,10 +7325,10 @@ body.theme-light .downed-status-banner.is-reviving .downed-status-text {
 
 @media (max-width: 640px) {
   .ally-squad-hud {
-    width: calc(168px * var(--ui-scale));
+    width: calc(188px * var(--ui-scale));
     top: calc(74px * var(--ui-scale));
     right: calc(10px * var(--ui-scale));
-    padding: calc(6px * var(--ui-scale)) calc(9px * var(--ui-scale));
+    padding: calc(8px * var(--ui-scale)) calc(12px * var(--ui-scale));
   }
 }
 
@@ -7124,6 +7349,7 @@ body.theme-light .downed-status-banner.is-reviving .downed-status-text {
   .shop-preview-info,
   .shop-preview-header-block,
   .shop-preview-desc,
+  .shop-preview-rename-wrap,
   .shop-preview-action-btn {
     transform: none !important;
     translate: none !important;

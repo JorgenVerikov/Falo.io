@@ -910,12 +910,12 @@ export class EvolutionTreeController {
 
         if (this.previewInfo) {
           if (isDesktop) {
-            const infoRy = -3.8 - effNx * 2.2;
-            const infoRx = effNy * 1.8;
-            const infoTx = -effNx * 4;
+            const infoRy = -5.0 - effNx * 1.3;
+            const infoRx = 1.0 + effNy * 1.2;
+            const infoTx = -effNx * 3.5;
             const infoTy = effNy * 2;
             this.previewInfo.style.transform =
-              `perspective(950px) translate3d(${infoTx.toFixed(2)}px, ${infoTy.toFixed(2)}px, 0) rotateY(${infoRy.toFixed(2)}deg) rotateX(${infoRx.toFixed(2)}deg)`;
+              `perspective(920px) translate3d(${infoTx.toFixed(2)}px, ${infoTy.toFixed(2)}px, 0) rotateY(${infoRy.toFixed(2)}deg) rotateX(${infoRx.toFixed(2)}deg)`;
           } else {
             this.previewInfo.style.transform = '';
           }

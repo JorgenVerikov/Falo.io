@@ -599,10 +599,10 @@ export class SettingsPreviewController {
         if (isDesktop) {
           const ctx = effNx * 6;
           const cty = effNy * 4;
-          const cry = -effNx * 2.2;
+          const cry = 6.0 - effNx * 2.2;
           const crx = effNy * 1.6;
           this.unifiedPlane.style.transform =
-            `perspective(1500px) translate3d(${ctx.toFixed(2)}px, ${cty.toFixed(2)}px, 0) rotateY(${cry.toFixed(2)}deg) rotateX(${crx.toFixed(2)}deg)`;
+            `perspective(960px) translate3d(${ctx.toFixed(2)}px, ${cty.toFixed(2)}px, 0) rotateY(${cry.toFixed(2)}deg) rotateX(${crx.toFixed(2)}deg)`;
         } else {
           this.unifiedPlane.style.transform = '';
         }
@@ -616,12 +616,16 @@ export class SettingsPreviewController {
       }
 
       if (this.previewInfo) {
-        const infoRy = -3.8 - effNx * 2.2;
-        const infoRx = effNy * 1.8;
-        const infoTx = -effNx * 4;
-        const infoTy = effNy * 2;
-        this.previewInfo.style.transform =
-          `perspective(950px) translate3d(${infoTx.toFixed(2)}px, ${infoTy.toFixed(2)}px, 0) rotateY(${infoRy.toFixed(2)}deg) rotateX(${infoRx.toFixed(2)}deg)`;
+        if (isDesktop) {
+          const infoRy = -5.0 - effNx * 1.3;
+          const infoRx = 1.0 + effNy * 1.2;
+          const infoTx = -effNx * 3.5;
+          const infoTy = effNy * 2;
+          this.previewInfo.style.transform =
+            `perspective(920px) translate3d(${infoTx.toFixed(2)}px, ${infoTy.toFixed(2)}px, 0) rotateY(${infoRy.toFixed(2)}deg) rotateX(${infoRx.toFixed(2)}deg)`;
+        } else {
+          this.previewInfo.style.transform = '';
+        }
       }
 
       const bgTarget = this.previewBackdrop || this.previewPane;

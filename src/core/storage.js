@@ -382,6 +382,21 @@ export class StorageManager {
     return true;
   }
 
+  renameAlly(slotIndex, newName) {
+    if (!Array.isArray(this.data.hiredAllies)) return null;
+    const ally = this.data.hiredAllies[slotIndex];
+    if (!ally) return null;
+    const cleaned = typeof newName === 'string'
+      ? newName.replace(/\s+/g, ' ').trim().slice(0, 18)
+      : '';
+    if (!cleaned) return null;
+    if (ally.name !== cleaned) {
+      ally.name = cleaned;
+      this.save();
+    }
+    return cleaned;
+  }
+
   setAllyBuildPreference(slotIndex, buildPref) {
     if (!Array.isArray(this.data.hiredAllies)) return false;
     const ally = this.data.hiredAllies[slotIndex];

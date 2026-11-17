@@ -824,7 +824,7 @@ export class UIManager {
     } else {
       rows = count >= 5 ? 3 : (count === 4 ? 2 : Math.min(3, count));
     }
-    grid.style.gridTemplateRows = `repeat(${rows}, calc(82px * var(--ui-scale)))`;
+    grid.style.gridTemplateRows = `repeat(${rows}, calc(94px * var(--ui-scale)))`;
 
     this.hasEvolutionsAvailable = true;
     this.evolutionPanelVisible = true;

@@ -277,6 +277,9 @@ export class AllyTank {
     this.chatDuration = 2.2;
     this.chatCooldown = 1.5 + slotIndex * 0.8;
     this.moraleCommentCooldown = 3.5;
+    this.banterCooldown = 7.0 + Math.random() * 8.0 + slotIndex * 2.5;
+    this.jeerCooldown = 5.5 + Math.random() * 6.5;
+    this.pendingReply = null;
 
     this.syncLevelAndProgression(1, unlockedChassis, {}, false, initialPlayerChassis, []);
   }
@@ -422,7 +425,15 @@ export class AllyTank {
     }
 
     if (evolvedName && prevLevel > 1) {
-      AllyCommunicationSystem.tryBroadcast(this, allAllies.length ? allAllies : [this], 'EVOLVED', false, 2.0);
+      AllyCommunicationSystem.tryBroadcast(
+        this,
+        allAllies.length ? allAllies : [this],
+        'EVOLVED',
+        false,
+        2.1,
+        false,
+        { chassisName: evolvedName }
+      );
     }
 
     // Determine active build profile dynamically from current chassis role + early leaning
@@ -606,11 +617,36 @@ export class AllyTank {
 
     if (this.chatCooldown > 0) this.chatCooldown -= dt;
     if (this.moraleCommentCooldown > 0) this.moraleCommentCooldown -= dt;
+    if (this.banterCooldown > 0) this.banterCooldown -= dt;
+    if (this.jeerCooldown > 0) this.jeerCooldown -= dt;
     if (this.chatTimer > 0) {
       this.chatTimer -= dt;
       if (this.chatTimer <= 0) {
         this.chatText = null;
         this.chatTimer = 0;
+      }
+    }
+
+    if (this.pendingReply && !this.dead && !this.destroyed && !this.isDying && !this.isDowned) {
+      this.pendingReply.timer -= dt;
+      if (this.pendingReply.timer <= 0) {
+        const reply = this.pendingReply;
+        this.pendingReply = null;
+        if (this.chatTimer <= 0) {
+          AllyCommunicationSystem.tryBroadcast(
+            this,
+            allies,
+            reply.category,
+            true,
+            2.1,
+            false,
+            {
+              player: reply.player || player,
+              mateName: reply.mateName,
+              waveNumber: reply.waveNumber || waveMgr?.waveNumber || 1
+            }
+          );
+        }
       }
     }
 
@@ -810,6 +846,11 @@ export class AllyTank {
     const escortX = player.x + Math.cos(this.roamAngle) * this.roamDist;
     const escortY = player.y + Math.sin(this.roamAngle) * this.roamDist;
 
+    const chatCtx = {
+      player,
+      waveNumber: waveMgr?.waveNumber || 1
+    };
+
     if (reviveTarget) {
       this.currentTask = 'REVIVE';
       const distToRevive = Math.hypot(reviveTarget.x - this.x, reviveTarget.y - this.y);
@@ -820,7 +861,7 @@ export class AllyTank {
       }
       if (distToRevive < (CONFIG.ALLIES.reviveRadius || 105)) {
         if (Math.random() < dt * 0.45) {
-          AllyCommunicationSystem.tryBroadcast(this, allies, 'REVIVING', false, 2.0);
+          AllyCommunicationSystem.tryBroadcast(this, allies, 'REVIVING', false, 2.0, false, chatCtx);
         }
       } else if (Math.random() < dt * 0.65) {
         AllyCommunicationSystem.tryBroadcast(
@@ -828,7 +869,12 @@ export class AllyTank {
           allies,
           reviveTarget === player ? 'PLAYER_DOWNED' : 'ALLY_DOWNED',
           reviveTarget === player,
-          2.2
+          2.2,
+          false,
+          {
+            ...chatCtx,
+            mateUnit: reviveTarget !== player ? reviveTarget : null
+          }
         );
       }
     } else if (squadStance === 'FOLLOW') {
@@ -837,6 +883,10 @@ export class AllyTank {
       moveGoalY = escortY;
       if (bestEnemy && bestEnemyDist < 540) combatTarget = bestEnemy;
       else if (bestShape && bestShapeDist < 340 && isGraceOrBreak) combatTarget = bestShape;
+      if (!combatTarget && this.banterCooldown <= 0) {
+        this.banterCooldown = 12 + Math.random() * 10;
+        AllyCommunicationSystem.tryBroadcast(this, allies, 'BANTER_SQUAD', false, 2.2, false, chatCtx);
+      }
     } else if (squadStance === 'FARM' || (isGraceOrBreak && (!bestEnemy || bestEnemyDist > 360))) {
       if (bestEnemy && bestEnemyDist < 320 && !this.isRetreatingToHeal) {
         this.currentTask = 'COMBAT';
@@ -857,20 +907,32 @@ export class AllyTank {
         const angleToShape = Math.atan2(this.y - bestShape.y, this.x - bestShape.x);
         moveGoalX = bestShape.x + Math.cos(angleToShape) * desiredFarmDist;
         moveGoalY = bestShape.y + Math.sin(angleToShape) * desiredFarmDist;
-        if (Math.random() < dt * 0.15) {
-          AllyCommunicationSystem.tryBroadcast(this, allies, 'FARMING', false, 1.8);
+        if (this.banterCooldown <= 0) {
+          this.banterCooldown = 11 + Math.random() * 9;
+          const cat = Math.random() < 0.48 ? 'BANTER_SQUAD' : 'FARMING';
+          AllyCommunicationSystem.tryBroadcast(this, allies, cat, false, 2.0, false, chatCtx);
         }
       } else {
         this.currentTask = 'ESCORT';
         moveGoalX = escortX;
         moveGoalY = escortY;
+        if (this.banterCooldown <= 0) {
+          this.banterCooldown = 12 + Math.random() * 10;
+          AllyCommunicationSystem.tryBroadcast(this, allies, 'BANTER_SQUAD', false, 2.2, false, chatCtx);
+        }
       }
     } else if (bestEnemy && (squadStance === 'AGGRESSIVE' || bestEnemyDist < 820 || Math.hypot(bestEnemy.x - player.x, bestEnemy.y - player.y) < 620)) {
       this.currentTask = 'COMBAT';
       combatTarget = bestEnemy;
 
-      if (Math.random() < dt * 0.25) {
-        AllyCommunicationSystem.tryBroadcast(this, allies, 'THREAT_SPOTTED', false, 1.8);
+      if (Math.random() < dt * 0.22) {
+        AllyCommunicationSystem.tryBroadcast(this, allies, 'THREAT_SPOTTED', false, 1.9, false, chatCtx);
+      } else if (!this.isRetreatingToHeal && this.jeerCooldown <= 0 && bestEnemyDist < 540) {
+        this.jeerCooldown = 8.0 + Math.random() * 7.0;
+        const lowEnemy = bestEnemy.hp < bestEnemy.maxHp * 0.55;
+        if (this.moraleState === 'HIGH' || lowEnemy || Math.random() < 0.6) {
+          AllyCommunicationSystem.tryBroadcast(this, allies, 'JEER_ENEMY', false, 2.1, false, chatCtx);
+        }
       }
 
       if (this.isRetreatingToHeal) {
@@ -886,13 +948,19 @@ export class AllyTank {
           moveGoalY = bestEnemy.y + Math.sin(awayFromEnemy) * 380;
         }
         if (this.moraleCommentCooldown <= 0) {
-          this.moraleCommentCooldown = 6.0;
-          AllyCommunicationSystem.tryBroadcast(this, allies, 'LOW_MORALE', false, 2.0);
+          this.moraleCommentCooldown = 6.5;
+          const cat = this.moraleState === 'TERRIFIED' ? 'TERRIFIED' : 'LOW_MORALE';
+          AllyCommunicationSystem.tryBroadcast(this, allies, cat, false, 2.1, false, chatCtx);
         }
       } else if (canSafelyRam(bestEnemy)) {
         moveGoalX = bestEnemy.x + (bestEnemy.vx || 0) * 0.22;
         moveGoalY = bestEnemy.y + (bestEnemy.vy || 0) * 0.22;
       } else {
+        if (this.moraleState === 'HIGH' && this.moraleCommentCooldown <= 0 && Math.random() < dt * 0.35) {
+          this.moraleCommentCooldown = 9.0;
+          AllyCommunicationSystem.tryBroadcast(this, allies, 'HIGH_MORALE', false, 2.0, false, chatCtx);
+        }
+
         const idealDist = isSniper ? 440 : (isDrone ? 350 : (isRammer ? 310 : (this.currentRole === 'skirmisher' ? 245 : 310)));
         const awayAngle = Math.atan2(this.y - bestEnemy.y, this.x - bestEnemy.x);
         const weave = Math.sin(this.strafePhase) * 0.35 + this.orbitDir * 0.32;
@@ -914,11 +982,20 @@ export class AllyTank {
       const angleToShape = Math.atan2(this.y - bestShape.y, this.x - bestShape.x);
       moveGoalX = bestShape.x + Math.cos(angleToShape) * desiredFarmDist;
       moveGoalY = bestShape.y + Math.sin(angleToShape) * desiredFarmDist;
+      if (this.banterCooldown <= 0) {
+        this.banterCooldown = 11 + Math.random() * 9;
+        const cat = Math.random() < 0.45 ? 'BANTER_SQUAD' : 'FARMING';
+        AllyCommunicationSystem.tryBroadcast(this, allies, cat, false, 2.0, false, chatCtx);
+      }
     } else {
       this.currentTask = 'ESCORT';
       moveGoalX = escortX;
       moveGoalY = escortY;
       if (bestShape && bestShapeDist < 420) combatTarget = bestShape;
+      if (this.banterCooldown <= 0) {
+        this.banterCooldown = 12 + Math.random() * 10;
+        AllyCommunicationSystem.tryBroadcast(this, allies, 'BANTER_SQUAD', false, 2.2, false, chatCtx);
+      }
     }
 
     // ====================================================
@@ -1500,18 +1577,18 @@ export class AllyTank {
     if (alpha <= 0.005 || scale <= 0.005) return;
 
     ctx.save();
-    const bubbleY = this.y - this.radius - 34 + yOffset;
+    const bubbleY = this.y - this.radius - 42 + yOffset;
     ctx.translate(this.x, bubbleY);
     ctx.scale(scale, scale);
     ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha * alphaScale));
 
-    ctx.font = "bold 11px 'Ubuntu', sans-serif";
+    ctx.font = "bold 16px 'Ubuntu', sans-serif";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const textWidth = ctx.measureText(this.chatText).width;
-    const bubbleWidth = Math.max(72, textWidth + 26);
-    const bubbleHeight = 22;
-    const r = 7;
+    const bubbleWidth = Math.max(104, textWidth + 40);
+    const bubbleHeight = 32;
+    const r = 10;
     const halfW = bubbleWidth / 2;
     const halfH = bubbleHeight / 2;
 
@@ -1521,9 +1598,9 @@ export class AllyTank {
     ctx.arcTo(halfW, -halfH, halfW, -halfH + r, r);
     ctx.lineTo(halfW, halfH - r);
     ctx.arcTo(halfW, halfH, halfW - r, halfH, r);
-    ctx.lineTo(5, halfH);
-    ctx.lineTo(0, halfH + 6);
-    ctx.lineTo(-5, halfH);
+    ctx.lineTo(7, halfH);
+    ctx.lineTo(0, halfH + 9);
+    ctx.lineTo(-7, halfH);
     ctx.lineTo(-halfW + r, halfH);
     ctx.arcTo(-halfW, halfH, -halfW, halfH - r, r);
     ctx.lineTo(-halfW, -halfH + r);
@@ -1557,17 +1634,17 @@ export class AllyTank {
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
-    ctx.lineWidth = 2.0;
+    ctx.lineWidth = 2.6;
     ctx.strokeStyle = bubbleStroke;
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(-halfW + 11, 0, 3.2, 0, Math.PI * 2);
+    ctx.arc(-halfW + 15, 0, 4.5, 0, Math.PI * 2);
     ctx.fillStyle = bubblePip;
     ctx.fill();
 
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(this.chatText, 4, 0.5);
+    ctx.fillText(this.chatText, 7, 0.5);
     ctx.restore();
   }
 }

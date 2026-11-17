@@ -1,6 +1,7 @@
 import { CONFIG } from '../core/config.js';
 import { ResourceShape, EnemyUnit, Particle } from '../entities/enemy.js';
 import { AllyTank } from '../entities/allyTank.js';
+import { AllyCommunicationSystem } from '../entities/allyComms.js';
 import { PhysicsSystem } from './physics.js';
 
 export class WaveManager {
@@ -62,6 +63,8 @@ export class WaveManager {
       ally.syncLevelAndProgression(initialLevel, unlockedChassis, crewLevels, false, playerChassis, this.allies, this.waveNumber);
       this.allies.push(ally);
     }
+
+    AllyCommunicationSystem.onSpawned(this.allies, player);
   }
 
   clearShapes() {
@@ -182,6 +185,7 @@ export class WaveManager {
     if (!this.isBreak && this.graceTimer <= 0 && this.enemyQueue.length === 0 && activeEnemies.length === 0) {
       this.isBreak = true;
       this.breakTimer = CONFIG.WAVE.breakDuration;
+      AllyCommunicationSystem.onWaveCleared(this.waveNumber, this.allies, player);
     } else if (this.isBreak) {
       this.breakTimer -= dt;
       if (this.breakTimer <= 0) {

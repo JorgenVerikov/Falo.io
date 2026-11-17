@@ -1158,7 +1158,7 @@ export class EnemyUnit {
       jitterX = Math.sin(now * 0.045) * 1.8;
       jitterY = Math.cos(now * 0.035) * 1.0;
     }
-    const bubbleY = this.y - this.radius - 28 + yOffset;
+    const bubbleY = this.y - this.radius - 36 + yOffset;
 
     ctx.translate(bubbleX + jitterX, bubbleY + jitterY);
     ctx.scale(scale, scale);
@@ -1166,13 +1166,13 @@ export class EnemyUnit {
     const unitDeathAlpha = this.isDying ? Math.max(0, 1.0 - (this.deathTimer / this.deathDuration)) : 1.0;
     ctx.globalAlpha = Math.max(0, Math.min(1.0, alpha * unitDeathAlpha * alphaScale));
 
-    ctx.font = "bold 11px 'Ubuntu', sans-serif";
+    ctx.font = "bold 16px 'Ubuntu', sans-serif";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const textWidth = ctx.measureText(this.chatText).width;
-    const bubbleWidth = Math.max(68, textWidth + 26);
-    const bubbleHeight = 22;
-    const r = 7;
+    const bubbleWidth = Math.max(100, textWidth + 40);
+    const bubbleHeight = 32;
+    const r = 10;
 
     const halfW = bubbleWidth / 2;
     const halfH = bubbleHeight / 2;
@@ -1183,9 +1183,9 @@ export class EnemyUnit {
     ctx.arcTo(halfW, -halfH, halfW, -halfH + r, r);
     ctx.lineTo(halfW, halfH - r);
     ctx.arcTo(halfW, halfH, halfW - r, halfH, r);
-    ctx.lineTo(5, halfH);
-    ctx.lineTo(0, halfH + 6);
-    ctx.lineTo(-5, halfH);
+    ctx.lineTo(7, halfH);
+    ctx.lineTo(0, halfH + 9);
+    ctx.lineTo(-7, halfH);
     ctx.lineTo(-halfW + r, halfH);
     ctx.arcTo(-halfW, halfH, -halfW, halfH - r, r);
     ctx.lineTo(-halfW, -halfH + r);
@@ -1224,17 +1224,17 @@ export class EnemyUnit {
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
-    ctx.lineWidth = 2.0;
+    ctx.lineWidth = 2.6;
     ctx.strokeStyle = bubbleStroke;
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(-halfW + 11, 0, 3.2, 0, Math.PI * 2);
+    ctx.arc(-halfW + 15, 0, 4.5, 0, Math.PI * 2);
     ctx.fillStyle = bubblePip;
     ctx.fill();
 
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(this.chatText, 4, 0.5);
+    ctx.fillText(this.chatText, 7, 0.5);
 
     ctx.restore();
   }

@@ -452,6 +452,7 @@ function loadAndStartGame() {
     player.spawnAlpha = 0.25;
   }
 
+  player.name = storageMgr.data.playerName || 'Player';
   waveMgr.score = 0;
   state.lastAnnouncedGraceWave = 0;
   state.lastAnnouncedUpgradeWave = 0;
@@ -652,6 +653,7 @@ function cycleSquadStance() {
   if (uiMgr) {
     uiMgr.showToast(`SQUAD ORDER: ${state.squadStance}`);
   }
+  AllyCommunicationSystem.onStanceChanged(state.squadStance, waveMgr.allies, player);
 }
 
 function selfDestructPlayer() {

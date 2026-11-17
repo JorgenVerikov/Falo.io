@@ -1,6 +1,15 @@
 import { CONFIG, computeStrokeColor, getTankRenderParts, getOuterArmorLayers } from '../core/config.js';
 import { generateTankSvg, generateCrewSvg, drawPreviewPolygon } from './uiPreviews.js';
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export class ShopPreviewController {
   constructor(ui) {
     this.ui = ui;
@@ -21,6 +30,9 @@ export class ShopPreviewController {
     this.previewName = document.getElementById('shop-preview-name');
     this.previewMeta = document.getElementById('shop-preview-meta');
     this.previewDesc = document.getElementById('shop-preview-desc');
+    this.previewRenameWrap = document.getElementById('shop-preview-rename-wrap');
+    this.previewRenameInput = document.getElementById('shop-preview-rename-input');
+    this.previewRenameBtn = document.getElementById('shop-preview-rename-btn');
     this.previewBtn = document.getElementById('shop-preview-action-btn');
 
     this.ctx = this.previewCanvas ? this.previewCanvas.getContext('2d') : null;
@@ -76,6 +88,25 @@ export class ShopPreviewController {
       this.previewBtn.addEventListener('click', () => {
         if (this.currentItem && typeof this.currentItem.onAction === 'function') {
           this.currentItem.onAction();
+        }
+      });
+    }
+
+    const submitPreviewRename = () => {
+      if (this.currentItem && typeof this.currentItem.onRename === 'function' && this.previewRenameInput) {
+        this.currentItem.onRename(this.previewRenameInput.value);
+      }
+    };
+
+    if (this.previewRenameBtn) {
+      this.previewRenameBtn.addEventListener('click', submitPreviewRename);
+    }
+
+    if (this.previewRenameInput) {
+      this.previewRenameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          submitPreviewRename();
         }
       });
     }
@@ -247,12 +278,22 @@ export class ShopPreviewController {
 
   setPreviewItem(item, { animate = true } = {}) {
     if (!item) return;
-    const isNewKey = !this.currentItem || this.currentItem.key !== item.key || this.currentItem.kind !== item.kind;
+    const prevSelKey = this.currentItem?.selectionKey || this.currentItem?.key;
+    const nextSelKey = item.selectionKey || item.key;
+    const isNewKey = !this.currentItem || prevSelKey !== nextSelKey || this.currentItem.kind !== item.kind;
     this.currentItem = item;
 
     if (this.previewName) this.previewName.textContent = item.name || '';
     if (this.previewMeta) this.previewMeta.textContent = item.metaText || '';
     if (this.previewDesc) this.previewDesc.textContent = item.desc || '';
+
+    if (this.previewRenameWrap && this.previewRenameInput) {
+      const hasRename = typeof item.onRename === 'function';
+      this.previewRenameWrap.classList.toggle('hidden', !hasRename);
+      if (hasRename) {
+        this.previewRenameInput.value = item.renameValue ?? item.name ?? '';
+      }
+    }
 
     if (this.previewBtn) {
       this.previewBtn.className = `falo-card-action-btn shop-preview-action-btn ${item.btnClass || ''}`.trim();
@@ -447,10 +488,10 @@ export class ShopPreviewController {
         if (isDesktop) {
           const ctx = effNx * 6;
           const cty = effNy * 4;
-          const cry = -effNx * 2.2;
+          const cry = 6.0 - effNx * 2.2;
           const crx = effNy * 1.6;
           plane.style.transform =
-            `perspective(1500px) translate3d(${ctx.toFixed(2)}px, ${cty.toFixed(2)}px, 0) rotateY(${cry.toFixed(2)}deg) rotateX(${crx.toFixed(2)}deg)`;
+            `perspective(960px) translate3d(${ctx.toFixed(2)}px, ${cty.toFixed(2)}px, 0) rotateY(${cry.toFixed(2)}deg) rotateX(${crx.toFixed(2)}deg)`;
         } else {
           plane.style.transform = '';
         }
@@ -464,12 +505,16 @@ export class ShopPreviewController {
       }
 
       if (this.previewInfo) {
-        const infoRy = -3.8 - effNx * 2.2;
-        const infoRx = effNy * 1.8;
-        const infoTx = -effNx * 4;
-        const infoTy = effNy * 2;
-        this.previewInfo.style.transform =
-          `perspective(950px) translate3d(${infoTx.toFixed(2)}px, ${infoTy.toFixed(2)}px, 0) rotateY(${infoRy.toFixed(2)}deg) rotateX(${infoRx.toFixed(2)}deg)`;
+        if (isDesktop) {
+          const infoRy = -5.0 - effNx * 1.3;
+          const infoRx = 1.0 + effNy * 1.2;
+          const infoTx = -effNx * 3.5;
+          const infoTy = effNy * 2;
+          this.previewInfo.style.transform =
+            `perspective(920px) translate3d(${infoTx.toFixed(2)}px, ${infoTy.toFixed(2)}px, 0) rotateY(${infoRy.toFixed(2)}deg) rotateX(${infoRx.toFixed(2)}deg)`;
+        } else {
+          this.previewInfo.style.transform = '';
+        }
       }
 
       const bgTarget = this.previewBackdrop || this.previewPane;
@@ -559,7 +604,7 @@ function attachCardDynamicInteractions(ui, card, previewData) {
     container?.querySelectorAll('.is-preview-active').forEach(el => el.classList.remove('is-preview-active'));
     card.classList.add('is-preview-active');
     if (!ui.selectedShopItemByTab) ui.selectedShopItemByTab = {};
-    ui.selectedShopItemByTab[ui.activeShopTab] = previewData.key;
+    ui.selectedShopItemByTab[ui.activeShopTab] = previewData.selectionKey || previewData.key;
     controller.setPreviewItem(previewData, { animate });
   };
 
@@ -571,6 +616,7 @@ function attachCardDynamicInteractions(ui, card, previewData) {
   });
 
   card.addEventListener('keydown', (e) => {
+    if (e.target && e.target.closest('input, textarea, select, button')) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       selectCardForPreview({ animate: true });
@@ -952,7 +998,6 @@ export function renderCrewShop(ui, container, { animatePreview = false } = {}) {
   const coins = ui.storage.data.coins;
   const levels = ui.storage.data.crewLevels || {};
   const hiredAllies = Array.isArray(ui.storage.data.hiredAllies) ? ui.storage.data.hiredAllies : [];
-  const unlockedChassis = ui.storage.data.unlockedChassis || ['basic'];
   const maxAllies = CONFIG.ALLIES?.maxAllies || 3;
   const slotCosts = CONFIG.ALLIES?.slotCosts || [600, 1200, 2000];
 
@@ -972,10 +1017,10 @@ export function renderCrewShop(ui, container, { animatePreview = false } = {}) {
     <div class="falo-section-header">
       <div class="falo-section-title-wrap">
         <div class="falo-section-title">ALLIED SQUAD (MAX ${maxAllies})</div>
-        <span class="falo-ends-in-tag">${hiredAllies.length} / ${maxAllies} ACTIVE · ADAPTIVE AI · SHARES LEVEL &amp; UNLOCKS</span>
+        <span class="falo-ends-in-tag">${hiredAllies.length} / ${maxAllies} ACTIVE</span>
       </div>
     </div>
-    <div class="falo-crew-list falo-ally-list" id="allied-squad-grid"></div>
+    <div class="falo-items-grid falo-ally-grid" id="allied-squad-grid"></div>
   `;
 
   const squadGrid = squadSection.querySelector('#allied-squad-grid');
@@ -983,42 +1028,68 @@ export function renderCrewShop(ui, container, { animatePreview = false } = {}) {
   let fallbackSelectFn = null;
   let matchedSelectFn = null;
 
-  const unlockedCount = unlockedChassis.length;
+  const hireSquadmateDesc = 'Hire a squadmate that decides its own evolutions, fights alongside you, and revives downed teammates.';
+  const hiredSquadmateDesc = 'A squadmate that decides its own evolutions, fights alongside you, and revives downed teammates.';
+
   for (let slotIdx = 0; slotIdx < maxAllies; slotIdx++) {
     const hired = hiredAllies[slotIdx] || null;
     const isNextHireSlot = !hired && slotIdx === hiredAllies.length;
     const cost = slotCosts[slotIdx] || 1200;
     const canAfford = coins >= cost;
 
-    const row = document.createElement('div');
-    row.className = 'falo-crew-row falo-ally-row falo-shop-tilt-card';
-    row.style.borderColor = hired ? playerPaintStroke : '#64748b';
-    row.style.backgroundImage = `
-      linear-gradient(to right, ${playerPaintColor}1f 1px, transparent 1px),
-      linear-gradient(to bottom, ${playerPaintColor}1f 1px, transparent 1px)
-    `;
-    row.style.backgroundSize = '16px 16px';
+    const card = document.createElement('div');
+    card.className = 'falo-card falo-shop-tilt-card falo-ally-card';
+    if (hired) {
+      card.classList.add('is-unlocked');
+    }
 
     if (hired) {
-      row.innerHTML = `
-        <div class="falo-crew-icon-col">
-          ${generateTankSvg('basic', playerPaintColor, playerPaintStroke, 58)}
+      const safeName = escapeHtml(hired.name);
+      card.innerHTML = `
+        <div class="falo-card-preview-stage">
+          ${generateTankSvg('basic', playerPaintColor, playerPaintStroke, 100)}
         </div>
-        <div class="falo-crew-info-col">
-          <div class="falo-crew-top-row">
-            <div class="falo-crew-name-group">
-              <span class="falo-crew-name">Slot ${slotIdx + 1}: ${hired.name}</span>
-              <span class="falo-crew-desc">an Allied tank that will cooperate with you in the battle</span>
-            </div>
-            <div class="falo-crew-stats-group">
-              <span class="falo-crew-lvl-tag">HIRED</span>
+        <div class="falo-card-footer">
+          <div class="falo-card-details-row">
+            <span class="falo-card-title">Slot ${slotIdx + 1}: ${safeName}</span>
+            <span class="falo-card-rarity-label" style="color: #059669; font-weight: 900;">Active</span>
+          </div>
+          <div class="falo-card-subdesc">${hiredSquadmateDesc}</div>
+          <div class="falo-ally-rename-inline hidden">
+            <input
+              type="text"
+              class="falo-ally-rename-input"
+              maxlength="18"
+              value="${safeName}"
+              placeholder="Ally name..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button type="button" class="falo-ally-rename-save-btn">SAVE</button>
+            <button type="button" class="falo-ally-rename-cancel-btn" title="Cancel">✕</button>
+          </div>
+          <div class="falo-card-status-row">
+            <span class="falo-card-status-label is-unlocked">HIRED</span>
+            <div class="falo-ally-btn-group">
+              <button type="button" class="falo-ally-rename-btn">RENAME</button>
+              <button type="button" class="falo-ally-dismiss-btn">DISMISS</button>
             </div>
           </div>
         </div>
-        <div class="falo-crew-action-col">
-          <button type="button" class="falo-ally-dismiss-btn">DISMISS</button>
-        </div>
       `;
+
+      const renameAction = (nextName) => {
+        const savedName = ui.storage.renameAlly(slotIdx, nextName);
+        if (!savedName) {
+          ui.showToast('ENTER A VALID ALLY NAME');
+          return false;
+        }
+        if (!ui.selectedShopItemByTab) ui.selectedShopItemByTab = {};
+        ui.selectedShopItemByTab.crew = `ally_slot_${slotIdx}`;
+        ui.showToast(`RENAMED SLOT ${slotIdx + 1} TO ${savedName.toUpperCase()}`);
+        renderShopContent(ui);
+        return true;
+      };
 
       const dismissAction = () => {
         if (ui.storage.dismissAlly(slotIdx)) {
@@ -1027,31 +1098,76 @@ export function renderCrewShop(ui, container, { animatePreview = false } = {}) {
         }
       };
 
-      const dismissBtn = row.querySelector('.falo-ally-dismiss-btn');
-      ['mousedown', 'pointerdown'].forEach(evt => {
-        dismissBtn.addEventListener(evt, (e) => e.stopPropagation());
+      const subdescEl = card.querySelector('.falo-card-subdesc');
+      const renameInlineEl = card.querySelector('.falo-ally-rename-inline');
+      const renameInput = card.querySelector('.falo-ally-rename-input');
+      const renameSaveBtn = card.querySelector('.falo-ally-rename-save-btn');
+      const renameCancelBtn = card.querySelector('.falo-ally-rename-cancel-btn');
+      const renameOpenBtn = card.querySelector('.falo-ally-rename-btn');
+      const dismissBtn = card.querySelector('.falo-ally-dismiss-btn');
+
+      const setInlineEditing = (editing) => {
+        renameInlineEl.classList.toggle('hidden', !editing);
+        subdescEl.classList.toggle('hidden', editing);
+        if (editing) {
+          renameInput.value = hired.name;
+          renameInput.focus();
+          renameInput.select();
+        }
+      };
+
+      [renameInput, renameSaveBtn, renameCancelBtn, renameOpenBtn, dismissBtn].forEach(el => {
+        ['mousedown', 'pointerdown', 'click'].forEach(evt => {
+          el?.addEventListener(evt, (e) => e.stopPropagation());
+        });
       });
-      dismissBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
+
+      renameOpenBtn.addEventListener('click', () => {
+        const willOpen = renameInlineEl.classList.contains('hidden');
+        setInlineEditing(willOpen);
+      });
+
+      renameSaveBtn.addEventListener('click', () => {
+        renameAction(renameInput.value);
+      });
+
+      renameCancelBtn.addEventListener('click', () => {
+        setInlineEditing(false);
+      });
+
+      renameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          renameAction(renameInput.value);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setInlineEditing(false);
+        }
+      });
+
+      dismissBtn.addEventListener('click', () => {
         dismissAction();
       });
 
       const previewData = {
         kind: 'tank',
         key: 'basic',
+        selectionKey: `ally_slot_${slotIdx}`,
         name: hired.name,
+        renameValue: hired.name,
         metaText: `Ally Slot ${slotIdx + 1} · Autonomous Adaptive Build`,
-        desc: `Shares your level, XP, paint theme, and ${unlockedCount} unlocked tanks. Dynamically adapts its evolutions and stat distribution to complement your squad during each run, and revives downed teammates in 5s.`,
+        desc: hiredSquadmateDesc,
         color: playerPaintColor,
         stroke: playerPaintStroke,
         btnClass: 'unlocked',
         btnHtml: 'DISMISS ALLY',
         btnDisabled: false,
-        onAction: dismissAction
+        onAction: dismissAction,
+        onRename: renameAction
       };
 
-      const selectForPreview = attachCardDynamicInteractions(ui, row, previewData);
-      row._selectForPreview = selectForPreview;
+      const selectForPreview = attachCardDynamicInteractions(ui, card, previewData);
+      card._selectForPreview = selectForPreview;
       if (!fallbackSelectFn) fallbackSelectFn = selectForPreview;
       if (savedKey === `ally_slot_${slotIdx}`) matchedSelectFn = selectForPreview;
     } else {
@@ -1072,39 +1188,39 @@ export function renderCrewShop(ui, container, { animatePreview = false } = {}) {
         }
       };
 
-      row.innerHTML = `
-        <div class="falo-crew-icon-col">
-          ${generateTankSvg('basic', isNextHireSlot ? playerPaintColor : '#64748b', isNextHireSlot ? playerPaintStroke : '#475569', 54)}
+      const slotColor = isNextHireSlot ? playerPaintColor : '#64748b';
+      const slotStroke = isNextHireSlot ? playerPaintStroke : '#475569';
+
+      card.innerHTML = `
+        <div class="falo-card-preview-stage">
+          ${generateTankSvg('basic', slotColor, slotStroke, 100)}
         </div>
-        <div class="falo-crew-info-col">
-          <div class="falo-crew-top-row">
-            <div class="falo-crew-name-group">
-              <span class="falo-crew-name">Ally Slot ${slotIdx + 1}</span>
-              <span class="falo-crew-desc">${isNextHireSlot ? 'Hire an AI squadmate that decides its own evolutions, fights alongside you, and revives downed teammates.' : `Requires hiring Slot ${slotIdx} first.`}</span>
-            </div>
-            <div class="falo-crew-stats-group">
-              <span class="falo-crew-lvl-tag">${isNextHireSlot ? 'AVAILABLE' : 'LOCKED ORDER'}</span>
-            </div>
+        <div class="falo-card-footer">
+          <div class="falo-card-details-row">
+            <span class="falo-card-title">Ally Slot ${slotIdx + 1}</span>
+            <span class="falo-card-rarity-label" style="color: ${isNextHireSlot ? '#0284c7' : '#64748b'}; font-weight: 900;">${isNextHireSlot ? 'Available' : 'Locked'}</span>
           </div>
-        </div>
-        <div class="falo-crew-action-col">
-          ${isNextHireSlot
-            ? `<span class="falo-card-status-label is-price ${canAfford ? '' : 'is-unaffordable'}">
-                <span class="falo-coin-icon"></span>${cost.toLocaleString()}
-               </span>`
-            : `<span class="falo-card-status-label is-unaffordable">SLOT ${slotIdx} REQ</span>`
-          }
+          <div class="falo-card-subdesc">${isNextHireSlot ? hireSquadmateDesc : `Requires hiring Slot ${slotIdx} first.`}</div>
+          <div class="falo-card-status-row">
+            ${isNextHireSlot
+              ? `<span class="falo-card-status-label is-price ${canAfford ? '' : 'is-unaffordable'}">
+                  <span class="falo-coin-icon"></span>${cost.toLocaleString()}
+                 </span>`
+              : `<span class="falo-card-status-label is-unaffordable">SLOT ${slotIdx} REQ</span>`
+            }
+          </div>
         </div>
       `;
 
       const previewData = {
         kind: 'tank',
         key: 'basic',
+        selectionKey: `ally_slot_${slotIdx}`,
         name: `Hire Ally Slot ${slotIdx + 1}`,
         metaText: `Squad Cap: ${hiredAllies.length} / ${maxAllies} · Total Squad Size: ${hiredAllies.length + 1} / 4`,
-        desc: 'Allied tanks share your level, XP, and paint theme, make independent evolution and build decisions from tanks you own, dodge enemy fire, and enable the 15s downed / 5s revive mechanic.',
-        color: isNextHireSlot ? playerPaintColor : '#64748b',
-        stroke: isNextHireSlot ? playerPaintStroke : '#475569',
+        desc: hireSquadmateDesc,
+        color: slotColor,
+        stroke: slotStroke,
         btnClass: (isNextHireSlot && canAfford) ? '' : 'disabled',
         btnHtml: isNextHireSlot
           ? `HIRE <span class="falo-coin-icon"></span>${cost.toLocaleString()}`
@@ -1113,13 +1229,13 @@ export function renderCrewShop(ui, container, { animatePreview = false } = {}) {
         onAction: hireAction
       };
 
-      const selectForPreview = attachCardDynamicInteractions(ui, row, previewData);
-      row._selectForPreview = selectForPreview;
+      const selectForPreview = attachCardDynamicInteractions(ui, card, previewData);
+      card._selectForPreview = selectForPreview;
       if (!fallbackSelectFn) fallbackSelectFn = selectForPreview;
       if (savedKey === `ally_slot_${slotIdx}`) matchedSelectFn = selectForPreview;
     }
 
-    squadGrid.appendChild(row);
+    squadGrid.appendChild(card);
   }
 
   container.appendChild(squadSection);

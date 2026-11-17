@@ -304,14 +304,26 @@ export class MainMenuController {
       const effNx = this.curNx + swayNx;
       const effNy = this.curNy + swayNy;
       const isDesktop = window.innerWidth > 820;
+      const isPortraitNarrow = window.innerWidth <= 820 && window.innerHeight > 460;
+      const isCompactLandscape = window.innerHeight <= 460;
 
       if (this.rightPanel) {
-        const panelRy = -3.8 - effNx * 2.2;
-        const panelRx = effNy * 1.8;
-        const panelTx = -effNx * 4;
-        const panelTy = effNy * 2;
-        this.rightPanel.style.transform =
-          `perspective(950px) translate3d(${panelTx.toFixed(2)}px, ${panelTy.toFixed(2)}px, 0) rotateY(${panelRy.toFixed(2)}deg) rotateX(${panelRx.toFixed(2)}deg)`;
+        if (isPortraitNarrow) {
+          const panelRy = effNx * 1.8;
+          const panelRx = 9 + effNy * 1.6;
+          const panelTx = -effNx * 3;
+          const panelTy = effNy * 2;
+          this.rightPanel.style.transform =
+            `perspective(760px) translate3d(${panelTx.toFixed(2)}px, ${panelTy.toFixed(2)}px, 0) rotateY(${panelRy.toFixed(2)}deg) rotateX(${panelRx.toFixed(2)}deg)`;
+        } else {
+          const baseRy = isCompactLandscape ? -12.0 : -14.5;
+          const panelRy = baseRy - effNx * 2.4;
+          const panelRx = effNy * 1.9;
+          const panelTx = -effNx * 4;
+          const panelTy = effNy * 2;
+          this.rightPanel.style.transform =
+            `perspective(680px) translate3d(${panelTx.toFixed(2)}px, ${panelTy.toFixed(2)}px, 0) rotateY(${panelRy.toFixed(2)}deg) rotateX(${panelRx.toFixed(2)}deg)`;
+        }
       }
 
       if (this.tankWrap) {
@@ -325,8 +337,8 @@ export class MainMenuController {
         if (isDesktop) {
           const authTx = effNx * 6;
           const authTy = effNy * 4;
-          const authRy = -effNx * 2.2;
-          const authRx = effNy * 1.6;
+          const authRy = 14 - effNx * 2.2;
+          const authRx = 5 + effNy * 1.6;
           this.authContainer.style.setProperty('--auth-tx', `${authTx.toFixed(2)}px`);
           this.authContainer.style.setProperty('--auth-ty', `${authTy.toFixed(2)}px`);
           this.authContainer.style.setProperty('--auth-rx', `${authRx.toFixed(2)}deg`);
@@ -343,8 +355,8 @@ export class MainMenuController {
         if (isDesktop) {
           const fsTx = effNx * 5;
           const fsTy = effNy * 2.5;
-          const fsRy = -effNx * 2.2;
-          const fsRx = effNy * 1.6;
+          const fsRy = 14 - effNx * 2.2;
+          const fsRx = -5 + effNy * 1.6;
           this.fullscreenBtn.style.setProperty('--fs-tx', `${fsTx.toFixed(2)}px`);
           this.fullscreenBtn.style.setProperty('--fs-ty', `${fsTy.toFixed(2)}px`);
           this.fullscreenBtn.style.setProperty('--fs-rx', `${fsRx.toFixed(2)}deg`);

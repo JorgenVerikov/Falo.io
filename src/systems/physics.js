@@ -152,6 +152,7 @@ export class PhysicsSystem {
             enemy.takeDamage(playerRamDamage * pCol.enemyRamDamageMultiplier * dt);
           }
           EnemyCommunicationSystem.onPlayerDamaged(enemies, enemy, true);
+          AllyCommunicationSystem.onPlayerDamaged(player, waveMgr.allies, true);
 
           if (Math.random() < 0.35) {
             waveMgr.spawnShatterParticles(enemy.x - nx * enemy.radius * 0.5, enemy.y - ny * enemy.radius * 0.5, enemy.color, 3);
@@ -160,6 +161,7 @@ export class PhysicsSystem {
           if (enemy.dead) {
             waveMgr.score += enemy.xp;
             waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
+            AllyCommunicationSystem.onPlayerKilledEnemy(player, enemy, waveMgr.allies);
           }
         }
       }
@@ -298,6 +300,7 @@ export class PhysicsSystem {
           if (enemy.dead) {
             waveMgr.score += enemy.xp;
             waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
+            AllyCommunicationSystem.onPlayerKilledEnemy(player, enemy, waveMgr.allies);
           }
         }
       }
@@ -349,6 +352,7 @@ export class PhysicsSystem {
           bullet.kill();
           player.takeDamage(bullet.damage, activeChassisKey, bullet.owner || null);
           EnemyCommunicationSystem.onPlayerDamaged(enemies, null, false);
+          AllyCommunicationSystem.onPlayerDamaged(player, allies, false);
           waveMgr.spawnShatterParticles(player.x, player.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
           continue;
         }
@@ -494,7 +498,7 @@ export class PhysicsSystem {
             if (enemy.dead) {
               waveMgr.score += enemy.xp;
               waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
-              AllyCommunicationSystem.onEnemyKilled(ally, allies);
+              AllyCommunicationSystem.onEnemyKilled(ally, allies, player, enemy);
             }
           }
         }
@@ -571,7 +575,7 @@ export class PhysicsSystem {
             if (enemy.dead) {
               waveMgr.score += enemy.xp;
               waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
-              AllyCommunicationSystem.onEnemyKilled(ally, allies);
+              AllyCommunicationSystem.onEnemyKilled(ally, allies, player, enemy);
             }
           }
         }
