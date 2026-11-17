@@ -7,7 +7,7 @@ import { PLAYER_CONFIG, CHASSIS_CONFIG, EVOLUTION_CONFIG, getXPRequiredForLevel,
 import { ENEMY_CONFIG, ENEMY_UPGRADE_CONFIG, getEnemyUpgradesForWave } from './enemy.config.js';
 import { SHAPES_CONFIG } from './shapes.config.js';
 import { ARENA_CONFIG, CAMERA_CONFIG, WAVE_CONFIG, VFX_CONFIG } from './environment.config.js';
-import { BASIC_BARREL_BASE, createBarrelTurret, WEAPONS_CONFIG, getTankRenderParts } from './weapons.config.js';
+import { BASIC_BARREL_BASE, createBarrelTurret, WEAPONS_CONFIG, getTankRenderParts, getOuterArmorLayers } from './weapons.config.js';
 import { CREW_CONFIG, META_CONFIG, COLOR_THEMES, computeStrokeColor } from './game.config.js';
 
 export {
@@ -25,6 +25,7 @@ export {
   BASIC_BARREL_BASE,
   createBarrelTurret,
   getTankRenderParts,
+  getOuterArmorLayers,
   WEAPONS_CONFIG,
   CREW_CONFIG,
   META_CONFIG,

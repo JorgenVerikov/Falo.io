@@ -76,6 +76,7 @@ export class HUDUpdater {
       prevRackCount: -1,
       prevRackCurrent: -1,
       prevRackReloading: false,
+      prevRackSignature: '',
       prevFillColor: '',
       prevGaugeText: '',
       prevGaugePct: '',
@@ -324,11 +325,68 @@ export class HUDUpdater {
         };
       };
 
-      const isSniperFamily = (weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'hunter' || weaponSys.chassisKey === 'predator');
+      const isSniperFamily = (weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'ranger' || weaponSys.chassisKey === 'stalker' || weaponSys.chassisKey === 'hunter' || weaponSys.chassisKey === 'predator');
       const bulletRacks = readyRackTurrets.filter(t => !t.isTrap);
       const trapRacks = readyRackTurrets.filter(t => t.isTrap);
+      const hasDualRacks = bulletRacks.some(t => t.fireTrigger === 'secondary');
 
-      if (bulletRacks.length > 0 && trapRacks.length > 0) {
+      if (hasDualRacks) {
+        const primaryRacks = bulletRacks.filter(t => t.fireTrigger !== 'secondary');
+        const secondaryRacks = bulletRacks.filter(t => t.fireTrigger === 'secondary');
+        const pSummary = primaryRacks.length > 0 ? summarizeRackGroup(primaryRacks) : null;
+        const sSummary = secondaryRacks.length > 0 ? summarizeRackGroup(secondaryRacks) : null;
+        const isDualBreechLoader = Boolean(pSummary && sSummary && pSummary.maxRack === 1 && sSummary.maxRack === 1);
+
+        if (isDualBreechLoader) {
+          const leftState = pSummary.curRack > 0 ? 'loaded' : (pSummary.isReloading ? 'reloading' : 'empty');
+          const rightState = sSummary.curRack > 0 ? 'loaded' : (sSummary.isReloading ? 'reloading' : 'empty');
+          gauges.push({
+            kind: 'rack',
+            mode: 'rack-dual-breech',
+            title: 'BREECH LOADER',
+            maxRack: 2,
+            curRack: (pSummary.curRack > 0 ? 1 : 0) + (sSummary.curRack > 0 ? 1 : 0),
+            isReloading: pSummary.isReloading || sSummary.isReloading,
+            pipStates: [leftState, rightState],
+            fillColor
+          });
+        } else {
+          if (pSummary) {
+            gauges.push({
+              kind: 'rack',
+              mode: 'rack-primary',
+              title: 'LEFT BARREL (LMB)',
+              maxRack: pSummary.maxRack,
+              curRack: pSummary.curRack,
+              isReloading: pSummary.isReloading,
+              fillColor
+            });
+          }
+          if (sSummary) {
+            gauges.push({
+              kind: 'rack',
+              mode: 'rack-secondary',
+              title: 'RIGHT BARREL (RMB)',
+              maxRack: sSummary.maxRack,
+              curRack: sSummary.curRack,
+              isReloading: sSummary.isReloading,
+              fillColor
+            });
+          }
+        }
+        if (trapRacks.length > 0) {
+          const tSummary = summarizeRackGroup(trapRacks);
+          gauges.push({
+            kind: 'rack',
+            mode: 'rack-trap',
+            title: 'TRAP RACK',
+            maxRack: tSummary.maxRack,
+            curRack: tSummary.curRack,
+            isReloading: tSummary.isReloading,
+            fillColor
+          });
+        }
+      } else if (bulletRacks.length > 0 && trapRacks.length > 0) {
         const bSummary = summarizeRackGroup(bulletRacks);
         gauges.push({
           kind: 'rack',
@@ -534,7 +592,7 @@ export class HUDUpdater {
         view.overheatBanner.classList.add('hidden');
       }
 
-      const { maxRack, curRack, isReloading, fillColor } = gauge;
+      const { maxRack, curRack, isReloading, fillColor, pipStates } = gauge;
       if (maxRack !== view.prevRackCount) {
         view.prevRackCount = maxRack;
         view.rackPips = [];
@@ -546,21 +604,38 @@ export class HUDUpdater {
           view.rackPips.push(pip);
         }
         view.prevRackCurrent = -1;
+        view.prevRackSignature = '';
         view.prevFillColor = '';
       }
 
-      if (curRack !== view.prevRackCurrent || isReloading !== view.prevRackReloading || fillColor !== view.prevFillColor) {
+      const rackSig = Array.isArray(pipStates)
+        ? `${pipStates.join('|')}|${fillColor}`
+        : `${curRack}|${isReloading ? 1 : 0}|${fillColor}`;
+
+      if (rackSig !== view.prevRackSignature) {
         view.prevRackCurrent = curRack;
         view.prevRackReloading = isReloading;
+        view.prevRackSignature = rackSig;
         view.prevFillColor = fillColor;
 
         for (let i = 0; i < view.rackPips.length; i++) {
           const pip = view.rackPips[i];
           pip.style.borderColor = fillColor;
-          if (i < curRack) {
+          let pipState;
+          if (Array.isArray(pipStates)) {
+            pipState = pipStates[i] || 'empty';
+          } else if (i < curRack) {
+            pipState = 'loaded';
+          } else if (i === curRack && isReloading) {
+            pipState = 'reloading';
+          } else {
+            pipState = 'empty';
+          }
+
+          if (pipState === 'loaded') {
             pip.className = 'shell-pip loaded';
             pip.style.background = fillColor;
-          } else if (i === curRack && isReloading) {
+          } else if (pipState === 'reloading') {
             pip.className = 'shell-pip reloading';
             pip.style.background = '';
           } else {

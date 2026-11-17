@@ -1,4 +1,4 @@
-import { CONFIG, computeStrokeColor, getTankRenderParts } from '../core/config.js';
+import { CONFIG, computeStrokeColor, getTankRenderParts, getOuterArmorLayers } from '../core/config.js';
 import { generateTankSvg, generateCrewSvg, drawPreviewPolygon } from './uiPreviews.js';
 
 export class ShopPreviewController {
@@ -290,8 +290,9 @@ export class ShopPreviewController {
     const playerR = CONFIG.PLAYER.radius || 25;
     let maxUnitExtent = chassis.radiusMultiplier || 1.0;
 
-    if (chassis.outerArmor) {
-      maxUnitExtent = Math.max(maxUnitExtent, chassis.outerArmor.radiusMultiplier || 1.4);
+    const armorLayers = getOuterArmorLayers(chassis);
+    for (let i = 0; i < armorLayers.length; i++) {
+      maxUnitExtent = Math.max(maxUnitExtent, armorLayers[i].radiusMultiplier || 1.4);
     }
 
     if (chassis.turrets && chassis.turrets.length > 0) {
@@ -336,15 +337,20 @@ export class ShopPreviewController {
 
     ctx.translate(cx, cy);
 
-    if (chassis.outerArmor) {
-      const outerRadius = baseRadius * chassis.outerArmor.radiusMultiplier;
+    const armorLayers = getOuterArmorLayers(chassis);
+    for (let i = 0; i < armorLayers.length; i++) {
+      const layer = armorLayers[i];
+      const outerRadius = baseRadius * (layer.radiusMultiplier || 1.55);
+      const innerRadius = layer.innerRadiusMultiplier ? baseRadius * layer.innerRadiusMultiplier : 0;
+      const layerAngle = (layer.initialAngle || 0) + this.spinAngle * ((layer.spinSpeed ?? 2.2) / 4);
       drawPreviewPolygon(
         ctx, 0, 0, outerRadius,
-        chassis.outerArmor.sides,
-        this.spinAngle * 0.55,
-        chassis.outerArmor.color,
-        chassis.outerArmor.stroke,
-        strokeWidth
+        layer.sides || 6,
+        layerAngle,
+        layer.color || '#343444',
+        layer.stroke || '#20202c',
+        strokeWidth,
+        innerRadius
       );
     }
 
@@ -731,6 +737,7 @@ export function renderTanksShop(ui, container, { animatePreview = false } = {}) 
     { key: 'overtrapper', name: 'Overtrapper', cost: CONFIG.CHASSIS.overtrapper?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.overtrapper?.reqLevel ?? 45, desc: CONFIG.CHASSIS.overtrapper?.desc || 'Front trap launcher paired with two rear spawners maintaining 2 controllable and 2 auto-guided drones.' },
     { key: 'tritrapper', name: 'Tri-Trapper', cost: CONFIG.CHASSIS.tritrapper?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.tritrapper?.reqLevel ?? 45, desc: CONFIG.CHASSIS.tritrapper?.desc || 'Three 120-degree trap launchers with faster reload and nullified recoil, trading trap lifespan and damage for dense defensive walls.' },
     { key: 'gunnertrapper', name: 'Gunner Trapper', cost: CONFIG.CHASSIS.gunnertrapper?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.gunnertrapper?.reqLevel ?? 45, desc: CONFIG.CHASSIS.gunnertrapper?.desc || 'Front twin high-penetration gunner cannons paired with a reinforced rear trap launcher.' },
+    { key: 'autogunner', name: 'Auto Gunner', cost: CONFIG.CHASSIS.autogunner?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.autogunner?.reqLevel ?? 45, desc: CONFIG.CHASSIS.autogunner?.desc || 'Gunner armed with an uncontrolled, free-rotating top Auto Turret featuring extended FOV and high-penetration rounds.' },
     { key: 'megatrapper', name: 'Mega Trapper', cost: CONFIG.CHASSIS.megatrapper?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.megatrapper?.reqLevel ?? 45, desc: CONFIG.CHASSIS.megatrapper?.desc || 'Enlarged heavy launcher firing massive, highly durable Mega Traps with stronger recoil at a slower rate and shorter lifespan.' },
     { key: 'autotrapper', name: 'Auto Trapper', cost: CONFIG.CHASSIS.autotrapper?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.autotrapper?.reqLevel ?? 45, desc: CONFIG.CHASSIS.autotrapper?.desc || 'Standard front trap launcher crowned with an uncontrolled, free-rotating top Auto Turret.' },
     { key: 'hybrid', name: 'Hybrid', cost: CONFIG.CHASSIS.hybrid?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.hybrid?.reqLevel ?? 45, desc: CONFIG.CHASSIS.hybrid?.desc || 'Destroyer heavy cannon paired with a rear spawner that maintains 2 autonomous, uncontrollable drones.' },
@@ -738,7 +745,16 @@ export function renderTanksShop(ui, container, { animatePreview = false } = {}) 
     { key: 'skimmer', name: 'Skimmer', cost: CONFIG.CHASSIS.skimmer?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.skimmer?.reqLevel ?? 45, desc: CONFIG.CHASSIS.skimmer?.desc || 'Deployer launcher firing slower spinning missiles with dual side cannons that create a bullet vortex; hold right-click to reverse spin.' },
     { key: 'rocketeer', name: 'Rocketeer', cost: CONFIG.CHASSIS.rocketeer?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.rocketeer?.reqLevel ?? 45, desc: CONFIG.CHASSIS.rocketeer?.desc || 'Modified Deployer launching ultra-high-penetration missiles propelled forward by a rear Machine Gun thruster.' },
     { key: 'glider', name: 'Glider', cost: CONFIG.CHASSIS.glider?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.glider?.reqLevel ?? 45, desc: CONFIG.CHASSIS.glider?.desc || 'Deployer firing slower missiles propelled by two rear side thrusters angled 35 degrees apart.' },
-    { key: 'firework', name: 'Firework', cost: CONFIG.CHASSIS.firework?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.firework?.reqLevel ?? 45, desc: CONFIG.CHASSIS.firework?.desc || 'Deployer firing a propelled hexagon missile that detonates at lifespan end or on right-click into 24 fragments in 4 hexagonal rings.' },
+    { key: 'firework', name: 'Firework', cost: CONFIG.CHASSIS.firework?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.firework?.reqLevel ?? 45, desc: CONFIG.CHASSIS.firework?.desc || 'Deployer firing a propelled hexagon missile that detonates into 16 fragments in an all-directional circle on right-click, expiry, or destruction.' },
+    { key: 'pelletshot', name: 'Pellet Shot', cost: CONFIG.CHASSIS.pelletshot?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.pelletshot?.reqLevel ?? 45, desc: CONFIG.CHASSIS.pelletshot?.desc || 'Triple-tiered Shotgun firing a dense 30-pellet high-speed cluster with extended Sniper vision.' },
+    { key: 'dualbarrel', name: 'Dual-Barrel', cost: CONFIG.CHASSIS.dualbarrel?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.dualbarrel?.reqLevel ?? 45, desc: CONFIG.CHASSIS.dualbarrel?.desc || 'Twin-Shotgun hybrid with independently controlled left and right barrels, each holding 1 breech-loaded shell of 12 pellets (left-click fires left, right-click fires right).' },
+    { key: 'sprayer', name: 'Sprayer', cost: CONFIG.CHASSIS.sprayer?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.sprayer?.reqLevel ?? 45, desc: CONFIG.CHASSIS.sprayer?.desc || 'Machine Gun evolution adding an accurate center cylindrical cannon that fires light Gunner rounds on every second main blast (requires staying Machine Gun until Level 45).' },
+    { key: 'booster', name: 'Booster', cost: CONFIG.CHASSIS.booster?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.booster?.reqLevel ?? 45, desc: CONFIG.CHASSIS.booster?.desc || 'High-speed Tri-Angle upgrade with four rear propulsion barrels arranged in paired clusters for maximum recoil thrust.' },
+    { key: 'fighter', name: 'Fighter', cost: CONFIG.CHASSIS.fighter?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.fighter?.reqLevel ?? 45, desc: CONFIG.CHASSIS.fighter?.desc || 'Agile Tri-Angle evolution with two flanking side cannons for broadside offense and defense.' },
+    { key: 'landmine', name: 'Landmine', cost: CONFIG.CHASSIS.landmine?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.landmine?.reqLevel ?? 45, desc: CONFIG.CHASSIS.landmine?.desc || 'Stealth rammer with two counter-rotating hexagonal shells that fades to invisibility after standing still without taking damage for 13 seconds.' },
+    { key: 'autosmasher', name: 'Auto Smasher', cost: CONFIG.CHASSIS.autosmasher?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.autosmasher?.reqLevel ?? 45, desc: CONFIG.CHASSIS.autosmasher?.desc || 'Smasher mounted with a mouse-steerable top Auto Turret and a 10-point upgrade cap across all 8 stats.' },
+    { key: 'spike', name: 'Spike', cost: CONFIG.CHASSIS.spike?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.spike?.reqLevel ?? 45, desc: CONFIG.CHASSIS.spike?.desc || 'Heavy rammer surrounded by 12 fast-spinning spikes dealing amplified body damage to overpower rival rammers.' },
+    { key: 'autotank', name: 'Auto Tank', cost: CONFIG.CHASSIS.autotank?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.autotank?.reqLevel ?? 45, desc: CONFIG.CHASSIS.autotank?.desc || 'Basic Tank fitted with an auxiliary uncontrolled Auto Turret mounted on top for secondary defense (requires staying Basic Tank until Level 45).' },
     { key: 'factory', name: 'Factory', cost: CONFIG.CHASSIS.factory?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.factory?.reqLevel ?? 45, desc: CONFIG.CHASSIS.factory?.desc || 'Square chassis with a single front spawner deploying up to 6 armed Minions.' },
     { key: 'tesla', name: 'Tesla Surge', cost: CONFIG.CHASSIS.tesla?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.tesla?.reqLevel ?? 45, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
     { key: 'tripleshot', name: 'Triple Shot', cost: CONFIG.CHASSIS.tripleshot?.shopCost ?? 1000, reqLvl: 30, desc: 'Three front-spread cannons covering a wide arc with strong recoil.' },

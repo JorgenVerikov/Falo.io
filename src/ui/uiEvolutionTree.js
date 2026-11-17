@@ -1,4 +1,4 @@
-import { CONFIG, computeStrokeColor, getTankRenderParts } from '../core/config.js';
+import { CONFIG, computeStrokeColor, getTankRenderParts, getOuterArmorLayers } from '../core/config.js';
 import { generateTankPreviewDataUrl, drawPreviewPolygon } from './uiPreviews.js';
 
 const WORLD_WIDTH = 4120;
@@ -18,51 +18,61 @@ const TIER_4_SLOTS = [
   { key: 'spreadshot', col: 2 },
   { key: 'octotank', col: 3 },
   { key: 'auto5', col: 4 },
-  { key: 'tripletwin', col: 5 },
-  { key: 'battleship', col: 6 },
-  { key: 'overlord', col: 7 },
-  { key: 'necromancer', col: 8 },
-  { key: 'manager', col: 9 },
-  { key: 'factory', col: 10 },
-  { key: 'overtrapper', col: 11 },
-  { key: 'tritrapper', col: 12 },
-  { key: 'megatrapper', col: 13 },
-  { key: 'autotrapper', col: 14 },
-  { key: 'ranger', col: 15 },
-  { key: 'stalker', col: 16 },
-  { key: 'predator', col: 17 },
-  { key: 'gunnertrapper', col: 18 },
-  { key: 'streamliner', col: 19 },
-  { key: 'hybrid', col: 20 },
-  { key: 'annihilator', col: 21 },
-  { key: 'skimmer', col: 22 },
-  { key: 'rocketeer', col: 23 },
-  { key: 'glider', col: 24 },
-  { key: 'firework', col: 25 },
-  { key: 'tesla', col: 26.5 }
+  { key: 'booster', col: 5 },
+  { key: 'fighter', col: 6 },
+  { key: 'tripletwin', col: 7 },
+  { key: 'battleship', col: 8 },
+  { key: 'overlord', col: 9 },
+  { key: 'necromancer', col: 10 },
+  { key: 'manager', col: 11 },
+  { key: 'factory', col: 12 },
+  { key: 'overtrapper', col: 13 },
+  { key: 'tritrapper', col: 14 },
+  { key: 'megatrapper', col: 15 },
+  { key: 'autotrapper', col: 16 },
+  { key: 'ranger', col: 17 },
+  { key: 'stalker', col: 18 },
+  { key: 'predator', col: 19 },
+  { key: 'gunnertrapper', col: 20 },
+  { key: 'streamliner', col: 21 },
+  { key: 'autogunner', col: 22 },
+  { key: 'sprayer', col: 23 },
+  { key: 'hybrid', col: 24 },
+  { key: 'annihilator', col: 25 },
+  { key: 'skimmer', col: 26 },
+  { key: 'rocketeer', col: 27 },
+  { key: 'glider', col: 28 },
+  { key: 'firework', col: 29 },
+  { key: 'pelletshot', col: 30 },
+  { key: 'dualbarrel', col: 31 },
+  { key: 'tesla', col: 32.2 },
+  { key: 'autotank', col: 33.2 },
+  { key: 'landmine', col: 34.4 },
+  { key: 'autosmasher', col: 35.4 },
+  { key: 'spike', col: 36.4 }
 ];
 
 const TIER_3_SLOTS = [
   { key: 'tripleshot', col: 1 },
   { key: 'quadtank', col: 3 },
   { key: 'auto3', col: 4 },
-  { key: 'triangle', col: 4.9 },
-  { key: 'twinflank', col: 5.8 },
-  { key: 'overseer', col: 8.5 },
-  { key: 'trapper', col: 12.5 },
-  { key: 'assassin', col: 15.5 },
-  { key: 'hunter', col: 17.5 },
-  { key: 'gunner', col: 18.5 },
-  { key: 'destroyer', col: 22.5 },
-  { key: 'shotgun', col: 25.2 },
-  { key: 'smasher', col: 26.5 }
+  { key: 'triangle', col: 5.5 },
+  { key: 'twinflank', col: 7.5 },
+  { key: 'overseer', col: 10.5 },
+  { key: 'trapper', col: 14.5 },
+  { key: 'assassin', col: 17.5 },
+  { key: 'hunter', col: 19.5 },
+  { key: 'gunner', col: 21 },
+  { key: 'destroyer', col: 26.5 },
+  { key: 'shotgun', col: 30.5 },
+  { key: 'smasher', col: 35.4 }
 ];
 
 const TIER_2_SLOTS = [
   { key: 'twin', col: 2.0 },
-  { key: 'flank', col: 4.4 },
-  { key: 'sniper', col: 13.2 },
-  { key: 'machinegun', col: 22.5 }
+  { key: 'flank', col: 4.8 },
+  { key: 'sniper', col: 15.2 },
+  { key: 'machinegun', col: 26.0 }
 ];
 
 function getDisplayTier(chassis) {
@@ -106,7 +116,7 @@ function buildTreeLayout() {
   });
 
   if (CONFIG.CHASSIS.basic) {
-    positions.basic = { x: colToX(11.3), y: ROW_Y[1], tier: 1 };
+    positions.basic = { x: colToX(12.5), y: ROW_Y[1], tier: 1 };
     placed.add('basic');
   }
 
@@ -143,9 +153,9 @@ function getBusY(fromKey, toKey, fromPos, toPos) {
   if (fromKey === 'flank') return 416;
   if (fromKey === 'sniper' || fromKey === 'machinegun') return 398;
   if (fromKey === 'trapper') return 580;
-  if (fromKey === 'quadtank' || fromKey === 'twinflank') return 590;
+  if (fromKey === 'quadtank' || fromKey === 'twinflank' || fromKey === 'triangle') return 590;
   if (fromKey === 'auto3' || fromKey === 'overseer') return 616;
-  if (fromKey === 'tripleshot' || fromKey === 'assassin' || fromKey === 'hunter' || fromKey === 'destroyer') return 606;
+  if (fromKey === 'tripleshot' || fromKey === 'assassin' || fromKey === 'hunter' || fromKey === 'destroyer' || fromKey === 'smasher') return 606;
   if (fromKey === 'gunner') return 634;
   return (fromPos.y + toPos.y) / 2;
 }
@@ -738,8 +748,9 @@ export class EvolutionTreeController {
     const playerR = CONFIG.PLAYER.radius || 25;
     let maxUnitExtent = chassis.radiusMultiplier || 1.0;
 
-    if (chassis.outerArmor) {
-      maxUnitExtent = Math.max(maxUnitExtent, chassis.outerArmor.radiusMultiplier || 1.4);
+    const armorLayers = getOuterArmorLayers(chassis);
+    for (let i = 0; i < armorLayers.length; i++) {
+      maxUnitExtent = Math.max(maxUnitExtent, armorLayers[i].radiusMultiplier || 1.4);
     }
 
     if (chassis.turrets && chassis.turrets.length > 0) {
@@ -783,15 +794,20 @@ export class EvolutionTreeController {
 
     ctx.translate(cx, cy);
 
-    if (chassis.outerArmor) {
-      const outerRadius = baseRadius * chassis.outerArmor.radiusMultiplier;
+    const armorLayers = getOuterArmorLayers(chassis);
+    for (let i = 0; i < armorLayers.length; i++) {
+      const layer = armorLayers[i];
+      const outerRadius = baseRadius * (layer.radiusMultiplier || 1.55);
+      const innerRadius = layer.innerRadiusMultiplier ? baseRadius * layer.innerRadiusMultiplier : 0;
+      const layerAngle = (layer.initialAngle || 0) + this.spinAngle * ((layer.spinSpeed ?? 2.2) / 4);
       drawPreviewPolygon(
         ctx, 0, 0, outerRadius,
-        chassis.outerArmor.sides,
-        this.spinAngle * 0.55,
-        chassis.outerArmor.color,
-        chassis.outerArmor.stroke,
-        strokeWidth
+        layer.sides || 6,
+        layerAngle,
+        layer.color || '#343444',
+        layer.stroke || '#20202c',
+        strokeWidth,
+        innerRadius
       );
     }
 

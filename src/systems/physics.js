@@ -223,6 +223,7 @@ export class PhysicsSystem {
     }
 
     // 5. PLAYER PROJECTILES & DRONES vs SHAPES & ENEMIES
+    const preCollisionProjLen = playerProjectiles.length;
     const offensiveUnits = playerDrones.length > 0 ? playerProjectiles.concat(playerDrones) : playerProjectiles;
     for (let i = 0; i < offensiveUnits.length; i++) {
       const proj = offensiveUnits[i];
@@ -317,6 +318,14 @@ export class PhysicsSystem {
           playerProj.applyCenterRepulsion(enemyProj.x, enemyProj.y, dt, 120);
           waveMgr.spawnShatterParticles(playerProj.x, playerProj.y, '#ffffff', 2);
         }
+      }
+    }
+
+    // Trigger detonation for missiles destroyed during collisions (e.g., Firework)
+    for (let i = 0; i < preCollisionProjLen; i++) {
+      const p = playerProjectiles[i];
+      if (p && p.dead && !p.hasDetonated && p.detonateConfig?.onDestroy) {
+        p.detonate(playerProjectiles, { allowDead: true });
       }
     }
 

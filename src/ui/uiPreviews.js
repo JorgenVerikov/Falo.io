@@ -1,6 +1,6 @@
-import { CONFIG, computeStrokeColor, getTankRenderParts } from '../core/config.js';
+import { CONFIG, computeStrokeColor, getTankRenderParts, getOuterArmorLayers } from '../core/config.js';
 
-export function drawPreviewPolygon(ctx, x, y, radius, sides, angle, fillColor, strokeColor, strokeWidth = 3) {
+export function drawPreviewPolygon(ctx, x, y, radius, sides, angle, fillColor, strokeColor, strokeWidth = 3, innerRadius = 0) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
@@ -8,6 +8,18 @@ export function drawPreviewPolygon(ctx, x, y, radius, sides, angle, fillColor, s
 
   if (sides === 0) {
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  } else if (innerRadius > 0) {
+    const totalPoints = sides * 2;
+    const step = (2 * Math.PI) / totalPoints;
+    for (let i = 0; i < totalPoints; i++) {
+      const a = i * step;
+      const r = i % 2 === 0 ? radius : innerRadius;
+      const px = r * Math.cos(a);
+      const py = r * Math.sin(a);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
   } else {
     for (let i = 0; i < sides; i++) {
       const a = (i * 2 * Math.PI) / sides;
@@ -42,9 +54,21 @@ export function drawTankPreview(ctx, chassisKey, spinAngle, playerFillColor = '#
   ctx.scale(0.75, 0.75);
   ctx.rotate(spinAngle);
 
-  if (chassis.outerArmor) {
-    const outerRadius = 18 * chassis.outerArmor.radiusMultiplier;
-    drawPreviewPolygon(ctx, 0, 0, outerRadius, chassis.outerArmor.sides, spinAngle * 0.5, chassis.outerArmor.color, chassis.outerArmor.stroke, 3);
+  const armorLayers = getOuterArmorLayers(chassis);
+  for (let i = 0; i < armorLayers.length; i++) {
+    const layer = armorLayers[i];
+    const outerRadius = 18 * (layer.radiusMultiplier || 1.55);
+    const innerRadius = layer.innerRadiusMultiplier ? 18 * layer.innerRadiusMultiplier : 0;
+    const layerAngle = (layer.initialAngle || 0) + spinAngle * ((layer.spinSpeed ?? 2.2) / 4);
+    drawPreviewPolygon(
+      ctx, 0, 0, outerRadius,
+      layer.sides || 6,
+      layerAngle,
+      layer.color || '#343444',
+      layer.stroke || '#20202c',
+      3,
+      innerRadius
+    );
   }
 
   const radius = 18 * (chassis.radiusMultiplier || 1.0);
@@ -128,7 +152,11 @@ export function generateTankPreviewDataUrl(chassisKey, color = '#00b2e1', stroke
 
   const baseScale = (76 / 100) * 0.85 * dpr;
   const bodyRadius = 20 * (cfg.radiusMultiplier || 1.0) * baseScale;
-  const armorRadius = cfg.outerArmor ? bodyRadius * (cfg.outerArmor.radiusMultiplier || 1.6) : 0;
+  const armorLayers = getOuterArmorLayers(cfg);
+  let armorRadius = 0;
+  for (let i = 0; i < armorLayers.length; i++) {
+    armorRadius = Math.max(armorRadius, bodyRadius * (armorLayers[i].radiusMultiplier || 1.6));
+  }
 
   let maxTurretExtent = 0;
   if (cfg.turrets && cfg.turrets.length > 0) {
@@ -151,19 +179,22 @@ export function generateTankPreviewDataUrl(chassisKey, color = '#00b2e1', stroke
   ctx.scale(fitScale, fitScale);
   ctx.rotate(-Math.PI / 2);
 
-  if (cfg.outerArmor) {
-    const sides = cfg.outerArmor.sides || 6;
-    const r = bodyRadius * (cfg.outerArmor.radiusMultiplier || 1.6);
+  for (let i = 0; i < armorLayers.length; i++) {
+    const layer = armorLayers[i];
+    const sides = layer.sides || 6;
+    const r = bodyRadius * (layer.radiusMultiplier || 1.6);
+    const innerR = layer.innerRadiusMultiplier ? bodyRadius * layer.innerRadiusMultiplier : 0;
     drawPreviewPolygon(
       ctx,
       0,
       0,
       r,
       sides,
-      0,
-      cfg.outerArmor.color || '#343444',
-      cfg.outerArmor.stroke || '#20202c',
-      3.5 * dpr
+      layer.initialAngle || 0,
+      layer.color || '#343444',
+      layer.stroke || '#20202c',
+      3.5 * dpr,
+      innerR
     );
   }
 
@@ -239,17 +270,33 @@ export function generateTankSvg(chassisKey, color = '#00b2e1', stroke = null, si
     strokeColor = (foundTheme && foundTheme.stroke) ? foundTheme.stroke : computeStrokeColor(color);
   }
 
-  let armorSvg = '';
-  if (cfg.outerArmor) {
-    const sides = cfg.outerArmor.sides || 6;
-    const r = bodyRadius * (cfg.outerArmor.radiusMultiplier || 1.6);
+  const armorLayers = getOuterArmorLayers(cfg);
+  const armorSvg = armorLayers.map(layer => {
+    const sides = layer.sides || 6;
+    const r = bodyRadius * (layer.radiusMultiplier || 1.6);
+    const innerR = layer.innerRadiusMultiplier ? bodyRadius * layer.innerRadiusMultiplier : 0;
+    const initA = layer.initialAngle || 0;
     const pts = [];
-    for (let i = 0; i < sides; i++) {
-      const a = (i * 2 * Math.PI) / sides;
-      pts.push(`${center + r * Math.cos(a)},${center + r * Math.sin(a)}`);
+    if (innerR > 0) {
+      const totalPoints = sides * 2;
+      const step = (2 * Math.PI) / totalPoints;
+      for (let i = 0; i < totalPoints; i++) {
+        const a = initA + i * step;
+        const rad = i % 2 === 0 ? r : innerR;
+        pts.push(`${center + rad * Math.cos(a)},${center + rad * Math.sin(a)}`);
+      }
+    } else {
+      for (let i = 0; i < sides; i++) {
+        const a = initA + (i * 2 * Math.PI) / sides;
+        pts.push(`${center + r * Math.cos(a)},${center + r * Math.sin(a)}`);
+      }
     }
-    armorSvg = `<polygon points="${pts.join(' ')}" fill="${cfg.outerArmor.color || '#343444'}" stroke="${cfg.outerArmor.stroke || '#20202c'}" stroke-width="3.5" stroke-linejoin="miter"/>`;
-  }
+    const poly = `<polygon points="${pts.join(' ')}" fill="${layer.color || '#343444'}" stroke="${layer.stroke || '#20202c'}" stroke-width="3.5" stroke-linejoin="round"/>`;
+    if (layer.spinSpeed && layer.spinSpeed < 0) {
+      return `<g><animateTransform attributeName="transform" type="rotate" from="0 ${center} ${center}" to="-540 ${center} ${center}" dur="14s" repeatCount="indefinite"/>${poly}</g>`;
+    }
+    return poly;
+  }).join('');
 
   let bodySvg = '';
   if (cfg.sides && cfg.sides > 0) {

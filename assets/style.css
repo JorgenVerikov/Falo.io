@@ -899,7 +899,7 @@ body.theme-light .enemy-upgrade-pill {
   font-size: calc(10.5px * var(--ui-scale));
   cursor: pointer;
   text-decoration: none;
-  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), filter 0.12s ease;
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), filter 0.12s ease, box-shadow 0.18s ease;
   text-shadow: 
     -1.5px -1.5px 0 #222,
      1.5px -1.5px 0 #222,
@@ -914,17 +914,19 @@ body.theme-light .enemy-upgrade-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  box-shadow: none;
+  box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.42), 0 4px 10px rgba(0, 0, 0, 0.28);
 }
 
 .auth-action-link:hover {
   filter: brightness(1.14);
   transform: scale(1.06);
+  box-shadow: 5px 6px 0 rgba(0, 0, 0, 0.5), 0 8px 16px rgba(0, 0, 0, 0.36);
 }
 
 .auth-action-link:active {
   filter: brightness(0.92);
   transform: scale(0.97);
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.42), 0 3px 8px rgba(0, 0, 0, 0.24);
 }
 
 /* Main Menu Top-Left Fullscreen Button */

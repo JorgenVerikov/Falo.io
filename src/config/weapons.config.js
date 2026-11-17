@@ -100,6 +100,8 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     : undefined;
   const droneTurret = weaponExtra.droneTurret ?? multipliers.droneTurret;
   const missileProfile = weaponExtra.missileProfile ?? multipliers.missileProfile ?? geom.missileProfile ?? weaponExtra.missile ?? multipliers.missile;
+  const fireTrigger = weaponExtra.fireTrigger ?? multipliers.fireTrigger ?? geom.fireTrigger;
+  const pelletGroups = weaponExtra.pelletGroups ?? multipliers.pelletGroups ?? geom.pelletGroups;
 
   // Calculate shell radius based on explicit override or cannon base width and bulletSize multiplier
   const baseBulletRadius = (width / 20) * (BASIC_BARREL_BASE.bulletSize || 9);
@@ -128,7 +130,9 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     ...(bulletOptions !== undefined ? { bulletOptions } : {}),
     ...(droneOptions !== undefined ? { droneOptions } : {}),
     ...(droneTurret !== undefined ? { droneTurret } : {}),
-    ...(missileProfile !== undefined ? { missileProfile } : {})
+    ...(missileProfile !== undefined ? { missileProfile } : {}),
+    ...(fireTrigger !== undefined ? { fireTrigger } : {}),
+    ...(pelletGroups !== undefined ? { pelletGroups } : {})
   };
 
   // Construct calibrated weapon payload if turret discharges projectiles
@@ -288,3 +292,12 @@ export function getTankRenderParts(chassis = {}, turretsOverride = null) {
 
   return parts;
 }
+
+/**
+ * Normalizes chassis.outerArmor (single object or array of armor shells) into an array.
+ */
+export function getOuterArmorLayers(chassis = {}) {
+  if (!chassis || !chassis.outerArmor) return [];
+  return Array.isArray(chassis.outerArmor) ? chassis.outerArmor : [chassis.outerArmor];
+}
+

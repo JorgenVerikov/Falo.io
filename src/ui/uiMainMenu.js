@@ -1,4 +1,4 @@
-import { CONFIG, computeStrokeColor, getTankRenderParts } from '../core/config.js';
+import { CONFIG, computeStrokeColor, getTankRenderParts, getOuterArmorLayers } from '../core/config.js';
 import { drawPreviewPolygon } from './uiPreviews.js';
 
 export class MainMenuController {
@@ -144,8 +144,9 @@ export class MainMenuController {
     const playerR = CONFIG.PLAYER.radius || 25;
     let maxUnitExtent = chassis.radiusMultiplier || 1.0;
 
-    if (chassis.outerArmor) {
-      maxUnitExtent = Math.max(maxUnitExtent, chassis.outerArmor.radiusMultiplier || 1.4);
+    const armorLayers = getOuterArmorLayers(chassis);
+    for (let i = 0; i < armorLayers.length; i++) {
+      maxUnitExtent = Math.max(maxUnitExtent, armorLayers[i].radiusMultiplier || 1.4);
     }
 
     if (chassis.turrets && chassis.turrets.length > 0) {
@@ -192,15 +193,20 @@ export class MainMenuController {
 
     ctx.translate(cx, cy);
 
-    if (chassis.outerArmor) {
-      const outerRadius = baseRadius * chassis.outerArmor.radiusMultiplier;
+    const armorLayers = getOuterArmorLayers(chassis);
+    for (let i = 0; i < armorLayers.length; i++) {
+      const layer = armorLayers[i];
+      const outerRadius = baseRadius * (layer.radiusMultiplier || 1.55);
+      const innerRadius = layer.innerRadiusMultiplier ? baseRadius * layer.innerRadiusMultiplier : 0;
+      const layerAngle = (layer.initialAngle || 0) + this.spinAngle * ((layer.spinSpeed ?? 2.2) / 4);
       drawPreviewPolygon(
         ctx, 0, 0, outerRadius,
-        chassis.outerArmor.sides,
-        this.spinAngle * 0.5,
-        chassis.outerArmor.color,
-        chassis.outerArmor.stroke,
-        strokeWidth
+        layer.sides || 6,
+        layerAngle,
+        layer.color || '#343444',
+        layer.stroke || '#20202c',
+        strokeWidth,
+        innerRadius
       );
     }
 

@@ -3,7 +3,7 @@ import { WeaponSystem, WEAPON_TYPE, extractBulletOptions } from '../entities/wea
 import { WaveManager } from '../systems/waveManager.js';
 import { StorageManager } from './storage.js';
 import { UIManager } from '../ui/ui.js';
-import { CONFIG, getXPRequiredForLevel, getTotalXPForLevel, computeStrokeColor, getTankRenderParts } from './config.js';
+import { CONFIG, getXPRequiredForLevel, getTotalXPForLevel, computeStrokeColor, getTankRenderParts, getOuterArmorLayers } from './config.js';
 import { HUDUpdater } from './hudUpdater.js';
 import { MobileControls } from './mobileControls.js';
 import {
@@ -31,6 +31,7 @@ export function getSkillPointsEarnedUpToLevel(level) {
 const state = {
   activeChassis: 'basic',
   outerArmorAngle: 0,
+  outerArmorTime: 0,
   fps: 60,
   lastFrameTime: performance.now(),
   isGameOver: false,
@@ -501,15 +502,19 @@ function addXP(amount, isDirect = false) {
 
 function handleStatUpgrade(statKey) {
   const smasherCfg = CONFIG.PLAYER.smasherRules;
-  const isSmasher = (state.activeChassis === 'smasher');
+  const chassisCfg = CONFIG.CHASSIS[state.activeChassis] || {};
+  const statRules = chassisCfg.statRules || null;
+  const blockBullets = statRules ? Boolean(statRules.blockBulletStats) : (state.activeChassis === 'smasher');
 
-  if (isSmasher && smasherCfg.blockedStats.includes(statKey)) {
+  if (blockBullets && smasherCfg.blockedStats.includes(statKey)) {
     return;
   }
 
-  const maxStatCap = (isSmasher && smasherCfg.allowedStats.includes(statKey))
-    ? smasherCfg.maxStatLevel
-    : CONFIG.PLAYER.maxStatLevel;
+  const maxStatCap = statRules?.maxStatLevel
+    ? statRules.maxStatLevel
+    : ((state.activeChassis === 'smasher' && smasherCfg.allowedStats.includes(statKey))
+        ? smasherCfg.maxStatLevel
+        : CONFIG.PLAYER.maxStatLevel);
 
   if (state.statPoints > 0 && state.stats[statKey] < maxStatCap) {
     state.statPoints--;
@@ -963,8 +968,10 @@ function setupInputs() {
 function setActiveChassis(chassisKey) {
   state.activeChassis = chassisKey;
 
+  const chassisCfg = CONFIG.CHASSIS[chassisKey] || {};
   const smasherCfg = CONFIG.PLAYER.smasherRules;
-  if (chassisKey === 'smasher') {
+  const blockBullets = chassisCfg.statRules ? Boolean(chassisCfg.statRules.blockBulletStats) : (chassisKey === 'smasher');
+  if (blockBullets) {
     let refunded = 0;
     smasherCfg.blockedStats.forEach(key => {
       if (state.stats[key] > 0) {
@@ -1095,8 +1102,12 @@ function updatePlayer(dt) {
     player.hp = Math.min(player.maxHp, player.hp + activeRegen * dt * (player.maxHp / CONFIG.PLAYER.baseMaxHp));
   }
 
-  if (chassisConfig.outerArmor && chassisConfig.outerArmor.spinSpeed) {
-    state.outerArmorAngle += chassisConfig.outerArmor.spinSpeed * dt;
+  const armorLayers = getOuterArmorLayers(chassisConfig);
+  if (armorLayers.length > 0) {
+    state.outerArmorTime += dt;
+    if (armorLayers[0].spinSpeed) {
+      state.outerArmorAngle += armorLayers[0].spinSpeed * dt;
+    }
   }
 
   let dirX = 0;
@@ -1130,11 +1141,19 @@ function updatePlayer(dt) {
   const mobileFiring = Boolean(mobileControls && mobileControls.aimState.isFiring);
   const hasCameraScope = Boolean(chassisConfig && chassisConfig.cameraScope) && !isMobileMode;
   const hasRightClickDetonate = !isMobileMode && Boolean(chassisConfig?.turrets?.some(t => t.missileProfile?.detonation?.onRightClick));
+  const hasSecondaryFire = Boolean(chassisConfig?.turrets?.some(t => t.fireTrigger === 'secondary'));
   const isScopeHeld = hasCameraScope && (input.mouse.isRightDown || Boolean(input.keys && input.keys['shift']));
   const detonatePressed = hasRightClickDetonate && input.mouse.isRightDown && !input.mouse.wasRightDown;
   input.mouse.wasRightDown = input.mouse.isRightDown;
-  const pointerFiring = !isMobileMode && (input.mouse.isDown || (!hasCameraScope && !hasRightClickDetonate && input.mouse.isRightDown));
-  const isFiring = pointerFiring || (input.keys && input.keys[' ']) || state.autoFire || mobileFiring;
+  const pointerFiring = !isMobileMode && (input.mouse.isDown || (!hasCameraScope && !hasRightClickDetonate && !hasSecondaryFire && input.mouse.isRightDown));
+  const sharedFire = Boolean(input.keys && input.keys[' ']) || state.autoFire || mobileFiring;
+  const isFiring = pointerFiring || sharedFire;
+  const weaponFireInput = hasSecondaryFire
+    ? {
+        primary: (!isMobileMode && input.mouse.isDown) || sharedFire,
+        secondary: (!isMobileMode && input.mouse.isRightDown) || sharedFire
+      }
+    : isFiring;
 
   let droneMode = 'IDLE';
   let droneTargetX = input.mouse.worldX;
@@ -1165,7 +1184,7 @@ function updatePlayer(dt) {
   const recoilImpulse = weaponSys.update(
     dt,
     player,
-    isFiring,
+    weaponFireInput,
     {
       mode: droneMode,
       targetX: droneTargetX,
@@ -1330,7 +1349,12 @@ function renderPlayerChassis() {
   const sizeScale = radius / (CONFIG.PLAYER.baseRadius || 25);
 
   const turrets = chassis.turrets || [];
-  let maxReach = radius * (chassis.outerArmor ? (chassis.outerArmor.radiusMultiplier || 1.5) : 1.5);
+  const armorLayers = getOuterArmorLayers(chassis);
+  let maxReach = radius * 1.5;
+  for (let i = 0; i < armorLayers.length; i++) {
+    const rMult = armorLayers[i].radiusMultiplier || 1.5;
+    if (radius * rMult > maxReach) maxReach = radius * rMult;
+  }
   for (let i = 0; i < turrets.length; i++) {
     const t = turrets[i];
     const reach = ((Math.abs(t.xOffset || 0) + (t.length || 48) + Math.abs(t.yOffset || 0) + Math.max(t.width || 20, t.frontWidth || t.width || 20) * 0.5) * sizeScale);
@@ -1347,15 +1371,21 @@ function renderPlayerChassis() {
     ctx.globalAlpha = unitAlpha;
   }
 
-  if (chassis.outerArmor) {
-    const outerRadius = (player.radius * chassis.outerArmor.radiusMultiplier) * activeScale;
+  for (let i = 0; i < armorLayers.length; i++) {
+    const layer = armorLayers[i];
+    const outerRadius = (player.radius * (layer.radiusMultiplier || 1.55)) * activeScale;
+    const innerRadius = layer.innerRadiusMultiplier
+      ? (player.radius * layer.innerRadiusMultiplier) * activeScale
+      : 0;
+    const layerAngle = (layer.initialAngle || 0) + state.outerArmorTime * (layer.spinSpeed || 0);
     canvasMgr.drawPolygon(
       x, y, outerRadius,
-      chassis.outerArmor.sides,
-      state.outerArmorAngle,
-      chassis.outerArmor.color,
-      chassis.outerArmor.stroke,
-      CONFIG.PLAYER.strokeWidth
+      layer.sides,
+      layerAngle,
+      layer.color,
+      layer.stroke,
+      CONFIG.PLAYER.strokeWidth,
+      innerRadius
     );
   }
 

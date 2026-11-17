@@ -328,8 +328,8 @@ export class Projectile {
     this.deathTimer = 0;
   }
 
-  detonate(projectilesOut = null) {
-    if (this.dead || this.hasDetonated || !this.detonateConfig) return false;
+  detonate(projectilesOut = null, { allowDead = false } = {}) {
+    if ((!allowDead && this.dead) || this.hasDetonated || !this.detonateConfig) return false;
     this.hasDetonated = true;
 
     if (projectilesOut) {
@@ -378,12 +378,17 @@ export class Projectile {
       }
     }
 
-    this.kill();
+    if (!this.dead) {
+      this.kill();
+    }
     return true;
   }
 
   update(dt, projectilesOut = null) {
     if (this.isDying) {
+      if (this.detonateConfig?.onDestroy && !this.hasDetonated && projectilesOut) {
+        this.detonate(projectilesOut, { allowDead: true });
+      }
       this.deathTimer += dt;
       const progress = Math.min(1.0, this.deathTimer / this.deathDuration);
       this.radius = this.baseRadius * (1.0 + progress * this.deathExpandScale);
@@ -496,7 +501,11 @@ export class Projectile {
         this.kill();
       }
     } else if (this.penetration <= 0) {
-      this.kill();
+      if (this.detonateConfig?.onDestroy && !this.hasDetonated) {
+        this.detonate(projectilesOut);
+      } else {
+        this.kill();
+      }
     }
   }
 
@@ -1277,6 +1286,8 @@ export class WeaponSystem {
         bulletOptions: extractBulletOptions(chassis.bulletProfile, extractBulletOptions(t, w)),
         droneOptions: t.droneOptions || w.droneOptions,
         droneTurret: t.droneTurret || w.droneTurret,
+        fireTrigger: w.fireTrigger || t.fireTrigger || 'primary',
+        pelletGroups: Array.isArray(w.pelletGroups || t.pelletGroups) ? (w.pelletGroups || t.pelletGroups) : null,
         missileProfile: t.missileProfile || w.missileProfile || null,
         missileStats: (t.missileProfile || w.missileProfile) ? {
           baseDamage: baseCfg.damage || 7.0,
@@ -1430,6 +1441,11 @@ export class WeaponSystem {
     this.summonedDroneThisFrame = false;
     this.spinReverse = Boolean(controlState && controlState.spinReverse);
 
+    const primaryFiring = (typeof isFiring === 'object' && isFiring !== null) ? Boolean(isFiring.primary) : Boolean(isFiring);
+    const secondaryFiring = (typeof isFiring === 'object' && isFiring !== null) ? Boolean(isFiring.secondary) : Boolean(isFiring);
+    const anyManualFiring = primaryFiring || secondaryFiring;
+    const isTurretManualFiring = (t) => (t.fireTrigger === 'secondary' ? secondaryFiring : primaryFiring);
+
     // 1. Decay barrel recoil offset for all turrets
     this.turrets.forEach((turret, i) => {
       const state = this.turretStates[i];
@@ -1443,7 +1459,7 @@ export class WeaponSystem {
         const hasPairedShooter = this.turrets.some(other =>
           other.shootsBullet && !other.isAutoTurret && Math.abs((other.angleOffset || 0) - (turret.angleOffset || 0)) < 0.01
         );
-        if (!hasPairedShooter && turret.playsRecoil && isFiring && state.cooldownTimer <= 0) {
+        if (!hasPairedShooter && turret.playsRecoil && anyManualFiring && state.cooldownTimer <= 0) {
           state.cooldownTimer = turret.fireIntervalSec || 0.3;
           state.recoilOffset = turret.recoilKickAmount || 10;
         }
@@ -1465,7 +1481,7 @@ export class WeaponSystem {
       } else if (turret.type === WEAPON_TYPE.THERMAL) {
         // Individual thermal cooling is managed tank-wide below
       } else if (turret.type === WEAPON_TYPE.ENERGY) {
-        const turretFiring = turret.isAutoTurret ? state.autoShouldFire : isFiring;
+        const turretFiring = turret.isAutoTurret ? state.autoShouldFire : isTurretManualFiring(turret);
         if (!turretFiring) {
           state.energy = Math.min(turret.maxEnergy, state.energy + turret.rechargeRate * dt);
         }
@@ -1598,7 +1614,7 @@ export class WeaponSystem {
       const coolRate = primaryThermal.coolRate || this.coolRate || 16;
       const lockoutTime = primaryThermal.overheatLockoutTime || this.overheatLockoutTime || 2.0;
       const anyThermalFiring = shootingTurrets.some(t =>
-        t.type === WEAPON_TYPE.THERMAL && (t.isAutoTurret ? this.turretStates[t.index].autoShouldFire : isFiring)
+        t.type === WEAPON_TYPE.THERMAL && (t.isAutoTurret ? this.turretStates[t.index].autoShouldFire : isTurretManualFiring(t))
       );
 
       if (this.isOverheated) {
@@ -1625,21 +1641,22 @@ export class WeaponSystem {
 
     // 3. Firing Execution
     // When beginning to fire from idle in alternating mode, offset delayed turrets by their fireDelay phase
-    if (isFiring && !this.wasFiring && isAlternating) {
-      const allReady = shootingTurrets.every(t => this.turretStates[t.index].cooldownTimer <= 0);
+    if (anyManualFiring && !this.wasFiring && isAlternating) {
+      const allReady = shootingTurrets.every(t => t.isAutoTurret || this.turretStates[t.index].cooldownTimer <= 0);
       if (allReady) {
         shootingTurrets.forEach(turret => {
+          if (turret.isAutoTurret) return;
           const delayFraction = (turret.fireDelay !== undefined) ? turret.fireDelay : (turret.fireDelayTicks ? (turret.fireDelayTicks / 60 / turret.fireIntervalSec) : 0);
           this.turretStates[turret.index].cooldownTimer = delayFraction * turret.fireIntervalSec;
         });
       }
     }
-    this.wasFiring = isFiring;
+    this.wasFiring = anyManualFiring;
 
     // Each turret fires as fast as its own firerate (no bottlenecking queue)
     shootingTurrets.forEach(turret => {
       const state = this.turretStates[turret.index];
-      const wantsToFire = turret.isAutoTurret ? state.autoShouldFire : isFiring;
+      const wantsToFire = turret.isAutoTurret ? state.autoShouldFire : isTurretManualFiring(turret);
 
       if (wantsToFire && state.cooldownTimer <= 0) {
         let canFire = false;
@@ -1756,7 +1773,7 @@ export class WeaponSystem {
 
       const cooldownDuration = this.cooldownDurationSec || 1.67;
 
-      if (isFiring && this.cooldownTimer <= 0 && player.dashTimer <= 0) {
+      if (anyManualFiring && this.cooldownTimer <= 0 && player.dashTimer <= 0) {
         // Trigger dash surge and enforce cooldown lockout
         this.cooldownTimer = cooldownDuration;
         player.dashTimer = CONFIG.WEAPONS.smasherDashDuration || 0.45;
@@ -2121,13 +2138,8 @@ export class WeaponSystem {
       const bulletStroke = player.strokeColor || '#0083a8';
       const bulletRadius = turret.shellRadius * sizeScale;
       const bulletLifetime = turret.lifetime || CONFIG.WEAPONS.defaultLifetime || 3.0;
-      const count = turret.bulletsPerShot || 1;
 
-      for (let b = 0; b < count; b++) {
-        const shotAngle = fireAngle + (Math.random() - 0.5) * turret.spread;
-        const vx = Math.cos(shotAngle) * turret.shellSpeed;
-        const vy = Math.sin(shotAngle) * turret.shellSpeed;
-
+      const buildBaseProjOpts = (shotAngle) => {
         const baseProjOpts = turret.bulletOptions ? { ...turret.bulletOptions } : {};
         if (turret.isTrap) {
           baseProjOpts.isTrap = true;
@@ -2142,20 +2154,71 @@ export class WeaponSystem {
             spinDirection: this.spinReverse ? -1 : 1
           };
         }
+        return baseProjOpts;
+      };
 
-        this.projectiles.push(
-          new Projectile(
-            spawnX, spawnY,
-            vx, vy,
-            bulletRadius,
-            bulletLifetime,
-            turret.damage,
-            turret.penetration,
-            bulletFill,
-            bulletStroke,
-            Object.keys(baseProjOpts).length > 0 ? baseProjOpts : undefined
-          )
-        );
+      if (Array.isArray(turret.pelletGroups) && turret.pelletGroups.length > 0) {
+        const baseCfg = CONFIG.WEAPONS.basicBarrelBase || { bulletSize: 9, spread: 0.04 };
+        const chassisCfg = CONFIG.CHASSIS[this.chassisKey] || {};
+        const globalSizeMult = (CONFIG.WEAPONS.bulletSizeMultiplier !== undefined) ? CONFIG.WEAPONS.bulletSizeMultiplier : 1.0;
+        const chassisSizeMult = (chassisCfg.bulletSizeMultiplier !== undefined) ? chassisCfg.bulletSizeMultiplier : 1.0;
+        const baseSpeedUnit = turret.shellSpeed / Math.max(0.01, turret.bulletSpeedMult || 1.0);
+        const baseRadUnit = (baseCfg.bulletSize || 9) * sizeScale * chassisSizeMult * globalSizeMult;
+        const baseSpreadUnit = baseCfg.spread || 0.04;
+
+        for (let g = 0; g < turret.pelletGroups.length; g++) {
+          const grp = turret.pelletGroups[g];
+          const grpCount = grp.bulletsPerShot || 1;
+          const grpSpeed = baseSpeedUnit * (grp.bulletSpeed ?? turret.bulletSpeedMult ?? 1.0);
+          const grpRadius = Math.round(baseRadUnit * (grp.bulletSize ?? turret.bulletSizeMult ?? 1.0) * 10) / 10;
+          const grpSpread = baseSpreadUnit * (grp.spread ?? turret.spreadMult ?? 1.0);
+          const grpLife = grp.lifetime ?? bulletLifetime;
+          const grpDamage = turret.damage * (grp.damage ?? 1.0);
+          const grpPen = turret.penetration * (grp.penetration ?? 1.0);
+
+          for (let b = 0; b < grpCount; b++) {
+            const shotAngle = fireAngle + (Math.random() - 0.5) * grpSpread;
+            const vx = Math.cos(shotAngle) * grpSpeed;
+            const vy = Math.sin(shotAngle) * grpSpeed;
+            const baseProjOpts = buildBaseProjOpts(shotAngle);
+
+            this.projectiles.push(
+              new Projectile(
+                spawnX, spawnY,
+                vx, vy,
+                grpRadius,
+                grpLife,
+                grpDamage,
+                grpPen,
+                bulletFill,
+                bulletStroke,
+                Object.keys(baseProjOpts).length > 0 ? baseProjOpts : undefined
+              )
+            );
+          }
+        }
+      } else {
+        const count = turret.bulletsPerShot || 1;
+        for (let b = 0; b < count; b++) {
+          const shotAngle = fireAngle + (Math.random() - 0.5) * turret.spread;
+          const vx = Math.cos(shotAngle) * turret.shellSpeed;
+          const vy = Math.sin(shotAngle) * turret.shellSpeed;
+          const baseProjOpts = buildBaseProjOpts(shotAngle);
+
+          this.projectiles.push(
+            new Projectile(
+              spawnX, spawnY,
+              vx, vy,
+              bulletRadius,
+              bulletLifetime,
+              turret.damage,
+              turret.penetration,
+              bulletFill,
+              bulletStroke,
+              Object.keys(baseProjOpts).length > 0 ? baseProjOpts : undefined
+            )
+          );
+        }
       }
     }
 

@@ -85,7 +85,7 @@ export class CanvasManager {
     this.ctx.restore();
   }
 
-  drawPolygon(x, y, radius, sides, angle = 0, fillColor = '#00e5ff', strokeColor = '#00a8bc', strokeWidth = 4) {
+  drawPolygon(x, y, radius, sides, angle = 0, fillColor = '#00e5ff', strokeColor = '#00a8bc', strokeWidth = 4, innerRadius = 0) {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(x, y);
@@ -94,6 +94,17 @@ export class CanvasManager {
     ctx.beginPath();
     if (sides === 0) {
       ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    } else if (innerRadius > 0) {
+      const totalPts = sides * 2;
+      for (let i = 0; i < totalPts; i++) {
+        const a = (i * Math.PI) / sides;
+        const r = (i % 2 === 0) ? radius : innerRadius;
+        const px = r * Math.cos(a);
+        const py = r * Math.sin(a);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
     } else {
       for (let i = 0; i < sides; i++) {
         const a = (i * 2 * Math.PI) / sides;

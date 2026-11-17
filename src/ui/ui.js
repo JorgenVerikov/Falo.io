@@ -892,18 +892,21 @@ export class UIManager {
     this.statList.innerHTML = '';
     this.statPointsAvailable = statPoints;
 
-    const isSmasher = (activeChassis === 'smasher');
     const smasherCfg = CONFIG.PLAYER.smasherRules;
     const chassisCfg = CONFIG.CHASSIS[activeChassis] || {};
+    const statRules = chassisCfg.statRules || null;
+    const blockBullets = statRules ? Boolean(statRules.blockBulletStats) : (activeChassis === 'smasher');
+    const maxCap = statRules?.maxStatLevel
+      ? statRules.maxStatLevel
+      : ((activeChassis === 'smasher') ? smasherCfg.maxStatLevel : CONFIG.PLAYER.maxStatLevel);
     const labelOverrides = chassisCfg.statLabelOverrides || {};
     let statDefs = CONFIG.PLAYER.statDefinitions;
-    if (isSmasher) {
+    if (blockBullets) {
       statDefs = statDefs.filter(s => smasherCfg.allowedStats.includes(s.key));
     }
 
     statDefs.forEach(s => {
       const level = stats[s.key] || 0;
-      const maxCap = isSmasher ? smasherCfg.maxStatLevel : CONFIG.PLAYER.maxStatLevel;
 
       const pill = document.createElement('div');
       pill.className = 'stat-bar-pill';
