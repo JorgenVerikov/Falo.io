@@ -98,6 +98,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     ? { ...(multipliers.droneOptions || {}), ...(weaponExtra.droneProfile || {}), ...(weaponExtra.droneOptions || {}) }
     : undefined;
   const droneTurret = weaponExtra.droneTurret ?? multipliers.droneTurret;
+  const missileProfile = weaponExtra.missileProfile ?? multipliers.missileProfile ?? geom.missileProfile ?? weaponExtra.missile ?? multipliers.missile;
 
   // Calculate shell radius based on explicit override or cannon base width and bulletSize multiplier
   const baseBulletRadius = (width / 20) * (BASIC_BARREL_BASE.bulletSize || 9);
@@ -125,7 +126,8 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     ...(bulletDeathExpandScale !== undefined ? { bulletDeathExpandScale } : {}),
     ...(bulletOptions !== undefined ? { bulletOptions } : {}),
     ...(droneOptions !== undefined ? { droneOptions } : {}),
-    ...(droneTurret !== undefined ? { droneTurret } : {})
+    ...(droneTurret !== undefined ? { droneTurret } : {}),
+    ...(missileProfile !== undefined ? { missileProfile } : {})
   };
 
   // Construct calibrated weapon payload if turret discharges projectiles

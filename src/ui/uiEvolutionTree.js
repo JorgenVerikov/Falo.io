@@ -1,7 +1,7 @@
 import { CONFIG, computeStrokeColor } from '../core/config.js';
 import { generateTankPreviewDataUrl, drawPreviewPolygon } from './uiPreviews.js';
 
-const WORLD_WIDTH = 3600;
+const WORLD_WIDTH = 3840;
 const WORLD_HEIGHT = 860;
 const NODE_RADIUS = 46;
 
@@ -35,7 +35,9 @@ const TIER_4_SLOTS = [
   { key: 'streamliner', col: 19 },
   { key: 'hybrid', col: 20 },
   { key: 'annihilator', col: 21 },
-  { key: 'tesla', col: 22.5 }
+  { key: 'skimmer', col: 22 },
+  { key: 'rocketeer', col: 23 },
+  { key: 'tesla', col: 24.5 }
 ];
 
 const TIER_3_SLOTS = [
@@ -49,16 +51,16 @@ const TIER_3_SLOTS = [
   { key: 'assassin', col: 15.5 },
   { key: 'hunter', col: 17.5 },
   { key: 'gunner', col: 18.5 },
-  { key: 'destroyer', col: 20.5 },
-  { key: 'shotgun', col: 21.5 },
-  { key: 'smasher', col: 22.5 }
+  { key: 'destroyer', col: 21.5 },
+  { key: 'shotgun', col: 23.2 },
+  { key: 'smasher', col: 24.5 }
 ];
 
 const TIER_2_SLOTS = [
   { key: 'twin', col: 2.0 },
   { key: 'flank', col: 4.4 },
   { key: 'sniper', col: 13.2 },
-  { key: 'machinegun', col: 20.0 }
+  { key: 'machinegun', col: 21.0 }
 ];
 
 function getDisplayTier(chassis) {
@@ -79,7 +81,7 @@ function buildTreeLayout() {
   const positions = {};
   const placed = new Set();
 
-  let maxCol = 22.5;
+  let maxCol = 24.5;
   TIER_4_SLOTS.forEach(slot => {
     if (CONFIG.CHASSIS[slot.key]) {
       positions[slot.key] = { x: colToX(slot.col), y: ROW_Y[4], tier: 4 };

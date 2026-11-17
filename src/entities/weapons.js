@@ -222,6 +222,35 @@ function normalizeDroneTurret(t = {}) {
   };
 }
 
+function normalizeMissileTurret(t = {}) {
+  const b = (t.bullet && typeof t.bullet === 'object') ? t.bullet : null;
+  const bOpts = extractBulletOptions(t);
+  return {
+    width: t.width ?? 10,
+    frontWidth: t.frontWidth ?? t.width ?? 10,
+    protrudeLength: t.protrudeLength ?? 8,
+    angleOffset: ((t.angleOffset ?? 0) * Math.PI) / 180,
+    xOffset: t.xOffset ?? 0,
+    yOffset: t.yOffset ?? 0,
+    recoilDistance: t.recoilDistance ?? 3,
+    strokeWidth: t.strokeWidth ?? 3,
+    lineJoin: t.lineJoin || 'miter',
+    damageMult: t.damage ?? b?.damage ?? 0.60,
+    penetrationMult: t.penetration ?? b?.penetration ?? 0.40,
+    bulletSpeedMult: t.bulletSpeed ?? b?.speed ?? 1.1,
+    bulletRadius: t.bulletRadius ?? b?.radius ?? 5.2,
+    lifetime: t.lifetime ?? t.bulletLifetime ?? b?.lifetime ?? 1.25,
+    fireRateTicks: t.fireRateTicks ?? 6,
+    initialFireDelay: t.initialFireDelay ?? 0,
+    spread: t.spread ?? b?.spread ?? 0,
+    thrustSpeedStep: t.thrustSpeedStep ?? 0,
+    bulletOptions: bOpts,
+    delayTimer: t.initialFireDelay ?? 0,
+    shootTimer: t.fireDelay ?? 0,
+    recoilOffset: 0
+  };
+}
+
 export class Projectile {
   constructor(x, y, vx, vy, radius, lifetime, damage, penetration, color, strokeColor, options = {}) {
     const defaults = (CONFIG.WEAPONS && CONFIG.WEAPONS.defaultBulletOptions) || {};
@@ -260,7 +289,25 @@ export class Projectile {
     const defaultSpin = this.isTrap
       ? ((Math.random() < 0.5 ? 1 : -1) * ((CONFIG.WEAPONS.trapSpinSpeed || 6.0) * (0.85 + Math.random() * 0.3)))
       : (defaults.spinSpeed ?? 0);
-    this.spinSpeed = options.spinSpeed ?? defaultSpin;
+    const missileCfg = options.missile || null;
+    this.isMissile = Boolean(missileCfg);
+    this.missileStats = missileCfg?.stats || null;
+    this.missileTurrets = (missileCfg && Array.isArray(missileCfg.turrets))
+      ? missileCfg.turrets.map(t => normalizeMissileTurret(t))
+      : [];
+    const baseSpin = missileCfg?.spinSpeed ?? options.spinSpeed ?? defaultSpin;
+    const spinDir = missileCfg?.spinDirection ?? 1;
+    this.spinSpeed = baseSpin * spinDir;
+    this.maxSpeed = missileCfg?.maxSpeed ?? (this.speed * (missileCfg?.maxSpeedMultiplier || 1.0));
+    if (missileCfg && this.missileTurrets.length > 0 && this.missileStats) {
+      const delayDiv = this.missileStats.reloadFireRateMult || 1.0;
+      const loaderMult = this.missileStats.loaderCrewMult || 1.0;
+      this.missileTurrets.forEach(mt => {
+        if (mt.delayTimer > 0) {
+          mt.delayTimer = (mt.delayTimer / delayDiv) * loaderMult;
+        }
+      });
+    }
     this.trapAngle = options.trapAngle ?? (this.currentAngle + this.angleOffset);
     this.renderAngle = this.trapAngle;
 
@@ -279,7 +326,7 @@ export class Projectile {
     this.deathTimer = 0;
   }
 
-  update(dt) {
+  update(dt, projectilesOut = null) {
     if (this.isDying) {
       this.deathTimer += dt;
       const progress = Math.min(1.0, this.deathTimer / this.deathDuration);
@@ -326,6 +373,65 @@ export class Projectile {
       }
     }
 
+    if (this.isMissile && this.missileTurrets.length > 0 && !this.dead) {
+      const stats = this.missileStats;
+      const reloadRate = stats ? (stats.reloadFireRateMult || 1.0) : 1.0;
+      const loaderMult = stats ? (stats.loaderCrewMult || 1.0) : 1.0;
+      const baseDmg = stats ? stats.baseDamage : 7.0;
+      const basePen = stats ? stats.basePenetration : 2.0;
+      const baseSpd = stats ? stats.baseSpeed : 160;
+
+      for (let i = 0; i < this.missileTurrets.length; i++) {
+        const mt = this.missileTurrets[i];
+        mt.recoilOffset = Math.max(0, mt.recoilOffset - dt * 28);
+
+        if (mt.delayTimer > 0) {
+          mt.delayTimer -= dt;
+          continue;
+        }
+
+        mt.shootTimer -= dt;
+        if (mt.shootTimer <= 0) {
+          mt.shootTimer = Math.max(0.03, ((mt.fireRateTicks / 60) / reloadRate) * loaderMult);
+          mt.recoilOffset = mt.recoilDistance;
+
+          const barrelAngle = this.renderAngle + mt.angleOffset;
+          const tipDist = this.radius + mt.protrudeLength + mt.xOffset;
+          const perpAngle = barrelAngle + Math.PI / 2;
+          const spawnX = this.x + Math.cos(barrelAngle) * tipDist + Math.cos(perpAngle) * mt.yOffset;
+          const spawnY = this.y + Math.sin(barrelAngle) * tipDist + Math.sin(perpAngle) * mt.yOffset;
+
+          if (projectilesOut) {
+            const shotAngle = barrelAngle + (mt.spread ? (Math.random() - 0.5) * mt.spread : 0);
+            const subSpeed = baseSpd * mt.bulletSpeedMult;
+            projectilesOut.push(
+              new Projectile(
+                spawnX,
+                spawnY,
+                Math.cos(shotAngle) * subSpeed,
+                Math.sin(shotAngle) * subSpeed,
+                mt.bulletRadius,
+                mt.lifetime,
+                baseDmg * mt.damageMult,
+                basePen * mt.penetrationMult,
+                this.color,
+                this.strokeColor,
+                mt.bulletOptions ? { ...mt.bulletOptions } : undefined
+              )
+            );
+          }
+
+          if (mt.thrustSpeedStep > 0) {
+            const pushAngle = barrelAngle + Math.PI;
+            const forwardFactor = Math.cos(pushAngle - this.currentAngle);
+            if (forwardFactor > 0) {
+              this.speed = Math.min(this.maxSpeed, this.speed + mt.thrustSpeedStep * forwardFactor);
+            }
+          }
+        }
+      }
+    }
+
     this.lifetime -= dt;
     if (this.lifetime <= 0 || this.penetration <= 0) {
       this.kill();
@@ -361,6 +467,34 @@ export class Projectile {
     if (this.isDying) {
       const alpha = Math.max(0, 1.0 - (this.deathTimer / this.deathDuration));
       ctx.globalAlpha = alpha;
+    }
+
+    if (this.isMissile && this.missileTurrets.length > 0) {
+      for (let i = 0; i < this.missileTurrets.length; i++) {
+        const mt = this.missileTurrets[i];
+        const barrelLen = Math.max(this.radius + 2, this.radius + mt.protrudeLength - (mt.recoilOffset || 0));
+        const bx = mt.xOffset || 0;
+        const by = mt.yOffset || 0;
+        const halfBack = mt.width / 2;
+        const halfFront = mt.frontWidth / 2;
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.renderAngle + mt.angleOffset);
+        ctx.fillStyle = this.color;
+        ctx.strokeStyle = this.strokeColor;
+        ctx.lineWidth = mt.strokeWidth;
+        ctx.lineJoin = mt.lineJoin;
+        ctx.beginPath();
+        ctx.moveTo(bx, by - halfBack);
+        ctx.lineTo(bx + barrelLen, by - halfFront);
+        ctx.lineTo(bx + barrelLen, by + halfFront);
+        ctx.lineTo(bx, by + halfBack);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     traceShapePath(ctx, this.x, this.y, this.radius, this.renderAngle, {
@@ -1080,6 +1214,15 @@ export class WeaponSystem {
         bulletOptions: extractBulletOptions(chassis.bulletProfile, extractBulletOptions(t, w)),
         droneOptions: t.droneOptions || w.droneOptions,
         droneTurret: t.droneTurret || w.droneTurret,
+        missileProfile: t.missileProfile || w.missileProfile || null,
+        missileStats: (t.missileProfile || w.missileProfile) ? {
+          baseDamage: baseCfg.damage || 7.0,
+          basePenetration: baseCfg.penetration || 2.0,
+          baseSpeed: baseCfg.bulletSpeed || 160,
+          reloadFireRateMult: 1.0,
+          loaderCrewMult: 1.0,
+          maxSpeed: (baseCfg.bulletSpeed || 160) * ((t.missileProfile || w.missileProfile).maxSpeedMultiplier || 1.0)
+        } : null,
 
         // Independent Weapon Parameters
         type: weaponType,
@@ -1222,6 +1365,7 @@ export class WeaponSystem {
     this.idleOrbitTime += dt;
     this.firedThisFrame = false;
     this.summonedDroneThisFrame = false;
+    this.spinReverse = Boolean(controlState && controlState.spinReverse);
 
     // 1. Decay barrel recoil offset for all turrets
     this.turrets.forEach((turret, i) => {
@@ -1718,10 +1862,17 @@ export class WeaponSystem {
     this.drones.length = dWrite;
 
     // Update active projectiles (in-place compaction for O(N) performance)
+    const initialProjCount = this.projectiles.length;
     let pWrite = 0;
-    for (let i = 0; i < this.projectiles.length; i++) {
+    for (let i = 0; i < initialProjCount; i++) {
       const p = this.projectiles[i];
-      p.update(dt);
+      p.update(dt, this.projectiles);
+      if (!p.destroyed) {
+        this.projectiles[pWrite++] = p;
+      }
+    }
+    for (let i = initialProjCount; i < this.projectiles.length; i++) {
+      const p = this.projectiles[i];
       if (!p.destroyed) {
         this.projectiles[pWrite++] = p;
       }
@@ -1908,6 +2059,14 @@ export class WeaponSystem {
           baseProjOpts.isTrap = true;
           baseProjOpts.drag = turret.trapDrag ?? baseProjOpts.drag ?? CONFIG.WEAPONS.trapDrag;
           baseProjOpts.trapAngle = shotAngle + (baseProjOpts.angleOffset || 0);
+        }
+        if (turret.missileProfile) {
+          baseProjOpts.missile = {
+            ...turret.missileProfile,
+            stats: turret.missileStats || null,
+            maxSpeed: turret.missileStats?.maxSpeed,
+            spinDirection: this.spinReverse ? -1 : 1
+          };
         }
 
         this.projectiles.push(

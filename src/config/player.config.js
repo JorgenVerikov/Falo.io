@@ -1304,6 +1304,75 @@ export const CHASSIS_CONFIG = {
     ]
   },
 
+  skimmer: {
+    name: 'Skimmer',
+    desc: 'Deployer launcher firing slower spinning missiles with dual side cannons that create a bullet vortex; hold right-click to reverse spin.',
+    reqLevel: 45,
+    tier: 3,
+    upgradesFrom: ['destroyer'],
+    shopCost: 1500,
+    cameraZoom: 0.75,
+    sides: 0,
+    radiusMultiplier: 1.0,
+    turrets: [
+      createBarrelTurret(
+        { width: 18, length: 45, frontWidth: 24, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 1.0, penetration: 4.0, bulletSpeed: 0.55, bulletSize: 1.4, reload: 1.5, spread: 0.15, recoil: 0.65, knockback: 1.5, launchSpeed: 1, bulletsPerShot: 1, lifetime: 5.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        {
+          type: 'READY_RACK',
+          maxRack: 2,
+          refillSpeed: 1.25,
+          missileProfile: {
+            spinSpeed: 6.8,
+            maxSpeedMultiplier: 1.0,
+            turrets: [
+              { width: 10, frontWidth: 10, protrudeLength: 8, angleOffset: 90, fireRateTicks: 6, damage: 0.60, penetration: 0.40, bulletSpeed: 1.1, bulletRadius: 5.2, lifetime: 1.2 },
+              { width: 10, frontWidth: 10, protrudeLength: 8, angleOffset: -90, fireRateTicks: 6, damage: 0.60, penetration: 0.40, bulletSpeed: 1.1, bulletRadius: 5.2, lifetime: 1.2 }
+            ]
+          }
+        }
+      ),
+      createBarrelTurret(
+        { width: 30, length: 40, frontWidth: 30, angleOffset: 0, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: true },
+        { reload: 1.5 }
+      )
+    ]
+  },
+
+  rocketeer: {
+    name: 'Rocketeer',
+    desc: 'Modified Deployer launching ultra-high-penetration missiles propelled forward by a rear Machine Gun thruster.',
+    reqLevel: 45,
+    tier: 3,
+    upgradesFrom: ['destroyer'],
+    shopCost: 1500,
+    cameraZoom: 0.75,
+    sides: 0,
+    radiusMultiplier: 1.0,
+    turrets: [
+      createBarrelTurret(
+        { width: 38, length: 42, frontWidth: 24, angleOffset: 0, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: true },
+        { reload: 1.5 }
+      ),
+      createBarrelTurret(
+        { width: 24, length: 6, frontWidth: 30, angleOffset: 0, xOffset: 42, yOffset: 0 },
+        { damage: 1.0, penetration: 5.0, bulletSpeed: 0.3, bulletSize: 0.90, reload: 1.5, spread: 0.12, recoil: 0.65, knockback: 1.6, launchSpeed: 1, bulletsPerShot: 1, lifetime: 4.0, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        {
+          type: 'READY_RACK',
+          maxRack: 2,
+          refillSpeed: 1.25,
+          missileProfile: {
+            spinSpeed: 0,
+            maxSpeedMultiplier: 1.5,
+            turrets: [
+              { width: 11, frontWidth: 19, protrudeLength: 9, angleOffset: 180, initialFireDelay: 0.28, fireRateTicks: 4, spread: 0.35, thrustSpeedStep: 28, damage: 0.60, penetration: 0.30, bulletSpeed: 1.5, bulletRadius: 5.0, lifetime: 0.85 }
+            ]
+          }
+        }
+      )
+    ]
+  },
+
   gunner: {
     name: 'Gunner',
     desc: 'Four frontal miniguns rapidly firing streams of small, fast bullets with low recoil.',

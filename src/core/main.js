@@ -683,6 +683,20 @@ function applyCrewAndStatModifiers() {
     turret.coolRate = (baseW.coolRate || 22) * (1.0 + (reloadStat * (rCfg.thermalCoolRateStatScaling || 0.12))) / loaderCrewMult;
     turret.heatPerShot = (baseW.heatPerShot || 6) / (1.0 + (reloadStat * (rCfg.thermalHeatReductionStatScaling || 0.05)));
     turret.rechargeRate = (baseW.rechargeRate || 20) * (1.0 + (reloadStat * (rCfg.energyRechargeStatScaling || 0.10))) / loaderCrewMult;
+
+    if (turret.missileProfile) {
+      const mDmgBase = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * gunnerCrewMult;
+      const mPenBase = (baseCfg.penetration + (penStat * inc.shellPenMult)) * gunnerCrewMult;
+      const mSpdBase = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * gunnerCrewMult;
+      turret.missileStats = {
+        baseDamage: mDmgBase,
+        basePenetration: mPenBase,
+        baseSpeed: mSpdBase,
+        reloadFireRateMult,
+        loaderCrewMult,
+        maxSpeed: mSpdBase * (turret.missileProfile.maxSpeedMultiplier || 1.0)
+      };
+    }
   });
 
   if (weaponSys.turrets.length === 0 && (weaponSys.type === WEAPON_TYPE.COOLDOWN || weaponSys.type === WEAPON_TYPE.ENERGY)) {
@@ -1147,7 +1161,7 @@ function updatePlayer(dt) {
     dt,
     player,
     isFiring,
-    { mode: droneMode, targetX: droneTargetX, targetY: droneTargetY },
+    { mode: droneMode, targetX: droneTargetX, targetY: droneTargetY, spinReverse: Boolean(!isMobileMode && input.mouse.isRightDown) },
     waveMgr.enemies,
     waveMgr.shapes
   );
