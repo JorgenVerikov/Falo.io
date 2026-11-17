@@ -3,7 +3,7 @@ import { WeaponSystem, WEAPON_TYPE, extractBulletOptions } from '../entities/wea
 import { WaveManager } from '../systems/waveManager.js';
 import { StorageManager } from './storage.js';
 import { UIManager } from '../ui/ui.js';
-import { CONFIG, getXPRequiredForLevel, getTotalXPForLevel, computeStrokeColor } from './config.js';
+import { CONFIG, getXPRequiredForLevel, getTotalXPForLevel, computeStrokeColor, getTankRenderParts } from './config.js';
 import { HUDUpdater } from './hudUpdater.js';
 import { MobileControls } from './mobileControls.js';
 import {
@@ -98,7 +98,8 @@ const input = {
     worldX: 0,
     worldY: 0,
     isDown: false,
-    isRightDown: false
+    isRightDown: false,
+    wasRightDown: false
   }
 };
 
@@ -953,6 +954,7 @@ function setupInputs() {
   window.addEventListener('blur', () => {
     input.mouse.isDown = false;
     input.mouse.isRightDown = false;
+    input.mouse.wasRightDown = false;
     input.keys = {};
     camera.isScoping = false;
   });
@@ -1127,8 +1129,11 @@ function updatePlayer(dt) {
   const isMobileMode = Boolean(mobileControls && mobileControls.isMobile);
   const mobileFiring = Boolean(mobileControls && mobileControls.aimState.isFiring);
   const hasCameraScope = Boolean(chassisConfig && chassisConfig.cameraScope) && !isMobileMode;
+  const hasRightClickDetonate = !isMobileMode && Boolean(chassisConfig?.turrets?.some(t => t.missileProfile?.detonation?.onRightClick));
   const isScopeHeld = hasCameraScope && (input.mouse.isRightDown || Boolean(input.keys && input.keys['shift']));
-  const pointerFiring = !isMobileMode && (input.mouse.isDown || (!hasCameraScope && input.mouse.isRightDown));
+  const detonatePressed = hasRightClickDetonate && input.mouse.isRightDown && !input.mouse.wasRightDown;
+  input.mouse.wasRightDown = input.mouse.isRightDown;
+  const pointerFiring = !isMobileMode && (input.mouse.isDown || (!hasCameraScope && !hasRightClickDetonate && input.mouse.isRightDown));
   const isFiring = pointerFiring || (input.keys && input.keys[' ']) || state.autoFire || mobileFiring;
 
   let droneMode = 'IDLE';
@@ -1161,7 +1166,13 @@ function updatePlayer(dt) {
     dt,
     player,
     isFiring,
-    { mode: droneMode, targetX: droneTargetX, targetY: droneTargetY, spinReverse: Boolean(!isMobileMode && input.mouse.isRightDown) },
+    {
+      mode: droneMode,
+      targetX: droneTargetX,
+      targetY: droneTargetY,
+      spinReverse: Boolean(!isMobileMode && input.mouse.isRightDown),
+      detonatePressed
+    },
     waveMgr.enemies,
     waveMgr.shapes
   );
@@ -1319,7 +1330,6 @@ function renderPlayerChassis() {
   const sizeScale = radius / (CONFIG.PLAYER.baseRadius || 25);
 
   const turrets = chassis.turrets || [];
-  const isCenteredAuto = (t) => Boolean(t.isAutoTurret && (t.xOffset || 0) === 0 && (t.yOffset || 0) === 0);
   let maxReach = radius * (chassis.outerArmor ? (chassis.outerArmor.radiusMultiplier || 1.5) : 1.5);
   for (let i = 0; i < turrets.length; i++) {
     const t = turrets[i];
@@ -1382,24 +1392,20 @@ function renderPlayerChassis() {
     canvasMgr.drawTurretBarrel(x, y, barrelWidth, barrelLen, angle + turret.angleOffset, xOff, yOff, frontWidth);
   };
 
-  for (let index = 0; index < turrets.length; index++) {
-    if (!isCenteredAuto(turrets[index])) {
-      drawSingleTurret(turrets[index], index);
-    }
-  }
-
-  canvasMgr.drawPolygon(
-    x, y, radius,
-    chassis.sides,
-    angle + (chassis.bodyAngleOffset || 0),
-    player.fillColor,
-    player.strokeColor,
-    CONFIG.PLAYER.strokeWidth
-  );
-
-  for (let index = 0; index < turrets.length; index++) {
-    if (isCenteredAuto(turrets[index])) {
-      drawSingleTurret(turrets[index], index);
+  const renderParts = getTankRenderParts(chassis, turrets);
+  for (let i = 0; i < renderParts.length; i++) {
+    const part = renderParts[i];
+    if (part.type === 'body') {
+      canvasMgr.drawPolygon(
+        x, y, radius,
+        chassis.sides,
+        angle + (chassis.bodyAngleOffset || 0),
+        player.fillColor,
+        player.strokeColor,
+        CONFIG.PLAYER.strokeWidth
+      );
+    } else {
+      drawSingleTurret(part.turret, part.index);
     }
   }
 

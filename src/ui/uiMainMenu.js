@@ -1,4 +1,4 @@
-import { CONFIG, computeStrokeColor } from '../core/config.js';
+import { CONFIG, computeStrokeColor, getTankRenderParts } from '../core/config.js';
 import { drawPreviewPolygon } from './uiPreviews.js';
 
 export class MainMenuController {
@@ -204,7 +204,6 @@ export class MainMenuController {
       );
     }
 
-    const isCenteredAuto = (t) => Boolean(t.isAutoTurret && (t.xOffset || 0) === 0 && (t.yOffset || 0) === 0);
     const drawTurret = (turret) => {
       ctx.save();
       ctx.rotate(this.tankAngle + (turret.angleOffset || 0));
@@ -246,22 +245,20 @@ export class MainMenuController {
       ctx.restore();
     };
 
-    if (chassis.turrets && chassis.turrets.length > 0) {
-      chassis.turrets.filter(t => !isCenteredAuto(t)).forEach(drawTurret);
-    }
-
-    drawPreviewPolygon(
-      ctx, 0, 0, radius,
-      chassis.sides || 0,
-      this.tankAngle + (chassis.bodyAngleOffset || 0),
-      fillColor,
-      strokeColor,
-      strokeWidth
-    );
-
-    if (chassis.turrets && chassis.turrets.length > 0) {
-      chassis.turrets.filter(t => isCenteredAuto(t)).forEach(drawTurret);
-    }
+    getTankRenderParts(chassis).forEach(part => {
+      if (part.type === 'body') {
+        drawPreviewPolygon(
+          ctx, 0, 0, radius,
+          chassis.sides || 0,
+          this.tankAngle + (chassis.bodyAngleOffset || 0),
+          fillColor,
+          strokeColor,
+          strokeWidth
+        );
+      } else {
+        drawTurret(part.turret);
+      }
+    });
 
     ctx.restore();
   }

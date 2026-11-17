@@ -299,6 +299,8 @@ export class Projectile {
     const spinDir = missileCfg?.spinDirection ?? 1;
     this.spinSpeed = baseSpin * spinDir;
     this.maxSpeed = missileCfg?.maxSpeed ?? (this.speed * (missileCfg?.maxSpeedMultiplier || 1.0));
+    this.detonateConfig = missileCfg?.detonation || null;
+    this.hasDetonated = false;
     if (missileCfg && this.missileTurrets.length > 0 && this.missileStats) {
       const delayDiv = this.missileStats.reloadFireRateMult || 1.0;
       const loaderMult = this.missileStats.loaderCrewMult || 1.0;
@@ -324,6 +326,60 @@ export class Projectile {
     this.dead = true;
     this.isDying = true;
     this.deathTimer = 0;
+  }
+
+  detonate(projectilesOut = null) {
+    if (this.dead || this.hasDetonated || !this.detonateConfig) return false;
+    this.hasDetonated = true;
+
+    if (projectilesOut) {
+      const cfg = this.detonateConfig;
+      const rings = cfg.rings || 4;
+      const perRing = cfg.perRing || 6;
+      const ringSpeeds = Array.isArray(cfg.ringSpeeds) && cfg.ringSpeeds.length > 0
+        ? cfg.ringSpeeds
+        : [0.2, 0.4, 0.6, 0.8];
+      const ringAngleStep = cfg.ringAngleStep ?? (Math.PI / perRing);
+      const dmgMult = cfg.damage ?? 0.60;
+      const penMult = cfg.penetration ?? 0.60;
+      const radius = cfg.bulletRadius ?? 6.0;
+      const lifetime = cfg.lifetime ?? 1.5;
+      const bulletOpts = extractBulletOptions(cfg);
+
+      const stats = this.missileStats;
+      const baseDmg = stats ? stats.baseDamage : 7.0;
+      const basePen = stats ? stats.basePenetration : 2.0;
+      const baseSpd = stats ? stats.baseSpeed : 160;
+      const baseAngle = this.renderAngle ?? this.currentAngle ?? 0;
+
+      for (let r = 0; r < rings; r++) {
+        const spdMult = ringSpeeds[r] ?? ringSpeeds[ringSpeeds.length - 1] ?? 0.5;
+        const ringSpd = baseSpd * spdMult;
+        const ringOffset = (r % 2) * ringAngleStep;
+
+        for (let k = 0; k < perRing; k++) {
+          const shotAngle = baseAngle + ringOffset + (k * Math.PI * 2) / perRing;
+          projectilesOut.push(
+            new Projectile(
+              this.x,
+              this.y,
+              Math.cos(shotAngle) * ringSpd,
+              Math.sin(shotAngle) * ringSpd,
+              radius,
+              lifetime,
+              baseDmg * dmgMult,
+              basePen * penMult,
+              this.color,
+              this.strokeColor,
+              bulletOpts ? { ...bulletOpts } : undefined
+            )
+          );
+        }
+      }
+    }
+
+    this.kill();
+    return true;
   }
 
   update(dt, projectilesOut = null) {
@@ -433,7 +489,13 @@ export class Projectile {
     }
 
     this.lifetime -= dt;
-    if (this.lifetime <= 0 || this.penetration <= 0) {
+    if (this.lifetime <= 0) {
+      if (this.detonateConfig && this.detonateConfig.onExpire && !this.hasDetonated) {
+        this.detonate(projectilesOut);
+      } else {
+        this.kill();
+      }
+    } else if (this.penetration <= 0) {
       this.kill();
     }
   }
@@ -1183,6 +1245,7 @@ export class WeaponSystem {
         angleOffset: t.angleOffset || 0,
         xOffset: t.xOffset || 0,
         yOffset: t.yOffset || 0,
+        layer: t.layer,
         shootsBullet: shootsBullet,
         playsRecoil: t.playsRecoil === true || (t.playsRecoil !== false && shootsBullet),
         fireDelayTicks: t.fireDelayTicks || 0,
@@ -1860,6 +1923,17 @@ export class WeaponSystem {
       }
     }
     this.drones.length = dWrite;
+
+    // Trigger remote detonation for active missiles (e.g., Firework right-click)
+    if (controlState && controlState.detonatePressed) {
+      const preDetonateCount = this.projectiles.length;
+      for (let i = 0; i < preDetonateCount; i++) {
+        const p = this.projectiles[i];
+        if (!p.dead && !p.hasDetonated && p.detonateConfig && p.detonateConfig.onRightClick) {
+          p.detonate(this.projectiles);
+        }
+      }
+    }
 
     // Update active projectiles (in-place compaction for O(N) performance)
     const initialProjCount = this.projectiles.length;

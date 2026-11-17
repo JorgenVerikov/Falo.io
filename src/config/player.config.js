@@ -1373,6 +1373,90 @@ export const CHASSIS_CONFIG = {
     ]
   },
 
+  glider: {
+    name: 'Glider',
+    desc: 'Deployer firing slower missiles propelled by two rear side thrusters angled 35 degrees apart.',
+    reqLevel: 45,
+    tier: 3,
+    upgradesFrom: ['destroyer'],
+    shopCost: 1500,
+    cameraZoom: 0.75,
+    sides: 0,
+    radiusMultiplier: 1.0,
+    turrets: [
+      createBarrelTurret(
+        { width: 22, length: 44, frontWidth: 18, angleOffset: 0, xOffset: 0, yOffset: 0 },
+        { damage: 1.0, penetration: 3.0, bulletSpeed: 0.3, bulletSize: 1.45, reload: 1.5, spread: 0.12, recoil: 0.45, knockback: 1.4, launchSpeed: 1, bulletsPerShot: 1, lifetime: 3.8, fireDelay: 0, bulletShape: 'circle', bulletSides: 0, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        {
+          type: 'READY_RACK',
+          maxRack: 2,
+          refillSpeed: 1.25,
+          missileProfile: {
+            spinSpeed: 0,
+            maxSpeedMultiplier: 1.4,
+            turrets: [
+              { width: 8, frontWidth: 8, protrudeLength: 7, angleOffset: 162.5, fireRateTicks: 11, thrustSpeedStep: 14, damage: 0.60, penetration: 0.60, bulletSpeed: 0.5, bulletRadius: 5.0, lifetime: 0.95 },
+              { width: 8, frontWidth: 8, protrudeLength: 7, angleOffset: -162.5, fireRateTicks: 11, thrustSpeedStep: 14, damage: 0.60, penetration: 0.60, bulletSpeed: 0.5, bulletRadius: 5.0, lifetime: 0.95 }
+            ]
+          }
+        }
+      ),
+      createBarrelTurret(
+        { width: 44, length: 39, frontWidth: 30, angleOffset: 0, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: true },
+        { reload: 1.5 }
+      )
+    ]
+  },
+
+  firework: {
+    name: 'Firework',
+    desc: 'Deployer firing a propelled hexagon missile that detonates at lifespan end or on right-click into 24 fragments in 4 hexagonal rings.',
+    reqLevel: 45,
+    tier: 3,
+    upgradesFrom: ['destroyer'],
+    shopCost: 1500,
+    cameraZoom: 0.75,
+    sides: 0,
+    radiusMultiplier: 1.0,
+    turrets: [
+      createBarrelTurret(
+        { width: 44, length: 30, frontWidth: 28, angleOffset: 0, xOffset: 0, yOffset: 0, shootsBullet: false, playsRecoil: true },
+        { reload: 1.5 }
+      ),
+      createBarrelTurret(
+        { width: 28, length: 8, frontWidth: 32, angleOffset: 0, xOffset: 30, yOffset: 0, shootsBullet: false, playsRecoil: true },
+        { reload: 1.5 }
+      ),
+      createBarrelTurret(
+        { width: 20, length: 10, frontWidth: 24, angleOffset: 0, xOffset: 34, yOffset: 0, layer: -1 },
+        { damage: 0.70, penetration: 4.0, bulletSpeed: 0.25, bulletSize: 1.55, reload: 1.5, spread: 0.10, recoil: 0.65, knockback: 1.5, launchSpeed: 1, bulletsPerShot: 1, lifetime: 4.5, fireDelay: 0, bulletShape: 'polygon', bulletSides: 6, bulletInnerRadius: 0.45, bulletAngleOffset: 0, bulletSpinSpeed: 0 },
+        {
+          type: 'READY_RACK',
+          maxRack: 2,
+          refillSpeed: 1.25,
+          missileProfile: {
+            spinSpeed: 0,
+            maxSpeedMultiplier: 1.3,
+            turrets: [
+              { width: 10, frontWidth: 10, protrudeLength: 8, angleOffset: 180, fireRateTicks: 8, thrustSpeedStep: 18, damage: 0.60, penetration: 0.30, bulletSpeed: 0.5, bulletRadius: 5.0, lifetime: 0.45 }
+            ],
+            detonation: {
+              onRightClick: true,
+              onExpire: true,
+              rings: 4,
+              perRing: 6,
+              ringSpeeds: [0.2, 0.4, 0.6, 0.8],
+              damage: 0.60,
+              penetration: 0.60,
+              bulletRadius: 6.0,
+              lifetime: 1.5
+            }
+          }
+        }
+      )
+    ]
+  },
+
   gunner: {
     name: 'Gunner',
     desc: 'Four frontal miniguns rapidly firing streams of small, fast bullets with low recoil.',

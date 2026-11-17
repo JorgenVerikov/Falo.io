@@ -73,6 +73,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
   const uncontrolled = Boolean(geom.uncontrolled ?? weaponExtra.uncontrolled ?? multipliers.uncontrolled);
   const isAutoDrone = Boolean(geom.isAutoDrone ?? weaponExtra.isAutoDrone ?? multipliers.isAutoDrone);
   const mountRadius = geom.mountRadius ?? 11;
+  const layer = geom.layer ?? weaponExtra.layer ?? multipliers.layer ?? (isAutoTurret && xOffset === 0 && yOffset === 0 ? 1 : 0);
   const autoRange = weaponExtra.autoRange ?? multipliers.autoRange ?? geom.autoRange;
   const autoFov = weaponExtra.autoFov ?? multipliers.autoFov ?? geom.autoFov;
   const autoTurnSpeed = weaponExtra.autoTurnSpeed ?? multipliers.autoTurnSpeed ?? geom.autoTurnSpeed;
@@ -169,6 +170,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     uncontrolled,
     isAutoDrone,
     mountRadius,
+    layer,
 
     // Falo.io Tank Editor barrel configuration (all turrets have these matching the editor)
     damage,
@@ -256,3 +258,33 @@ export const WEAPONS_CONFIG = {
     energyRechargeStatScaling: 0.10
   }
 };
+
+/**
+ * Resolves sorted draw order for a tank's turrets and body using explicit numeric layers.
+ * Defaults: normal turrets = 0, centered auto turrets = 1, tank body = 0.
+ * On matching layers, turrets render underneath the body while preserving turrets[] order.
+ */
+export function getTankRenderParts(chassis = {}, turretsOverride = null) {
+  const turrets = Array.isArray(turretsOverride) ? turretsOverride : (chassis?.turrets || []);
+  const bodyLayerRaw = chassis?.bodyLayer ?? chassis?.layer;
+  const bodyLayer = (typeof bodyLayerRaw === 'number' && Number.isFinite(bodyLayerRaw)) ? bodyLayerRaw : 0;
+
+  const parts = [{ type: 'body', layer: bodyLayer, order: 1, index: -1 }];
+
+  for (let i = 0; i < turrets.length; i++) {
+    const t = turrets[i];
+    const isCenteredAuto = Boolean(t?.isAutoTurret && (t.xOffset || 0) === 0 && (t.yOffset || 0) === 0);
+    const tLayer = (typeof t?.layer === 'number' && Number.isFinite(t.layer))
+      ? t.layer
+      : (isCenteredAuto ? 1 : 0);
+    parts.push({ type: 'turret', layer: tLayer, order: 0, index: i, turret: t });
+  }
+
+  parts.sort((a, b) => {
+    if (a.layer !== b.layer) return a.layer - b.layer;
+    if (a.order !== b.order) return a.order - b.order;
+    return a.index - b.index;
+  });
+
+  return parts;
+}

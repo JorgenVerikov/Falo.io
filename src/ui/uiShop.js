@@ -1,4 +1,4 @@
-import { CONFIG, computeStrokeColor } from '../core/config.js';
+import { CONFIG, computeStrokeColor, getTankRenderParts } from '../core/config.js';
 import { generateTankSvg, generateCrewSvg, drawPreviewPolygon } from './uiPreviews.js';
 
 export class ShopPreviewController {
@@ -348,7 +348,6 @@ export class ShopPreviewController {
       );
     }
 
-    const isCenteredAuto = (t) => Boolean(t.isAutoTurret && (t.xOffset || 0) === 0 && (t.yOffset || 0) === 0);
     const drawTurret = (turret) => {
       ctx.save();
       ctx.rotate(this.tankAngle + (turret.angleOffset || 0));
@@ -390,22 +389,20 @@ export class ShopPreviewController {
       ctx.restore();
     };
 
-    if (chassis.turrets && chassis.turrets.length > 0) {
-      chassis.turrets.filter(t => !isCenteredAuto(t)).forEach(drawTurret);
-    }
-
-    drawPreviewPolygon(
-      ctx, 0, 0, radius,
-      chassis.sides || 0,
-      this.tankAngle + (chassis.bodyAngleOffset || 0),
-      fillColor,
-      strokeColor,
-      strokeWidth
-    );
-
-    if (chassis.turrets && chassis.turrets.length > 0) {
-      chassis.turrets.filter(t => isCenteredAuto(t)).forEach(drawTurret);
-    }
+    getTankRenderParts(chassis).forEach(part => {
+      if (part.type === 'body') {
+        drawPreviewPolygon(
+          ctx, 0, 0, radius,
+          chassis.sides || 0,
+          this.tankAngle + (chassis.bodyAngleOffset || 0),
+          fillColor,
+          strokeColor,
+          strokeWidth
+        );
+      } else {
+        drawTurret(part.turret);
+      }
+    });
 
     ctx.restore();
   }
@@ -740,6 +737,8 @@ export function renderTanksShop(ui, container, { animatePreview = false } = {}) 
     { key: 'annihilator', name: 'Annihilator', cost: CONFIG.CHASSIS.annihilator?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.annihilator?.reqLevel ?? 45, desc: CONFIG.CHASSIS.annihilator?.desc || 'Enlarged full-width cannon firing colossal, high-penetration shells with extreme recoil at Destroyer reload.' },
     { key: 'skimmer', name: 'Skimmer', cost: CONFIG.CHASSIS.skimmer?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.skimmer?.reqLevel ?? 45, desc: CONFIG.CHASSIS.skimmer?.desc || 'Deployer launcher firing slower spinning missiles with dual side cannons that create a bullet vortex; hold right-click to reverse spin.' },
     { key: 'rocketeer', name: 'Rocketeer', cost: CONFIG.CHASSIS.rocketeer?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.rocketeer?.reqLevel ?? 45, desc: CONFIG.CHASSIS.rocketeer?.desc || 'Modified Deployer launching ultra-high-penetration missiles propelled forward by a rear Machine Gun thruster.' },
+    { key: 'glider', name: 'Glider', cost: CONFIG.CHASSIS.glider?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.glider?.reqLevel ?? 45, desc: CONFIG.CHASSIS.glider?.desc || 'Deployer firing slower missiles propelled by two rear side thrusters angled 35 degrees apart.' },
+    { key: 'firework', name: 'Firework', cost: CONFIG.CHASSIS.firework?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.firework?.reqLevel ?? 45, desc: CONFIG.CHASSIS.firework?.desc || 'Deployer firing a propelled hexagon missile that detonates at lifespan end or on right-click into 24 fragments in 4 hexagonal rings.' },
     { key: 'factory', name: 'Factory', cost: CONFIG.CHASSIS.factory?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.factory?.reqLevel ?? 45, desc: CONFIG.CHASSIS.factory?.desc || 'Square chassis with a single front spawner deploying up to 6 armed Minions.' },
     { key: 'tesla', name: 'Tesla Surge', cost: CONFIG.CHASSIS.tesla?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.tesla?.reqLevel ?? 45, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
     { key: 'tripleshot', name: 'Triple Shot', cost: CONFIG.CHASSIS.tripleshot?.shopCost ?? 1000, reqLvl: 30, desc: 'Three front-spread cannons covering a wide arc with strong recoil.' },

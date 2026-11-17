@@ -1,7 +1,7 @@
-import { CONFIG, computeStrokeColor } from '../core/config.js';
+import { CONFIG, computeStrokeColor, getTankRenderParts } from '../core/config.js';
 import { generateTankPreviewDataUrl, drawPreviewPolygon } from './uiPreviews.js';
 
-const WORLD_WIDTH = 3840;
+const WORLD_WIDTH = 4120;
 const WORLD_HEIGHT = 860;
 const NODE_RADIUS = 46;
 
@@ -37,7 +37,9 @@ const TIER_4_SLOTS = [
   { key: 'annihilator', col: 21 },
   { key: 'skimmer', col: 22 },
   { key: 'rocketeer', col: 23 },
-  { key: 'tesla', col: 24.5 }
+  { key: 'glider', col: 24 },
+  { key: 'firework', col: 25 },
+  { key: 'tesla', col: 26.5 }
 ];
 
 const TIER_3_SLOTS = [
@@ -51,16 +53,16 @@ const TIER_3_SLOTS = [
   { key: 'assassin', col: 15.5 },
   { key: 'hunter', col: 17.5 },
   { key: 'gunner', col: 18.5 },
-  { key: 'destroyer', col: 21.5 },
-  { key: 'shotgun', col: 23.2 },
-  { key: 'smasher', col: 24.5 }
+  { key: 'destroyer', col: 22.5 },
+  { key: 'shotgun', col: 25.2 },
+  { key: 'smasher', col: 26.5 }
 ];
 
 const TIER_2_SLOTS = [
   { key: 'twin', col: 2.0 },
   { key: 'flank', col: 4.4 },
   { key: 'sniper', col: 13.2 },
-  { key: 'machinegun', col: 21.0 }
+  { key: 'machinegun', col: 22.5 }
 ];
 
 function getDisplayTier(chassis) {
@@ -81,7 +83,7 @@ function buildTreeLayout() {
   const positions = {};
   const placed = new Set();
 
-  let maxCol = 24.5;
+  let maxCol = 26.5;
   TIER_4_SLOTS.forEach(slot => {
     if (CONFIG.CHASSIS[slot.key]) {
       positions[slot.key] = { x: colToX(slot.col), y: ROW_Y[4], tier: 4 };
@@ -793,7 +795,6 @@ export class EvolutionTreeController {
       );
     }
 
-    const isCenteredAuto = (t) => Boolean(t.isAutoTurret && (t.xOffset || 0) === 0 && (t.yOffset || 0) === 0);
     const drawTurret = (turret) => {
       ctx.save();
       ctx.rotate(this.tankAngle + (turret.angleOffset || 0));
@@ -835,22 +836,20 @@ export class EvolutionTreeController {
       ctx.restore();
     };
 
-    if (chassis.turrets && chassis.turrets.length > 0) {
-      chassis.turrets.filter(t => !isCenteredAuto(t)).forEach(drawTurret);
-    }
-
-    drawPreviewPolygon(
-      ctx, 0, 0, radius,
-      chassis.sides || 0,
-      this.tankAngle + (chassis.bodyAngleOffset || 0),
-      fillColor,
-      strokeColor,
-      strokeWidth
-    );
-
-    if (chassis.turrets && chassis.turrets.length > 0) {
-      chassis.turrets.filter(t => isCenteredAuto(t)).forEach(drawTurret);
-    }
+    getTankRenderParts(chassis).forEach(part => {
+      if (part.type === 'body') {
+        drawPreviewPolygon(
+          ctx, 0, 0, radius,
+          chassis.sides || 0,
+          this.tankAngle + (chassis.bodyAngleOffset || 0),
+          fillColor,
+          strokeColor,
+          strokeWidth
+        );
+      } else {
+        drawTurret(part.turret);
+      }
+    });
 
     ctx.restore();
   }
