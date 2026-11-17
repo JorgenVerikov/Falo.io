@@ -249,7 +249,7 @@ async function initGame() {
 
   storageMgr.onDataChanged = (newData) => {
     applyCrewAndStatModifiers();
-    if (newData && newData.activeChassis) {
+    if (state.inMenu && newData && newData.activeChassis) {
       setActiveChassis(newData.activeChassis);
     }
     if (uiMgr) {

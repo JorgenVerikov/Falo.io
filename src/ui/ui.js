@@ -2,7 +2,7 @@
  * UI Engine: Core HUD, Menus, Authentication, Edge Hover Triggers & Panel Orchestration
  */
 import { CONFIG, getTotalXPForLevel, computeStrokeColor } from '../core/config.js';
-import { signInEmail, signUpEmail, signInWithGoogle, signOut, onAuthStateChange, getUser } from '../core/auth.js';
+import { signInEmail, signUpEmail, signInWithGoogle, signOut, onAuthStateChange } from '../core/auth.js';
 import {
   drawTankPreview,
   drawPreviewPolygon,
@@ -161,26 +161,32 @@ export class UIManager {
       }
     });
 
+    this.updateAuthStatusDisplay(this.storage.currentUser?.email || null);
+
     onAuthStateChange(async (event, session) => {
       console.log(`[AUTH EVENT] ${event}`);
-      if (session?.user) {
-        this.updateAuthStatusDisplay(session.user.email);
-        await this.storage.loadSaveData();
-        this.refreshAllUIFromStorage();
-      } else {
-        await this.storage.handleLogout();
-        this.refreshAllUIFromStorage();
-      }
-    });
+      const sessionUser = session?.user || null;
+      const currentUserId = this.storage.currentUser?.id || null;
 
-    getUser().then(async user => {
-      if (user) {
-        this.updateAuthStatusDisplay(user.email);
+      if (sessionUser) {
+        this.updateAuthStatusDisplay(sessionUser.email);
+        // Token refreshes and same-user focus/initial events should not reload cloud data or override active state.
+        if (event === 'TOKEN_REFRESHED' || currentUserId === sessionUser.id) {
+          return;
+        }
         await this.storage.loadSaveData();
-        this.refreshAllUIFromStorage();
+        if (!this.storage.onDataChanged) {
+          this.refreshAllUIFromStorage();
+        }
       } else {
+        this.updateAuthStatusDisplay(null);
+        if (!currentUserId && event !== 'SIGNED_OUT') {
+          return;
+        }
         await this.storage.handleLogout();
-        this.refreshAllUIFromStorage();
+        if (!this.storage.onDataChanged) {
+          this.refreshAllUIFromStorage();
+        }
       }
     });
   }
@@ -253,13 +259,16 @@ export class UIManager {
     }
     const userEmail = this.storage.currentUser ? this.storage.currentUser.email : null;
     this.updateAuthStatusDisplay(userEmail);
-    if (this.onChassisSelect && this.storage.data.activeChassis) {
+    const isInMainMenu = Boolean(this.mainMenuModal && !this.mainMenuModal.classList.contains('hidden'));
+    if (isInMainMenu && !this.isGameActive() && this.onChassisSelect && this.storage.data.activeChassis) {
       this.onChassisSelect(this.storage.data.activeChassis);
     }
     if (this.onColorChangeCallback) {
       this.onColorChangeCallback();
     }
-    this.mainMenu?.onShow({ randomize: false });
+    if (isInMainMenu) {
+      this.mainMenu?.onShow({ randomize: false });
+    }
   }
 
   setupEdgeHoverTriggers() {

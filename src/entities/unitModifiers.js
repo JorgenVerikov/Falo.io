@@ -116,8 +116,14 @@ export function syncUnitChassisAndStats({
     const basePenVal = (baseCfg.penetration + (penStat * inc.shellPenMult)) * mPen;
     turret.penetration = basePenVal * gunnerCrewMult;
 
+    const isDroneTurret = turret.type === WEAPON_TYPE.DRONE_SPAWNER;
+    const speedCrewMult = isDroneTurret
+      ? Math.min(1.35, 1.0 + (gunnerCrewLvl * 0.015))
+      : gunnerCrewMult;
     const baseSpeedVal = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * mSpeed * mLaunch;
-    turret.shellSpeed = baseSpeedVal * gunnerCrewMult;
+    turret.shellSpeed = isDroneTurret
+      ? Math.min(420, baseSpeedVal * speedCrewMult)
+      : (baseSpeedVal * speedCrewMult);
 
     const cannonBaseWidth = (turretConfig.width !== undefined) ? turretConfig.width : (turret.width !== undefined ? turret.width : 20);
     const customRadius = baseW.bulletRadius ?? turretConfig.bulletRadius ?? turretConfig.bullet?.radius ?? turretConfig.bulletOptions?.radius;
@@ -195,7 +201,8 @@ export function syncUnitChassisAndStats({
     const profile = chassisConfig.droneProfile || { damage: 1.68, penetration: 2.0, bulletSpeed: 0.76, radius: 15 };
     const nDmg = (baseCfg.damage + (dmgStat * inc.shellDmgMult)) * (profile.damage ?? 1.68) * gunnerCrewMult;
     const nPen = (baseCfg.penetration + (penStat * inc.shellPenMult)) * (profile.penetration ?? 2.0) * gunnerCrewMult;
-    const nSpd = baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * (profile.bulletSpeed ?? 0.76) * gunnerCrewMult;
+    const droneSpeedCrewMult = Math.min(1.35, 1.0 + (gunnerCrewLvl * 0.015));
+    const nSpd = Math.min(420, baseCfg.bulletSpeed * (1.0 + (speedStat * inc.shellSpeedMult)) * (profile.bulletSpeed ?? 0.76) * droneSpeedCrewMult);
     weaponSys.necromancerStats = {
       damage: nDmg,
       penetration: nPen,
@@ -239,7 +246,7 @@ export function syncUnitChassisAndStats({
       const nStats = weaponSys.necromancerStats;
       for (let i = 0; i < weaponSys.drones.length; i++) {
         const d = weaponSys.drones[i];
-        d.speed = nStats.speed * (d.speedMultiplier ?? 1.0);
+        d.speed = Math.min(440, nStats.speed * (d.speedMultiplier ?? 1.0));
         d.damage = nStats.damage;
         if (nStats.penetration > d.maxPenetration) {
           d.penetration += (nStats.penetration - d.maxPenetration);
@@ -259,7 +266,7 @@ export function syncUnitChassisAndStats({
           ? weaponSys.turrets[d.turretIndex]
           : fallbackTurret;
         if (droneTurret) {
-          d.speed = droneTurret.shellSpeed * (d.speedMultiplier ?? 1.0);
+          d.speed = Math.min(440, droneTurret.shellSpeed * (d.speedMultiplier ?? 1.0));
           d.damage = droneTurret.damage;
           if (droneTurret.penetration > d.maxPenetration) {
             d.penetration += (droneTurret.penetration - d.maxPenetration);

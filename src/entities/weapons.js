@@ -9,6 +9,28 @@ export const WEAPON_TYPE = {
   NONE: 'NONE'
 };
 
+function scoreWeaponShapeTarget(shape, dist, estDps = 25, prioritizeSquares = false) {
+  const xp = shape.xp || 1;
+  const hp = Math.max(1, shape.hp || 1);
+  const maxHp = Math.max(hp, shape.maxHp || hp);
+  const ttk = hp / Math.max(12, estDps);
+  let score;
+  if (shape.type === 'egg') {
+    score = 12 - dist * 0.35;
+  } else {
+    const reward = Math.sqrt(xp) * 18 + Math.min(xp, 250) * 0.35;
+    const quickKillFactor = 1.0 / (1.0 + Math.pow(ttk / 3.8, 3.0));
+    const hpRatio = hp / maxHp;
+    const finishBonus = (hpRatio < 0.45 && ttk < 4.5) ? ((1.0 - hpRatio) * 140) : 0;
+    const slowPenalty = (ttk > 4.2) ? ((ttk - 4.2) * 55) : (ttk * 14);
+    score = reward * quickKillFactor + finishBonus - slowPenalty - dist * 0.30;
+  }
+  if (prioritizeSquares && shape.type === 'square') {
+    score += 650;
+  }
+  return score;
+}
+
 export function traceShapePath(ctx, cx, cy, radius, angle = 0, opts = {}) {
   ctx.beginPath();
   if (Array.isArray(opts.vertices) && opts.vertices.length >= 3) {
@@ -722,7 +744,7 @@ export class Drone {
     }
 
     const baseDrag = this.drag ?? ((CONFIG.WEAPONS && CONFIG.WEAPONS.droneDrag !== undefined) ? CONFIG.WEAPONS.droneDrag : 7.5);
-    const turnSpeed = this.turnSpeed ?? ((CONFIG.WEAPONS && CONFIG.WEAPONS.droneTurnSpeed !== undefined) ? CONFIG.WEAPONS.droneTurnSpeed : 4.5);
+    const baseTurnSpeed = this.turnSpeed ?? ((CONFIG.WEAPONS && CONFIG.WEAPONS.droneTurnSpeed !== undefined) ? CONFIG.WEAPONS.droneTurnSpeed : 4.5);
     const orbitSpeed = this.orbitSpeed ?? ((CONFIG.WEAPONS && CONFIG.WEAPONS.droneOrbitSpeed !== undefined) ? CONFIG.WEAPONS.droneOrbitSpeed : 0.9);
     const hasTurrets = this.turrets && this.turrets.length > 0;
 
@@ -889,8 +911,17 @@ export class Drone {
       const dist = Math.hypot(dx, dy);
       desiredAimAngle = Math.atan2(dy, dx);
       shouldShoot = hasTurrets;
-      if (dist > 8) {
-        const approachSpd = dist < 48 ? Math.min(maxSpd, dist * 5.5) : maxSpd;
+      const isAttacking = Boolean(controlState.attackTarget || controlState.isAttackingTarget);
+      if (isAttacking) {
+        if (dist > 2) {
+          desiredVx = (dx / dist) * maxSpd;
+          desiredVy = (dy / dist) * maxSpd;
+        } else {
+          desiredVx = Math.cos(this.angle) * maxSpd;
+          desiredVy = Math.sin(this.angle) * maxSpd;
+        }
+      } else if (dist > 8) {
+        const approachSpd = dist < 32 ? Math.min(maxSpd, dist * 6.5) : maxSpd;
         desiredVx = (dx / dist) * approachSpd;
         desiredVy = (dy / dist) * approachSpd;
       } else {
@@ -968,13 +999,14 @@ export class Drone {
     }
 
     // Turn-rate limited steering: drones rotate toward desired heading and thrust forward
+    const effTurnSpeed = (mode === 'ATTRACT' || mode === 'REPEL') ? (baseTurnSpeed * 1.35) : baseTurnSpeed;
     const desiredSpd = Math.hypot(desiredVx, desiredVy);
     let thrustVx = 0;
     let thrustVy = 0;
     if (desiredSpd > 6) {
       const desiredAngle = Math.atan2(desiredVy, desiredVx);
       const rawDiff = Math.atan2(Math.sin(desiredAngle - this.angle), Math.cos(desiredAngle - this.angle));
-      const maxTurn = turnSpeed * dt;
+      const maxTurn = effTurnSpeed * dt;
       const step = Math.abs(rawDiff) > maxTurn ? Math.sign(rawDiff) * maxTurn : rawDiff;
       this.angle += step;
 
@@ -983,7 +1015,7 @@ export class Drone {
         thrustVx = desiredVx * this.alignmentControlScale;
         thrustVy = desiredVy * this.alignmentControlScale;
       } else {
-        const alignmentScale = Math.max(0.35, 0.5 + 0.5 * Math.cos(remainingDiff));
+        const alignmentScale = Math.max(0.55, 0.55 + 0.45 * Math.cos(remainingDiff));
         const thrustSpd = desiredSpd * alignmentScale;
         thrustVx = Math.cos(this.angle) * thrustSpd;
         thrustVy = Math.sin(this.angle) * thrustSpd;
@@ -1564,19 +1596,31 @@ export class WeaponSystem {
         }
 
         if (bestRel === null) {
+          const shapePenDrain = CONFIG.WEAPONS.shapePenetrationDrain || 3.0;
+          const penHits = Math.max(1, Math.ceil((turret.penetration || 2) / shapePenDrain));
+          const pxPerFrame = Math.max(2.5, (turret.shellSpeed || 160) / 60);
+          let bestShapeScore = -Infinity;
           for (let i = 0; i < shapes.length; i++) {
             const s = shapes[i];
             if (s.dead || s.destroyed) continue;
             const dx = s.x - mx;
             const dy = s.y - my;
             const dSq = dx * dx + dy * dy;
-            if (dSq > bestDistSq) continue;
+            if (dSq > autoRangeSq) continue;
             const worldA = Math.atan2(dy, dx);
             const rel = normalizeAngle(worldA - mountAngle);
             if (isFullRotation || Math.abs(rel) <= fovHalf) {
-              bestDistSq = dSq;
-              bestRel = rel;
-              bestWorld = worldA;
+              const overlapFrames = turret.isTrap
+                ? penHits
+                : Math.max(1, Math.floor(((s.radius || 30) * 2 + (turret.shellRadius || 9) * 2) / pxPerFrame));
+              const effHits = Math.min(penHits, overlapFrames);
+              const turretDps = ((turret.damage || 7) * (turret.bulletsPerShot || 1) * effHits) / Math.max(0.18, turret.fireIntervalSec || 0.5);
+              const shapeScore = scoreWeaponShapeTarget(s, Math.sqrt(dSq), turretDps, false);
+              if (shapeScore > bestShapeScore) {
+                bestShapeScore = shapeScore;
+                bestRel = rel;
+                bestWorld = worldA;
+              }
             }
           }
         }
@@ -1861,6 +1905,46 @@ export class WeaponSystem {
     const manualLeashSq = this.isFactoryClass ? 880 * 880 : 640 * 640;
     const autoLeashSq = 920 * 920;
 
+    let droneControlState = controlState;
+    if (controlState && controlState.mode === 'ATTRACT' && livingDrones.length > 0) {
+      let attractAttacking = Boolean(
+        controlState.attackTarget &&
+        !controlState.attackTarget.dead &&
+        !controlState.attackTarget.destroyed
+      );
+      if (!attractAttacking) {
+        const tx = controlState.targetX;
+        const ty = controlState.targetY;
+        for (let j = 0; j < enemies.length; j++) {
+          const e = enemies[j];
+          if (!e || e.dead || e.destroyed) continue;
+          const hitR = (e.radius || 25) + 24;
+          const dx = tx - e.x;
+          const dy = ty - e.y;
+          if (dx * dx + dy * dy <= hitR * hitR) {
+            attractAttacking = true;
+            break;
+          }
+        }
+        if (!attractAttacking) {
+          for (let j = 0; j < shapes.length; j++) {
+            const s = shapes[j];
+            if (!s || s.dead || s.destroyed) continue;
+            const hitR = (s.radius || 20) + 24;
+            const dx = tx - s.x;
+            const dy = ty - s.y;
+            if (dx * dx + dy * dy <= hitR * hitR) {
+              attractAttacking = true;
+              break;
+            }
+          }
+        }
+      }
+      if (attractAttacking && !controlState.isAttackingTarget) {
+        droneControlState = { ...controlState, isAttackingTarget: true };
+      }
+    }
+
     let livingIdx = 0;
     let dWrite = 0;
     for (let i = 0; i < this.drones.length; i++) {
@@ -1908,32 +1992,42 @@ export class WeaponSystem {
             }
             if (!targetEntity) {
               const prioritizeSquares = this.infectSquares && livingDrones.length < (this.maxDrones || 22);
-              let bestIsSquare = false;
+              const shapePenDrain = CONFIG.WEAPONS.shapePenetrationDrain || 3.0;
+              let groupCount = 0;
+              for (let k = 0; k < livingDrones.length; k++) {
+                if (Boolean(livingDrones[k].isAutoDrone) === Boolean(d.isAutoDrone)) groupCount++;
+              }
+              groupCount = Math.max(1, groupCount);
+              const dPenFactor = Math.min(5.5, Math.max(1.2, ((d.maxPenetration || d.penetration || 3) / shapePenDrain) * 0.65));
+              const baseGroupDps = (groupCount * (d.damage || 7) * dPenFactor) / 0.85;
+              let bestShapeScore = -Infinity;
               for (let j = 0; j < shapes.length; j++) {
                 const s = shapes[j];
                 if (s.dead || s.destroyed) continue;
                 const spDx = s.x - player.x;
                 const spDy = s.y - player.y;
                 if (spDx * spDx + spDy * spDy > guardRangeSq) continue;
-                const isSq = s.type === 'square';
-                if (prioritizeSquares && bestIsSquare && !isSq) continue;
+                let groupDps = baseGroupDps;
+                if (d.isMinion && d.minionBulletStats) {
+                  const mB = d.minionBulletStats;
+                  const mPenHits = Math.max(1, Math.ceil((mB.penetration || 2) / shapePenDrain));
+                  const mOverlap = Math.max(1, Math.floor(((s.radius || 30) * 2 + (mB.radius || 5) * 2) / Math.max(2.5, (mB.speed || 128) / 60)));
+                  groupDps += groupCount * (((mB.damage || 3) * Math.min(mPenHits, mOverlap)) / Math.max(0.25, mB.fireIntervalSec || 1.3));
+                }
                 const dd = Math.hypot(s.x - d.x, s.y - d.y);
-                if (prioritizeSquares && isSq && !bestIsSquare) {
-                  bestIsSquare = true;
-                  bestScore = dd;
-                  targetEntity = s;
-                } else if (dd < bestScore) {
-                  bestScore = dd;
+                const shapeScore = scoreWeaponShapeTarget(s, dd, groupDps, prioritizeSquares);
+                if (shapeScore > bestShapeScore) {
+                  bestShapeScore = shapeScore;
                   targetEntity = s;
                 }
               }
             }
           }
         }
-        d.updateBehavior(dt, player, controlState, targetEntity, livingIdx, livingDrones.length, livingDrones, this.idleOrbitTime, this.projectiles);
+        d.updateBehavior(dt, player, droneControlState, targetEntity, livingIdx, livingDrones.length, livingDrones, this.idleOrbitTime, this.projectiles);
         livingIdx++;
       } else {
-        d.updateBehavior(dt, player, controlState, null, 0, livingDrones.length, livingDrones, this.idleOrbitTime, this.projectiles);
+        d.updateBehavior(dt, player, droneControlState, null, 0, livingDrones.length, livingDrones, this.idleOrbitTime, this.projectiles);
       }
       if (!d.destroyed) {
         this.drones[dWrite++] = d;
@@ -2000,7 +2094,7 @@ export class WeaponSystem {
     const droneRadius = (droneOpts.radius !== undefined)
       ? (droneOpts.radius * (sizeScale / (chassis.radiusMultiplier || 1.0)) * (droneOpts.sizeMultiplier ?? 1.0))
       : (turret.shellRadius * sizeScale * (droneOpts.sizeMultiplier ?? 1.0));
-    const maxSpeed = turret.shellSpeed * (droneOpts.speedMultiplier ?? 1.0);
+    const maxSpeed = Math.min(440, turret.shellSpeed * (droneOpts.speedMultiplier ?? 1.0));
     const ejectSpeed = maxSpeed * (droneOpts.ejectSpeedMultiplier ?? 0.9);
     const vx = Math.cos(barrelAngle) * ejectSpeed;
     const vy = Math.sin(barrelAngle) * ejectSpeed;
@@ -2072,7 +2166,7 @@ export class WeaponSystem {
         droneRadius,
         nStats.damage,
         nStats.penetration,
-        nStats.speed * (droneOpts.speedMultiplier ?? 1.0),
+        Math.min(440, nStats.speed * (droneOpts.speedMultiplier ?? 1.0)),
         fill,
         stroke,
         {

@@ -612,6 +612,83 @@ export class AllyTank {
     return this.currentRole === 'rammer' || this.currentRole === 'smasher';
   }
 
+  estimateShapeDps(shapeRadius = 38) {
+    const isRammer = this.isRammerBuild();
+    const isDrone = Boolean(this.weaponSys.isDroneClass || this.weaponSys.infectSquares);
+    const shapePenDrain = CONFIG.WEAPONS?.shapePenetrationDrain || 3.0;
+    const shapeDiameter = Math.max(12, shapeRadius * 2);
+    let totalDps = 0;
+
+    if (isRammer && !this.isRetreatingToHeal) {
+      const bodyDmgStat = this.stats.bodyDamage || 0;
+      const bodyInc = CONFIG.PLAYER.statIncrements?.bodyDmgMult || 10;
+      const baseBodyDmg = CONFIG.PLAYER.baseBodyDamage || 20;
+      const ramMult = CONFIG.PHYSICS?.collision?.shapeRamDamageMultiplier || 1.6;
+      totalDps += (baseBodyDmg + bodyDmgStat * bodyInc) * ramMult;
+    }
+
+    if (isDrone) {
+      const livingManual = (this.weaponSys.drones || []).filter(d => !d.dead && !d.isAutoDrone).length;
+      const activeSwarm = Math.max(livingManual, Math.min(12, this.weaponSys.maxDrones || 4));
+      if (this.weaponSys.infectSquares && this.weaponSys.necromancerStats) {
+        const nStats = this.weaponSys.necromancerStats;
+        const nPenFactor = Math.min(5.0, Math.max(1.2, ((nStats.penetration || 4) / shapePenDrain) * 0.65));
+        totalDps += (activeSwarm * (nStats.damage || 12) * nPenFactor) / 0.85;
+      } else {
+        const dTurret = this.weaponSys.turrets.find(t => t.type === WEAPON_TYPE.DRONE_SPAWNER);
+        const dDmg = dTurret ? (dTurret.damage || 5) : 5;
+        const dPen = dTurret ? (dTurret.penetration || 4) : 4;
+        const dPenFactor = Math.min(5.5, Math.max(1.2, (dPen / shapePenDrain) * 0.65));
+        totalDps += (activeSwarm * dDmg * dPenFactor) / 0.85;
+      }
+      if (this.weaponSys.isFactoryClass && this.weaponSys.minionBulletStats) {
+        const mB = this.weaponSys.minionBulletStats;
+        const mPenHits = Math.max(1, Math.ceil((mB.penetration || 2) / shapePenDrain));
+        const mOverlap = Math.max(1, Math.floor((shapeDiameter + (mB.radius || 5) * 2) / Math.max(2.5, (mB.speed || 128) / 60)));
+        const mEffHits = Math.min(mPenHits, mOverlap);
+        totalDps += activeSwarm * (((mB.damage || 3) * mEffHits) / Math.max(0.25, mB.fireIntervalSec || 1.3));
+      }
+    }
+
+    const turrets = this.weaponSys.turrets || [];
+    for (let i = 0; i < turrets.length; i++) {
+      const t = turrets[i];
+      if (!t.shootsBullet || t.type === WEAPON_TYPE.DRONE_SPAWNER) continue;
+      const absAngle = Math.abs(Math.atan2(Math.sin(t.angleOffset || 0), Math.cos(t.angleOffset || 0)));
+      const dirWeight = t.isAutoTurret ? 0.65 : (absAngle <= 0.85 ? 1.0 : (absAngle <= 1.7 ? 0.45 : 0.15));
+
+      let shotDmg = 0;
+      if (Array.isArray(t.pelletGroups) && t.pelletGroups.length > 0) {
+        const baseSpeedUnit = (t.shellSpeed || 160) / Math.max(0.01, t.bulletSpeedMult || 1.0);
+        for (let g = 0; g < t.pelletGroups.length; g++) {
+          const grp = t.pelletGroups[g];
+          const grpPen = (t.penetration || 2) * (grp.penetration ?? 1.0);
+          const grpSpeed = baseSpeedUnit * (grp.bulletSpeed ?? t.bulletSpeedMult ?? 1.0);
+          const grpPenHits = Math.max(1, Math.ceil(grpPen / shapePenDrain));
+          const grpOverlap = Math.max(1, Math.floor((shapeDiameter + (t.shellRadius || 6) * 2) / Math.max(2.5, grpSpeed / 60)));
+          const grpEffHits = Math.min(grpPenHits, grpOverlap);
+          shotDmg += (t.damage || 7) * (grp.damage ?? 1.0) * (grp.bulletsPerShot || 1) * grpEffHits;
+        }
+      } else {
+        const penHits = Math.max(1, Math.ceil((t.penetration || 2) / shapePenDrain));
+        const pxPerFrame = Math.max(2.5, (t.shellSpeed || 160) / 60);
+        const overlapFrames = t.isTrap
+          ? penHits
+          : Math.max(1, Math.floor((shapeDiameter + (t.shellRadius || 9) * 2) / pxPerFrame));
+        const effHits = Math.min(penHits, overlapFrames);
+        shotDmg = (t.damage || 7) * (t.bulletsPerShot || 1) * effHits;
+      }
+
+      if (t.missileProfile) shotDmg *= 1.35;
+      const effInterval = (t.type === WEAPON_TYPE.READY_RACK && (t.maxRack || 1) <= 2)
+        ? Math.max(t.fireIntervalSec || 0.5, t.reloadIntervalSec || 0.8)
+        : (t.fireIntervalSec || 0.5);
+      totalDps += (shotDmg / Math.max(0.18, effInterval)) * dirWeight;
+    }
+
+    return Math.max(14, totalDps);
+  }
+
   update(dt, ctx) {
     const { player, allies, enemies, shapes, enemyBullets, waveMgr, squadStance = 'AUTO', crewLevels = {} } = ctx;
 
@@ -809,7 +886,7 @@ export class AllyTank {
       bestEnemyDist = Math.hypot(bestEnemy.x - this.x, bestEnemy.y - this.y);
     }
 
-    // 1C. Shape Target Evaluation (also with commitment hysteresis)
+    // 1C. Shape Target Evaluation (prioritize quick kills at low DPS, and scale up to bigger targets when DPS can melt them fast)
     if (this.lockedShape && (this.lockedShape.dead || this.lockedShape.isDying || this.lockedShape.destroyed)) {
       this.lockedShape = null;
     }
@@ -824,10 +901,26 @@ export class AllyTank {
       if (dPlayer > 880) continue;
       const dMe = Math.hypot(s.x - this.x, s.y - this.y);
 
-      let sScore = (s.xp || 10) * 1.8 - dMe * 0.9;
+      const remHp = Math.max(1, s.hp || 1);
+      const maxHp = Math.max(remHp, s.maxHp || remHp);
+      const xp = s.xp || 1;
+      const shapeDps = this.estimateShapeDps(s.radius || 30);
+      const ttk = remHp / shapeDps;
+
+      let sScore;
+      if (s.type === 'egg') {
+        sScore = 14 - dMe * 0.30;
+      } else {
+        const rewardScore = Math.sqrt(xp) * 18 + Math.min(xp, 250) * 0.35;
+        const quickKillFactor = 1.0 / (1.0 + Math.pow(ttk / 3.8, 3.0));
+        const hpRatioShape = remHp / maxHp;
+        const finishBonus = (hpRatioShape < 0.45 && ttk < 4.5) ? ((1.0 - hpRatioShape) * 140) : 0;
+        const slowPenalty = (ttk > 4.2) ? ((ttk - 4.2) * 55) : (ttk * 14);
+        sScore = rewardScore * quickKillFactor + finishBonus - slowPenalty - (dMe * 0.28);
+      }
+
       if (needsSquares && s.type === 'square') sScore += 550;
-      if (s.type === 'pentagon' || s.type === 'alpha_pentagon') sScore += 180;
-      if (s === this.lockedShape) sScore += 150;
+      if (s === this.lockedShape) sScore += 55;
       if (sScore > bestShapeScore) {
         bestShapeScore = sScore;
         bestShape = s;
@@ -1207,6 +1300,7 @@ export class AllyTank {
     let droneMode = 'IDLE';
     let droneTargetX = this.aimWorldX;
     let droneTargetY = this.aimWorldY;
+    let droneAttackTarget = null;
 
     if (combatTarget) {
       const tVx = combatTarget.vx || 0;
@@ -1215,8 +1309,13 @@ export class AllyTank {
       this.smoothTargetVx += (tVx - this.smoothTargetVx) * vAlpha;
       this.smoothTargetVy += (tVy - this.smoothTargetVy) * vAlpha;
 
-      const primaryTurret = this.weaponSys.turrets.find(t => t.shootsBullet && !t.isAutoTurret) || this.weaponSys.turrets[0];
-      const projSpeed = Math.max(120, (primaryTurret && primaryTurret.shellSpeed) ? primaryTurret.shellSpeed : 220);
+      const primaryTurret = this.weaponSys.turrets.find(t => t.shootsBullet && !t.isAutoTurret && t.type !== WEAPON_TYPE.DRONE_SPAWNER)
+        || this.weaponSys.turrets.find(t => t.shootsBullet && !t.isAutoTurret)
+        || this.weaponSys.turrets[0];
+      const fallbackSpd = this.weaponSys.infectSquares
+        ? (this.weaponSys.necromancerStats?.speed || 160)
+        : 220;
+      const projSpeed = Math.max(120, (primaryTurret && primaryTurret.shootsBullet && primaryTurret.shellSpeed) ? primaryTurret.shellSpeed : fallbackSpd);
 
       const intercept = solveBallisticIntercept(
         this.x,
@@ -1282,7 +1381,7 @@ export class AllyTank {
         }
       }
 
-      // Drone Control Logic
+      // Drone Control Logic (track combatTarget directly with tight swarm-relative lead)
       if (isDrone) {
         if (hpRatio < 0.24) {
           droneMode = 'IDLE';
@@ -1292,8 +1391,41 @@ export class AllyTank {
           droneTargetY = reviveTarget.y;
         } else {
           droneMode = 'ATTRACT';
-          droneTargetX = this.aimWorldX;
-          droneTargetY = this.aimWorldY;
+          droneAttackTarget = combatTarget;
+          const droneTurret = this.weaponSys.turrets.find(t => t.type === WEAPON_TYPE.DRONE_SPAWNER && !t.isAutoDrone)
+            || this.weaponSys.turrets.find(t => t.type === WEAPON_TYPE.DRONE_SPAWNER);
+          const droneSpd = this.weaponSys.infectSquares
+            ? (this.weaponSys.necromancerStats?.speed || 160)
+            : ((droneTurret && droneTurret.shellSpeed) ? droneTurret.shellSpeed : 160);
+          let swarmX = this.x;
+          let swarmY = this.y;
+          let manualCount = 0;
+          let sumX = 0;
+          let sumY = 0;
+          const activeDrones = this.weaponSys.drones || [];
+          for (let i = 0; i < activeDrones.length; i++) {
+            const dr = activeDrones[i];
+            if (!dr.dead && !dr.isAutoDrone) {
+              sumX += dr.x;
+              sumY += dr.y;
+              manualCount++;
+            }
+          }
+          if (manualCount > 0) {
+            swarmX = sumX / manualCount;
+            swarmY = sumY / manualCount;
+          }
+          const swarmDist = Math.hypot(combatTarget.x - swarmX, combatTarget.y - swarmY);
+          const leadSec = Math.min(0.16, swarmDist / Math.max(120, droneSpd));
+          let leadX = this.smoothTargetVx * leadSec;
+          let leadY = this.smoothTargetVy * leadSec;
+          const leadMag = Math.hypot(leadX, leadY);
+          if (leadMag > 28) {
+            leadX = (leadX / leadMag) * 28;
+            leadY = (leadY / leadMag) * 28;
+          }
+          droneTargetX = combatTarget.x + leadX;
+          droneTargetY = combatTarget.y + leadY;
         }
       }
 
@@ -1335,6 +1467,10 @@ export class AllyTank {
         // Gently sweep barrel like an idle player looking around
         this.angularVel += (Math.sin(this.aimNoisePhase * 0.6) * 0.5 - this.angularVel) * Math.min(1, dt * 4.0);
         this.angle += this.angularVel * dt;
+        const idleLookX = this.x + Math.cos(this.angle) * 180;
+        const idleLookY = this.y + Math.sin(this.angle) * 180;
+        this.aimWorldX += (idleLookX - this.aimWorldX) * Math.min(1, dt * 4.5);
+        this.aimWorldY += (idleLookY - this.aimWorldY) * Math.min(1, dt * 4.5);
       }
       if (this.angle > Math.PI) this.angle -= Math.PI * 2;
       else if (this.angle < -Math.PI) this.angle += Math.PI * 2;
@@ -1357,6 +1493,7 @@ export class AllyTank {
         mode: droneMode,
         targetX: droneTargetX,
         targetY: droneTargetY,
+        attackTarget: droneAttackTarget,
         spinReverse: false,
         detonatePressed
       },
