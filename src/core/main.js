@@ -923,6 +923,7 @@ function checkEvolutionProgression() {
 
 function updatePlayer(dt) {
   if (state.isGameOver || state.inMenu) return;
+  const chassisConfig = CONFIG.CHASSIS[state.activeChassis] || CONFIG.CHASSIS.basic;
 
   if (player.isDying) {
     player.deathTimer += dt;
@@ -954,14 +955,26 @@ function updatePlayer(dt) {
 
     const camSmoothAlpha = 1 - Math.pow(1 - CONFIG.CAMERA.smoothness, dt * 60);
     const zoomAlpha = 1 - Math.pow(1 - CONFIG.CAMERA.zoomLerpSpeed, dt * 60);
-    camera.x += (player.x - camera.x) * camSmoothAlpha;
-    camera.y += (player.y - camera.y) * camSmoothAlpha;
+    let camTargetX = player.x;
+    let camTargetY = player.y;
+    const isMobileMode = Boolean(mobileControls && mobileControls.isMobile);
+    if (!state.autoSpin && !isMobileMode) {
+      const isSniperLeanChassis = Boolean(chassisConfig.cameraScope) ||
+        state.activeChassis === 'sniper' || state.activeChassis === 'assassin' ||
+        state.activeChassis === 'ranger' || state.activeChassis === 'stalker' ||
+        state.activeChassis === 'hunter' || state.activeChassis === 'streamliner';
+      const leanFactor = isSniperLeanChassis
+        ? CONFIG.CAMERA.sniperLeanFactor
+        : (CONFIG.CAMERA.globalLeanFactor ?? 0.04);
+      const mouseWorldX = (input.mouse.screenX - canvasMgr.width / 2) / camera.zoom + camera.x;
+      const mouseWorldY = (input.mouse.screenY - canvasMgr.height / 2) / camera.zoom + camera.y;
+      camTargetX += (mouseWorldX - player.x) * leanFactor;
+      camTargetY += (mouseWorldY - player.y) * leanFactor;
+    }
+    camera.x += (camTargetX - camera.x) * camSmoothAlpha;
+    camera.y += (camTargetY - camera.y) * camSmoothAlpha;
     camera.zoom += (camera.targetZoom - camera.zoom) * zoomAlpha;
 
-    player.downedTimer = Math.max(0, player.downedTimer - dt);
-    if (player.downedTimer <= 0) {
-      triggerSquadWipe();
-    }
     return;
   }
 
@@ -970,7 +983,6 @@ function updatePlayer(dt) {
   const baseDiameter = growthCfg.baseDiameter || 50;
   const growthExponent = growthCfg.growthExponent || 1.01;
   const tankDiameter = baseDiameter * Math.pow(growthExponent, growthLevel - 1);
-  const chassisConfig = CONFIG.CHASSIS[state.activeChassis];
   player.radius = (tankDiameter / 2) * ((chassisConfig && chassisConfig.radiusMultiplier) || 1.0);
 
   const levelZoomMult = 1.0 + (growthLevel - 1) * growthCfg.cameraZoomIncreasePerLevel;
@@ -1379,6 +1391,11 @@ function updateRevivesAndSquadWipe(dt) {
   if (!waveMgr || !waveMgr.allies || waveMgr.allies.length === 0) {
     player.activeReviveTargetName = '';
     player.activeReviveProgress = 0;
+    player.isBeingRevived = false;
+    if (player.isDowned && !player.isDying) {
+      player.downedTimer = Math.max(0, player.downedTimer - dt);
+      if (player.downedTimer <= 0) triggerSquadWipe();
+    }
     return;
   }
 
@@ -1429,6 +1446,13 @@ function updateRevivesAndSquadWipe(dt) {
     } else {
       player.isBeingRevived = false;
       player.reviveProgress = Math.max(0, player.reviveProgress - dt * decayRate);
+    }
+    if (player.isDowned && !player.isBeingRevived) {
+      player.downedTimer = Math.max(0, player.downedTimer - dt);
+      if (player.downedTimer <= 0) {
+        triggerSquadWipe();
+        return;
+      }
     }
   } else {
     player.isBeingRevived = false;
@@ -1482,6 +1506,11 @@ function updateRevivesAndSquadWipe(dt) {
     } else {
       ally.isBeingRevived = false;
       ally.reviveProgress = Math.max(0, ally.reviveProgress - dt * decayRate);
+    }
+
+    if (ally.isDowned && !ally.isBeingRevived) {
+      ally.downedTimer = Math.max(0, ally.downedTimer - dt);
+      if (ally.downedTimer <= 0) ally.killPermanently(waveMgr);
     }
   }
 }

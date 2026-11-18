@@ -967,10 +967,6 @@ export class AllyTank {
       this.y += this.vy * dt;
       this.cloakAlpha = 1.0;
 
-      this.downedTimer = Math.max(0, this.downedTimer - dt);
-      if (this.downedTimer <= 0) {
-        this.killPermanently(waveMgr);
-      }
       return;
     }
 
