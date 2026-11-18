@@ -216,6 +216,13 @@ async function initGame() {
     setActiveChassis,
     returnToMenu
   );
+  waveMgr.storage = storageMgr;
+  waveMgr.onEnemyGlossaryUnlock = (enemyKey, enemyName) => {
+    uiMgr?.showToast(`${enemyName.toUpperCase()} IDENTIFIED — ENEMY GLOSSARY UPDATED`);
+  };
+  waveMgr.onEnemyGlossaryProgress = () => {
+    if (uiMgr?.enemyGlossaryModal?.classList.contains('active')) uiMgr.enemyGlossary.render();
+  };
 
   mobileControls = new MobileControls({
     onToggleAutoFire: toggleAutoFire,
@@ -756,6 +763,10 @@ function setupInputs() {
         uiMgr.hideEvolutionTree();
         return;
       }
+      if (uiMgr.enemyGlossaryModal && !uiMgr.enemyGlossaryModal.classList.contains('hidden')) {
+        uiMgr.hideEnemyGlossary();
+        return;
+      }
       if (uiMgr.authModal && !uiMgr.authModal.classList.contains('hidden')) {
         uiMgr.hideAuthModal();
         return;
@@ -773,6 +784,7 @@ function setupInputs() {
         (uiMgr.settingsModal && !uiMgr.settingsModal.classList.contains('hidden')) ||
         (uiMgr.armoryModal && !uiMgr.armoryModal.classList.contains('hidden')) ||
         (uiMgr.evolutionTreeModal && !uiMgr.evolutionTreeModal.classList.contains('hidden')) ||
+        (uiMgr.enemyGlossaryModal && !uiMgr.enemyGlossaryModal.classList.contains('hidden')) ||
         (uiMgr.authModal && !uiMgr.authModal.classList.contains('hidden'));
       if (!hasOpenModal) {
         e.preventDefault();

@@ -202,7 +202,18 @@
             </button>
           </div>
 
-          <!-- Row 3: Wide Bottom Utility Tile (Settings) -->
+          <!-- Row 3: Almanac & Settings -->
+          <div class="main-menu-tile-row">
+          <button id="main-menu-glossary-btn" class="main-menu-tile tile-glossary" type="button">
+            <span class="tile-content">
+              <span class="tile-title">ENEMY GLOSSARY</span>
+              <span class="tile-sub">FIELD INTELLIGENCE</span>
+            </span>
+            <svg class="tile-watermark" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.5" aria-hidden="true">
+              <path d="M7 12h19a7 7 0 0 1 7 7v34a7 7 0 0 0-7-7H7zM57 12H38a7 7 0 0 0-5 2v39a7 7 0 0 1 5-7h19z" />
+              <path d="M14 22h12M14 30h12M41 22h9M41 30h9" />
+            </svg>
+          </button>
           <button id="main-menu-settings-btn" class="main-menu-tile tile-settings" type="button">
             <span class="tile-content">
               <span class="tile-title">SETTINGS</span>
@@ -213,6 +224,7 @@
               <path d="M32 10v8M32 46v8M10 32h8M46 32h8M16.4 16.4l5.7 5.7M41.9 41.9l5.7 5.7M47.6 16.4l-5.7 5.7M22.1 41.9l-5.7 5.7" />
             </svg>
           </button>
+          </div>
         </div>
       </div>
     </div>
@@ -993,6 +1005,40 @@
           </div>
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- Enemy Glossary Almanac -->
+  <div id="enemy-glossary-modal" class="modal-overlay hidden">
+    <div class="falo-shop-window falo-glossary-window">
+      <div class="falo-shop-header">
+        <div class="falo-shop-header-left">
+          <div class="falo-shop-logo"><span class="falo-shop-logo-icon">◈</span> ENEMY GLOSSARY</div>
+          <div class="falo-shop-tabs" role="group" aria-label="Filter enemies by class">
+            <button class="falo-shop-tab active" type="button" data-enemy-filter="all" aria-pressed="true">ALL</button>
+            <button class="falo-shop-tab" type="button" data-enemy-filter="standard" aria-pressed="false">STANDARD</button>
+            <button class="falo-shop-tab" type="button" data-enemy-filter="specialized" aria-pressed="false">SPECIALIZED</button>
+            <button class="falo-shop-tab" type="button" data-enemy-filter="infantry" aria-pressed="false">INFANTRY</button>
+          </div>
+        </div>
+        <div class="falo-shop-header-right">
+          <div id="enemy-glossary-count" class="enemy-glossary-discovery-count">0 / 0 DISCOVERED</div>
+          <button id="close-enemy-glossary-btn" class="falo-shop-close-btn" type="button" title="Close Glossary" aria-label="Close Glossary">✕</button>
+        </div>
+      </div>
+      <div class="falo-shop-body falo-glossary-body">
+        <section class="falo-shop-scroll-area falo-shop-catalog-pane enemy-glossary-catalog" aria-label="Enemy catalog">
+          <div class="enemy-glossary-catalog-heading">
+            <div>
+              <div class="falo-section-title">FIELD GUIDE</div>
+              <div class="enemy-glossary-catalog-subtitle">DESTROY 5 OF A TYPE TO IDENTIFY IT</div>
+            </div>
+            <input id="enemy-glossary-search" class="enemy-glossary-search" type="search" placeholder="SEARCH CONTACTS" aria-label="Search enemy glossary" />
+          </div>
+          <div id="enemy-glossary-grid" class="enemy-glossary-grid"></div>
+        </section>
+        <aside id="enemy-glossary-detail" class="enemy-glossary-detail" aria-live="polite"></aside>
       </div>
     </div>
   </div>

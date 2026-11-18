@@ -27,6 +27,7 @@ const DEFAULT_DATA = {
   coins: 0,
   highScore: 0,
   maxWave: 1,
+  enemyKills: {},
   unlockedChassis: ['basic'],
   activeChassis: 'basic',
   unlockedColors: ['default'],
@@ -122,6 +123,11 @@ export class StorageManager {
       activeChassis: data.activeChassis || 'basic',
       unlockedColors: normalizedUnlocked,
       activeColor,
+      enemyKills: Object.fromEntries(
+        Object.entries(data.enemyKills && typeof data.enemyKills === 'object' && !Array.isArray(data.enemyKills) ? data.enemyKills : {}).filter(([key, count]) =>
+          typeof key === 'string' && Number.isFinite(Number(count)) && Number(count) > 0
+        ).map(([key, count]) => [key, Math.floor(Number(count))])
+      ),
       crewLevels: { ...DEFAULT_DATA.crewLevels, ...(data.crewLevels || {}) },
       hiredAllies: Array.isArray(data.hiredAllies)
         ? data.hiredAllies.slice(0, 3).map((ally, idx) => ({
@@ -207,6 +213,11 @@ export class StorageManager {
    * Flushes any pending cloud sync, clears currentUser, and restores guest profile immediately.
    */
   async handleLogout() {
+    if (this.enemyKillsSaveTimer) {
+      clearTimeout(this.enemyKillsSaveTimer);
+      this.enemyKillsSaveTimer = null;
+      this.save();
+    }
     if (this.currentUser && this.syncDebounceTimer) {
       clearTimeout(this.syncDebounceTimer);
       this.syncDebounceTimer = null;
@@ -292,6 +303,22 @@ export class StorageManager {
     if (score > this.data.highScore) this.data.highScore = score;
     if (wave > this.data.maxWave) this.data.maxWave = wave;
     this.save();
+  }
+
+  recordEnemyKill(enemyKey) {
+    if (typeof enemyKey !== 'string' || !enemyKey) return 0;
+    this.data.enemyKills = this.data.enemyKills && typeof this.data.enemyKills === 'object'
+      ? { ...this.data.enemyKills }
+      : {};
+    const kills = (this.data.enemyKills[enemyKey] || 0) + 1;
+    this.data.enemyKills[enemyKey] = kills;
+    clearTimeout(this.enemyKillsSaveTimer);
+    const profileData = this.data;
+    this.enemyKillsSaveTimer = setTimeout(() => {
+      this.enemyKillsSaveTimer = null;
+      if (this.data === profileData) this.save();
+    }, 1000);
+    return kills;
   }
 
   unlockChassis(chassisKey, cost) {

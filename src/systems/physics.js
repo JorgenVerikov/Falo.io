@@ -5,6 +5,15 @@ import { AllyCommunicationSystem } from '../entities/allyComms.js';
 const _overlapOut = { collided: false, nx: 0, ny: 0 };
 
 export class PhysicsSystem {
+  static recordEnemyKill(waveMgr, enemy) {
+    if (!enemy || enemy.glossaryKillRecorded) return;
+    enemy.glossaryKillRecorded = true;
+    const enemyKey = enemy.archetypeKey || enemy.config?.key;
+    const kills = waveMgr.storage?.recordEnemyKill?.(enemyKey);
+    if (kills != null) waveMgr.onEnemyGlossaryProgress?.(enemyKey, kills);
+    if (kills === 5) waveMgr.onEnemyGlossaryUnlock?.(enemyKey, enemy.config?.name || enemyKey);
+  }
+
   static resolveCircleOverlap(a, b, pushRatioA = 0.5, pushRatioB = 0.5) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
@@ -159,6 +168,7 @@ export class PhysicsSystem {
           }
 
           if (enemy.dead) {
+            this.recordEnemyKill(waveMgr, enemy);
             waveMgr.score += enemy.xp;
             waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
             AllyCommunicationSystem.onPlayerKilledEnemy(player, enemy, waveMgr.allies);
@@ -298,6 +308,7 @@ export class PhysicsSystem {
           }
 
           if (enemy.dead) {
+            this.recordEnemyKill(waveMgr, enemy);
             waveMgr.score += enemy.xp;
             waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
             AllyCommunicationSystem.onPlayerKilledEnemy(player, enemy, waveMgr.allies);
@@ -496,6 +507,7 @@ export class PhysicsSystem {
               enemy.takeDamage(allyRamTank * pCol.enemyRamDamageMultiplier * dt);
             }
             if (enemy.dead) {
+              this.recordEnemyKill(waveMgr, enemy);
               waveMgr.score += enemy.xp;
               waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
               AllyCommunicationSystem.onEnemyKilled(ally, allies, player, enemy);
@@ -573,6 +585,7 @@ export class PhysicsSystem {
               waveMgr.spawnShatterParticles(proj.x, proj.y, enemy.color, CONFIG.VFX.impactParticleCount);
             }
             if (enemy.dead) {
+              this.recordEnemyKill(waveMgr, enemy);
               waveMgr.score += enemy.xp;
               waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
               AllyCommunicationSystem.onEnemyKilled(ally, allies, player, enemy);

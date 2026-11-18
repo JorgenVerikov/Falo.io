@@ -39,6 +39,7 @@ import {
 } from './uiAdmin.js';
 import { EvolutionTreeController } from './uiEvolutionTree.js';
 import { MainMenuController } from './uiMainMenu.js';
+import { EnemyGlossaryController } from './uiGlossary.js';
 
 export class UIManager {
   constructor(storageMgr, canvasMgr, onStartRun, onRestart, onChassisSelect, onReturnToMenu) {
@@ -111,6 +112,7 @@ export class UIManager {
     this.coinsEarnedEl = document.getElementById('coins-earned');
 
     this.armoryModal = document.getElementById('armory-modal');
+    this.enemyGlossaryModal = document.getElementById('enemy-glossary-modal');
     this.evolutionTreeModal = document.getElementById('evolution-tree-modal');
     this.settingsModal = document.getElementById('settings-modal');
     this.adminModal = document.getElementById('admin-panel-modal');
@@ -126,6 +128,7 @@ export class UIManager {
     this.bindEvents();
     this.initAdminMenuUI();
     this.evolutionTree = new EvolutionTreeController(this);
+    this.enemyGlossary = new EnemyGlossaryController(this);
     this.mainMenu = new MainMenuController(this);
   }
 
@@ -391,6 +394,8 @@ export class UIManager {
     });
 
     document.getElementById('main-menu-settings-btn').addEventListener('click', () => this.showSettings());
+    document.getElementById('main-menu-glossary-btn')?.addEventListener('click', () => this.showEnemyGlossary());
+    document.getElementById('close-enemy-glossary-btn')?.addEventListener('click', () => this.hideEnemyGlossary());
 
     document.getElementById('restart-btn').addEventListener('click', () => {
       this.hideGameOver();
@@ -1026,6 +1031,15 @@ export class UIManager {
 
   hideEvolutionTree() {
     if (this.evolutionTree) this.evolutionTree.close();
+  }
+
+  showEnemyGlossary() {
+    this.enemyGlossaryModal = document.getElementById('enemy-glossary-modal');
+    this.enemyGlossary?.open();
+  }
+
+  hideEnemyGlossary() {
+    this.enemyGlossary?.close();
   }
 
   toggleEvolutionTree(inGame = false) {

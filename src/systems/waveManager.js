@@ -12,6 +12,9 @@ export class WaveManager {
     this.graceTimer = 0;
     this.score = 0;
     this.isPaused = false;
+    this.storage = null;
+    this.onEnemyGlossaryUnlock = null;
+    this.onEnemyGlossaryProgress = null;
 
     this.enemyQueue = [];
     this.spawnTimer = 0;
