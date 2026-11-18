@@ -1598,7 +1598,8 @@ export class WeaponSystem {
 
         for (let i = 0; i < enemies.length; i++) {
           const e = enemies[i];
-          if (e.dead || e.destroyed) continue;
+          if (!e || e.dead || e.isDying || e.destroyed) continue;
+          if (e.cloakAlpha !== undefined && e.cloakAlpha < 0.28) continue;
           const dx = e.x - mx;
           const dy = e.y - my;
           const dSq = dx * dx + dy * dy;
@@ -1942,7 +1943,8 @@ export class WeaponSystem {
         const ty = controlState.targetY;
         for (let j = 0; j < enemies.length; j++) {
           const e = enemies[j];
-          if (!e || e.dead || e.destroyed) continue;
+          if (!e || e.dead || e.isDying || e.destroyed) continue;
+          if (e.cloakAlpha !== undefined && e.cloakAlpha < 0.28) continue;
           const hitR = (e.radius || 25) + 24;
           const dx = tx - e.x;
           const dy = ty - e.y;
@@ -2005,8 +2007,8 @@ export class WeaponSystem {
             if (!targetEntity) {
               for (let j = 0; j < enemies.length; j++) {
                 const e = enemies[j];
-                if (e.dead || e.destroyed) continue;
-                if (e.cloakAlpha !== undefined && e.cloakAlpha < 0.25) continue;
+                if (e.dead || e.isDying || e.destroyed) continue;
+                if (e.cloakAlpha !== undefined && e.cloakAlpha < 0.28) continue;
                 const epDx = e.x - player.x;
                 const epDy = e.y - player.y;
                 if (epDx * epDx + epDy * epDy > guardRangeSq) continue;

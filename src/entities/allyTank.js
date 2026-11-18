@@ -1,7 +1,7 @@
 import { CONFIG, getTankRenderParts, getOuterArmorLayers, computeStrokeColor } from '../core/config.js';
 import { WeaponSystem, WEAPON_TYPE } from './weapons.js';
 import { syncUnitChassisAndStats } from './unitModifiers.js';
-import { solveBallisticIntercept, getBulletEvasionVector, getShapeManeuverVector } from './enemyMath.js';
+import { solveBallisticIntercept, getShapeManeuverVector } from './enemyMath.js';
 import { AllyCommunicationSystem } from './allyComms.js';
 
 function getSkillPointsForLevel(level) {
@@ -155,6 +155,196 @@ function getDesiredStatMapForRole(role, telemetry = {}) {
   return { map, priority };
 }
 
+function computeAllyBulletEvasion(ally, enemyBullets, shapes, enemies, isRammer, isRetreating) {
+  if (!enemyBullets || enemyBullets.length === 0) return null;
+
+  const baseMaxDist = (isRammer && !isRetreating) ? 250 : 370;
+  const maxTimeHorizon = (isRammer && !isRetreating) ? 0.72 : 1.05;
+  const extraPad = (isRammer && !isRetreating) ? 24 : 40;
+  const threats = [];
+
+  for (let i = 0; i < enemyBullets.length; i++) {
+    const proj = enemyBullets[i];
+    if (!proj || proj.dead || proj.destroyed || (proj.damage || 0) <= 0) continue;
+
+    const pVx = proj.vx || 0;
+    const pVy = proj.vy || 0;
+    const pSpeedSq = pVx * pVx + pVy * pVy;
+    if (pSpeedSq <= 4) continue;
+
+    const pSpeed = Math.sqrt(pSpeedSq);
+    const maxDist = Math.min(480, Math.max(baseMaxDist, pSpeed * maxTimeHorizon + ally.radius + 40));
+    const relX = ally.x - proj.x;
+    const relY = ally.y - proj.y;
+    if (Math.abs(relX) > maxDist || Math.abs(relY) > maxDist) continue;
+
+    const distSq = relX * relX + relY * relY;
+    if (distSq > maxDist * maxDist) continue;
+
+    // Blend bullet velocity with partial ally velocity for closing prediction
+    const relVx = pVx - ally.vx * 0.35;
+    const relVy = pVy - ally.vy * 0.35;
+    const relSpeedSq = relVx * relVx + relVy * relVy;
+    if (relSpeedSq <= 4) continue;
+
+    const tClosest = (relX * relVx + relY * relVy) / relSpeedSq;
+    if (tClosest <= 0 || tClosest > maxTimeHorizon) continue;
+
+    const perpX = relX - relVx * tClosest;
+    const perpY = relY - relVy * tClosest;
+    const perpDistSq = perpX * perpX + perpY * perpY;
+    const dangerRadius = ally.radius + (proj.radius || 9) + extraPad;
+    if (perpDistSq >= dangerRadius * dangerRadius) continue;
+
+    const perpDist = Math.sqrt(perpDistSq);
+    const clearanceRatio = Math.max(0.15, (dangerRadius - perpDist) / dangerRadius);
+    const timeWeight = Math.max(0.25, 1.15 - (tClosest / maxTimeHorizon));
+    const damageFactor = Math.min(1.6, 0.8 + (proj.damage || 10) * 0.015);
+    const weight = clearanceRatio * timeWeight * damageFactor;
+
+    threats.push({
+      proj,
+      pVx,
+      pVy,
+      pSpeed,
+      tClosest,
+      perpX,
+      perpY,
+      perpDist,
+      dangerRadius,
+      weight
+    });
+  }
+
+  if (threats.length === 0) return null;
+
+  threats.sort((a, b) => a.tClosest - b.tClosest);
+  const primary = threats[0];
+  const bux = primary.pVx / primary.pSpeed;
+  const buy = primary.pVy / primary.pSpeed;
+  const normX = -buy;
+  const normY = bux;
+
+  // Evaluate both perpendicular dodge sides (+1 and -1) against nearby bullets, shapes, and enemies
+  let chosenSide = 1;
+  let bestSideScore = -Infinity;
+
+  for (let sIdx = 0; sIdx < 2; sIdx++) {
+    const side = sIdx === 0 ? 1 : -1;
+    const candX = normX * side;
+    const candY = normY * side;
+    let score = 0;
+
+    // Prefer moving away from the bullet's offset center if not dead-center
+    if (primary.perpDist > 2) {
+      const awayDot = (primary.perpX * candX + primary.perpY * candY) / primary.perpDist;
+      score += awayDot * 3.0;
+    }
+
+    // Momentum & commitment hysteresis so ally does not jitter left-right
+    const velDot = ally.vx * candX + ally.vy * candY;
+    score += Math.max(-0.8, Math.min(1.2, velDot / 180));
+    if (ally.evadeCommitSide !== 0) {
+      score += (side === ally.evadeCommitSide) ? 0.95 : -0.4;
+    }
+
+    // Sample a short sidestep point and penalize secondary bullet overlap or obstacle hazards
+    const probeDist = ally.radius + 78;
+    const probeX = ally.x + candX * probeDist;
+    const probeY = ally.y + candY * probeDist;
+
+    const checkLimit = Math.min(threats.length, 6);
+    for (let j = 1; j < checkLimit; j++) {
+      const t2 = threats[j];
+      const futX = t2.proj.x + t2.pVx * Math.min(0.42, t2.tClosest);
+      const futY = t2.proj.y + t2.pVy * Math.min(0.42, t2.tClosest);
+      const pd = Math.hypot(probeX - futX, probeY - futY);
+      const safeR = ally.radius + (t2.proj.radius || 9) + 28;
+      if (pd < safeR) {
+        score -= ((safeR - pd) / safeR) * 3.4;
+      }
+    }
+
+    if (shapes && shapes.length > 0) {
+      for (let j = 0; j < shapes.length; j++) {
+        const sh = shapes[j];
+        if (!sh || sh.dead || sh.destroyed || sh.type === 'egg') continue;
+        const dx = sh.x - probeX;
+        const dy = sh.y - probeY;
+        const minR = ally.radius + (sh.radius || 20) + 26;
+        if (Math.abs(dx) > minR || Math.abs(dy) > minR) continue;
+        const d = Math.hypot(dx, dy);
+        if (d < minR) {
+          score -= ((minR - d) / minR) * (sh.type === 'alpha_pentagon' || sh.type === 'pentagon' ? 3.2 : 1.8);
+        }
+      }
+    }
+
+    if ((!isRammer || isRetreating) && enemies && enemies.length > 0) {
+      for (let j = 0; j < enemies.length; j++) {
+        const en = enemies[j];
+        if (!en || en.dead || en.isDying || en.destroyed) continue;
+        if (en.cloakAlpha !== undefined && en.cloakAlpha < 0.28) continue;
+        const dx = en.x - probeX;
+        const dy = en.y - probeY;
+        const minR = ally.radius + (en.radius || 24) + 55;
+        if (Math.abs(dx) > minR || Math.abs(dy) > minR) continue;
+        const d = Math.hypot(dx, dy);
+        if (d < minR) {
+          score -= ((minR - d) / minR) * 2.8;
+        }
+      }
+    }
+
+    if (score > bestSideScore) {
+      bestSideScore = score;
+      chosenSide = side;
+    }
+  }
+
+  let evadeX = normX * chosenSide;
+  let evadeY = normY * chosenSide;
+  let totalWeight = primary.weight;
+
+  // Blend in secondary incoming threats to thread between multi-shot volleys
+  const blendLimit = Math.min(threats.length, 5);
+  for (let i = 1; i < blendLimit; i++) {
+    const th = threats[i];
+    const tNormX = -th.pVy / th.pSpeed;
+    const tNormY = th.pVx / th.pSpeed;
+    let sx = 0;
+    let sy = 0;
+    if (th.perpDist > 2) {
+      sx = th.perpX / th.perpDist;
+      sy = th.perpY / th.perpDist;
+    } else {
+      const align = (tNormX * evadeX + tNormY * evadeY) >= 0 ? 1 : -1;
+      sx = tNormX * align;
+      sy = tNormY * align;
+    }
+    const secW = th.weight * 0.55;
+    evadeX = evadeX * totalWeight + sx * secW;
+    evadeY = evadeY * totalWeight + sy * secW;
+    totalWeight += secW;
+  }
+
+  const mag = Math.hypot(evadeX, evadeY) || 1;
+  evadeX /= mag;
+  evadeY /= mag;
+
+  const urgency = Math.max(0.35, Math.min(1.5, 1.35 - (primary.tClosest / maxTimeHorizon) * 0.85 + Math.min(0.35, (threats.length - 1) * 0.12)));
+
+  return {
+    x: evadeX,
+    y: evadeY,
+    bulletDirX: bux,
+    bulletDirY: buy,
+    chosenSide,
+    timeToImpact: primary.tClosest,
+    urgency
+  };
+}
+
 let nextAllyUnitId = 1;
 
 export class AllyTank {
@@ -256,6 +446,18 @@ export class AllyTank {
     this.goalHoldTimer = 0;
     this.lockedEnemy = null;
     this.lockedShape = null;
+    this.lastSeenEnemy = null;
+    this.lastSeenEnemyX = 0;
+    this.lastSeenEnemyY = 0;
+    this.lastSeenEnemyVx = 0;
+    this.lastSeenEnemyVy = 0;
+    this.lastSeenEnemyRadius = 24;
+    this.lostSightTimer = 0;
+    this.hasReachedLastSeen = false;
+    this.searchWaypointX = null;
+    this.searchWaypointY = null;
+    this.searchWaypointTimer = 0;
+    this.searchSweepPhase = Math.random() * Math.PI * 2;
     this.isRetreatingToHeal = false;
 
     this.smoothTargetVx = 0;
@@ -565,6 +767,9 @@ export class AllyTank {
     this.reviveProgress = 0;
     this.isBeingRevived = false;
     this.currentTask = 'DOWNED';
+    this.lockedEnemy = null;
+    this.lastSeenEnemy = null;
+    this.lostSightTimer = 0;
     this.weaponSys.projectiles = [];
     this.weaponSys.drones = [];
     this.weaponSys.activeDroneCount = 0;
@@ -598,6 +803,9 @@ export class AllyTank {
     this.dead = true;
     this.isDying = true;
     this.deathTimer = 0;
+    this.lockedEnemy = null;
+    this.lastSeenEnemy = null;
+    this.lostSightTimer = 0;
     this.weaponSys.projectiles = [];
     this.weaponSys.drones = [];
     this.weaponSys.activeDroneCount = 0;
@@ -850,8 +1058,13 @@ export class AllyTank {
       }
     }
 
-    // 1B. Enemy Target Evaluation (slight bonus to current target prevents target-flipping jitter)
-    if (this.lockedEnemy && (this.lockedEnemy.dead || this.lockedEnemy.isDying || this.lockedEnemy.destroyed)) {
+    // 1B. Enemy Target Evaluation (invisible enemies cannot be targeted until visible; re-cloaking triggers last-seen search)
+    const isEnemyVisible = (e) => Boolean(
+      e && !e.dead && !e.isDying && !e.destroyed &&
+      (e.cloakAlpha === undefined || e.cloakAlpha >= 0.28)
+    );
+
+    if (this.lockedEnemy && !isEnemyVisible(this.lockedEnemy)) {
       this.lockedEnemy = null;
     }
     let bestEnemy = null;
@@ -859,9 +1072,8 @@ export class AllyTank {
     let bestEnemyDist = Infinity;
     for (let i = 0; i < enemies.length; i++) {
       const e = enemies[i];
-      if (!e || e.dead || e.isDying || e.destroyed) continue;
+      if (!isEnemyVisible(e)) continue;
       const distToMe = Math.hypot(e.x - this.x, e.y - this.y);
-      if ((e.cloakAlpha !== undefined && e.cloakAlpha < 0.25) && distToMe > 180) continue;
 
       const distToPlayer = Math.hypot(e.x - player.x, e.y - player.y);
       let score = 1200 - distToMe;
@@ -884,6 +1096,80 @@ export class AllyTank {
     } else if (this.lockedEnemy) {
       bestEnemy = this.lockedEnemy;
       bestEnemyDist = Math.hypot(bestEnemy.x - this.x, bestEnemy.y - this.y);
+    }
+
+    let searchTarget = null;
+    if (bestEnemy) {
+      this.lastSeenEnemy = bestEnemy;
+      this.lastSeenEnemyX = bestEnemy.x;
+      this.lastSeenEnemyY = bestEnemy.y;
+      this.lastSeenEnemyVx = bestEnemy.vx || 0;
+      this.lastSeenEnemyVy = bestEnemy.vy || 0;
+      this.lastSeenEnemyRadius = bestEnemy.radius || 24;
+      this.lostSightTimer = 0;
+      this.hasReachedLastSeen = false;
+      this.searchWaypointX = null;
+      this.searchWaypointY = null;
+      this.searchWaypointTimer = 0;
+    } else if (this.lastSeenEnemy) {
+      const ghost = this.lastSeenEnemy;
+      if (ghost.dead || ghost.isDying || ghost.destroyed) {
+        this.lastSeenEnemy = null;
+        this.lostSightTimer = 0;
+      } else if (ghost.cloakAlpha !== undefined && ghost.cloakAlpha < 0.28) {
+        this.lostSightTimer += dt;
+        const distFromPlayer = Math.hypot(this.lastSeenEnemyX - player.x, this.lastSeenEnemyY - player.y);
+        if (this.lostSightTimer > 5.8 || (!reviveTarget && distFromPlayer > 950)) {
+          this.lastSeenEnemy = null;
+          this.lostSightTimer = 0;
+        } else {
+          const predSec = Math.min(1.65, this.lostSightTimer) * 0.72;
+          const predX = this.lastSeenEnemyX + this.lastSeenEnemyVx * predSec;
+          const predY = this.lastSeenEnemyY + this.lastSeenEnemyVy * predSec;
+          const distToPred = Math.hypot(predX - this.x, predY - this.y);
+          const arrivalDist = (isRammer && !this.isRetreatingToHeal) ? 68 : (isSniper ? 260 : 210);
+          if (distToPred <= arrivalDist) {
+            this.hasReachedLastSeen = true;
+          }
+
+          let navX = predX;
+          let navY = predY;
+          if (this.hasReachedLastSeen) {
+            this.searchWaypointTimer -= dt;
+            const wpDist = (this.searchWaypointX !== null)
+              ? Math.hypot(this.searchWaypointX - this.x, this.searchWaypointY - this.y)
+              : 0;
+            if (this.searchWaypointTimer <= 0 || this.searchWaypointX === null || wpDist < 42) {
+              const sweepMin = (isRammer && !this.isRetreatingToHeal) ? 55 : 100;
+              const sweepSpan = (isRammer && !this.isRetreatingToHeal) ? 105 : 130;
+              const sweepR = sweepMin + Math.random() * sweepSpan;
+              const sweepA = Math.random() * Math.PI * 2;
+              this.searchWaypointX = predX + Math.cos(sweepA) * sweepR;
+              this.searchWaypointY = predY + Math.sin(sweepA) * sweepR;
+              this.searchWaypointTimer = 0.85 + Math.random() * 0.75;
+            }
+            navX = this.searchWaypointX;
+            navY = this.searchWaypointY;
+          }
+
+          const velDecay = Math.max(0, 1.0 - this.lostSightTimer * 0.85);
+          searchTarget = {
+            enemy: ghost,
+            x: predX,
+            y: predY,
+            navX,
+            navY,
+            vx: this.lastSeenEnemyVx * velDecay,
+            vy: this.lastSeenEnemyVy * velDecay,
+            radius: this.lastSeenEnemyRadius,
+            distToMe: distToPred,
+            lostAge: this.lostSightTimer
+          };
+        }
+      } else {
+        this.lastSeenEnemy = null;
+        this.lostSightTimer = 0;
+      }
     }
 
     // 1C. Shape Target Evaluation (prioritize quick kills at low DPS, and scale up to bigger targets when DPS can melt them fast)
@@ -932,6 +1218,7 @@ export class AllyTank {
     // Choose Active Mode
     const isGraceOrBreak = (waveMgr.graceTimer > 0 || waveMgr.isBreak);
     let combatTarget = null;
+    let activeSearchTarget = null;
     let moveGoalX = player.x;
     let moveGoalY = player.y;
 
@@ -951,6 +1238,8 @@ export class AllyTank {
       moveGoalY = reviveTarget.y;
       if (bestEnemy && bestEnemyDist < 540) {
         combatTarget = bestEnemy;
+      } else if (searchTarget && searchTarget.distToMe < 540) {
+        activeSearchTarget = searchTarget;
       }
       if (distToRevive < (CONFIG.ALLIES.reviveRadius || 105)) {
         if (Math.random() < dt * 0.45) {
@@ -975,8 +1264,9 @@ export class AllyTank {
       moveGoalX = escortX;
       moveGoalY = escortY;
       if (bestEnemy && bestEnemyDist < 540) combatTarget = bestEnemy;
+      else if (searchTarget && searchTarget.distToMe < 540) activeSearchTarget = searchTarget;
       else if (bestShape && bestShapeDist < 340 && isGraceOrBreak) combatTarget = bestShape;
-      if (!combatTarget && this.banterCooldown <= 0) {
+      if (!combatTarget && !activeSearchTarget && this.banterCooldown <= 0) {
         this.banterCooldown = 12 + Math.random() * 10;
         AllyCommunicationSystem.tryBroadcast(this, allies, 'BANTER_SQUAD', false, 2.2, false, chatCtx);
       }
@@ -992,6 +1282,17 @@ export class AllyTank {
           const awayAngle = Math.atan2(this.y - bestEnemy.y, this.x - bestEnemy.x);
           moveGoalX = bestEnemy.x + Math.cos(awayAngle) * 290;
           moveGoalY = bestEnemy.y + Math.sin(awayAngle) * 290;
+        }
+      } else if (!isGraceOrBreak && searchTarget && searchTarget.distToMe < 320 && !this.isRetreatingToHeal) {
+        this.currentTask = 'COMBAT';
+        activeSearchTarget = searchTarget;
+        if (isRammer && hpRatio >= 0.45) {
+          moveGoalX = searchTarget.navX;
+          moveGoalY = searchTarget.navY;
+        } else {
+          const awayAngle = Math.atan2(this.y - searchTarget.y, this.x - searchTarget.x);
+          moveGoalX = searchTarget.x + Math.cos(awayAngle) * 240;
+          moveGoalY = searchTarget.y + Math.sin(awayAngle) * 240;
         }
       } else if (bestShape && (!isRammer || !this.isRetreatingToHeal)) {
         this.currentTask = 'FARM';
@@ -1068,6 +1369,39 @@ export class AllyTank {
           moveGoalY = moveGoalY * (1 - blend) + escortY * blend;
         }
       }
+    } else if (searchTarget && (squadStance === 'AGGRESSIVE' || searchTarget.distToMe < 820 || Math.hypot(searchTarget.x - player.x, searchTarget.y - player.y) < 620)) {
+      this.currentTask = 'COMBAT';
+      activeSearchTarget = searchTarget;
+
+      if (this.isRetreatingToHeal) {
+        const awayFromLastSeen = Math.atan2(this.y - searchTarget.y, this.x - searchTarget.x);
+        const safeAnchorX = player.isDowned ? this.x : player.x;
+        const safeAnchorY = player.isDowned ? this.y : player.y;
+        const retreatDist = isRammer ? 240 : 210;
+        moveGoalX = safeAnchorX + Math.cos(awayFromLastSeen) * retreatDist;
+        moveGoalY = safeAnchorY + Math.sin(awayFromLastSeen) * retreatDist;
+        if (Math.hypot(moveGoalX - searchTarget.x, moveGoalY - searchTarget.y) < 340) {
+          moveGoalX = searchTarget.x + Math.cos(awayFromLastSeen) * 360;
+          moveGoalY = searchTarget.y + Math.sin(awayFromLastSeen) * 360;
+        }
+      } else if (isRammer && hpRatio >= 0.45) {
+        moveGoalX = searchTarget.navX;
+        moveGoalY = searchTarget.navY;
+      } else {
+        const searchDist = isSniper ? 380 : (isDrone ? 300 : (this.currentRole === 'skirmisher' ? 225 : 265));
+        const awayAngle = Math.atan2(this.y - searchTarget.y, this.x - searchTarget.x);
+        const weave = Math.sin(this.strafePhase * 1.1) * 0.42 + this.orbitDir * 0.36;
+        const sweepAngle = awayAngle + weave;
+        moveGoalX = searchTarget.x + Math.cos(sweepAngle) * searchDist;
+        moveGoalY = searchTarget.y + Math.sin(sweepAngle) * searchDist;
+
+        const distFromPlayer = Math.hypot(moveGoalX - player.x, moveGoalY - player.y);
+        if (distFromPlayer > 580) {
+          const blend = Math.min(0.65, (distFromPlayer - 580) / 420);
+          moveGoalX = moveGoalX * (1 - blend) + escortX * blend;
+          moveGoalY = moveGoalY * (1 - blend) + escortY * blend;
+        }
+      }
     } else if (bestShape && this.level < CONFIG.PLAYER.maxLevel && (!isRammer || !this.isRetreatingToHeal)) {
       this.currentTask = 'FARM';
       combatTarget = bestShape;
@@ -1109,55 +1443,51 @@ export class AllyTank {
       rawMoveY *= slow;
     }
 
-    // Bullet Dodging (blended smoothly)
-    let bestEvade = null;
-    let minTimeToImpact = Infinity;
-    if (enemyBullets && enemyBullets.length > 0) {
-      const maxThreatDist = isRammer ? 175 : 235;
-      for (let i = 0; i < enemyBullets.length; i++) {
-        const proj = enemyBullets[i];
-        if (!proj || proj.dead || proj.destroyed || proj.damage <= 0) continue;
-        const ev = getBulletEvasionVector(
-          this.x,
-          this.y,
-          this.radius,
-          proj,
-          this.vx,
-          this.vy,
-          maxThreatDist,
-          this.evadeCommitSide
-        );
-        if (ev && ev.timeToImpact < minTimeToImpact) {
-          minTimeToImpact = ev.timeToImpact;
-          bestEvade = ev;
-        }
-      }
-    }
+    // Bullet Dodging (multi-bullet threat scoring, safe-side selection & responsive steering)
+    let hazardUrgency = 0;
+    const bestEvade = computeAllyBulletEvasion(
+      this,
+      enemyBullets,
+      shapes,
+      enemies,
+      isRammer,
+      this.isRetreatingToHeal
+    );
 
     if (bestEvade) {
-      if (this.evadeCommitSide === 0) {
-        this.evadeCommitSide = (bestEvade.x >= 0) ? 1 : -1;
+      this.evadeCommitSide = bestEvade.chosenSide;
+      this.evadeThreatTimer = 0.42;
+
+      const baseWeight = reviveTarget ? 0.95 : ((isRammer && !this.isRetreatingToHeal) ? 0.78 : 1.45);
+      const evadeWeight = baseWeight * bestEvade.urgency;
+
+      // Suppress movement straight into an incoming bullet stream so sidestepping succeeds cleanly
+      const intoBulletDot = -(rawMoveX * bestEvade.bulletDirX + rawMoveY * bestEvade.bulletDirY);
+      if (intoBulletDot > 0) {
+        const suppress = Math.min(0.85, bestEvade.urgency * 0.65) * intoBulletDot;
+        rawMoveX += bestEvade.bulletDirX * suppress;
+        rawMoveY += bestEvade.bulletDirY * suppress;
       }
-      this.evadeThreatTimer = 0.45;
-      const urgency = Math.max(0.55, Math.min(1.15, 0.95 - (bestEvade.timeToImpact / 0.95)));
-      const evadeWeight = (reviveTarget ? 0.55 : (isRammer ? 0.45 : 0.95)) * urgency;
-      this.smoothEvadeX += (bestEvade.x * evadeWeight - this.smoothEvadeX) * Math.min(1, dt * 8.0);
-      this.smoothEvadeY += (bestEvade.y * evadeWeight - this.smoothEvadeY) * Math.min(1, dt * 8.0);
-      this.evadeInfluence = Math.min(1.0, this.evadeInfluence + dt * 5.5);
+
+      const evadeBlend = Math.min(1, dt * (11.5 + bestEvade.urgency * 4.5));
+      this.smoothEvadeX += (bestEvade.x * evadeWeight - this.smoothEvadeX) * evadeBlend;
+      this.smoothEvadeY += (bestEvade.y * evadeWeight - this.smoothEvadeY) * evadeBlend;
+      this.evadeInfluence = Math.min(1.0, this.evadeInfluence + dt * 9.5);
+      hazardUrgency = Math.max(hazardUrgency, Math.min(1.0, bestEvade.urgency * 0.9));
+
       if (Math.random() < dt * 0.22) {
         AllyCommunicationSystem.tryBroadcast(this, allies, 'EVADING', false, 1.7);
       }
     } else {
       this.evadeThreatTimer = Math.max(0, this.evadeThreatTimer - dt);
       if (this.evadeThreatTimer <= 0) this.evadeCommitSide = 0;
-      this.evadeInfluence = Math.max(0, this.evadeInfluence - dt * 3.5);
+      this.evadeInfluence = Math.max(0, this.evadeInfluence - dt * 4.2);
     }
 
     rawMoveX += this.smoothEvadeX * this.evadeInfluence;
     rawMoveY += this.smoothEvadeY * this.evadeInfluence;
 
     // Shape Obstacle Steering (velocity-aware lookahead + 360-degree proximity repulsion)
-    let hazardUrgency = 0;
     const velMag = Math.hypot(this.vx, this.vy);
     const rawMoveLen = Math.hypot(rawMoveX, rawMoveY);
     let steerDirX = 0;
@@ -1216,12 +1546,13 @@ export class AllyTank {
       }
     }
 
-    // Direct Enemy Hull Avoidance (prevents non-rammers & low-HP rammers from running into enemy tanks/crashers)
+    // Direct Enemy Hull Avoidance (prevents non-rammers & low-HP rammers from running into visible enemy tanks/crashers)
     if (shouldAvoidContact && enemies && enemies.length > 0) {
       const enemySafePad = this.isRetreatingToHeal ? 145 : (hpRatio < 0.55 ? 125 : 100);
       for (let i = 0; i < enemies.length; i++) {
         const e = enemies[i];
         if (!e || e.dead || e.isDying || e.destroyed) continue;
+        if (e.cloakAlpha !== undefined && e.cloakAlpha < 0.28) continue;
         const ex = e.x + (e.vx || 0) * 0.2;
         const ey = e.y + (e.vy || 0) * 0.2;
         const edx = this.x - ex;
@@ -1273,8 +1604,8 @@ export class AllyTank {
       rawMoveY /= rawMag;
     }
 
-    // Smooth WASD-like human input inertia (faster reaction only when actively avoiding an imminent collision)
-    const smoothRate = 5.2 + hazardUrgency * 4.5;
+    // Smooth WASD-like human input inertia (snappier reaction when dodging bullets or avoiding collisions)
+    const smoothRate = 5.4 + hazardUrgency * 7.2;
     const inputSmoothing = Math.min(1.0, dt * smoothRate);
     this.inputMoveX += (rawMoveX - this.inputMoveX) * inputSmoothing;
     this.inputMoveY += (rawMoveY - this.inputMoveY) * inputSmoothing;
@@ -1286,13 +1617,14 @@ export class AllyTank {
     // ====================================================
     // 3. HUMAN-LIKE SMOOTH CURSOR AIMING & WEAPON CONTROL
     // ====================================================
-    if (combatTarget !== this.lastCombatTarget) {
+    const currentTargetIdentity = combatTarget || (activeSearchTarget ? activeSearchTarget.enemy : null);
+    if (currentTargetIdentity !== this.lastCombatTarget) {
       if (combatTarget) {
         this.aimReactionTimer = 0.11 + Math.random() * 0.09; // Human target-acquisition delay
       } else if (this.lastCombatTarget && (this.lastCombatTarget.dead || this.lastCombatTarget.destroyed)) {
         this.postKillFollowThrough = 0.18;
       }
-      this.lastCombatTarget = combatTarget;
+      this.lastCombatTarget = currentTargetIdentity;
     }
 
     let shouldFire = false;
@@ -1438,7 +1770,8 @@ export class AllyTank {
           if (!p || p.dead || p.hasDetonated || !p.detonateConfig?.onRightClick) continue;
           for (let j = 0; j < enemies.length; j++) {
             const e = enemies[j];
-            if (!e || e.dead) continue;
+            if (!e || e.dead || e.isDying || e.destroyed) continue;
+            if (e.cloakAlpha !== undefined && e.cloakAlpha < 0.28) continue;
             const ed = Math.hypot(e.x - p.x, e.y - p.y);
             if (ed <= (e.radius + 78)) {
               detonatePressed = true;
@@ -1446,6 +1779,97 @@ export class AllyTank {
             }
           }
           if (detonatePressed) break;
+        }
+      }
+    } else if (activeSearchTarget) {
+      this.searchSweepPhase += dt * (isSniper ? 2.4 : 4.2);
+
+      const primaryTurret = this.weaponSys.turrets.find(t => t.shootsBullet && !t.isAutoTurret && t.type !== WEAPON_TYPE.DRONE_SPAWNER)
+        || this.weaponSys.turrets.find(t => t.shootsBullet && !t.isAutoTurret)
+        || this.weaponSys.turrets[0];
+      const fallbackSpd = this.weaponSys.infectSquares
+        ? (this.weaponSys.necromancerStats?.speed || 160)
+        : 220;
+      const projSpeed = Math.max(120, (primaryTurret && primaryTurret.shootsBullet && primaryTurret.shellSpeed) ? primaryTurret.shellSpeed : fallbackSpd);
+
+      const intercept = solveBallisticIntercept(
+        this.x,
+        this.y,
+        activeSearchTarget.x,
+        activeSearchTarget.y,
+        activeSearchTarget.vx,
+        activeSearchTarget.vy,
+        projSpeed
+      );
+
+      // Widen sweeping spray over the predicted last-seen position as time since losing sight grows
+      const dist = Math.hypot(intercept.x - this.x, intercept.y - this.y);
+      const baseSweep = Math.min(185, 22 + activeSearchTarget.lostAge * 36 + dist * 0.06);
+      const sweepAmp = isSniper ? baseSweep * 0.72 : baseSweep;
+      const targetAimX = intercept.x + Math.sin(this.searchSweepPhase) * sweepAmp;
+      const targetAimY = intercept.y + Math.cos(this.searchSweepPhase * 0.63) * sweepAmp;
+
+      const cAlpha = Math.min(1.0, dt * 7.8);
+      this.aimWorldX += (targetAimX - this.aimWorldX) * cAlpha;
+      this.aimWorldY += (targetAimY - this.aimWorldY) * cAlpha;
+
+      let desiredAngle = Math.atan2(this.aimWorldY - this.y, this.aimWorldX - this.x);
+      if (isRammer && this.activeChassis === 'booster' && smoothedMag > 0.25 && !reviveTarget) {
+        desiredAngle = Math.atan2(this.inputMoveY, this.inputMoveX);
+      }
+
+      if (chassisConfig.alwaysAutoSpin) {
+        this.angle += (chassisConfig.autoSpinSpeed || 0.55) * dt;
+      } else {
+        const diff = Math.atan2(Math.sin(desiredAngle - this.angle), Math.cos(desiredAngle - this.angle));
+        const maxTurnSpeed = 6.2;
+        const desiredAngVel = Math.max(-maxTurnSpeed, Math.min(maxTurnSpeed, diff * 7.5));
+        this.angularVel += (desiredAngVel - this.angularVel) * Math.min(1.0, dt * 11.0);
+        this.angle += this.angularVel * dt;
+        if (this.angle > Math.PI) this.angle -= Math.PI * 2;
+        else if (this.angle < -Math.PI) this.angle += Math.PI * 2;
+
+        const absDiff = Math.abs(Math.atan2(Math.sin(desiredAngle - this.angle), Math.cos(desiredAngle - this.angle)));
+        if (this.isFiringLatched) {
+          this.isFiringLatched = absDiff < 0.85;
+        } else {
+          this.isFiringLatched = absDiff < 0.52;
+        }
+        const canSprayWeapon = this.weaponSys.turrets.some(t => t.shootsBullet && !t.isAutoTurret);
+        shouldFire = (canSprayWeapon && this.isFiringLatched)
+          || (isRammer && this.activeChassis === 'booster' && smoothedMag > 0.25);
+      }
+
+      if (this.weaponSys.hasDashAbility || (this.weaponSys.turrets.length === 0 && (this.weaponSys.type === WEAPON_TYPE.COOLDOWN || this.weaponSys.type === WEAPON_TYPE.ENERGY))) {
+        const targetDist = Math.hypot(activeSearchTarget.x - this.x, activeSearchTarget.y - this.y);
+        const dashAlign = chassisConfig.alwaysAutoSpin
+          ? 0
+          : Math.abs(Math.atan2(Math.sin(desiredAngle - this.angle), Math.cos(desiredAngle - this.angle)));
+        if (!this.isRetreatingToHeal && hpRatio >= 0.45 && activeSearchTarget.lostAge < 2.2 &&
+            targetDist > 110 && targetDist < 360 && this.weaponSys.cooldownTimer <= 0 && dashAlign < 0.45) {
+          shouldFire = true;
+        }
+      }
+
+      if (isDrone) {
+        if (hpRatio < 0.24) {
+          droneMode = 'IDLE';
+        } else {
+          droneMode = 'ATTRACT';
+          droneAttackTarget = null;
+          droneTargetX = targetAimX;
+          droneTargetY = targetAimY;
+        }
+      }
+
+      if (chassisConfig.turrets?.some(t => t.missileProfile?.detonation?.onRightClick)) {
+        for (let i = 0; i < this.weaponSys.projectiles.length; i++) {
+          const p = this.weaponSys.projectiles[i];
+          if (!p || p.dead || p.hasDetonated || !p.detonateConfig?.onRightClick) continue;
+          if (Math.hypot(activeSearchTarget.x - p.x, activeSearchTarget.y - p.y) <= 75) {
+            detonatePressed = true;
+            break;
+          }
         }
       }
     } else {
