@@ -6,6 +6,7 @@ import { solveBallisticIntercept, getBulletEvasionVector, getShapeManeuverVector
 import { updateNormalEnemyBehavior } from './enemyNormalAI.js';
 import { updateSpecializedEnemyBehavior } from './enemySpecializedAI.js';
 import { updateInfantryEnemyBehavior } from './enemyInfantryAI.js';
+import { getRetreatChanceMultiplier } from './enemyRetreat.js';
 
 export { Particle, ResourceShape, ENEMY_CHAT_CALLOUTS, EnemyCommunicationSystem };
 
@@ -151,6 +152,9 @@ export class EnemyUnit {
     this.isRetreating = false;
     this.isLastStand = false;
     this.despawned = false;
+    this.remainingWaveEnemies = 99;
+    this.lastMoraleRetreatCheckRemaining = null;
+    this.squadRetreatLastCheckedRemaining = null;
 
     // Aim lock, stealth & thermal systems
     this.aimError = Math.PI;
@@ -289,13 +293,16 @@ export class EnemyUnit {
   decideDesperationState(remainingInWave = 99) {
     if (this.isRetreating || this.isLastStand) return;
 
+    const retreatChanceMultiplier = getRetreatChanceMultiplier(remainingInWave);
+    if (retreatChanceMultiplier <= 0) return;
+
     const neverRetreat = Boolean(this.config.neverRetreat || (this.config.ai && this.config.ai.neverRetreat));
 
     if (remainingInWave <= 2) {
-      const retreatChance = neverRetreat ? 0
+      const retreatChance = (neverRetreat ? 0
                           : (this.archetypeKey === 'heavy') ? 0.08
                           : (this.archetypeKey === 'chaser') ? 0.20
-                          : 0.25;
+                          : 0.25) * retreatChanceMultiplier;
 
       if (Math.random() < retreatChance) {
         this.isRetreating = true;
@@ -306,11 +313,12 @@ export class EnemyUnit {
         this.isRetreating = false;
         EnemyCommunicationSystem.tryBroadcast(this, 'LAST_STAND', true, 2.4);
       }
-    } else if (!neverRetreat && this.morale < 15) {
+    } else if (!neverRetreat && this.morale < 15 && this.lastMoraleRetreatCheckRemaining !== remainingInWave) {
+      this.lastMoraleRetreatCheckRemaining = remainingInWave;
       const retreatChance = (this.archetypeKey === 'heavy') ? 0.03
                           : (this.archetypeKey === 'chaser') ? 0.12
                           : 0.15;
-      if (Math.random() < retreatChance) {
+      if (Math.random() < retreatChance * retreatChanceMultiplier) {
         this.isRetreating = true;
         this.isLastStand = false;
         EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED', true, 2.2);
@@ -358,6 +366,9 @@ export class EnemyUnit {
 
   update(dt, playerArg, enemyBullets, playerMoveSpeedStat = 0, allEnemies = [], playerProjectiles = [], remainingWaveEnemies = null, shapes = [], allies = []) {
     this.allEnemiesRef = allEnemies;
+    this.remainingWaveEnemies = (remainingWaveEnemies !== null && remainingWaveEnemies !== undefined)
+      ? remainingWaveEnemies
+      : allEnemies.filter(enemy => !enemy.dead).length;
 
     if (this.chatCooldown > 0) this.chatCooldown -= dt;
     if (this.chatTimer > 0) {
@@ -632,12 +643,11 @@ export class EnemyUnit {
       }
     }
 
-    const remainingEnemiesTotal = (remainingWaveEnemies !== null && remainingWaveEnemies !== undefined)
-      ? remainingWaveEnemies
-      : (livingAlliesTotal + 1);
+    const remainingEnemiesTotal = this.remainingWaveEnemies;
 
     if (!this.isRetreating && !this.isLastStand) {
-      if (remainingEnemiesTotal <= 2 || (this.moraleState === 'TERRIFIED' && this.morale < 15)) {
+      const retreatStartCount = CONFIG.WAVE?.retreatStartCount ?? 10;
+      if (remainingEnemiesTotal <= retreatStartCount || (this.moraleState === 'TERRIFIED' && this.morale < 15)) {
         this.decideDesperationState(remainingEnemiesTotal);
       }
     }

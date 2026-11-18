@@ -1,4 +1,5 @@
 import { EnemyCommunicationSystem } from './enemyComms.js';
+import { getRetreatChanceMultiplier } from './enemyRetreat.js';
 
 /**
  * Reusable scratch map for zero-allocation Operative squad grouping per unit tick.
@@ -115,15 +116,17 @@ export function evaluateInfantrySquadContext(unit, player, allEnemies, dist, ctx
   }
 
   if (mySquadCount >= mergeThreshold) {
-    unit.squadRetreatCheckedSize = 99;
+    unit.squadRetreatLastCheckedRemaining = null;
   } else if (!hasOtherOperativeSquad) {
     const retreatMaxSize = aiCfg.squadRetreatMaxSize || 2;
-    if (mySquadCount <= retreatMaxSize && mySquadCount < unit.squadRetreatCheckedSize && !unit.isRetreating && !unit.isLastStand) {
-      unit.squadRetreatCheckedSize = mySquadCount;
+    const remainingEnemies = unit.remainingWaveEnemies ?? allEnemies.filter(enemy => !enemy.dead).length;
+    if (mySquadCount <= retreatMaxSize && !unit.isRetreating && !unit.isLastStand &&
+        getRetreatChanceMultiplier(remainingEnemies) > 0 && unit.squadRetreatLastCheckedRemaining !== remainingEnemies) {
+      unit.squadRetreatLastCheckedRemaining = remainingEnemies;
       const chance = (mySquadCount <= 1)
         ? (aiCfg.squadRetreatChanceOne !== undefined ? aiCfg.squadRetreatChanceOne : 0.78)
         : (aiCfg.squadRetreatChanceTwo !== undefined ? aiCfg.squadRetreatChanceTwo : 0.60);
-      if (Math.random() < chance) {
+      if (Math.random() < chance * getRetreatChanceMultiplier(remainingEnemies)) {
         unit.isRetreating = true;
         unit.isLastStand = false;
         EnemyCommunicationSystem.tryBroadcast(unit, 'SQUAD_PANIC', true, 2.4);
@@ -176,7 +179,7 @@ export function updateInfantryEnemyBehavior(unit, dt, ctx, out) {
   if (mergeTargetId !== -1) {
     if (mergeTargetDist <= 185) {
       unit.squadId = mergeTargetId;
-      unit.squadRetreatCheckedSize = 99;
+      unit.squadRetreatLastCheckedRemaining = null;
       EnemyCommunicationSystem.tryBroadcast(unit, 'SQUAD_MERGE', false, 2.2);
     }
     const mx = mergeTargetX - unit.x;

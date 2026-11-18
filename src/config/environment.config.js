@@ -23,7 +23,9 @@ export const WAVE_CONFIG = {
   breakDuration: 10,
   baseEnemyCount: 4,
   growthFactor: 1.25,
-  maxEnemyCount: 150,   // Maximum enemies that can spawn in a wave
+  maxEnemyCount: 1000,  // Maximum enemies that can spawn in a wave
+  retreatStartCount: 10, // Retreat chances start increasing when 10 or fewer enemies remain
+  retreatFullChanceCount: 2, // Reach the configured maximum retreat chance at 2 or fewer enemies
   spawnInterval: 1.1,
   minSpawnInterval: 0.2,
   spawnIntervalDecay: 0.91,

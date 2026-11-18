@@ -244,7 +244,7 @@ export class EnemyCommunicationSystem {
 
     if (livingCount === 1 && closestAlly) {
       closestAlly.addMorale(-5);
-      closestAlly.decideDesperationState(1);
+      closestAlly.decideDesperationState(closestAlly.remainingWaveEnemies ?? livingCount);
       return;
     }
 

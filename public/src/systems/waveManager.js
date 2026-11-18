@@ -97,7 +97,7 @@ export class WaveManager {
       this.graceTimer = 0;
     }
 
-    const maxEnemies = (CONFIG.WAVE && CONFIG.WAVE.maxEnemyCount !== undefined) ? CONFIG.WAVE.maxEnemyCount : 150;
+    const maxEnemies = (CONFIG.WAVE && CONFIG.WAVE.maxEnemyCount !== undefined) ? CONFIG.WAVE.maxEnemyCount : 1000;
     const totalEnemies = Math.min(maxEnemies, Math.floor(CONFIG.WAVE.baseEnemyCount * Math.pow(CONFIG.WAVE.growthFactor, this.waveNumber - 1)));
 
     // Dynamic enemy eligibility check reading directly from CONFIG.ENEMIES
