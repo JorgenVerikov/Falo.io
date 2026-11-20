@@ -427,6 +427,7 @@ export class AllyTank {
     this.deathTimer = 0;
     this.deathDuration = 0.55;
     this.destroyed = false;
+    this.respawnAtWave = null;
 
     // Player-like Movement, Cursor Aiming & Target Commitment
     this.aimWorldX = x + Math.cos(this.angle) * 200;
@@ -766,6 +767,8 @@ export class AllyTank {
     this.downedTimer = CONFIG.ALLIES.bleedoutDuration || 15.0;
     this.reviveProgress = 0;
     this.isBeingRevived = false;
+    this.cloakAlpha = 1.0;
+    this.sonarTimer = 0;
     this.currentTask = 'DOWNED';
     this.lockedEnemy = null;
     this.lastSeenEnemy = null;
@@ -798,6 +801,9 @@ export class AllyTank {
 
   killPermanently(waveMgr = null) {
     if (this.dead || this.isDying) return;
+    const curWave = waveMgr?.waveNumber || 1;
+    const delayWaves = CONFIG.ALLIES?.respawnWaveDelay ?? 3;
+    this.respawnAtWave = curWave + delayWaves;
     this.hp = 0;
     this.isDowned = false;
     this.dead = true;
@@ -809,8 +815,58 @@ export class AllyTank {
     this.weaponSys.projectiles = [];
     this.weaponSys.drones = [];
     this.weaponSys.activeDroneCount = 0;
-    if (waveMgr) {
+    if (waveMgr && typeof waveMgr.spawnShatterParticles === 'function') {
       waveMgr.spawnShatterParticles(this.x, this.y, this.fillColor, 18);
+    }
+  }
+
+  respawn(x, y, waveMgr = null, unlockedChassis = ['basic'], crewLevels = {}, playerLevel = 1, playerChassis = 'basic', allAllies = []) {
+    this.x = x;
+    this.y = y;
+    this.vx = 0;
+    this.vy = 0;
+    this.dead = false;
+    this.isDying = false;
+    this.deathTimer = 0;
+    this.destroyed = false;
+    this.isDowned = false;
+    this.downedTimer = 0;
+    this.reviveProgress = 0;
+    this.isBeingRevived = false;
+    this.respawnAtWave = null;
+
+    this.lockedEnemy = null;
+    this.lockedShape = null;
+    this.lastSeenEnemy = null;
+    this.lostSightTimer = 0;
+    this.lastAttacker = null;
+    this.lastAttackerTimer = 0;
+    this.isRetreatingToHeal = false;
+    this.currentTask = 'ESCORT';
+    this.morale = 70;
+    this.moraleState = 'NORMAL';
+    this.iFrameTimer = CONFIG.ALLIES?.iFrameAfterRevive || 2.0;
+    this.timeSinceLastDamage = 999;
+    this.cloakAlpha = 1.0;
+    this.sonarTimer = 0;
+
+    this.weaponSys.projectiles = [];
+    this.weaponSys.drones = [];
+    this.weaponSys.activeDroneCount = 0;
+
+    this.syncLevelAndProgression(
+      playerLevel,
+      unlockedChassis,
+      crewLevels,
+      false,
+      playerChassis,
+      allAllies,
+      waveMgr?.waveNumber || 1
+    );
+    this.hp = this.maxHp;
+
+    if (waveMgr && typeof waveMgr.spawnShatterParticles === 'function') {
+      waveMgr.spawnShatterParticles(this.x, this.y, this.fillColor || '#34d399', 16);
     }
   }
 
@@ -1024,6 +1080,7 @@ export class AllyTank {
     const shouldAvoidContact = !isRammer || this.isRetreatingToHeal;
     const canSafelyRam = (target) => {
       if (!isRammer || this.isRetreatingToHeal || hpRatio < 0.45 || !target) return false;
+      if (target.isBoss && (target.hp || 0) > this.maxHp * 2.5) return false;
       if ((target.maxHp || 0) > this.maxHp * 1.4 && hpRatio < 0.68) return false;
       return true;
     };
@@ -1351,7 +1408,8 @@ export class AllyTank {
           AllyCommunicationSystem.tryBroadcast(this, allies, 'HIGH_MORALE', false, 2.0, false, chatCtx);
         }
 
-        const idealDist = isSniper ? 440 : (isDrone ? 350 : (isRammer ? 310 : (this.currentRole === 'skirmisher' ? 245 : 310)));
+        const radiusPad = Math.max(0, (bestEnemy.radius || 25) - 25);
+        const idealDist = (isSniper ? 440 : (isDrone ? 350 : (isRammer ? 310 : (this.currentRole === 'skirmisher' ? 245 : 310)))) + radiusPad;
         const awayAngle = Math.atan2(this.y - bestEnemy.y, this.x - bestEnemy.x);
         const weave = Math.sin(this.strafePhase) * 0.35 + this.orbitDir * 0.32;
         const strafeAngle = awayAngle + weave;
@@ -1934,10 +1992,11 @@ export class AllyTank {
     // Stealth handling for Stalker / Manager / Landmine allies
     if (chassisConfig.stealth) {
       const sCfg = chassisConfig.stealth;
-      const minAlpha = sCfg.minAlpha !== undefined ? sCfg.minAlpha : 0.08;
+      const minAlpha = sCfg.minAlpha !== undefined ? sCfg.minAlpha : 0.06;
       const fadeInTime = Math.max(0.2, sCfg.fadeInTime || 2.0);
       const fadeOutTime = Math.max(0.1, sCfg.fadeOutTime || 0.4);
-      const isMoving = Boolean(sCfg.requireStationary) && Math.hypot(this.vx, this.vy) > 35;
+      const hasMoveInput = Math.hypot(this.inputMoveX || 0, this.inputMoveY || 0) > 0.05;
+      const isMoving = Boolean(sCfg.requireStationary) && (hasMoveInput || Math.hypot(this.vx, this.vy) > 35);
 
       if (isMoving) {
         this.sonarTimer = 0;
@@ -1946,11 +2005,20 @@ export class AllyTank {
         this.sonarTimer = 0;
         const bump = sCfg.shotRevealBump !== undefined ? sCfg.shotRevealBump : 0.55;
         this.cloakAlpha = Math.min(1.0, Math.max(this.cloakAlpha ?? 1.0, 0.35) + bump);
+      } else if (this.weaponSys.summonedDroneThisFrame && sCfg.revealOnDroneSummon) {
+        const revealAlpha = sCfg.summonRevealAlpha !== undefined ? sCfg.summonRevealAlpha : 0.85;
+        this.cloakAlpha = Math.max(this.cloakAlpha ?? minAlpha, revealAlpha);
+        this.sonarTimer = Math.max(0.15, sCfg.summonFadeTime || 0.45);
+      } else if (this.sonarTimer > 0) {
+        this.sonarTimer = Math.max(0, this.sonarTimer - dt);
+        const summonFadeTime = Math.max(0.15, sCfg.summonFadeTime || 0.45);
+        this.cloakAlpha = Math.max(minAlpha, (this.cloakAlpha ?? 1.0) - ((1.0 - minAlpha) / summonFadeTime) * dt);
       } else {
         this.cloakAlpha = Math.max(minAlpha, (this.cloakAlpha ?? 1.0) - ((1.0 - minAlpha) / fadeInTime) * dt);
       }
     } else {
       this.cloakAlpha = 1.0;
+      this.sonarTimer = 0;
     }
 
     // Keep weapon modifiers aligned with current growth radius & crew

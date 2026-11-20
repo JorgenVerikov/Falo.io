@@ -51,8 +51,15 @@ export const NORMAL_ENEMIES_CONFIG = {
     stroke: '#681898',
     turrets: [
       {
-        width: 20, length: 48, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0,
-        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+        width: 20,
+        length: 48,
+        frontWidth: 20,
+        angleOffset: 0,
+        xOffset: 0,
+        yOffset: 0,
+        shootsBullet: true,
+        playsRecoil: true,
+        fireDelayTicks: 0
       }
     ],
     weapon: {

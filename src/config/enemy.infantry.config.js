@@ -22,8 +22,15 @@ export const INFANTRY_ENEMIES_CONFIG = {
     stroke: '#265740',
     turrets: [
       {
-        width: 15, length: 58, frontWidth: 15, angleOffset: 0, xOffset: 0, yOffset: 0,
-        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+        width: 15,
+        length: 58,
+        frontWidth: 15,
+        angleOffset: 0,
+        xOffset: 0,
+        yOffset: 0,
+        shootsBullet: true,
+        playsRecoil: true,
+        fireDelayTicks: 0
       }
     ],
     weapon: {

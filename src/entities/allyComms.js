@@ -318,12 +318,13 @@ export class AllyCommunicationSystem {
   }
 
   static onEnemyKilled(killerAlly, allAllies, player = null, enemy = null) {
+    if (enemy?.isBossMinion) return;
     if (killerAlly && !killerAlly.dead) {
       if (killerAlly.telemetry) {
         killerAlly.telemetry.kills = (killerAlly.telemetry.kills || 0) + 1;
       }
       killerAlly.addMorale(10);
-      const isBigEnemy = Boolean(enemy && (enemy.xp >= 120 || enemy.archetypeKey === 'heavy'));
+      const isBigEnemy = Boolean(enemy && (enemy.isBoss || enemy.xp >= 120 || enemy.archetypeKey === 'heavy'));
       const cat = (isBigEnemy && Math.random() < 0.45) ? 'JEER_ENEMY' : 'KILL_CHEER';
       this.tryBroadcast(killerAlly, allAllies, cat, false, 2.0, false, { player });
     }
@@ -335,9 +336,10 @@ export class AllyCommunicationSystem {
   }
 
   static onPlayerKilledEnemy(player, enemy, allAllies) {
+    if (enemy?.isBossMinion) return;
     const standing = (allAllies || []).filter(a => this.canSpeak(a, false));
     if (standing.length === 0) return;
-    const isBigEnemy = Boolean(enemy && (enemy.xp >= 100 || enemy.archetypeKey === 'heavy' || enemy.archetypeKey === 'boss'));
+    const isBigEnemy = Boolean(enemy && (enemy.isBoss || enemy.xp >= 100 || enemy.archetypeKey === 'heavy' || enemy.archetypeKey === 'boss'));
     const cheerChance = isBigEnemy ? 0.55 : 0.22;
     if (Math.random() > cheerChance) return;
 

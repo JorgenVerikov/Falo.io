@@ -217,11 +217,34 @@ async function initGame() {
     returnToMenu
   );
   waveMgr.storage = storageMgr;
-  waveMgr.onEnemyGlossaryUnlock = (enemyKey, enemyName) => {
-    uiMgr?.showToast(`${enemyName.toUpperCase()} IDENTIFIED — ENEMY GLOSSARY UPDATED`);
+  waveMgr.onEnemyGlossaryMilestone = ({ stage, enemyName, reward }) => {
+    const upperName = String(enemyName || 'Enemy').toUpperCase();
+    if (stage === 'sighted') {
+      uiMgr?.showToast(`${upperName} SIGHTED — SILHOUETTE LOGGED`);
+    } else if (stage === 'identified') {
+      uiMgr?.showToast(`${upperName} IDENTIFIED — INTEL UNLOCKED`);
+    } else if (stage === 'mastered') {
+      uiMgr?.showToast(`${upperName} MASTERED — ${reward.perkSummary.toUpperCase()} ACTIVE`);
+    }
   };
   waveMgr.onEnemyGlossaryProgress = () => {
     if (uiMgr?.enemyGlossaryModal?.classList.contains('active')) uiMgr.enemyGlossary.render();
+  };
+  waveMgr.onBossSpawned = (boss) => {
+    const fullName = boss?.config?.fullName || boss?.config?.name || 'Guardian of the Pentagons';
+    uiMgr?.showBossNotification(`The ${fullName} has spawned!`);
+  };
+  waveMgr.onBossDefeated = (boss, killerInfo) => {
+    const fullName = boss?.config?.fullName || boss?.config?.name || 'Guardian of the Pentagons';
+    const shortName = boss?.config?.name || 'Guardian';
+    const killerName = killerInfo?.name || storageMgr.data.playerName || 'Player';
+    const personalMsg = killerInfo?.isPlayer ? `You've killed ${shortName}` : '';
+    uiMgr?.showBossNotification(`The ${fullName} has been defeated by ${killerName}!`, personalMsg);
+  };
+  waveMgr.onAllyRespawned = (respawnedAllies) => {
+    if (!respawnedAllies || respawnedAllies.length === 0) return;
+    const names = respawnedAllies.map(a => String(a.name || 'Ally').toUpperCase()).join(', ');
+    uiMgr?.showToast(`${names} REJOINED THE SQUAD!`);
   };
 
   mobileControls = new MobileControls({
@@ -1647,7 +1670,8 @@ function gameLoop(timestamp) {
 
     waveMgr.update(dt, player, weaponSys, state.activeChassis, state.stats, {
       squadStance: state.squadStance,
-      crewLevels: storageMgr.data.crewLevels
+      crewLevels: storageMgr.data.crewLevels,
+      playerLevel: state.level
     });
 
     updateRevivesAndSquadWipe(dt);

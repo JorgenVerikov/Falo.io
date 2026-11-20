@@ -1,17 +1,46 @@
-import { CONFIG } from '../core/config.js';
+import { CONFIG, GLOSSARY_MILESTONES, getEnemyMasteryReward, getEnemyMasteryBonuses } from '../core/config.js';
 import { EnemyCommunicationSystem } from '../entities/enemy.js';
 import { AllyCommunicationSystem } from '../entities/allyComms.js';
 
 const _overlapOut = { collided: false, nx: 0, ny: 0 };
 
 export class PhysicsSystem {
-  static recordEnemyKill(waveMgr, enemy) {
-    if (!enemy || enemy.glossaryKillRecorded) return;
+  static getEnemyDamageMultiplier(waveMgr, enemy) {
+    const enemyKey = enemy?.archetypeKey || enemy?.config?.key;
+    if (!enemyKey) return 1;
+    const enemyKills = waveMgr?.storage?.data?.enemyKills;
+    return getEnemyMasteryBonuses(enemyKills, enemyKey).damageMult;
+  }
+
+  static getEnemyXpAward(waveMgr, enemy) {
+    const baseXp = enemy?.xp || 0;
+    const enemyKey = enemy?.archetypeKey || enemy?.config?.key;
+    if (!enemyKey || baseXp <= 0) return baseXp;
+    const enemyKills = waveMgr?.storage?.data?.enemyKills;
+    return Math.round(baseXp * getEnemyMasteryBonuses(enemyKills, enemyKey).xpMult);
+  }
+
+  static recordEnemyKill(waveMgr, enemy, killerInfo = null) {
+    if (!enemy || enemy.glossaryKillRecorded || enemy.isBossMinion || enemy.config?.noGlossaryRecord) return;
     enemy.glossaryKillRecorded = true;
     const enemyKey = enemy.archetypeKey || enemy.config?.key;
     const kills = waveMgr.storage?.recordEnemyKill?.(enemyKey);
     if (kills != null) waveMgr.onEnemyGlossaryProgress?.(enemyKey, kills);
-    if (kills === 5) waveMgr.onEnemyGlossaryUnlock?.(enemyKey, enemy.config?.name || enemyKey);
+
+    const enemyName = enemy.config?.name || enemyKey;
+    const reward = getEnemyMasteryReward(enemyKey);
+    if (kills === GLOSSARY_MILESTONES.SIGHTED) {
+      waveMgr.onEnemyGlossaryMilestone?.({ stage: 'sighted', enemyKey, enemyName, kills, reward });
+    } else if (kills === GLOSSARY_MILESTONES.IDENTIFIED) {
+      waveMgr.onEnemyGlossaryMilestone?.({ stage: 'identified', enemyKey, enemyName, kills, reward });
+      waveMgr.onEnemyGlossaryUnlock?.(enemyKey, enemyName);
+    } else if (kills === reward.masteryKills) {
+      waveMgr.onEnemyGlossaryMilestone?.({ stage: 'mastered', enemyKey, enemyName, kills, reward });
+    }
+
+    if (enemy.isBoss) {
+      waveMgr.onBossDefeated?.(enemy, killerInfo);
+    }
   }
 
   static resolveCircleOverlap(a, b, pushRatioA = 0.5, pushRatioB = 0.5) {
@@ -26,10 +55,18 @@ export class PhysicsSystem {
 
     const distSq = dx * dx + dy * dy;
     if (distSq < minDist * minDist) {
-      const dist = Math.sqrt(distSq) || 0.001;
+      let nx, ny, dist;
+      if (distSq < 0.0001) {
+        const fallbackAngle = (a.angle || 0) + Math.PI * 0.5;
+        nx = Math.cos(fallbackAngle);
+        ny = Math.sin(fallbackAngle);
+        dist = 0;
+      } else {
+        dist = Math.sqrt(distSq);
+        nx = dx / dist;
+        ny = dy / dist;
+      }
       const overlap = minDist - dist;
-      const nx = dx / dist;
-      const ny = dy / dist;
 
       a.x -= nx * overlap * pushRatioA;
       a.y -= ny * overlap * pushRatioA;
@@ -158,7 +195,8 @@ export class PhysicsSystem {
           if (enemy.config && enemy.config.dieOnPlayerHit) {
             enemy.kill();
           } else {
-            enemy.takeDamage(playerRamDamage * pCol.enemyRamDamageMultiplier * dt);
+            const masteryDmgMult = this.getEnemyDamageMultiplier(waveMgr, enemy);
+            enemy.takeDamage(playerRamDamage * pCol.enemyRamDamageMultiplier * masteryDmgMult * dt);
           }
           EnemyCommunicationSystem.onPlayerDamaged(enemies, enemy, true);
           AllyCommunicationSystem.onPlayerDamaged(player, waveMgr.allies, true);
@@ -168,8 +206,11 @@ export class PhysicsSystem {
           }
 
           if (enemy.dead) {
-            this.recordEnemyKill(waveMgr, enemy);
-            waveMgr.score += enemy.xp;
+            this.recordEnemyKill(waveMgr, enemy, {
+              isPlayer: true,
+              name: player.name || waveMgr.storage?.data?.playerName || 'Player'
+            });
+            waveMgr.score += this.getEnemyXpAward(waveMgr, enemy);
             waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
             AllyCommunicationSystem.onPlayerKilledEnemy(player, enemy, waveMgr.allies);
           }
@@ -181,10 +222,28 @@ export class PhysicsSystem {
     for (let i = 0; i < enemies.length; i++) {
       const enemyA = enemies[i];
       if (enemyA.dead) continue;
+      const weightA = enemyA.config?.weight || 1.0;
       for (let j = i + 1; j < enemies.length; j++) {
         const enemyB = enemies[j];
         if (enemyB.dead) continue;
-        this.resolveCircleOverlap(enemyA, enemyB, 0.5, 0.5);
+        // Boss-owned drones emerge from inside/behind their owner's spawner and must not push or snap the boss
+        if ((enemyA.isBossMinion && enemyA.owner === enemyB) || (enemyB.isBossMinion && enemyB.owner === enemyA)) {
+          continue;
+        }
+        const weightB = enemyB.config?.weight || 1.0;
+        let pushA, pushB;
+        if (enemyA.isBoss && !enemyB.isBoss) {
+          pushA = 0.0;
+          pushB = 1.0;
+        } else if (enemyB.isBoss && !enemyA.isBoss) {
+          pushA = 1.0;
+          pushB = 0.0;
+        } else {
+          const totalWeight = weightA + weightB;
+          pushA = weightB / totalWeight;
+          pushB = weightA / totalWeight;
+        }
+        this.resolveCircleOverlap(enemyA, enemyB, pushA, pushB);
       }
     }
 
@@ -195,7 +254,20 @@ export class PhysicsSystem {
       for (let j = 0; j < shapes.length; j++) {
         const shape = shapes[j];
         if (shape.dead) continue;
-        if (shape.type === 'egg') {
+        if (enemy.isBoss) {
+          const col = this.resolveCircleOverlap(enemy, shape, 0.0, 1.0);
+          if (col.collided) {
+            const shapeWeight = Math.max(0.8, shape.config?.weight || 1.0);
+            const bossForwardSpeed = Math.max(0, (enemy.vx || 0) * col.nx + (enemy.vy || 0) * col.ny);
+            const minOutwardSpeed = bossForwardSpeed + 110 / Math.sqrt(shapeWeight);
+            const curOutwardSpeed = (shape.vx || 0) * col.nx + (shape.vy || 0) * col.ny;
+            if (curOutwardSpeed < minOutwardSpeed) {
+              const deltaSpeed = minOutwardSpeed - curOutwardSpeed;
+              shape.vx += col.nx * deltaSpeed;
+              shape.vy += col.ny * deltaSpeed;
+            }
+          }
+        } else if (shape.type === 'egg') {
           this.resolveCircleOverlap(enemy, shape, 0.0, 1.0);
         } else {
           this.resolveCircleOverlap(enemy, shape, 0.6, 0.4);
@@ -299,7 +371,8 @@ export class PhysicsSystem {
         if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) continue;
 
         if (dx * dx + dy * dy < minDist * minDist) {
-          enemy.takeDamage(proj.damage);
+          const masteryDmgMult = this.getEnemyDamageMultiplier(waveMgr, enemy);
+          enemy.takeDamage(proj.damage * masteryDmgMult);
           proj.takePenetrationDamage(enemyPenDrain);
           proj.applyCenterRepulsion(enemy.x, enemy.y, dt, repelStrength + 10);
 
@@ -308,8 +381,11 @@ export class PhysicsSystem {
           }
 
           if (enemy.dead) {
-            this.recordEnemyKill(waveMgr, enemy);
-            waveMgr.score += enemy.xp;
+            this.recordEnemyKill(waveMgr, enemy, {
+              isPlayer: true,
+              name: player.name || waveMgr.storage?.data?.playerName || 'Player'
+            });
+            waveMgr.score += this.getEnemyXpAward(waveMgr, enemy);
             waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
             AllyCommunicationSystem.onPlayerKilledEnemy(player, enemy, waveMgr.allies);
           }
@@ -360,11 +436,22 @@ export class PhysicsSystem {
         const pMinDist = player.radius + bullet.radius;
 
         if (Math.abs(pdx) < pMinDist && Math.abs(pdy) < pMinDist && (pdx * pdx + pdy * pdy < pMinDist * pMinDist)) {
-          bullet.kill();
-          player.takeDamage(bullet.damage, activeChassisKey, bullet.owner || null);
-          EnemyCommunicationSystem.onPlayerDamaged(enemies, null, false);
-          AllyCommunicationSystem.onPlayerDamaged(player, allies, false);
-          waveMgr.spawnShatterParticles(player.x, player.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
+          if (bullet.isTrap) {
+            bullet.applyCenterRepulsion(player.x, player.y, dt, repelStrength + 10);
+            if ((player.iFrameTimer || 0) <= 0 && (player.dashTimer || 0) <= 0) {
+              bullet.takePenetrationDamage(enemyPenDrain);
+              player.takeDamage(bullet.damage, activeChassisKey, bullet.owner || null);
+              EnemyCommunicationSystem.onPlayerDamaged(enemies, null, false);
+              AllyCommunicationSystem.onPlayerDamaged(player, allies, false);
+              waveMgr.spawnShatterParticles(player.x, player.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
+            }
+          } else {
+            bullet.kill();
+            player.takeDamage(bullet.damage, activeChassisKey, bullet.owner || null);
+            EnemyCommunicationSystem.onPlayerDamaged(enemies, null, false);
+            AllyCommunicationSystem.onPlayerDamaged(player, allies, false);
+            waveMgr.spawnShatterParticles(player.x, player.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
+          }
           continue;
         }
       }
@@ -377,9 +464,18 @@ export class PhysicsSystem {
         const ady = ally.y - bullet.y;
         const aMinDist = ally.radius + bullet.radius;
         if (Math.abs(adx) < aMinDist && Math.abs(ady) < aMinDist && (adx * adx + ady * ady < aMinDist * aMinDist)) {
-          bullet.kill();
-          ally.takeDamage(bullet.damage, bullet.owner || null, waveMgr, allies);
-          waveMgr.spawnShatterParticles(ally.x, ally.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
+          if (bullet.isTrap) {
+            bullet.applyCenterRepulsion(ally.x, ally.y, dt, repelStrength + 10);
+            if ((ally.iFrameTimer || 0) <= 0 && (ally.dashTimer || 0) <= 0) {
+              bullet.takePenetrationDamage(enemyPenDrain);
+              ally.takeDamage(bullet.damage, bullet.owner || null, waveMgr, allies);
+              waveMgr.spawnShatterParticles(ally.x, ally.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
+            }
+          } else {
+            bullet.kill();
+            ally.takeDamage(bullet.damage, bullet.owner || null, waveMgr, allies);
+            waveMgr.spawnShatterParticles(ally.x, ally.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
+          }
           hitAlly = true;
           break;
         }
@@ -504,11 +600,15 @@ export class PhysicsSystem {
             if (enemy.config && enemy.config.dieOnPlayerHit) {
               enemy.kill();
             } else {
-              enemy.takeDamage(allyRamTank * pCol.enemyRamDamageMultiplier * dt);
+              const masteryDmgMult = this.getEnemyDamageMultiplier(waveMgr, enemy);
+              enemy.takeDamage(allyRamTank * pCol.enemyRamDamageMultiplier * masteryDmgMult * dt);
             }
             if (enemy.dead) {
-              this.recordEnemyKill(waveMgr, enemy);
-              waveMgr.score += enemy.xp;
+              this.recordEnemyKill(waveMgr, enemy, {
+                isPlayer: false,
+                name: ally.name || 'Ally'
+              });
+              waveMgr.score += this.getEnemyXpAward(waveMgr, enemy);
               waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
               AllyCommunicationSystem.onEnemyKilled(ally, allies, player, enemy);
             }
@@ -578,15 +678,19 @@ export class PhysicsSystem {
           const minDist = proj.radius + enemy.radius;
           if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) continue;
           if (dx * dx + dy * dy < minDist * minDist) {
-            enemy.takeDamage(proj.damage);
+            const masteryDmgMult = this.getEnemyDamageMultiplier(waveMgr, enemy);
+            enemy.takeDamage(proj.damage * masteryDmgMult);
             proj.takePenetrationDamage(enemyPenDrain);
             proj.applyCenterRepulsion(enemy.x, enemy.y, dt, repelStrength + 10);
             if (Math.random() < 0.3) {
               waveMgr.spawnShatterParticles(proj.x, proj.y, enemy.color, CONFIG.VFX.impactParticleCount);
             }
             if (enemy.dead) {
-              this.recordEnemyKill(waveMgr, enemy);
-              waveMgr.score += enemy.xp;
+              this.recordEnemyKill(waveMgr, enemy, {
+                isPlayer: false,
+                name: ally.name || 'Ally'
+              });
+              waveMgr.score += this.getEnemyXpAward(waveMgr, enemy);
               waveMgr.spawnShatterParticles(enemy.x, enemy.y, enemy.color, CONFIG.VFX.enemyShatterCount);
               AllyCommunicationSystem.onEnemyKilled(ally, allies, player, enemy);
             }

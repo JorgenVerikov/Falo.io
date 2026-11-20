@@ -3,6 +3,15 @@
  * Barrel geometries, projectile parameters, recoil impulses, and reload scaling.
  */
 
+export const WEAPON_TYPE = {
+  READY_RACK: 'READY_RACK',
+  THERMAL: 'THERMAL',
+  ENERGY: 'ENERGY',
+  COOLDOWN: 'COOLDOWN',
+  DRONE_SPAWNER: 'DRONE_SPAWNER',
+  NONE: 'NONE'
+};
+
 // Base barrel configuration for Basic Tank (Falo.io baseline reference)
 export const BASIC_BARREL_BASE = {
   damage: 7.0,          // Falo.io Base Bullet Damage (7.0, increases by +3 per stat point)

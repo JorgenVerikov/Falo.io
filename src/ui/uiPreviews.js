@@ -395,7 +395,8 @@ export function generateShapeSvg(shapeKey, size = 72) {
   </svg>`;
 }
 
-export function generateEnemySvg(enemyKey, size = 72) {
+export function generateEnemySvg(enemyKey, size = 72, options = {}) {
+  const { silhouette = false } = options;
   const cfg = (CONFIG.ENEMIES && CONFIG.ENEMIES[enemyKey]) || {
     name: 'Drone',
     sides: 3,
@@ -411,8 +412,9 @@ export function generateEnemySvg(enemyKey, size = 72) {
   let turretExtent = 0;
   if (cfg.turrets && cfg.turrets.length > 0) {
     cfg.turrets.forEach(t => {
-      const reach = (Math.abs(t.xOffset || 0) + (t.length || 48)) * sizeScale;
-      const halfW = (Math.abs(t.yOffset || 0) + Math.max(t.width || 20, t.frontWidth || t.width || 20) / 2) * sizeScale;
+      const mountR = t.isAutoTurret ? (t.mountRadius || 4) : 0;
+      const reach = (Math.abs(t.xOffset || 0) + Math.max(t.length || 48, mountR)) * sizeScale;
+      const halfW = (Math.abs(t.yOffset || 0) + Math.max((t.width || 20) / 2, (t.frontWidth || t.width || 20) / 2, mountR)) * sizeScale;
       turretExtent = Math.max(turretExtent, Math.hypot(reach, halfW * 0.5));
     });
   }
@@ -422,8 +424,12 @@ export function generateEnemySvg(enemyKey, size = 72) {
   const turretScale = turretExtent > 0 ? (size * 0.36) / turretExtent : Infinity;
   const scale = Math.min(bodyScale, armorScale, turretScale);
   const bodyRadius = baseRadiusWorld * scale;
-  const color = cfg.color || '#f14e54';
-  const stroke = cfg.stroke || '#b82a30';
+  const color = silhouette ? '#252a34' : (cfg.color || '#f14e54');
+  const stroke = silhouette ? '#10141b' : (cfg.stroke || '#b82a30');
+  const armorFill = silhouette ? '#181c24' : (cfg.outerArmor?.color || '#2b1e24');
+  const armorStroke = silhouette ? '#0d1016' : (cfg.outerArmor?.stroke || '#150a0e');
+  const turretFill = silhouette ? '#1d222b' : '#999999';
+  const turretStroke = silhouette ? '#0e1118' : '#555555';
 
   let armorSvg = '';
   if (cfg.outerArmor) {
@@ -434,34 +440,13 @@ export function generateEnemySvg(enemyKey, size = 72) {
       const a = (i * 2 * Math.PI) / sides;
       pts.push(`${center + r * Math.cos(a)},${center + r * Math.sin(a)}`);
     }
-    armorSvg = `<polygon points="${pts.join(' ')}" fill="${cfg.outerArmor.color || '#2b1e24'}" stroke="${cfg.outerArmor.stroke || '#150a0e'}" stroke-width="3" stroke-linejoin="round"/>`;
-  }
-
-  let turretsSvg = '';
-  if (cfg.turrets && cfg.turrets.length > 0) {
-    const baseAngle = -90;
-    cfg.turrets.forEach(t => {
-      const angle = baseAngle + (((t.angleOffset || 0) * 180) / Math.PI);
-      const tLen = (t.length || 48) * sizeScale * scale;
-      const tWidth = (t.width || 20) * sizeScale * scale;
-      const tFront = (t.frontWidth || t.width || 20) * sizeScale * scale;
-      const xOff = (t.xOffset || 0) * sizeScale * scale;
-      const yOff = (t.yOffset || 0) * sizeScale * scale;
-
-      const p1 = `${xOff},${yOff - tWidth / 2}`;
-      const p2 = `${xOff + tLen},${yOff - tFront / 2}`;
-      const p3 = `${xOff + tLen},${yOff + tFront / 2}`;
-      const p4 = `${xOff},${yOff + tWidth / 2}`;
-      turretsSvg += `<g transform="translate(${center}, ${center}) rotate(${angle})">
-        <polygon points="${p1} ${p2} ${p3} ${p4}" fill="#999999" stroke="#555555" stroke-width="2.4" stroke-linejoin="miter"/>
-      </g>`;
-    });
+    armorSvg = `<polygon points="${pts.join(' ')}" fill="${armorFill}" stroke="${armorStroke}" stroke-width="3" stroke-linejoin="round"/>`;
   }
 
   let bodySvg = '';
   if (cfg.sides && cfg.sides > 0) {
     const pts = [];
-    const baseAngle = -Math.PI / 2;
+    const baseAngle = -Math.PI / 2 + (cfg.bodyAngleOffset || 0);
     for (let i = 0; i < cfg.sides; i++) {
       const a = baseAngle + (i * 2 * Math.PI) / cfg.sides;
       pts.push(`${center + bodyRadius * Math.cos(a)},${center + bodyRadius * Math.sin(a)}`);
@@ -470,6 +455,34 @@ export function generateEnemySvg(enemyKey, size = 72) {
   } else {
     bodySvg = `<circle cx="${center}" cy="${center}" r="${bodyRadius}" fill="${color}" stroke="${stroke}" stroke-width="3"/>`;
   }
+
+  const baseAngle = -90;
+  const orderedSvg = getTankRenderParts(cfg, cfg.turrets).map(part => {
+    if (part.type === 'body') return bodySvg;
+    const t = part.turret;
+    const angle = baseAngle + (((t.angleOffset || 0) * 180) / Math.PI);
+    const tLen = (t.length || 48) * sizeScale * scale;
+    const tWidth = (t.width || 20) * sizeScale * scale;
+    const tFront = (t.frontWidth || t.width || 20) * sizeScale * scale;
+    const xOff = (t.xOffset || 0) * sizeScale * scale;
+    const yOff = (t.yOffset || 0) * sizeScale * scale;
+
+    const polyPts = [
+      `${xOff},${yOff - tWidth / 2}`,
+      `${xOff + tLen},${yOff - tFront / 2}`,
+      `${xOff + tLen},${yOff + tFront / 2}`,
+      `${xOff},${yOff + tWidth / 2}`
+    ].join(' ');
+
+    const mountSvg = t.isAutoTurret
+      ? `<circle cx="${xOff}" cy="${yOff}" r="${(t.mountRadius || 4) * sizeScale * scale}" fill="${turretFill}" stroke="${turretStroke}" stroke-width="2.4"/>`
+      : '';
+
+    return `<g transform="translate(${center}, ${center}) rotate(${angle})">
+      <polygon points="${polyPts}" fill="${turretFill}" stroke="${turretStroke}" stroke-width="2.4" stroke-linejoin="miter"/>
+      ${mountSvg}
+    </g>`;
+  }).join('');
 
   return `<svg class="falo-preview-enemy-spin" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="filter: drop-shadow(0px 2.5px 4px rgba(0,0,0,0.22)); display: block; margin: auto; overflow: visible;">
     <g>
@@ -482,8 +495,7 @@ export function generateEnemySvg(enemyKey, size = 72) {
         repeatCount="indefinite"
       />
       ${armorSvg}
-      ${turretsSvg}
-      ${bodySvg}
+      ${orderedSvg}
     </g>
   </svg>`;
 }

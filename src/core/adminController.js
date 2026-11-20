@@ -80,6 +80,8 @@ export function populateAdminEnemySelect(uiMgr) {
   infantryGroup.label = 'INFANTRY CLASS';
   const specializedGroup = document.createElement('optgroup');
   specializedGroup.label = 'SPECIALIZED CLASS';
+  const bossGroup = document.createElement('optgroup');
+  bossGroup.label = 'BOSS CLASS';
 
   enemyKeys.forEach(key => {
     const enemyCfg = CONFIG.ENEMIES[key];
@@ -88,7 +90,9 @@ export function populateAdminEnemySelect(uiMgr) {
     const enemyName = enemyCfg.name || (key.charAt(0).toUpperCase() + key.slice(1));
     opt.textContent = enemyName.toUpperCase();
 
-    if (enemyCfg.enemyClass === 'Infantry') {
+    if (enemyCfg.enemyClass === 'Boss' || enemyCfg.isBoss) {
+      bossGroup.appendChild(opt);
+    } else if (enemyCfg.enemyClass === 'Infantry') {
       infantryGroup.appendChild(opt);
     } else if (enemyCfg.enemyClass === 'Specialized') {
       specializedGroup.appendChild(opt);
@@ -100,6 +104,7 @@ export function populateAdminEnemySelect(uiMgr) {
   if (standardGroup.children.length > 0) select.appendChild(standardGroup);
   if (infantryGroup.children.length > 0) select.appendChild(infantryGroup);
   if (specializedGroup.children.length > 0) select.appendChild(specializedGroup);
+  if (bossGroup.children.length > 0) select.appendChild(bossGroup);
   if (uiMgr) uiMgr.updateAdminEnemyPreview(select.value);
 }
 

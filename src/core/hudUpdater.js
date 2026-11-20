@@ -26,6 +26,8 @@ export class HUDUpdater {
     this.allyItemViews = [];
     this.prevDownedHidden = null;
     this.prevDownedSignature = '';
+    this.prevBossHidden = null;
+    this.prevBossSignature = '';
 
     this.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false;
     this.swayVx = 0;
@@ -66,7 +68,11 @@ export class HUDUpdater {
       allySquadList: document.getElementById('ally-squad-list'),
       downedBanner: document.getElementById('downed-status-banner'),
       downedText: document.getElementById('downed-status-text'),
-      downedFill: document.getElementById('downed-progress-fill')
+      downedFill: document.getElementById('downed-progress-fill'),
+      bossHudBanner: document.getElementById('boss-hud-banner'),
+      bossHudName: document.getElementById('boss-hud-name'),
+      bossHudHpText: document.getElementById('boss-hud-hp-text'),
+      bossHudHpFill: document.getElementById('boss-hud-hp-fill')
     };
 
     if (primaryTitle && this.els.rackContainer && this.els.barWrapper && this.els.barFill && this.els.barText && this.els.overheatBanner) {
@@ -333,6 +339,7 @@ export class HUDUpdater {
 
     this.updateWeaponHUD(els, state, player, weaponSys);
     this.updateSquadHUD(els, state, waveMgr);
+    this.updateBossHUD(els, waveMgr);
     this.updateDownedBanner(els, player);
   }
 
@@ -404,7 +411,10 @@ export class HUDUpdater {
       let stateLabel = 'READY';
       let stateClass = 'is-ready';
       if (a.dead || a.destroyed || a.isDying) {
-        stateLabel = 'DEAD';
+        const wavesLeft = (a.respawnAtWave != null && waveMgr?.waveNumber != null)
+          ? Math.max(1, a.respawnAtWave - waveMgr.waveNumber)
+          : null;
+        stateLabel = wavesLeft ? `DEAD · ${wavesLeft}W` : 'DEAD';
         stateClass = 'is-dead';
       } else if (a.isDowned) {
         if (a.isBeingRevived) {
@@ -585,6 +595,40 @@ export class HUDUpdater {
     els.downedFill.style.width = `${pct.toFixed(1)}%`;
     els.downedBanner.classList.toggle('is-reviving', isReviving);
     els.downedBanner.classList.toggle('is-bleeding', !isReviving);
+  }
+
+  updateBossHUD(els, waveMgr) {
+    if (!els.bossHudBanner) return;
+    const boss = (waveMgr && typeof waveMgr.getActiveBoss === 'function') ? waveMgr.getActiveBoss() : null;
+    const shouldHide = !boss;
+    const domHidden = els.bossHudBanner.classList.contains('hidden');
+    if (shouldHide !== this.prevBossHidden || domHidden !== shouldHide) {
+      this.prevBossHidden = shouldHide;
+      els.bossHudBanner.classList.toggle('hidden', shouldHide);
+      if (els.uiContainer) {
+        els.uiContainer.classList.toggle('has-active-boss', !shouldHide);
+      }
+    }
+    if (shouldHide) {
+      this.prevBossSignature = '';
+      return;
+    }
+
+    const nameStr = (boss.config?.fullName || boss.config?.name || 'Boss').toUpperCase();
+    const curHp = Math.max(0, Math.ceil(boss.hp || 0));
+    const maxHp = Math.max(1, Math.round(boss.maxHp || 1));
+    const pct = Math.max(0, Math.min(100, (boss.hp / maxHp) * 100));
+    const sig = `${nameStr}|${curHp}|${maxHp}`;
+    if (sig === this.prevBossSignature) return;
+    this.prevBossSignature = sig;
+
+    if (els.bossHudName) els.bossHudName.textContent = nameStr;
+    if (els.bossHudHpText) {
+      els.bossHudHpText.textContent = `${curHp.toLocaleString()} / ${maxHp.toLocaleString()}`;
+    }
+    if (els.bossHudHpFill) {
+      els.bossHudHpFill.style.width = `${pct.toFixed(2)}%`;
+    }
   }
 
   buildWeaponGauges(state, player, weaponSys) {

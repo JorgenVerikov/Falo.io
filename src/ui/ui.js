@@ -91,6 +91,9 @@ export class UIManager {
     this.uiContainer = document.getElementById('ui-container');
     this.mainMenuModal = document.getElementById('main-menu-overlay');
     this.toastEl = document.getElementById('toast-banner');
+    this.bossAlertEl = document.getElementById('boss-alert-banner');
+    this.bossAlertPrimary = document.getElementById('boss-alert-primary');
+    this.bossAlertSecondary = document.getElementById('boss-alert-secondary');
 
     this.levelDisplay = document.getElementById('player-level-display');
     this.xpFill = document.getElementById('xp-bar-fill');
@@ -602,7 +605,10 @@ export class UIManager {
   }
 
   hideInGameHUD() {
-    if (this.uiContainer) this.uiContainer.classList.add('hidden');
+    if (this.uiContainer) {
+      this.uiContainer.classList.add('hidden');
+      this.uiContainer.classList.remove('has-active-boss');
+    }
     if (this.faloPanel) this.faloPanel.classList.add('hidden');
     if (this.statPanel) this.statPanel.classList.add('hidden');
     if (this.statCornerTab) this.statCornerTab.classList.add('hidden');
@@ -612,6 +618,10 @@ export class UIManager {
     if (squadCornerTab) squadCornerTab.classList.add('hidden');
     const downedBanner = document.getElementById('downed-status-banner');
     if (downedBanner) downedBanner.classList.add('hidden');
+    const bossHud = document.getElementById('boss-hud-banner');
+    if (bossHud) bossHud.classList.add('hidden');
+    if (this.bossAlertEl) this.bossAlertEl.classList.add('hidden');
+    clearTimeout(this.bossAlertTimeout);
   }
 
   showMainMenu({ animateEntrance = false } = {}) {
@@ -791,6 +801,25 @@ export class UIManager {
     this.toastTimeout = setTimeout(() => {
       this.toastEl.classList.add('hidden');
     }, 2800);
+  }
+
+  showBossNotification(primaryText, secondaryText = '') {
+    if (!this.bossAlertEl || !this.bossAlertPrimary) return;
+    this.bossAlertPrimary.textContent = primaryText || '';
+    if (this.bossAlertSecondary) {
+      if (secondaryText) {
+        this.bossAlertSecondary.textContent = secondaryText;
+        this.bossAlertSecondary.classList.remove('hidden');
+      } else {
+        this.bossAlertSecondary.textContent = '';
+        this.bossAlertSecondary.classList.add('hidden');
+      }
+    }
+    this.bossAlertEl.classList.remove('hidden');
+    clearTimeout(this.bossAlertTimeout);
+    this.bossAlertTimeout = setTimeout(() => {
+      this.bossAlertEl.classList.add('hidden');
+    }, 4200);
   }
 
   updatePreviewSpin(dt, playerFillColor, playerStrokeColor) {

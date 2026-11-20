@@ -1,11 +1,13 @@
 import { CONFIG, ENEMY_UPGRADE_CONFIG, getEnemyUpgradesForWave } from '../core/config.js';
-import { Projectile, extractBulletOptions } from './weapons.js';
+import { getTankRenderParts } from '../config/weapons.config.js';
+import { Projectile, extractBulletOptions, WEAPON_TYPE } from './weapons.js';
 import { Particle, ResourceShape } from './shapes.js';
 import { ENEMY_CHAT_CALLOUTS, EnemyCommunicationSystem } from './enemyComms.js';
 import { solveBallisticIntercept, getBulletEvasionVector, getShapeManeuverVector } from './enemyMath.js';
 import { updateNormalEnemyBehavior } from './enemyNormalAI.js';
 import { updateSpecializedEnemyBehavior } from './enemySpecializedAI.js';
 import { updateInfantryEnemyBehavior } from './enemyInfantryAI.js';
+import { updateBossBehavior, updateBossSpawner, updateBossWeapons } from './enemyBoss.js';
 import { getRetreatChanceMultiplier } from './enemyRetreat.js';
 
 export { Particle, ResourceShape, ENEMY_CHAT_CALLOUTS, EnemyCommunicationSystem };
@@ -69,8 +71,29 @@ export class EnemyUnit {
     this.archetypeKey = archetypeKey;
     this.waveNumber = Math.max(1, parseInt(waveNumber, 10) || 1);
     this.config = CONFIG.ENEMIES[archetypeKey];
+    this.isBoss = Boolean(this.config && this.config.isBoss);
+    this.ownedDrones = this.isBoss ? [] : null;
+    this.bossSpawnTimer = 0;
+    this.bossInitialBurstDone = false;
 
-    this.upgrades = getEnemyUpgradesForWave(archetypeKey, this.waveNumber);
+    if (this.config && this.config.skipWaveStatScaling) {
+      this.upgrades = {
+        totalPoints: 0,
+        tier: 0,
+        stats: {
+          maxHp: 0,
+          regenRate: 0,
+          bodyDamage: 0,
+          moveSpeed: 0,
+          bulletSpeed: 0,
+          bulletDamage: 0,
+          bulletPenetration: 0,
+          reloadSpeed: 0
+        }
+      };
+    } else {
+      this.upgrades = getEnemyUpgradesForWave(archetypeKey, this.waveNumber);
+    }
     this.upgradeTier = this.upgrades.tier || 0;
     const inc = ENEMY_UPGRADE_CONFIG.increments;
 
@@ -90,7 +113,7 @@ export class EnemyUnit {
     const dmgMult = 1.0 + (this.upgrades.stats.bodyDamage * inc.bodyDamage);
     this.damage = Math.round(this.config.damage * dmgMult * 10) / 10;
 
-    this.regenRate = this.upgrades.stats.regenRate * inc.regenRate;
+    this.regenRate = (this.config.regenPerSec ?? 0) + (this.upgrades.stats.regenRate * inc.regenRate);
     this.timeSinceLastDamage = 999;
 
     const speedMult = 1.0 + (this.upgrades.stats.moveSpeed * inc.moveSpeed);
@@ -113,6 +136,8 @@ export class EnemyUnit {
     this.deathTimer = 0;
     this.deathDuration = 0.35;
     this.destroyed = false;
+    this.flashTimer = 0;
+    this.flashElapsed = 0;
 
     this.fireTimer = 0;
     this.boostTimer = 0;
@@ -148,6 +173,11 @@ export class EnemyUnit {
     this.cautiousOrbitTimer = 1.5 + Math.random() * 2.0;
 
     this.barrelRecoilOffsets = (this.config.turrets || []).map(() => 0);
+    this.turretStates = (this.config.turrets || []).map((t) => ({
+      worldAngle: this.angle + (t.angleOffset || 0),
+      fireTimer: -(t.initialFireDelay || 0),
+      shouldFire: false
+    }));
 
     this.isRetreating = false;
     this.isLastStand = false;
@@ -291,6 +321,7 @@ export class EnemyUnit {
   }
 
   decideDesperationState(remainingInWave = 99) {
+    if (this.isBoss || this.config?.neverRetreat || this.config?.ai?.neverRetreat) return;
     if (this.isRetreating || this.isLastStand) return;
 
     const retreatChanceMultiplier = getRetreatChanceMultiplier(remainingInWave);
@@ -327,6 +358,11 @@ export class EnemyUnit {
   }
 
   addMorale(delta) {
+    if (this.isBoss) {
+      this.morale = 75;
+      this.moraleState = 'NORMAL';
+      return;
+    }
     this.morale = Math.max(0, Math.min(100, this.morale + delta));
     if (this.morale >= 65) {
       this.moraleState = 'HIGH';
@@ -352,6 +388,11 @@ export class EnemyUnit {
     this.dead = true;
     this.destroyed = true;
     this.despawned = true;
+    if (this.isBoss && this.ownedDrones) {
+      for (let i = 0; i < this.ownedDrones.length; i++) {
+        this.ownedDrones[i]?.kill();
+      }
+    }
   }
 
   kill() {
@@ -359,7 +400,12 @@ export class EnemyUnit {
     this.dead = true;
     this.isDying = true;
     this.deathTimer = 0;
-    if (this.allEnemiesRef) {
+    if (this.isBoss && this.ownedDrones) {
+      for (let i = 0; i < this.ownedDrones.length; i++) {
+        this.ownedDrones[i]?.kill();
+      }
+    }
+    if (this.allEnemiesRef && !this.isBossMinion) {
       EnemyCommunicationSystem.onAllyDown(this, this.allEnemiesRef);
     }
   }
@@ -377,6 +423,11 @@ export class EnemyUnit {
         this.chatText = null;
         this.chatTimer = 0;
       }
+    }
+
+    if (this.flashTimer > 0) {
+      this.flashTimer = Math.max(0, this.flashTimer - dt);
+      this.flashElapsed += dt;
     }
 
     if (this.isDying) {
@@ -529,8 +580,11 @@ export class EnemyUnit {
       this.angle = directAngle;
     }
 
+    const recoilTurrets = this.config.turrets || [];
+    const spawnerRecoilDecay = this.config.spawner?.barrelRecoilDecay;
     for (let i = 0; i < this.barrelRecoilOffsets.length; i++) {
-      this.barrelRecoilOffsets[i] = Math.max(0, this.barrelRecoilOffsets[i] - dt * CONFIG.WEAPONS.barrelRecoilDecay);
+      const decay = recoilTurrets[i]?.barrelRecoilDecay ?? spawnerRecoilDecay ?? CONFIG.WEAPONS.barrelRecoilDecay;
+      this.barrelRecoilOffsets[i] = Math.max(0, this.barrelRecoilOffsets[i] - dt * decay);
     }
     if (this.config.outerArmor) {
       this.outerArmorAngle += (this.config.outerArmor.spinSpeed || 1.0) * dt;
@@ -684,7 +738,9 @@ export class EnemyUnit {
     _moveOut.targetWaypointY = perceivedPlayer.y;
 
     const enemyClass = this.config.enemyClass || 'Normal';
-    if (enemyClass === 'Infantry') {
+    if (enemyClass === 'Boss') {
+      updateBossBehavior(this, dt, _aiCtx, _moveOut);
+    } else if (enemyClass === 'Infantry') {
       updateInfantryEnemyBehavior(this, dt, _aiCtx, _moveOut);
     } else if (enemyClass === 'Specialized') {
       updateSpecializedEnemyBehavior(this, dt, _aiCtx, _moveOut);
@@ -780,7 +836,10 @@ export class EnemyUnit {
     }
 
     // 6. Steering Blend & Shape Obstacle Avoidance
-    if (this.isMeleeChaserArchetype()) {
+    if (this.config.ai && this.config.ai.forwardOnly) {
+      dirX = Math.cos(this.angle);
+      dirY = Math.sin(this.angle);
+    } else if (this.isMeleeChaserArchetype()) {
       const toWpX = targetWaypointX - this.x;
       const toWpY = targetWaypointY - this.y;
       const wpDist = Math.hypot(toWpX, toWpY) || 1;
@@ -834,7 +893,9 @@ export class EnemyUnit {
       const goalDirX = dirX / rawMag;
       const goalDirY = dirY / rawMag;
 
-      const shapeManeuver = getShapeManeuverVector(this.x, this.y, this.radius, goalDirX, goalDirY, shapes, this.unitId);
+      const shapeManeuver = this.isBoss
+        ? { steerX: 0, steerY: 0 }
+        : getShapeManeuverVector(this.x, this.y, this.radius, goalDirX, goalDirY, shapes, this.unitId);
       let blendedX = goalDirX + shapeManeuver.steerX;
       let blendedY = goalDirY + shapeManeuver.steerY;
 
@@ -862,6 +923,15 @@ export class EnemyUnit {
 
     this.x += this.vx * dt;
     this.y += this.vy * dt;
+
+    if (this.isBoss) {
+      if (this.config.spawner || this.config.turrets?.some(t => t.type === WEAPON_TYPE.DRONE_SPAWNER)) {
+        updateBossSpawner(this, dt, allEnemies);
+      }
+      if (this.config.turrets?.some(t => t.shootsBullet !== false && t.type !== WEAPON_TYPE.DRONE_SPAWNER)) {
+        updateBossWeapons(this, dt, playerArg, enemyBullets, allies);
+      }
+    }
 
     // 8. Weapon Discharge (fires normally at visible targets, or fires sweep probes into the nearest last-seen area when searching)
     const shouldFireProbe = !playerCloaked || this.hasReachedLastSeen || distToLastSeen < 480;
@@ -1016,6 +1086,12 @@ export class EnemyUnit {
     if (this.dead) return;
     this.hp -= amount;
     this.timeSinceLastDamage = 0;
+    if (amount > 0) {
+      if (this.flashTimer <= 0) {
+        this.flashElapsed = 0;
+      }
+      this.flashTimer = 0.11;
+    }
     this.addMorale(-0.5);
     if (this.hp <= 0) {
       this.kill();
@@ -1030,6 +1106,8 @@ export class EnemyUnit {
     if (unitAlpha <= 0.002) {
       return;
     }
+
+    const isDamageFlash = !this.isDying && this.flashTimer > 0 && (Math.floor(this.flashElapsed / 0.045) % 2 === 0);
 
     const useOffscreen = unitAlpha < 0.995 && typeof canvasMgr.beginOffscreenLayer === 'function';
     if (useOffscreen) {
@@ -1048,53 +1126,102 @@ export class EnemyUnit {
         this.radius * this.config.outerArmor.radiusMultiplier,
         this.config.outerArmor.sides,
         this.outerArmorAngle,
-        this.config.outerArmor.color,
-        this.config.outerArmor.stroke,
+        isDamageFlash ? '#e2e8f0' : this.config.outerArmor.color,
+        isDamageFlash ? '#94a3b8' : this.config.outerArmor.stroke,
         3
       );
     }
 
-    if (this.config.turrets && this.config.turrets.length > 0) {
-      let barrelFill = '#999999';
-      let barrelStroke = '#727272';
-      const thermalCfg = this.config.weapon && this.config.weapon.thermal;
-      if (thermalCfg) {
-        const heatRatio = Math.max(0, Math.min(1.0, this.weaponHeat / (thermalCfg.maxHeat || 100)));
-        if (this.isOverheated) {
-          const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.015);
-          barrelFill = pulse > 0.5 ? '#ef4444' : '#d9534f';
-          barrelStroke = '#991b1b';
-        } else if (heatRatio > 0.45) {
-          const t = (heatRatio - 0.45) / 0.55;
-          const r = Math.round(153 + (232 - 153) * t);
-          const g = Math.round(153 + (90 - 153) * t);
-          const b = Math.round(153 + (54 - 153) * t);
-          barrelFill = `rgb(${r}, ${g}, ${b})`;
-          barrelStroke = `rgb(${Math.round(r * 0.7)}, ${Math.round(g * 0.65)}, ${Math.round(b * 0.65)})`;
-        }
+    let barrelFill = isDamageFlash ? '#e2e8f0' : '#999999';
+    let barrelStroke = isDamageFlash ? '#94a3b8' : '#727272';
+    const thermalCfg = this.config.weapon && this.config.weapon.thermal;
+    if (!isDamageFlash && thermalCfg) {
+      const heatRatio = Math.max(0, Math.min(1.0, this.weaponHeat / (thermalCfg.maxHeat || 100)));
+      if (this.isOverheated) {
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.015);
+        barrelFill = pulse > 0.5 ? '#ef4444' : '#d9534f';
+        barrelStroke = '#991b1b';
+      } else if (heatRatio > 0.45) {
+        const t = (heatRatio - 0.45) / 0.55;
+        const r = Math.round(153 + (232 - 153) * t);
+        const g = Math.round(153 + (90 - 153) * t);
+        const b = Math.round(153 + (54 - 153) * t);
+        barrelFill = `rgb(${r}, ${g}, ${b})`;
+        barrelStroke = `rgb(${Math.round(r * 0.7)}, ${Math.round(g * 0.65)}, ${Math.round(b * 0.65)})`;
+      }
+    }
+
+    const bodyFill = isDamageFlash ? '#ffffff' : this.color;
+    const bodyStroke = isDamageFlash ? '#9ca3af' : this.stroke;
+    const renderParts = getTankRenderParts(this.config, this.config.turrets);
+
+    for (let pIdx = 0; pIdx < renderParts.length; pIdx++) {
+      const part = renderParts[pIdx];
+      if (part.type === 'body') {
+        canvasMgr.drawPolygon(
+          this.x,
+          this.y,
+          this.radius,
+          this.sides,
+          this.angle + (this.config.bodyAngleOffset || 0),
+          bodyFill,
+          bodyStroke,
+          3
+        );
+        continue;
       }
 
-      const turrets = this.config.turrets;
-      for (let idx = 0; idx < turrets.length; idx++) {
-        const turret = turrets[idx];
-        const recoil = (this.barrelRecoilOffsets[idx] || 0) + (this.isReloadingMag ? 6 : 0);
-        const barrelLen = Math.max(6, (turret.length - recoil) * sizeScale);
-        const barrelWidth = turret.width * sizeScale;
+      const idx = part.index;
+      const turret = part.turret;
+      const recoil = (this.barrelRecoilOffsets[idx] || 0) + (this.isReloadingMag ? 6 : 0);
+      const barrelWidth = turret.width * sizeScale;
+      const frontWidth = (turret.frontWidth || turret.width) * sizeScale;
+
+      if (turret.isAutoTurret) {
+        const mountAngle = this.angle + (turret.angleOffset || 0);
+        const xOff = (turret.xOffset || 0) * sizeScale;
+        const yOff = (turret.yOffset || 0) * sizeScale;
+        const mx = this.x + Math.cos(mountAngle) * xOff - Math.sin(mountAngle) * yOff;
+        const my = this.y + Math.sin(mountAngle) * xOff + Math.cos(mountAngle) * yOff;
+        const tState = this.turretStates && this.turretStates[idx];
+        const aimAngle = (tState && tState.worldAngle !== undefined && tState.worldAngle !== null)
+          ? tState.worldAngle
+          : mountAngle;
+        const mountR = (turret.mountRadius || 4) * sizeScale;
+        const barrelLen = Math.max(4, (turret.length - recoil) * sizeScale);
+
+        canvasMgr.drawTurretBarrel(
+          mx, my,
+          barrelWidth, barrelLen,
+          aimAngle,
+          0, 0,
+          frontWidth,
+          barrelFill,
+          barrelStroke,
+          3.5
+        );
+        canvasMgr.drawPolygon(mx, my, mountR, 0, 0, barrelFill, barrelStroke, 3);
+      } else {
+        const hasXOffset = (turret.xOffset || 0) > 0;
+        const barrelLen = hasXOffset
+          ? Math.max(4, turret.length * sizeScale)
+          : Math.max(6, (turret.length - recoil) * sizeScale);
+        const xOff = (hasXOffset ? Math.max(0, (turret.xOffset || 0) - recoil) : (turret.xOffset || 0)) * sizeScale;
+        const yOff = (turret.yOffset || 0) * sizeScale;
 
         canvasMgr.drawTurretBarrel(
           this.x, this.y,
           barrelWidth, barrelLen,
           this.angle + (turret.angleOffset || 0),
-          (turret.xOffset || 0) * sizeScale,
-          (turret.yOffset || 0) * sizeScale,
-          (turret.frontWidth || turret.width) * sizeScale,
+          xOff,
+          yOff,
+          frontWidth,
           barrelFill,
-          barrelStroke
+          barrelStroke,
+          3.5
         );
       }
     }
-
-    canvasMgr.drawPolygon(this.x, this.y, this.radius, this.sides, this.angle, this.color, this.stroke, 3);
 
     if (useOffscreen) {
       canvasMgr.endOffscreenLayer(unitAlpha);

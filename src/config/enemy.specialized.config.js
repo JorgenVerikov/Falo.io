@@ -21,8 +21,15 @@ export const SPECIALIZED_ENEMIES_CONFIG = {
     stroke: '#707d43',
     turrets: [
       {
-        width: 38, length: 46, frontWidth: 38, angleOffset: 0, xOffset: 0, yOffset: 0,
-        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+        width: 38,
+        length: 46,
+        frontWidth: 38,
+        angleOffset: 0,
+        xOffset: 0,
+        yOffset: 0,
+        shootsBullet: true,
+        playsRecoil: true,
+        fireDelayTicks: 0
       }
     ],
     weapon: {
@@ -77,8 +84,15 @@ export const SPECIALIZED_ENEMIES_CONFIG = {
     stroke: '#132c43',
     turrets: [
       {
-        width: 20, length: 58, frontWidth: 20, angleOffset: 0, xOffset: 0, yOffset: 0,
-        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+        width: 20,
+        length: 58,
+        frontWidth: 20,
+        angleOffset: 0,
+        xOffset: 0,
+        yOffset: 0,
+        shootsBullet: true,
+        playsRecoil: true,
+        fireDelayTicks: 0
       }
     ],
     weapon: {
@@ -141,8 +155,15 @@ export const SPECIALIZED_ENEMIES_CONFIG = {
     stroke: '#a06424',
     turrets: [
       {
-        width: 20, length: 46, frontWidth: 32, angleOffset: 0, xOffset: 0, yOffset: 0,
-        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+        width: 20,
+        length: 46,
+        frontWidth: 32,
+        angleOffset: 0,
+        xOffset: 0,
+        yOffset: 0,
+        shootsBullet: true,
+        playsRecoil: true,
+        fireDelayTicks: 0
       }
     ],
     weapon: {
@@ -211,12 +232,27 @@ export const SPECIALIZED_ENEMIES_CONFIG = {
     stroke: '#43677a',
     turrets: [
       {
-        width: 11, length: 36, frontWidth: 11, angleOffset: Math.PI - 0.30, xOffset: 0, yOffset: -6,
-        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+        width: 11,
+        length: 36,
+        frontWidth: 11,
+        angleOffset: Math.PI - 0.30,
+        xOffset: 0,
+        yOffset: -6,
+        shootsBullet: true,
+        playsRecoil: true,
+        fireDelayTicks: 0
       },
+
       {
-        width: 11, length: 36, frontWidth: 11, angleOffset: Math.PI + 0.30, xOffset: 0, yOffset: 6,
-        shootsBullet: true, playsRecoil: true, fireDelayTicks: 0
+        width: 11,
+        length: 36,
+        frontWidth: 11,
+        angleOffset: Math.PI + 0.30,
+        xOffset: 0,
+        yOffset: 6,
+        shootsBullet: true,
+        playsRecoil: true,
+        fireDelayTicks: 0
       }
     ],
     weapon: {

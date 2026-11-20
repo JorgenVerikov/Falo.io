@@ -173,7 +173,7 @@ export class EnemyCommunicationSystem {
   static teamCalloutCooldown = 1.1;
 
   static canSpeak(unit) {
-    if (!unit || unit.dead || unit.isDying) return false;
+    if (!unit || unit.dead || unit.isDying || unit.isBossMinion || unit.config?.noSpeech) return false;
     const sCfg = unit.config && unit.config.stealth;
     if (sCfg && sCfg.silentWhileCloaked) {
       const thresh = sCfg.speakAlphaThreshold ?? 0.85;
@@ -206,7 +206,7 @@ export class EnemyCommunicationSystem {
 
     for (let i = 0; i < allEnemies.length; i++) {
       const ally = allEnemies[i];
-      if (ally.dead || ally.isDying) continue;
+      if (ally.dead || ally.isDying || ally.isBossMinion) continue;
       const boost = (ally === directDealer) ? (isRam ? 14 : 10) : 6;
       ally.addMorale(boost);
     }
@@ -226,7 +226,7 @@ export class EnemyCommunicationSystem {
   }
 
   static onAllyDown(deadUnit, allEnemies) {
-    if (!allEnemies || allEnemies.length === 0) return;
+    if (!allEnemies || allEnemies.length === 0 || deadUnit?.isBossMinion) return;
 
     const isHeavy = deadUnit.archetypeKey === 'heavy';
     const moraleHit = isHeavy ? 8 : 4;
@@ -237,7 +237,7 @@ export class EnemyCommunicationSystem {
 
     for (let i = 0; i < allEnemies.length; i++) {
       const ally = allEnemies[i];
-      if (ally === deadUnit || ally.dead || ally.isDying) continue;
+      if (ally === deadUnit || ally.dead || ally.isDying || ally.isBossMinion) continue;
       livingCount++;
       ally.addMorale(-moraleHit);
 

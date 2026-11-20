@@ -1,13 +1,7 @@
 import { CONFIG } from '../core/config.js';
+import { WEAPON_TYPE } from '../config/weapons.config.js';
 
-export const WEAPON_TYPE = {
-  READY_RACK: 'READY_RACK',
-  THERMAL: 'THERMAL',
-  ENERGY: 'ENERGY',
-  COOLDOWN: 'COOLDOWN',
-  DRONE_SPAWNER: 'DRONE_SPAWNER',
-  NONE: 'NONE'
-};
+export { WEAPON_TYPE };
 
 function scoreWeaponShapeTarget(shape, dist, estDps = 25, prioritizeSquares = false) {
   const xp = shape.xp || 1;

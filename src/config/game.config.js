@@ -86,6 +86,7 @@ export const ALLY_CONFIG = {
   reviveDecayRate: 0.4,
   reviveHpRatio: 0.5,
   iFrameAfterRevive: 2.0,
+  respawnWaveDelay: 3,
   callsigns: ['Vanguard', 'Specter', 'Bulwark', 'Viper', 'Aegis', 'Striker'],
   slotColors: [
     { fill: '#38bdf8', stroke: '#0284c7' },

@@ -18,6 +18,10 @@
   <canvas id="gameCanvas" class="hidden"></canvas>
 
   <div id="toast-banner" class="toast-banner hidden">ALERT MESSAGE HERE</div>
+  <div id="boss-alert-banner" class="boss-alert-banner hidden" role="status" aria-live="polite">
+    <div id="boss-alert-primary" class="boss-alert-primary"></div>
+    <div id="boss-alert-secondary" class="boss-alert-secondary hidden"></div>
+  </div>
 
   <div id="ui-container" class="hidden">
     <div id="top-left-hud" class="hud-panel">
@@ -49,6 +53,16 @@
     <div id="wave-banner" class="hud-panel center-top">
       <div id="wave-status" class="wave-title">WAVE 1</div>
       <div id="wave-timer-text" class="wave-timer">ENEMIES REMAINING: 4</div>
+    </div>
+
+    <div id="boss-hud-banner" class="hud-panel boss-hud-banner hidden" aria-live="polite">
+      <div class="boss-hud-header">
+        <span id="boss-hud-name" class="boss-hud-name">GUARDIAN OF THE PENTAGONS</span>
+        <span id="boss-hud-hp-text" class="boss-hud-hp-text">30,000 / 30,000</span>
+      </div>
+      <div class="boss-hp-track">
+        <div id="boss-hud-hp-fill" class="boss-hp-fill"></div>
+      </div>
     </div>
 
     <div id="downed-status-banner" class="hud-panel downed-status-banner hidden">
@@ -1009,36 +1023,90 @@
     </div>
   </div>
 
-  <!-- Enemy Glossary Almanac -->
+  <!-- Enemy Glossary Almanac (Shop / Armory Dynamic Split Style) -->
   <div id="enemy-glossary-modal" class="modal-overlay hidden">
     <div class="falo-shop-window falo-glossary-window">
+      <!-- Top Header Navigation Bar -->
       <div class="falo-shop-header">
         <div class="falo-shop-header-left">
-          <div class="falo-shop-logo"><span class="falo-shop-logo-icon">◈</span> ENEMY GLOSSARY</div>
+          <div class="falo-shop-logo">ENEMY GLOSSARY</div>
           <div class="falo-shop-tabs" role="group" aria-label="Filter enemies by class">
             <button class="falo-shop-tab active" type="button" data-enemy-filter="all" aria-pressed="true">ALL</button>
             <button class="falo-shop-tab" type="button" data-enemy-filter="standard" aria-pressed="false">STANDARD</button>
             <button class="falo-shop-tab" type="button" data-enemy-filter="specialized" aria-pressed="false">SPECIALIZED</button>
             <button class="falo-shop-tab" type="button" data-enemy-filter="infantry" aria-pressed="false">INFANTRY</button>
+            <button class="falo-shop-tab" type="button" data-enemy-filter="boss" aria-pressed="false">BOSSES</button>
           </div>
         </div>
         <div class="falo-shop-header-right">
-          <div id="enemy-glossary-count" class="enemy-glossary-discovery-count">0 / 0 DISCOVERED</div>
+          <div class="falo-coins-chip falo-glossary-count-chip">
+            <span class="glossary-chip-dot" aria-hidden="true"></span>
+            <span id="enemy-glossary-count" class="chip-coins-amount">0 / 0</span>
+            <span id="enemy-glossary-count-label" class="chip-coin-label">LOGGED</span>
+          </div>
           <button id="close-enemy-glossary-btn" class="falo-shop-close-btn" type="button" title="Close Glossary" aria-label="Close Glossary">✕</button>
         </div>
       </div>
-      <div class="falo-shop-body falo-glossary-body">
-        <section class="falo-shop-scroll-area falo-shop-catalog-pane enemy-glossary-catalog" aria-label="Enemy catalog">
-          <div class="enemy-glossary-catalog-heading">
-            <div>
-              <div class="falo-section-title">FIELD GUIDE</div>
-              <div class="enemy-glossary-catalog-subtitle">DESTROY 5 OF A TYPE TO IDENTIFY IT</div>
+
+      <!-- Split Catalog & Dynamic Preview Body -->
+      <div id="glossary-body" class="falo-shop-body">
+        <section id="glossary-content-scroll" class="falo-shop-scroll-area falo-shop-catalog-pane" aria-label="Enemy catalog">
+          <div id="glossary-unified-plane" class="falo-shop-unified-plane">
+            <div class="falo-shop-section" style="--section-idx: 0;">
+              <div class="falo-section-header">
+                <div class="falo-section-title-wrap">
+                  <div class="falo-section-title">FIELD GUIDE</div>
+                  <div id="glossary-milestone-legend" class="falo-ends-in-tag">1 SIGHTED · 5 IDENTIFIED · 10–100 MASTERED</div>
+                </div>
+                <div class="falo-filter-sort-bar">
+                  <input id="enemy-glossary-search" class="enemy-glossary-search" type="search" placeholder="Search contacts..." aria-label="Search enemy glossary" autocomplete="off" spellcheck="false" />
+                  <select id="enemy-glossary-sort" class="falo-sort-select" aria-label="Sort enemies">
+                    <option value="wave">Wave Order</option>
+                    <option value="name">Alphabetical</option>
+                    <option value="kills">Most Kills</option>
+                  </select>
+                </div>
+              </div>
             </div>
-            <input id="enemy-glossary-search" class="enemy-glossary-search" type="search" placeholder="SEARCH CONTACTS" aria-label="Search enemy glossary" />
+            <div id="glossary-sections-wrap" class="glossary-sections-wrap"></div>
           </div>
-          <div id="enemy-glossary-grid" class="enemy-glossary-grid"></div>
         </section>
-        <aside id="enemy-glossary-detail" class="enemy-glossary-detail" aria-live="polite"></aside>
+
+        <aside id="glossary-preview-pane" class="falo-shop-preview-pane" aria-live="polite">
+          <div id="glossary-preview-backdrop" class="shop-preview-backdrop" aria-hidden="true"></div>
+          <div id="glossary-slanted-scrollbar" class="shop-slanted-scrollbar" aria-hidden="true">
+            <div id="glossary-slanted-thumb" class="shop-slanted-thumb"></div>
+          </div>
+
+          <div id="glossary-preview-stage" class="shop-preview-stage">
+            <canvas id="glossary-preview-canvas" class="shop-preview-canvas"></canvas>
+          </div>
+
+          <div id="glossary-preview-info" class="shop-preview-info glossary-preview-info">
+            <div class="shop-preview-header-block">
+              <div id="glossary-preview-name" class="shop-preview-name">Drone</div>
+              <div id="glossary-preview-meta" class="shop-preview-meta">Standard Class · Wave 1 · 0 Kills</div>
+            </div>
+            <p id="glossary-preview-desc" class="shop-preview-desc"></p>
+            <div id="glossary-preview-progress-wrap" class="glossary-preview-progress-wrap hidden">
+              <div class="enemy-glossary-large-progress"><span id="glossary-preview-progress-fill" style="width: 0%"></span></div>
+              <div id="glossary-preview-progress-label" class="glossary-preview-progress-label">0 / 1 KILL TO SIGHT</div>
+            </div>
+            <div id="glossary-preview-stats" class="enemy-glossary-stats"></div>
+            <div id="glossary-preview-perk" class="glossary-preview-perk hidden">
+              <div class="glossary-perk-header">
+                <span id="glossary-perk-kicker" class="glossary-perk-kicker">MASTERY REWARD</span>
+                <span id="glossary-perk-progress-text" class="glossary-perk-progress-text">0 / 50 KILLS</span>
+              </div>
+              <div id="glossary-perk-title" class="glossary-perk-title"></div>
+              <div id="glossary-perk-desc" class="glossary-perk-desc"></div>
+              <div class="enemy-glossary-large-progress glossary-perk-bar">
+                <span id="glossary-perk-bar-fill" style="width: 0%"></span>
+              </div>
+            </div>
+            <div id="glossary-preview-status" class="falo-card-action-btn shop-preview-action-btn unlocked" role="status">IDENTIFIED</div>
+          </div>
+        </aside>
       </div>
     </div>
   </div>

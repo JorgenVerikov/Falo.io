@@ -8,13 +8,15 @@ import { PLAYER_CONFIG } from './player.config.js';
 import { NORMAL_ENEMIES_CONFIG } from './enemy.normal.config.js';
 import { SPECIALIZED_ENEMIES_CONFIG } from './enemy.specialized.config.js';
 import { INFANTRY_ENEMIES_CONFIG } from './enemy.infantry.config.js';
+import { BOSS_ENEMIES_CONFIG } from './enemy.boss.config.js';
 
-export { NORMAL_ENEMIES_CONFIG, SPECIALIZED_ENEMIES_CONFIG, INFANTRY_ENEMIES_CONFIG };
+export { NORMAL_ENEMIES_CONFIG, SPECIALIZED_ENEMIES_CONFIG, INFANTRY_ENEMIES_CONFIG, BOSS_ENEMIES_CONFIG };
 
 export const ENEMY_CONFIG = {
   ...NORMAL_ENEMIES_CONFIG,
   ...SPECIALIZED_ENEMIES_CONFIG,
-  ...INFANTRY_ENEMIES_CONFIG
+  ...INFANTRY_ENEMIES_CONFIG,
+  ...BOSS_ENEMIES_CONFIG
 };
 
 // Ensure all enemy archetypes inherit player's base radius and acceleration stats

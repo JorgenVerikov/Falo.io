@@ -81,6 +81,72 @@ html, body {
   pointer-events: none;
 }
 
+/* Gray Boss Spawn / Defeat Notification Banner */
+.boss-alert-banner {
+  position: fixed;
+  top: calc(128px * var(--ui-scale));
+  left: 50%;
+  transform-origin: top center;
+  translate: 0 0;
+  transform: perspective(680px) translate3d(calc(-50% + var(--hud-tx, 0px)), var(--hud-ty, 0px), 0) rotateY(var(--hud-ry, 0deg)) rotateX(calc(-9deg + var(--hud-rx, 0deg))) rotateZ(var(--hud-rz, 0deg)) skewX(-10deg);
+  will-change: transform;
+  background: linear-gradient(135deg, rgba(100, 108, 118, 0.94) 0%, rgba(68, 74, 83, 0.96) 100%);
+  border: calc(2.5px * var(--ui-scale)) solid #2b3038;
+  border-bottom-width: calc(4.5px * var(--ui-scale));
+  border-bottom-color: #464c56;
+  color: #f8fafc;
+  padding: calc(8px * var(--ui-scale)) calc(22px * var(--ui-scale));
+  border-radius: calc(4px * var(--ui-scale));
+  z-index: 195;
+  text-align: center;
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.36), 0 8px 18px rgba(0, 0, 0, 0.25);
+  transition: opacity 0.28s ease-out, translate 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  opacity: 1;
+  max-width: calc(100vw - 32px);
+  pointer-events: none;
+}
+
+.boss-alert-banner > * {
+  transform: skewX(10deg);
+}
+
+.boss-alert-banner.hidden {
+  display: block !important;
+  opacity: 0;
+  translate: 0 -14px;
+  pointer-events: none;
+}
+
+.boss-alert-primary {
+  font-size: calc(12.5px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.7px;
+  color: #ffffff;
+  text-shadow: 1.5px 2px 0 rgba(15, 23, 42, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.boss-alert-secondary {
+  margin-top: calc(2px * var(--ui-scale));
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #e2e8f0;
+  text-shadow: 1px 1.5px 0 rgba(15, 23, 42, 0.5);
+}
+
+.boss-alert-secondary.hidden {
+  display: none;
+}
+
+body.theme-light .boss-alert-banner {
+  background: linear-gradient(135deg, rgba(132, 138, 146, 0.95) 0%, rgba(102, 108, 116, 0.96) 100%);
+  border-color: #4b5563;
+  border-bottom-color: #374151;
+}
+
 /* HUD Panels (Persona 5 Angular Tactical Cards) */
 .hud-panel {
   background: linear-gradient(130deg, #2d333f 0%, #1b1f27 100%);
@@ -5823,28 +5889,32 @@ body.is-mobile .evo-node-circle {
 
 /* Opaque Backdrop & Window (hide main menu behind shop & settings) */
 #armory-modal.modal-overlay,
-#settings-modal.modal-overlay {
+#settings-modal.modal-overlay,
+#enemy-glossary-modal.modal-overlay {
   background: #14161c;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
 .falo-armory-window,
-.falo-settings-window {
+.falo-settings-window,
+.falo-glossary-window {
   background-color: #16181f;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
 #armory-modal.modal-overlay.active .falo-armory-window,
-#settings-modal.modal-overlay.active .falo-settings-window {
+#settings-modal.modal-overlay.active .falo-settings-window,
+#enemy-glossary-modal.modal-overlay.active .falo-glossary-window {
   transform: none;
   filter: none;
   overflow: visible;
 }
 
 .falo-armory-window .falo-shop-header,
-.falo-settings-window .falo-shop-header {
+.falo-settings-window .falo-shop-header,
+.falo-glossary-window .falo-shop-header {
   position: relative;
   z-index: 20;
   background-color: #1c1f27;
@@ -5853,29 +5923,35 @@ body.is-mobile .evo-node-circle {
 }
 
 body.theme-light #armory-modal.modal-overlay,
-body.theme-light #settings-modal.modal-overlay {
+body.theme-light #settings-modal.modal-overlay,
+body.theme-light #enemy-glossary-modal.modal-overlay {
   background: #dde1e7;
 }
 
 body.theme-light .falo-armory-window,
-body.theme-light .falo-settings-window {
+body.theme-light .falo-settings-window,
+body.theme-light .falo-glossary-window {
   background-color: #e4e7ec;
 }
 
 body.theme-light .falo-armory-window .falo-shop-header,
-body.theme-light .falo-settings-window .falo-shop-header {
+body.theme-light .falo-settings-window .falo-shop-header,
+body.theme-light .falo-glossary-window .falo-shop-header {
   background-color: #d6dbe2;
 }
 
 .falo-armory-window .falo-shop-header-left,
 .falo-armory-window .falo-shop-header-right,
 .falo-settings-window .falo-shop-header-left,
-.falo-settings-window .falo-shop-header-right {
+.falo-settings-window .falo-shop-header-right,
+.falo-glossary-window .falo-shop-header-left,
+.falo-glossary-window .falo-shop-header-right {
   will-change: transform;
 }
 
 .falo-armory-window .falo-shop-tab,
-.falo-settings-window .falo-shop-tab {
+.falo-settings-window .falo-shop-tab,
+.falo-glossary-window .falo-shop-tab {
   position: relative;
   border-radius: calc(4px * var(--ui-scale));
   padding: calc(8px * var(--ui-scale)) calc(18px * var(--ui-scale));
@@ -5898,7 +5974,8 @@ body.theme-light .falo-settings-window .falo-shop-header {
 }
 
 body.theme-light .falo-armory-window .falo-shop-tab:not(.active),
-body.theme-light .falo-settings-window .falo-shop-tab:not(.active) {
+body.theme-light .falo-settings-window .falo-shop-tab:not(.active),
+body.theme-light .falo-glossary-window .falo-shop-tab:not(.active) {
   background: linear-gradient(165deg, #f8fafc 0%, #e2e7ef 100%);
   border-color: #161a22;
   border-bottom-color: #5b6370;
@@ -5910,7 +5987,9 @@ body.theme-light .falo-settings-window .falo-shop-tab:not(.active) {
 .falo-armory-window .falo-shop-tab.active,
 body.theme-light .falo-armory-window .falo-shop-tab.active,
 .falo-settings-window .falo-shop-tab.active,
-body.theme-light .falo-settings-window .falo-shop-tab.active {
+body.theme-light .falo-settings-window .falo-shop-tab.active,
+.falo-glossary-window .falo-shop-tab.active,
+body.theme-light .falo-glossary-window .falo-shop-tab.active {
   background: linear-gradient(125deg, #00c4f4 0%, #009ac4 68%, #0082a8 100%);
   border-color: #0b1924;
   border-bottom-color: #005873;
@@ -5920,20 +5999,23 @@ body.theme-light .falo-settings-window .falo-shop-tab.active {
 }
 
 .falo-armory-window .falo-shop-tab:hover,
-.falo-settings-window .falo-shop-tab:hover {
+.falo-settings-window .falo-shop-tab:hover,
+.falo-glossary-window .falo-shop-tab:hover {
   transform: translate3d(-3px, -2px, 0) skewX(-10deg) scale(1.035);
   filter: brightness(1.08);
   box-shadow: -7px 8px 0 rgba(0, 0, 0, 0.48), 0 12px 24px rgba(0, 0, 0, 0.35);
 }
 
 .falo-armory-window .falo-shop-tab:active,
-.falo-settings-window .falo-shop-tab:active {
+.falo-settings-window .falo-shop-tab:active,
+.falo-glossary-window .falo-shop-tab:active {
   transform: translate3d(1px, 2px, 0) skewX(-10deg) scale(0.985);
   box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.44);
 }
 
 .falo-armory-window .falo-coins-chip,
-.falo-settings-window .falo-coins-chip {
+.falo-settings-window .falo-coins-chip,
+.falo-glossary-window .falo-coins-chip {
   border-radius: calc(4px * var(--ui-scale));
   border: calc(2.5px * var(--ui-scale)) solid rgba(255, 255, 255, 0.18);
   border-bottom-width: calc(4.5px * var(--ui-scale));
@@ -5943,24 +6025,28 @@ body.theme-light .falo-settings-window .falo-shop-tab.active {
 }
 
 body.theme-light .falo-armory-window .falo-coins-chip,
-body.theme-light .falo-settings-window .falo-coins-chip {
+body.theme-light .falo-settings-window .falo-coins-chip,
+body.theme-light .falo-glossary-window .falo-coins-chip {
   background: linear-gradient(165deg, #f8fafc 0%, #e2e7ef 100%);
   border-color: #161a22;
   border-bottom-color: #007a9e;
   color: #151922;
 }
 
-.falo-settings-window .falo-settings-status-chip .chip-coins-amount {
+.falo-settings-window .falo-settings-status-chip .chip-coins-amount,
+.falo-glossary-window .falo-glossary-count-chip .chip-coins-amount {
   color: #7dd3fc;
   font-size: calc(12px * var(--ui-scale));
   letter-spacing: 0.6px;
 }
 
-body.theme-light .falo-settings-window .falo-settings-status-chip .chip-coins-amount {
+body.theme-light .falo-settings-window .falo-settings-status-chip .chip-coins-amount,
+body.theme-light .falo-glossary-window .falo-glossary-count-chip .chip-coins-amount {
   color: #0284c7;
 }
 
-.falo-settings-window .settings-chip-dot {
+.falo-settings-window .settings-chip-dot,
+.falo-glossary-window .glossary-chip-dot {
   display: inline-block;
   width: calc(9px * var(--ui-scale));
   height: calc(9px * var(--ui-scale));
@@ -5979,7 +6065,9 @@ body.theme-light .falo-settings-window .falo-settings-status-chip .chip-coins-am
 .falo-armory-window #close-armory-btn,
 body.theme-light .falo-armory-window #close-armory-btn,
 .falo-settings-window #close-settings-btn,
-body.theme-light .falo-settings-window #close-settings-btn {
+body.theme-light .falo-settings-window #close-settings-btn,
+.falo-glossary-window #close-enemy-glossary-btn,
+body.theme-light .falo-glossary-window #close-enemy-glossary-btn {
   width: auto;
   padding: calc(7px * var(--ui-scale)) calc(15px * var(--ui-scale));
   font-size: calc(13px * var(--ui-scale));
@@ -6000,7 +6088,9 @@ body.theme-light .falo-settings-window #close-settings-btn {
 .falo-armory-window #close-armory-btn:hover,
 body.theme-light .falo-armory-window #close-armory-btn:hover,
 .falo-settings-window #close-settings-btn:hover,
-body.theme-light .falo-settings-window #close-settings-btn:hover {
+body.theme-light .falo-settings-window #close-settings-btn:hover,
+.falo-glossary-window #close-enemy-glossary-btn:hover,
+body.theme-light .falo-glossary-window #close-enemy-glossary-btn:hover {
   transform: translate3d(-3px, -2px, 0) skewX(-10deg) scale(1.04) !important;
   filter: brightness(1.08);
   box-shadow: -7px 8px 0 rgba(0, 0, 0, 0.48), 0 12px 24px rgba(0, 0, 0, 0.35);
@@ -6009,7 +6099,9 @@ body.theme-light .falo-settings-window #close-settings-btn:hover {
 .falo-armory-window #close-armory-btn:active,
 body.theme-light .falo-armory-window #close-armory-btn:active,
 .falo-settings-window #close-settings-btn:active,
-body.theme-light .falo-settings-window #close-settings-btn:active {
+body.theme-light .falo-settings-window #close-settings-btn:active,
+.falo-glossary-window #close-enemy-glossary-btn:active,
+body.theme-light .falo-glossary-window #close-enemy-glossary-btn:active {
   transform: translate3d(1px, 2px, 0) skewX(-10deg) scale(0.98) !important;
   box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.44);
 }
@@ -6048,7 +6140,8 @@ body.theme-light .falo-shop-body {
 
 /* Unified Coplanar Container so All Sections Move With Identical Cursor Influence */
 .falo-armory-window .falo-shop-unified-plane,
-.falo-settings-window .falo-shop-unified-plane {
+.falo-settings-window .falo-shop-unified-plane,
+.falo-glossary-window .falo-shop-unified-plane {
   display: flex;
   flex-direction: column;
   gap: calc(24px * var(--ui-scale));
@@ -6058,12 +6151,14 @@ body.theme-light .falo-shop-body {
 }
 
 .falo-armory-window .falo-shop-section,
-.falo-settings-window .falo-shop-section {
+.falo-settings-window .falo-shop-section,
+.falo-glossary-window .falo-shop-section {
   position: relative;
 }
 
 .falo-armory-window .falo-items-grid,
-.falo-settings-window .falo-items-grid {
+.falo-settings-window .falo-items-grid,
+.falo-glossary-window .falo-items-grid {
   grid-template-columns: repeat(auto-fill, minmax(calc(168px * var(--ui-scale)), 1fr));
   gap: calc(14px * var(--ui-scale));
 }
@@ -6074,7 +6169,8 @@ body.theme-light .falo-shop-body {
 }
 
 .falo-armory-window .falo-shop-tilt-card,
-.falo-settings-window .falo-shop-tilt-card {
+.falo-settings-window .falo-shop-tilt-card,
+.falo-glossary-window .falo-shop-tilt-card {
   will-change: transform;
   box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 0, 0, 0.28);
   transform: skewX(3.5deg);
@@ -6089,24 +6185,28 @@ body.theme-light .falo-shop-body {
   box-shadow: 0 0 0 calc(3px * var(--ui-scale)) #00b2e1, -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 178, 225, 0.36) !important;
 }
 
-.falo-armory-window .falo-shop-tilt-card:hover:not(.is-preview-active) {
+.falo-armory-window .falo-shop-tilt-card:hover:not(.is-preview-active),
+.falo-glossary-window .falo-shop-tilt-card:hover:not(.is-preview-active) {
   transform: translateY(calc(-2px * var(--ui-scale))) skewX(3.5deg) scale(1.01);
   box-shadow: -6px 7px 0 rgba(0, 0, 0, 0.45), 0 10px 20px rgba(0, 0, 0, 0.34);
   z-index: 3;
 }
 
-.falo-armory-window .falo-shop-tilt-card:focus:not(:focus-visible) {
+.falo-armory-window .falo-shop-tilt-card:focus:not(:focus-visible),
+.falo-glossary-window .falo-shop-tilt-card:focus:not(:focus-visible) {
   outline: none;
 }
 
-.falo-armory-window .falo-shop-tilt-card:focus-visible {
+.falo-armory-window .falo-shop-tilt-card:focus-visible,
+.falo-glossary-window .falo-shop-tilt-card:focus-visible {
   outline: calc(2px * var(--ui-scale)) solid #00b2e1;
   outline-offset: 2px;
 }
 
 .falo-armory-window .falo-shop-tilt-card.is-preview-active,
 .falo-settings-window .falo-shop-tilt-card:hover,
-.falo-settings-window .falo-shop-tilt-card.is-preview-active {
+.falo-settings-window .falo-shop-tilt-card.is-preview-active,
+.falo-glossary-window .falo-shop-tilt-card.is-preview-active {
   transform: translateY(calc(-3px * var(--ui-scale))) skewX(3.5deg) scale(1.02);
   border-color: #00b2e1 !important;
   box-shadow: -7px 8px 0 rgba(0, 0, 0, 0.48), 0 12px 24px rgba(0, 178, 225, 0.28);
@@ -6115,13 +6215,15 @@ body.theme-light .falo-shop-body {
 
 .falo-armory-window .falo-card-preview-stage svg,
 .falo-armory-window .falo-crew-icon-col svg,
-.falo-settings-window .falo-card-preview-stage svg {
+.falo-settings-window .falo-card-preview-stage svg,
+.falo-glossary-window .falo-card-preview-stage svg {
   transform: skewX(-3.5deg);
   filter: drop-shadow(-4px 5px 0 rgba(0, 0, 0, 0.42)) drop-shadow(0 5px 12px rgba(0, 0, 0, 0.24));
 }
 
 .falo-armory-window .falo-card:hover .falo-card-preview-stage svg,
-.falo-settings-window .falo-card:hover .falo-card-preview-stage svg {
+.falo-settings-window .falo-card:hover .falo-card-preview-stage svg,
+.falo-glossary-window .falo-card:hover .falo-card-preview-stage svg {
   transform: skewX(-3.5deg) scale(1.05);
 }
 
@@ -6232,7 +6334,8 @@ body.theme-light .falo-shop-body {
 
 .falo-armory-window .falo-crew-row.falo-shop-tilt-card,
 .falo-armory-window .falo-card,
-.falo-settings-window .falo-card {
+.falo-settings-window .falo-card,
+.falo-glossary-window .falo-card {
   cursor: pointer;
 }
 
@@ -6522,6 +6625,9 @@ body.theme-light .shop-slanted-scrollbar {
 .shop-preview-info.is-tab-leaving-left .shop-preview-header-block,
 .shop-preview-info.is-tab-leaving-left .shop-preview-desc,
 .shop-preview-info.is-tab-leaving-left .shop-preview-rename-wrap,
+.shop-preview-info.is-tab-leaving-left .glossary-preview-progress-wrap,
+.shop-preview-info.is-tab-leaving-left .enemy-glossary-stats,
+.shop-preview-info.is-tab-leaving-left .glossary-preview-perk,
 .shop-preview-info.is-tab-leaving-left .shop-preview-action-btn {
   opacity: 0;
   translate: -14px 0;
@@ -6531,6 +6637,9 @@ body.theme-light .shop-slanted-scrollbar {
 .shop-preview-info.is-tab-leaving-right .shop-preview-header-block,
 .shop-preview-info.is-tab-leaving-right .shop-preview-desc,
 .shop-preview-info.is-tab-leaving-right .shop-preview-rename-wrap,
+.shop-preview-info.is-tab-leaving-right .glossary-preview-progress-wrap,
+.shop-preview-info.is-tab-leaving-right .enemy-glossary-stats,
+.shop-preview-info.is-tab-leaving-right .glossary-preview-perk,
 .shop-preview-info.is-tab-leaving-right .shop-preview-action-btn {
   opacity: 0;
   translate: 14px 0;
@@ -6540,6 +6649,9 @@ body.theme-light .shop-slanted-scrollbar {
 .shop-preview-info.is-tab-entering-right .shop-preview-header-block,
 .shop-preview-info.is-tab-entering-right .shop-preview-desc,
 .shop-preview-info.is-tab-entering-right .shop-preview-rename-wrap,
+.shop-preview-info.is-tab-entering-right .glossary-preview-progress-wrap,
+.shop-preview-info.is-tab-entering-right .enemy-glossary-stats,
+.shop-preview-info.is-tab-entering-right .glossary-preview-perk,
 .shop-preview-info.is-tab-entering-right .shop-preview-action-btn {
   animation: shopInfoEnterFromRight 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -6547,6 +6659,9 @@ body.theme-light .shop-slanted-scrollbar {
 .shop-preview-info.is-tab-entering-left .shop-preview-header-block,
 .shop-preview-info.is-tab-entering-left .shop-preview-desc,
 .shop-preview-info.is-tab-entering-left .shop-preview-rename-wrap,
+.shop-preview-info.is-tab-entering-left .glossary-preview-progress-wrap,
+.shop-preview-info.is-tab-entering-left .enemy-glossary-stats,
+.shop-preview-info.is-tab-entering-left .glossary-preview-perk,
 .shop-preview-info.is-tab-entering-left .shop-preview-action-btn {
   animation: shopInfoEnterFromLeft 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -6826,7 +6941,8 @@ body.theme-light .shop-preview-desc {
   }
 
   .falo-armory-window .falo-shop-unified-plane,
-  .falo-settings-window .falo-shop-unified-plane {
+  .falo-settings-window .falo-shop-unified-plane,
+  .falo-glossary-window .falo-shop-unified-plane {
     transform: none !important;
   }
 
@@ -7451,6 +7567,95 @@ body.theme-light .shop-preview-rename-input {
   transition: width 0.18s ease;
 }
 
+/* Boss Health Bar HUD Banner */
+.boss-hud-banner {
+  position: fixed;
+  top: calc(74px * var(--ui-scale));
+  left: 50%;
+  transform-origin: top center;
+  transform: perspective(680px) translate3d(calc(-50% + var(--hud-tx, 0px)), var(--hud-ty, 0px), 0) rotateY(var(--hud-ry, 0deg)) rotateX(calc(-9deg + var(--hud-rx, 0deg))) rotateZ(var(--hud-rz, 0deg)) skewX(-10deg);
+  will-change: transform;
+  min-width: calc(300px * var(--ui-scale));
+  max-width: calc(92vw);
+  padding: calc(7px * var(--ui-scale)) calc(18px * var(--ui-scale));
+  border-bottom-color: #b459a5;
+  z-index: 46;
+  display: flex;
+  flex-direction: column;
+  gap: calc(5px * var(--ui-scale));
+  pointer-events: none;
+}
+
+.boss-hud-banner > * {
+  transform: skewX(10deg);
+}
+
+.boss-hud-banner.hidden {
+  display: none !important;
+}
+
+.boss-hud-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(14px * var(--ui-scale));
+}
+
+.boss-hud-name {
+  font-size: calc(11.5px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #f9a8eb;
+  text-shadow: 1.5px 2px 0 rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+}
+
+.boss-hud-hp-text {
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  color: #f8fafc;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.boss-hp-track {
+  width: 100%;
+  height: calc(8px * var(--ui-scale));
+  background: rgba(15, 23, 42, 0.85);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.boss-hp-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #db2777 0%, #f177dd 100%);
+  transition: width 0.08s linear;
+}
+
+body.theme-light .boss-hud-banner {
+  background: linear-gradient(130deg, #f8fafc 0%, #e2e8f0 100%);
+  border-color: #334155;
+  border-bottom-color: #b459a5;
+}
+
+body.theme-light .boss-hud-name {
+  color: #9d174d;
+  text-shadow: none;
+}
+
+body.theme-light .boss-hud-hp-text {
+  color: #0f172a;
+}
+
+body.theme-light .boss-hp-track {
+  background: rgba(148, 163, 184, 0.35);
+  border-color: rgba(100, 116, 139, 0.35);
+}
+
 /* Downed & Reviving Status Banner */
 .downed-status-banner {
   position: fixed;
@@ -7467,6 +7672,10 @@ body.theme-light .shop-preview-rename-input {
   flex-direction: column;
   gap: calc(5px * var(--ui-scale));
   pointer-events: none;
+}
+
+#ui-container.has-active-boss .downed-status-banner {
+  top: calc(134px * var(--ui-scale));
 }
 
 .downed-status-banner > * {
@@ -7634,6 +7843,9 @@ body.theme-light .downed-status-banner.is-reviving .downed-status-text {
   .falo-settings-window .falo-shop-header-left,
   .falo-settings-window .falo-shop-header-right,
   .falo-settings-window .falo-shop-unified-plane,
+  .falo-glossary-window .falo-shop-header-left,
+  .falo-glossary-window .falo-shop-header-right,
+  .falo-glossary-window .falo-shop-unified-plane,
   .falo-evo-window .falo-shop-header-left,
   .falo-evo-window .falo-shop-header-right,
   .falo-shop-catalog-pane,
@@ -7645,6 +7857,9 @@ body.theme-light .downed-status-banner.is-reviving .downed-status-text {
   .shop-preview-header-block,
   .shop-preview-desc,
   .shop-preview-rename-wrap,
+  .glossary-preview-progress-wrap,
+  .enemy-glossary-stats,
+  .glossary-preview-perk,
   .shop-preview-action-btn {
     transform: none !important;
     translate: none !important;
@@ -7653,7 +7868,9 @@ body.theme-light .downed-status-banner.is-reviving .downed-status-text {
 
   :root,
   #ui-container,
-  .toast-banner {
+  .toast-banner,
+  .boss-alert-banner,
+  .boss-hud-banner {
     --hud-tx: 0px !important;
     --hud-ty: 0px !important;
     --hud-rx: 0deg !important;
@@ -7666,6 +7883,8 @@ body.theme-light .downed-status-banner.is-reviving .downed-status-text {
   .evo-node-name-wrap,
   .evo-tree-edge,
   .toast-banner,
+  .boss-alert-banner,
+  .boss-hp-fill,
   #falo-upgrade-panel,
   #falo-upgrade-panel .falo-card,
   .falo-ignore-btn,
@@ -7693,7 +7912,7 @@ body.theme-light .downed-status-banner.is-reviving .downed-status-text {
   }
 }
 
-/* Enemy Glossary / Almanac */
+/* Enemy Glossary / Almanac (Shop Split-Pane Integration) */
 .falo-glossary-window .falo-shop-header-left {
   min-width: 0;
 }
@@ -7702,272 +7921,393 @@ body.theme-light .downed-status-banner.is-reviving .downed-status-text {
   white-space: nowrap;
 }
 
-.enemy-glossary-discovery-count {
-  color: #00b2e1;
-  font-size: calc(12px * var(--ui-scale));
-  font-weight: 900;
-  letter-spacing: 0.8px;
-  white-space: nowrap;
-}
-
-.falo-glossary-body {
-  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.85fr);
-}
-
-.enemy-glossary-catalog {
+.glossary-sections-wrap {
   display: flex;
   flex-direction: column;
-  gap: calc(18px * var(--ui-scale));
-  padding-top: calc(30px * var(--ui-scale));
-}
-
-.enemy-glossary-catalog-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.enemy-glossary-catalog-subtitle {
-  margin-top: 5px;
-  color: #9ca3af;
-  font-size: calc(10px * var(--ui-scale));
-  font-weight: 800;
-  letter-spacing: 0.8px;
+  gap: calc(24px * var(--ui-scale));
 }
 
 .enemy-glossary-search {
-  width: min(230px, 42%);
-  padding: calc(8px * var(--ui-scale)) calc(10px * var(--ui-scale));
-  border: 2px solid #525659;
-  border-bottom-width: 4px;
-  border-radius: 4px;
-  background: #20232b;
-  color: #f3f4f6;
-  font: 800 calc(11px * var(--ui-scale)) 'Ubuntu', sans-serif;
-  letter-spacing: 0.6px;
+  width: calc(185px * var(--ui-scale));
+  max-width: 100%;
+  background: #1e1f26;
+  border: 1px solid #2f313d;
+  color: #e5e7eb;
+  font-family: inherit;
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 800;
+  padding: calc(4px * var(--ui-scale)) calc(11px * var(--ui-scale));
+  border-radius: 9999px;
+  outline: none;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.enemy-glossary-search::placeholder {
+  color: #9ca3af;
 }
 
 .enemy-glossary-search:focus {
-  outline: 2px solid #00b2e1;
-  outline-offset: 2px;
+  border-color: #00b2e1;
+  box-shadow: 0 0 0 2px rgba(0, 178, 225, 0.25);
 }
 
-.enemy-glossary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(150px * var(--ui-scale)), 1fr));
-  gap: calc(14px * var(--ui-scale));
-  padding: 4px 8px 14px 4px;
+body.theme-light .enemy-glossary-search {
+  background-color: #e2e5e9;
+  border-color: #c4c8cd;
+  color: #1f2937;
 }
 
-.enemy-glossary-entry {
-  min-width: 0;
-  min-height: calc(160px * var(--ui-scale));
-  padding: calc(10px * var(--ui-scale));
-  align-items: center;
-  justify-content: flex-start;
-  gap: calc(5px * var(--ui-scale));
-  cursor: pointer;
-  text-align: center;
+body.theme-light .enemy-glossary-search::placeholder {
+  color: #6b7280;
 }
 
-.enemy-glossary-entry.is-discovered {
-  border-color: #00a5ce;
-}
-
-.enemy-glossary-entry.is-selected {
-  outline: calc(3px * var(--ui-scale)) solid #00b2e1;
-  outline-offset: 1px;
-}
-
-.enemy-glossary-entry.is-undiscovered {
-  border-color: #555b65;
-}
-
-.enemy-glossary-entry-art {
+.glossary-card-art {
   width: 100%;
-  height: calc(84px * var(--ui-scale));
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.enemy-glossary-entry-art svg,
-.enemy-glossary-detail-art svg {
-  max-width: 100%;
-  max-height: 100%;
+.glossary-card-art.is-unknown {
+  filter: blur(2.2px);
+  opacity: 0.8;
 }
 
-.enemy-glossary-entry-art.is-silhouette,
-.enemy-glossary-detail-art.is-silhouette {
-  filter: grayscale(1) brightness(0.18);
-  opacity: 0.68;
+.glossary-card-art.is-silhouette {
+  opacity: 0.94;
 }
 
-.enemy-glossary-entry-name {
-  width: 100%;
-  overflow: hidden;
-  color: #111827;
-  font-size: calc(12px * var(--ui-scale));
+.falo-card.is-undiscovered {
+  border-color: #94a3b8;
+}
+
+.falo-card.is-sighted {
+  border-color: #64748b;
+}
+
+.falo-card.is-mastered {
+  border-color: #f59e0b;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.14);
+}
+
+.glossary-card-status-row {
+  justify-content: space-between;
+  gap: calc(6px * var(--ui-scale));
+}
+
+.falo-card-status-label.is-sighted {
+  color: #0284c7;
+}
+
+.falo-card-status-label.is-mastered {
+  color: #d97706;
+}
+
+.glossary-card-kills {
+  font-size: calc(10px * var(--ui-scale));
   font-weight: 900;
-  letter-spacing: 0.3px;
-  text-overflow: ellipsis;
+  color: #64748b;
+  letter-spacing: 0.4px;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
-.enemy-glossary-entry-meta {
-  color: #525b68;
-  font-size: calc(9px * var(--ui-scale));
-  font-weight: 800;
-  letter-spacing: 0.3px;
-}
-
-.enemy-glossary-progress,
-.enemy-glossary-large-progress {
+.glossary-card-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: calc(8px * var(--ui-scale));
   width: 100%;
+}
+
+.glossary-card-progress-bar {
+  flex: 1;
   height: calc(5px * var(--ui-scale));
   overflow: hidden;
   border-radius: 4px;
-  background: rgba(15, 23, 42, 0.24);
+  background: rgba(15, 23, 42, 0.16);
 }
 
-.enemy-glossary-progress > span,
-.enemy-glossary-large-progress > span {
+.glossary-card-progress-bar > span {
   display: block;
   height: 100%;
   background: #00a8d4;
   transition: width 0.2s ease;
 }
 
-.enemy-glossary-detail {
+.glossary-card-progress-bar.is-sighted > span {
+  background: #38bdf8;
+}
+
+.glossary-card-progress-bar.is-mastery > span {
+  background: #f59e0b;
+}
+
+.falo-glossary-window .shop-preview-stage {
+  min-height: calc(120px * var(--ui-scale));
+}
+
+.falo-glossary-window .shop-preview-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  left: calc(var(--shop-slant, 44px) * 0.5 + 8px * var(--ui-scale));
+  background: radial-gradient(
+    circle at 52% 50%,
+    rgba(251, 191, 36, 0.26) 0%,
+    rgba(245, 158, 11, 0.13) 26%,
+    rgba(245, 158, 11, 0.04) 46%,
+    transparent 68%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.24s ease;
+  z-index: 0;
+}
+
+.falo-glossary-window .shop-preview-stage.is-mastered::before {
+  opacity: 1;
+}
+
+body.theme-light .falo-glossary-window .shop-preview-stage::before {
+  background: radial-gradient(
+    circle at 52% 50%,
+    rgba(245, 158, 11, 0.22) 0%,
+    rgba(217, 119, 6, 0.11) 26%,
+    rgba(217, 119, 6, 0.03) 46%,
+    transparent 68%
+  );
+}
+
+.falo-glossary-window .shop-preview-canvas {
   position: relative;
   z-index: 1;
-  display: flex;
+}
+
+.glossary-preview-info {
+  gap: calc(7px * var(--ui-scale));
+}
+
+.glossary-preview-info .shop-preview-desc {
   min-height: 0;
-  flex-direction: column;
-  align-items: center;
-  overflow-y: auto;
-  padding: calc(34px * var(--ui-scale)) calc(28px * var(--ui-scale));
-  border-left: 2px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(155deg, #20232b 0%, #15171d 100%);
-  color: #f3f4f6;
-  text-align: center;
 }
 
-.enemy-glossary-detail-art {
+.glossary-preview-progress-wrap {
   display: flex;
-  width: 100%;
-  min-height: calc(190px * var(--ui-scale));
-  align-items: center;
-  justify-content: center;
-  margin-bottom: calc(14px * var(--ui-scale));
-  background: radial-gradient(ellipse, rgba(0, 178, 225, 0.13), transparent 70%);
-}
-
-.enemy-glossary-detail-class {
-  color: #00b2e1;
-  font-size: calc(10px * var(--ui-scale));
-  font-weight: 900;
-  letter-spacing: 1.2px;
-}
-
-.enemy-glossary-detail h2 {
-  margin: calc(8px * var(--ui-scale)) 0;
-  font-size: calc(27px * var(--ui-scale));
-  font-weight: 900;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-}
-
-.enemy-glossary-detail p {
-  max-width: 430px;
-  margin: 0 0 calc(18px * var(--ui-scale));
-  color: #b7c0cc;
-  font-size: calc(12px * var(--ui-scale));
-  line-height: 1.5;
+  flex-direction: column;
+  gap: calc(5px * var(--ui-scale));
 }
 
 .enemy-glossary-large-progress {
-  max-width: 360px;
-  height: calc(8px * var(--ui-scale));
-  margin: calc(8px * var(--ui-scale)) 0;
+  width: 100%;
+  height: calc(7px * var(--ui-scale));
+  overflow: hidden;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.25);
 }
 
-.enemy-glossary-kill-count,
-.enemy-glossary-first-seen {
-  color: #aab3be !important;
-  font-size: calc(10px * var(--ui-scale)) !important;
+.enemy-glossary-large-progress > span {
+  display: block;
+  height: 100%;
+  background: #00b2e1;
+  transition: width 0.2s ease;
+}
+
+.glossary-preview-progress-wrap.is-sighted .enemy-glossary-large-progress > span {
+  background: #38bdf8;
+}
+
+.glossary-preview-progress-label {
+  color: #94a3b8;
+  font-size: calc(10px * var(--ui-scale));
   font-weight: 900;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.7px;
+  font-variant-numeric: tabular-nums;
+}
+
+body.theme-light .glossary-preview-progress-label {
+  color: #475569;
 }
 
 .enemy-glossary-stats {
   display: grid;
   width: 100%;
-  max-width: 420px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: calc(9px * var(--ui-scale));
-  margin-top: calc(10px * var(--ui-scale));
+  gap: calc(6px * var(--ui-scale));
 }
 
 .enemy-glossary-stat {
   display: flex;
-  min-height: calc(52px * var(--ui-scale));
+  min-height: calc(36px * var(--ui-scale));
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
-  padding: calc(8px * var(--ui-scale));
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  gap: 2px;
+  padding: calc(5px * var(--ui-scale)) calc(8px * var(--ui-scale));
+  border-radius: calc(4px * var(--ui-scale));
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-bottom: 3px solid #007a9e;
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .enemy-glossary-stat span {
-  color: #9ca3af;
+  color: #94a3b8;
   font-size: calc(9px * var(--ui-scale));
   font-weight: 900;
-  letter-spacing: 0.7px;
+  letter-spacing: 0.6px;
 }
 
 .enemy-glossary-stat strong {
   overflow-wrap: anywhere;
-  color: #f3f4f6;
-  font-size: calc(13px * var(--ui-scale));
+  color: #f8fafc;
+  font-size: calc(11.5px * var(--ui-scale));
   font-weight: 900;
   text-transform: uppercase;
-}
-
-.enemy-glossary-empty {
-  margin: auto;
-  color: #9ca3af;
-  font-size: calc(12px * var(--ui-scale));
-  font-weight: 900;
-  letter-spacing: 0.8px;
-}
-
-body.theme-light .enemy-glossary-detail {
-  border-left-color: rgba(0, 0, 0, 0.12);
-  background: linear-gradient(155deg, #f0f2f5 0%, #d9dde3 100%);
-  color: #111827;
-}
-
-body.theme-light .enemy-glossary-detail p {
-  color: #4b5563;
+  font-variant-numeric: tabular-nums;
 }
 
 body.theme-light .enemy-glossary-stat {
-  border-color: rgba(0, 0, 0, 0.12);
+  border-color: rgba(15, 23, 42, 0.14);
   border-bottom-color: #007a9e;
-  background: rgba(255, 255, 255, 0.48);
+  background: rgba(255, 255, 255, 0.64);
+}
+
+body.theme-light .enemy-glossary-stat span {
+  color: #475569;
 }
 
 body.theme-light .enemy-glossary-stat strong {
-  color: #111827;
+  color: #0f172a;
 }
 
-@media (max-width: 760px) {
+.glossary-preview-perk {
+  display: flex;
+  flex-direction: column;
+  gap: calc(4px * var(--ui-scale));
+  padding: calc(7px * var(--ui-scale)) calc(9px * var(--ui-scale));
+  border-radius: calc(4px * var(--ui-scale));
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.glossary-preview-perk.is-mastered {
+  border-color: rgba(245, 158, 11, 0.55);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+body.theme-light .glossary-preview-perk {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+body.theme-light .glossary-preview-perk.is-mastered {
+  border-color: rgba(217, 119, 6, 0.55);
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.glossary-perk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(8px * var(--ui-scale));
+}
+
+.glossary-perk-kicker {
+  font-size: calc(9.5px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.7px;
+  color: #94a3b8;
+}
+
+.glossary-preview-perk.is-mastered .glossary-perk-kicker {
+  color: #fbbf24;
+}
+
+body.theme-light .glossary-perk-kicker {
+  color: #475569;
+}
+
+body.theme-light .glossary-preview-perk.is-mastered .glossary-perk-kicker {
+  color: #b45309;
+}
+
+.glossary-perk-progress-text {
+  font-size: calc(9.5px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: #cbd5e1;
+  font-variant-numeric: tabular-nums;
+}
+
+body.theme-light .glossary-perk-progress-text {
+  color: #334155;
+}
+
+.glossary-perk-title {
+  font-size: calc(12px * var(--ui-scale));
+  font-weight: 900;
+  color: #f8fafc;
+}
+
+body.theme-light .glossary-perk-title {
+  color: #0f172a;
+}
+
+.glossary-perk-desc {
+  font-size: calc(10.5px * var(--ui-scale));
+  font-weight: 700;
+  line-height: 1.3;
+  color: #94a3b8;
+}
+
+body.theme-light .glossary-perk-desc {
+  color: #475569;
+}
+
+.glossary-perk-bar {
+  height: calc(5px * var(--ui-scale));
+  margin-top: calc(2px * var(--ui-scale));
+}
+
+.glossary-perk-bar > span {
+  background: #f59e0b;
+}
+
+.shop-preview-action-btn.is-sighted {
+  background: linear-gradient(130deg, #0284c7 0%, #0369a1 100%);
+  border-color: #0c4a6e;
+  border-bottom-color: #075985;
+  color: #f8fafc;
+  text-shadow: 1px 1.5px 0 rgba(7, 89, 133, 0.5);
+}
+
+.shop-preview-action-btn.is-mastered {
+  background: linear-gradient(125deg, #f59e0b 0%, #d97706 100%);
+  border-color: #78350f;
+  border-bottom-color: #92400e;
+  color: #ffffff;
+  text-shadow: 1.5px 2px 0 rgba(120, 53, 15, 0.45);
+}
+
+.shop-preview-action-btn.is-sighted:hover,
+.shop-preview-action-btn.is-mastered:hover {
+  transform: skewX(-10deg) !important;
+}
+
+.glossary-preview-status {
+  cursor: default;
+  pointer-events: none;
+}
+
+@media (max-width: 820px) {
+  .falo-glossary-window .falo-shop-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
   .falo-glossary-window .falo-shop-header-left {
     flex: 1 1 100%;
+    flex-wrap: wrap;
+    gap: 10px;
   }
 
   .falo-glossary-window .falo-shop-header-right {
@@ -7977,48 +8317,23 @@ body.theme-light .enemy-glossary-stat strong {
 
   .falo-glossary-window .falo-shop-tabs {
     flex: 1;
+    flex-wrap: wrap;
   }
 
   .falo-glossary-window .falo-shop-tab {
-    padding: 6px 8px;
-    font-size: 9px;
+    padding: 6px 10px;
+    font-size: 10px;
   }
 
-  .falo-glossary-body {
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
+  .falo-glossary-window .enemy-glossary-stats {
+    display: none;
   }
 
-  .enemy-glossary-catalog {
-    flex: 0 0 auto;
-    overflow: visible;
-    padding: 18px 14px;
+  .falo-glossary-window .glossary-preview-progress-wrap {
+    display: none;
   }
 
-  .enemy-glossary-grid {
-    grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
-    gap: 9px;
+  .falo-glossary-window .glossary-preview-perk {
+    display: none;
   }
-
-  .enemy-glossary-entry {
-    min-height: 140px;
-  }
-
-  .enemy-glossary-detail {
-    flex: 0 0 auto;
-    min-height: 360px;
-    overflow: visible;
-    border-top: 2px solid rgba(255, 255, 255, 0.08);
-    border-left: 0;
-    padding: 20px 16px 28px;
-  }
-
-  .enemy-glossary-detail-art {
-    min-height: 130px;
-  }
-}
-
-body.theme-light #enemy-glossary-modal.modal-overlay {
-  background: rgba(180, 184, 188, 0.40);
 }

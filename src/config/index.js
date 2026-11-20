@@ -5,6 +5,13 @@
 
 import { PLAYER_CONFIG, CHASSIS_CONFIG, EVOLUTION_CONFIG, getXPRequiredForLevel, FALO_LEVEL_SCORES, getTotalXPForLevel } from './player.config.js';
 import { ENEMY_CONFIG, ENEMY_UPGRADE_CONFIG, getEnemyUpgradesForWave } from './enemy.config.js';
+import {
+  GLOSSARY_MILESTONES,
+  ENEMY_MASTERY_REWARDS,
+  getEnemyMasteryReward,
+  getEnemyResearchState,
+  getEnemyMasteryBonuses
+} from './glossary.config.js';
 import { SHAPES_CONFIG } from './shapes.config.js';
 import { ARENA_CONFIG, CAMERA_CONFIG, WAVE_CONFIG, VFX_CONFIG } from './environment.config.js';
 import { BASIC_BARREL_BASE, createBarrelTurret, WEAPONS_CONFIG, getTankRenderParts, getOuterArmorLayers } from './weapons.config.js';
@@ -17,6 +24,11 @@ export {
   ENEMY_CONFIG,
   ENEMY_UPGRADE_CONFIG,
   getEnemyUpgradesForWave,
+  GLOSSARY_MILESTONES,
+  ENEMY_MASTERY_REWARDS,
+  getEnemyMasteryReward,
+  getEnemyResearchState,
+  getEnemyMasteryBonuses,
   SHAPES_CONFIG,
   ARENA_CONFIG,
   CAMERA_CONFIG,
@@ -46,6 +58,10 @@ export const CONFIG = {
   SHAPES: SHAPES_CONFIG,
   ENEMIES: ENEMY_CONFIG,
   ENEMY_UPGRADES: ENEMY_UPGRADE_CONFIG,
+  GLOSSARY: {
+    MILESTONES: GLOSSARY_MILESTONES,
+    MASTERY_REWARDS: ENEMY_MASTERY_REWARDS
+  },
   WAVE: WAVE_CONFIG,
   CREW: CREW_CONFIG,
   META: META_CONFIG,

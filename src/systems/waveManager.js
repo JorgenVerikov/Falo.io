@@ -14,9 +14,17 @@ export class WaveManager {
     this.isPaused = false;
     this.storage = null;
     this.onEnemyGlossaryUnlock = null;
+    this.onEnemyGlossaryMilestone = null;
     this.onEnemyGlossaryProgress = null;
+    this.onBossSpawned = null;
+    this.onBossDefeated = null;
+    this.onAllyRespawned = null;
+    this._lastPlayer = null;
+    this._lastChassisKey = 'basic';
+    this._lastExtraCtx = {};
 
     this.enemyQueue = [];
+    this.pendingBossQueue = [];
     this.spawnTimer = 0;
 
     this.shapes = [];
@@ -36,6 +44,7 @@ export class WaveManager {
     this.particles = [];
     this.enemyBullets = [];
     this.enemyQueue = [];
+    this.pendingBossQueue = [];
     this.graceTimer = 0;
     this.breakTimer = 0;
     this.spawnTimer = 0;
@@ -44,6 +53,13 @@ export class WaveManager {
   }
 
   spawnAlliesForRun(player, storageData, initialLevel = 1, playerChassis = 'basic') {
+    this._lastPlayer = player || this._lastPlayer;
+    this._lastChassisKey = playerChassis || 'basic';
+    this._lastExtraCtx = {
+      ...(this._lastExtraCtx || {}),
+      playerLevel: initialLevel,
+      crewLevels: storageData?.crewLevels || {}
+    };
     this.allies = [];
     const hired = Array.isArray(storageData?.hiredAllies) ? storageData.hiredAllies.slice(0, CONFIG.ALLIES?.maxAllies || 3) : [];
     if (hired.length === 0) return;
@@ -77,10 +93,45 @@ export class WaveManager {
   clearEnemies() {
     this.enemies = [];
     this.enemyBullets = [];
+    this.pendingBossQueue = [];
   }
 
   setWaveNumber(waveNum) {
     this.waveNumber = Math.max(1, waveNum);
+    this.respawnEligibleAllies(this.waveNumber);
+  }
+
+  respawnEligibleAllies(waveNum = this.waveNumber) {
+    if (!Array.isArray(this.allies) || this.allies.length === 0) return [];
+    const player = this._lastPlayer;
+    if (!player || player.dead || player.isDying) return [];
+
+    const storageData = this.storage?.data || {};
+    const unlockedChassis = storageData.unlockedChassis || ['basic'];
+    const crewLevels = this._lastExtraCtx?.crewLevels || storageData.crewLevels || {};
+    const playerLevel = this._lastExtraCtx?.playerLevel || 1;
+    const playerChassis = this._lastChassisKey || 'basic';
+    const respawned = [];
+
+    for (let i = 0; i < this.allies.length; i++) {
+      const ally = this.allies[i];
+      if (!ally) continue;
+      if (!(ally.dead || ally.destroyed)) continue;
+      if (ally.respawnAtWave == null || waveNum < ally.respawnAtWave) continue;
+
+      const angle = ((i - (this.allies.length - 1) / 2) * 0.95) + Math.PI * 0.85;
+      const dist = 125;
+      const ax = (player.x || 0) + Math.cos(angle) * dist;
+      const ay = (player.y || 0) + Math.sin(angle) * dist;
+      ally.respawn(ax, ay, this, unlockedChassis, crewLevels, playerLevel, playerChassis, this.allies);
+      respawned.push(ally);
+    }
+
+    if (respawned.length > 0) {
+      AllyCommunicationSystem.onUnitRevived(respawned[0], this.allies, false, player);
+      this.onAllyRespawned?.(respawned, waveNum);
+    }
+    return respawned;
   }
 
   spawnEnemy(player, archetype = 'chaser', count = 1) {
@@ -119,7 +170,9 @@ export class WaveManager {
     this.waveNumber = waveNum;
     this.isBreak = false;
     this.enemyQueue = [];
+    this.pendingBossQueue = [];
     this.spawnTimer = 0;
+    this.respawnEligibleAllies(waveNum);
 
     const graceInterval = (CONFIG.WAVE && CONFIG.WAVE.graceInterval) ? CONFIG.WAVE.graceInterval : 5;
     const graceDuration = (CONFIG.WAVE && CONFIG.WAVE.graceDuration) ? CONFIG.WAVE.graceDuration : 20.0;
@@ -134,11 +187,27 @@ export class WaveManager {
     const maxEnemies = (CONFIG.WAVE && CONFIG.WAVE.maxEnemyCount !== undefined) ? CONFIG.WAVE.maxEnemyCount : 1000;
     const totalEnemies = Math.min(maxEnemies, Math.floor(CONFIG.WAVE.baseEnemyCount * Math.pow(CONFIG.WAVE.growthFactor, this.waveNumber - 1)));
 
-    // Dynamic enemy eligibility check reading directly from CONFIG.ENEMIES
+    // Dynamic enemy eligibility check reading directly from CONFIG.ENEMIES (excluding bosses)
     const availableArchetypes = Object.keys(CONFIG.ENEMIES).filter(key => {
-      const minW = CONFIG.ENEMIES[key].minWave || 1;
+      const cfg = CONFIG.ENEMIES[key];
+      if (!cfg || cfg.isBoss) return false;
+      if (cfg.spawnWeight !== undefined && cfg.spawnWeight <= 0) return false;
+      const minW = cfg.minWave || 1;
       return this.waveNumber >= minW;
     });
+
+    // Queue one random boss from all bosses eligible on this milestone wave (every 15 waves by default)
+    const eligibleBosses = Object.keys(CONFIG.ENEMIES).filter(key => {
+      const cfg = CONFIG.ENEMIES[key];
+      if (!cfg || !cfg.isBoss) return false;
+      const interval = cfg.bossWaveInterval || 15;
+      const minW = cfg.minWave || interval;
+      return this.waveNumber >= minW && this.waveNumber % interval === 0;
+    });
+    if (eligibleBosses.length > 0) {
+      const chosenBoss = eligibleBosses[Math.floor(Math.random() * eligibleBosses.length)];
+      this.pendingBossQueue.push(chosenBoss);
+    }
 
     // Dynamic weighted selection for enemies using spawnWeight (matching shape spawn structure)
     let totalSpawnWeight = 0;
@@ -173,28 +242,37 @@ export class WaveManager {
   }
 
   update(dt, player, playerWeapon, activeChassisKey, playerStats = {}, extraCtx = {}) {
+    if (player) this._lastPlayer = player;
+    if (activeChassisKey) this._lastChassisKey = activeChassisKey;
+    if (extraCtx) this._lastExtraCtx = extraCtx;
     if (this.isPaused) return;
 
     if (this.graceTimer > 0) {
       this.graceTimer -= dt;
-    } else if (!this.isBreak && this.enemyQueue.length > 0) {
-      const spawnInterval = this.getSpawnInterval();
-      this.spawnTimer += dt;
-      if (this.spawnTimer >= spawnInterval) {
-        this.spawnTimer = Math.min(spawnInterval * 0.5, this.spawnTimer - spawnInterval);
-        const archetype = this.enemyQueue.shift();
-        const cfg = CONFIG.ENEMIES[archetype];
-        if (cfg && Array.isArray(cfg.squadSizes) && cfg.squadSizes.length > 0) {
-          this.spawnEnemySquad(player, archetype);
-        } else {
-          this.spawnSingleEnemy(player, archetype);
+    } else if (!this.isBreak) {
+      while (this.pendingBossQueue.length > 0) {
+        const bossKey = this.pendingBossQueue.shift();
+        this.spawnSingleEnemy(player, bossKey);
+      }
+      if (this.enemyQueue.length > 0) {
+        const spawnInterval = this.getSpawnInterval();
+        this.spawnTimer += dt;
+        if (this.spawnTimer >= spawnInterval) {
+          this.spawnTimer = Math.min(spawnInterval * 0.5, this.spawnTimer - spawnInterval);
+          const archetype = this.enemyQueue.shift();
+          const cfg = CONFIG.ENEMIES[archetype];
+          if (cfg && Array.isArray(cfg.squadSizes) && cfg.squadSizes.length > 0) {
+            this.spawnEnemySquad(player, archetype);
+          } else {
+            this.spawnSingleEnemy(player, archetype);
+          }
         }
       }
     }
 
-    const activeEnemies = this.enemies.filter(e => !e.dead);
+    const activeEnemies = this.enemies.filter(e => !e.dead && !e.isBossMinion);
 
-    if (!this.isBreak && this.graceTimer <= 0 && this.enemyQueue.length === 0 && activeEnemies.length === 0) {
+    if (!this.isBreak && this.graceTimer <= 0 && this.enemyQueue.length === 0 && this.pendingBossQueue.length === 0 && activeEnemies.length === 0) {
       this.isBreak = true;
       this.breakTimer = CONFIG.WAVE.breakDuration;
       AllyCommunicationSystem.onWaveCleared(this.waveNumber, this.allies, player);
@@ -266,7 +344,7 @@ export class WaveManager {
     this.compactDestroyedEntities();
 
     // Immediate check if wave cleared after despawns and collisions
-    if (!this.isBreak && this.graceTimer <= 0 && this.enemyQueue.length === 0 && this.enemies.filter(e => !e.dead).length === 0) {
+    if (!this.isBreak && this.graceTimer <= 0 && this.enemyQueue.length === 0 && this.pendingBossQueue.length === 0 && this.enemies.filter(e => !e.dead && !e.isBossMinion).length === 0) {
       this.isBreak = true;
       this.breakTimer = CONFIG.WAVE.breakDuration;
     }
@@ -334,7 +412,22 @@ export class WaveManager {
             }
           }
         }
+        if (validSpawn) {
+          for (const enemy of this.enemies) {
+            if (!enemy.dead && !enemy.destroyed && enemy.isBoss) {
+              const bdx = enemy.x - x;
+              const bdy = enemy.y - y;
+              const br = enemy.radius + 70;
+              if (bdx * bdx + bdy * bdy < br * br) {
+                validSpawn = false;
+                break;
+              }
+            }
+          }
+        }
       }
+
+      if (!validSpawn) break;
 
       let rand = Math.random() * totalSpawnWeight;
       let selectedType = shapeKeys[0] || 'square';
@@ -347,6 +440,18 @@ export class WaveManager {
         }
         rand -= w;
       }
+
+      const isInsideBoss = (sx, sy) => {
+        for (const enemy of this.enemies) {
+          if (!enemy.dead && !enemy.destroyed && enemy.isBoss) {
+            const bdx = enemy.x - sx;
+            const bdy = enemy.y - sy;
+            const br = enemy.radius + 50;
+            if (bdx * bdx + bdy * bdy < br * br) return true;
+          }
+        }
+        return false;
+      };
 
       const typeCfg = CONFIG.SHAPES.types[selectedType] || {};
       if (typeCfg.groupSpawn || selectedType === 'egg') {
@@ -363,8 +468,10 @@ export class WaveManager {
           const spreadAngle = Math.random() * Math.PI * 2;
           const eggX = x + Math.cos(spreadAngle) * spreadDist;
           const eggY = y + Math.sin(spreadAngle) * spreadDist;
-          this.shapes.push(new ResourceShape(eggX, eggY, selectedType));
-          activeShapesCount++;
+          if (!isInsideBoss(eggX, eggY)) {
+            this.shapes.push(new ResourceShape(eggX, eggY, selectedType));
+            activeShapesCount++;
+          }
         }
       } else {
         this.shapes.push(new ResourceShape(x, y, selectedType));
@@ -412,7 +519,13 @@ export class WaveManager {
     }
 
     const enemy = new EnemyUnit(x, y, archetype, this.waveNumber, opts);
+    if (enemy.isBoss && player) {
+      enemy.angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+    }
     this.enemies.push(enemy);
+    if (enemy.isBoss) {
+      this.onBossSpawned?.(enemy);
+    }
     return enemy;
   }
 
@@ -424,8 +537,16 @@ export class WaveManager {
   }
 
   getRemainingEnemyCount() {
-    const activeEnemies = this.enemies.filter(e => !e.dead).length;
-    return this.enemyQueue.length + activeEnemies;
+    const activeEnemies = this.enemies.filter(e => !e.dead && !e.isBossMinion).length;
+    return this.enemyQueue.length + this.pendingBossQueue.length + activeEnemies;
+  }
+
+  getActiveBoss() {
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      if (e && e.isBoss && !e.dead && !e.destroyed) return e;
+    }
+    return null;
   }
 
   spawnShatterParticles(x, y, color, count = 8) {
