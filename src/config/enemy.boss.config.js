@@ -222,7 +222,7 @@ export const BOSS_ENEMIES_CONFIG = {
         fireRateSec: 0.60,
         initialFireDelay: 0.3,
         bulletSpeed: 230,
-        bulletDamage: 10,
+        bulletDamage: 20,
         bulletPenetration: 5,
         bulletRadius: 2,
         bulletSpread: 0.04,
