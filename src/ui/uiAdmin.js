@@ -170,7 +170,7 @@ export function populateAdminUserDataForm(ui) {
     badge.textContent = isUser
       ? `LOGGED IN: ${ui.storage.currentUser.email || 'USER ACCOUNT'}`
       : 'ACTIVE PROFILE: LOCAL GUEST PROGRESS';
-    badge.style.color = '#38bdf8';
+    badge.style.removeProperty('color');
   }
 
   const coinsInput = document.getElementById('adm-input-coins');
@@ -206,9 +206,10 @@ export function populateAdminUserDataForm(ui) {
   const isCustomActive = (data.activeColor === 'custom');
   if (customStatus) {
     customStatus.textContent = isCustomActive ? 'ACTIVE: EQUIPPED' : 'INACTIVE';
-    customStatus.style.background = isCustomActive ? '#e0f2fe' : '#f1f5f9';
-    customStatus.style.color = isCustomActive ? '#0284c7' : '#64748b';
-    customStatus.style.borderColor = isCustomActive ? '#00b2e1' : '#cbd5e1';
+    customStatus.classList.toggle('is-active', isCustomActive);
+    customStatus.style.removeProperty('background');
+    customStatus.style.removeProperty('color');
+    customStatus.style.removeProperty('border-color');
   }
 
   if (customPreview) {
@@ -475,15 +476,6 @@ export function setupAdminDataActions(ui) {
   document.getElementById('adm-open-battle-console-btn')?.addEventListener('click', () => {
     ui.hideAdminUserDataModal();
     ui.showAdminPanel();
-  });
-
-  document.getElementById('adm-give-level150-btn')?.addEventListener('click', () => {
-    const maxLvlBtn = document.getElementById('adm-lvl-max');
-    if (maxLvlBtn) {
-      maxLvlBtn.click();
-    } else {
-      ui.showToast('ADMIN: IN-RUN ONLY (START A RUN TO GRANT LEVEL)');
-    }
   });
 
   document.getElementById('adm-toggle-godmode-btn')?.addEventListener('click', () => {

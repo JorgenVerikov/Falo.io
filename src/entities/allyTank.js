@@ -428,6 +428,9 @@ export class AllyTank {
     this.deathDuration = 0.55;
     this.destroyed = false;
     this.respawnAtWave = null;
+    this.godMode = false;
+    this.adminLockedChassis = null;
+    this.adminLockedStats = false;
 
     // Player-like Movement, Cursor Aiming & Target Commitment
     this.aimWorldX = x + Math.cos(this.angle) * 200;
@@ -600,43 +603,214 @@ export class AllyTank {
     return bestKey;
   }
 
+  setAdminChassis(chassisKey, unlockedChassis = ['basic'], crewLevels = {}, godMode = false, playerChassis = 'basic', allAllies = [], waveNumber = 1) {
+    if (!chassisKey || !CONFIG.CHASSIS[chassisKey]) return false;
+    this.adminLockedChassis = chassisKey;
+    this.activeChassis = chassisKey;
+    this.currentRole = inferChassisRole(chassisKey);
+    this.sonarTimer = 0;
+    this.cloakAlpha = 1.0;
+
+    const newCfg = CONFIG.CHASSIS[chassisKey] || {};
+    const smasherRules = CONFIG.PLAYER.smasherRules;
+    const statRules = newCfg.statRules || null;
+    const blockBullets = statRules ? Boolean(statRules.blockBulletStats) : (chassisKey === 'smasher');
+    const maxCap = statRules?.maxStatLevel
+      ? statRules.maxStatLevel
+      : ((chassisKey === 'smasher') ? smasherRules.maxStatLevel : CONFIG.PLAYER.maxStatLevel);
+
+    if (blockBullets) {
+      smasherRules.blockedStats.forEach(k => {
+        this.stats[k] = 0;
+      });
+    }
+    ALLY_STAT_KEYS.forEach(k => {
+      if ((this.stats[k] || 0) > maxCap) {
+        this.stats[k] = maxCap;
+      }
+    });
+
+    this.weaponSys.loadChassisConfig(chassisKey);
+    this.syncLevelAndProgression(
+      this.level,
+      unlockedChassis,
+      crewLevels,
+      Boolean(godMode || this.godMode),
+      playerChassis,
+      allAllies,
+      waveNumber
+    );
+    return true;
+  }
+
+  setAdminStat(statKey, value, crewLevels = {}, godMode = false) {
+    if (!ALLY_STAT_KEYS.includes(statKey)) return false;
+    const chassisCfg = CONFIG.CHASSIS[this.activeChassis] || {};
+    const smasherRules = CONFIG.PLAYER.smasherRules;
+    const statRules = chassisCfg.statRules || null;
+    const blockBullets = statRules ? Boolean(statRules.blockBulletStats) : (this.activeChassis === 'smasher');
+    if (blockBullets && smasherRules.blockedStats.includes(statKey)) {
+      this.stats[statKey] = 0;
+      return false;
+    }
+
+    const maxCap = statRules?.maxStatLevel
+      ? statRules.maxStatLevel
+      : ((this.activeChassis === 'smasher') ? smasherRules.maxStatLevel : CONFIG.PLAYER.maxStatLevel);
+    const maxTotalPoints = CONFIG.PLAYER.skillPointSchedule?.maxPoints ?? 33;
+    const otherSpent = ALLY_STAT_KEYS.reduce(
+      (sum, k) => sum + (k === statKey ? 0 : (this.stats[k] || 0)),
+      0
+    );
+    const maxAllowedForStat = Math.max(0, Math.min(maxCap, maxTotalPoints - otherSpent));
+    const nextVal = Math.max(0, Math.min(maxAllowedForStat, Math.round(value)));
+
+    this.adminLockedStats = true;
+    this.stats[statKey] = nextVal;
+    syncUnitChassisAndStats({
+      unit: this,
+      weaponSys: this.weaponSys,
+      chassisKey: this.activeChassis,
+      level: this.level,
+      stats: this.stats,
+      crewLevels,
+      godMode: Boolean(godMode || this.godMode)
+    });
+    return true;
+  }
+
+  setAllAdminStats(mode = 'max', crewLevels = {}, godMode = false) {
+    const chassisCfg = CONFIG.CHASSIS[this.activeChassis] || {};
+    const smasherRules = CONFIG.PLAYER.smasherRules;
+    const statRules = chassisCfg.statRules || null;
+    const blockBullets = statRules ? Boolean(statRules.blockBulletStats) : (this.activeChassis === 'smasher');
+    const maxCap = statRules?.maxStatLevel
+      ? statRules.maxStatLevel
+      : ((this.activeChassis === 'smasher') ? smasherRules.maxStatLevel : CONFIG.PLAYER.maxStatLevel);
+    const maxTotalPoints = CONFIG.PLAYER.skillPointSchedule?.maxPoints ?? 33;
+
+    this.adminLockedStats = true;
+    ALLY_STAT_KEYS.forEach((statKey) => {
+      if (blockBullets && smasherRules.blockedStats.includes(statKey)) {
+        this.stats[statKey] = 0;
+      } else if (mode === 'zero') {
+        this.stats[statKey] = 0;
+      }
+    });
+
+    if (mode !== 'zero') {
+      let currentSpent = ALLY_STAT_KEYS.reduce((sum, k) => sum + (this.stats[k] || 0), 0);
+      if (currentSpent > maxTotalPoints) {
+        // Trim excess if any stat was somehow above the 33-point cap
+        for (const k of ALLY_STAT_KEYS) {
+          if (currentSpent <= maxTotalPoints) break;
+          const cur = this.stats[k] || 0;
+          const trim = Math.min(cur, currentSpent - maxTotalPoints);
+          this.stats[k] = cur - trim;
+          currentSpent -= trim;
+        }
+      }
+
+      let remaining = Math.max(0, maxTotalPoints - currentSpent);
+      const effectiveRole = (this.activeChassis === 'basic')
+        ? this.preferredEarlyRole
+        : inferChassisRole(this.activeChassis);
+      const { map: targetMap, priority } = getDesiredStatMapForRole(effectiveRole, this.telemetry);
+
+      let safety = 0;
+      while (remaining > 0 && safety < 120) {
+        safety++;
+        let invested = false;
+        for (const statKey of priority) {
+          if (remaining <= 0) break;
+          if (blockBullets && smasherRules.blockedStats.includes(statKey)) continue;
+          const desired = Math.min(maxCap, targetMap[statKey] || 0);
+          if ((this.stats[statKey] || 0) < desired) {
+            this.stats[statKey]++;
+            remaining--;
+            invested = true;
+          }
+        }
+        if (!invested) break;
+      }
+
+      const fallbackOrder = blockBullets
+        ? ['bodyDamage', 'maxHp', 'moveSpeed', 'regenRate']
+        : ['maxHp', 'bodyDamage', 'reloadSpeed', 'moveSpeed', 'shellPenetration', 'shellDamage', 'shellSpeed', 'regenRate'];
+
+      while (remaining > 0) {
+        let invested = false;
+        for (const statKey of fallbackOrder) {
+          if (remaining <= 0) break;
+          if (blockBullets && smasherRules.blockedStats.includes(statKey)) continue;
+          if ((this.stats[statKey] || 0) < maxCap) {
+            this.stats[statKey]++;
+            remaining--;
+            invested = true;
+          }
+        }
+        if (!invested) break;
+      }
+    }
+
+    syncUnitChassisAndStats({
+      unit: this,
+      weaponSys: this.weaponSys,
+      chassisKey: this.activeChassis,
+      level: this.level,
+      stats: this.stats,
+      crewLevels,
+      godMode: Boolean(godMode || this.godMode)
+    });
+  }
+
   syncLevelAndProgression(targetLevel, unlockedChassis = ['basic'], crewLevels = {}, godMode = false, playerChassis = 'basic', allAllies = [], waveNumber = 1) {
     if (this.dead || this.destroyed) return;
     const prevLevel = this.level;
     this.level = Math.max(1, targetLevel || 1);
+    const effectiveGodMode = Boolean(godMode || this.godMode);
+    this.godMode = effectiveGodMode;
 
     const unlockedSet = new Set(['basic', ...(unlockedChassis || [])]);
 
-    // Check adaptive evolutions sequentially in case level skipped multiple tiers
+    // Check adaptive evolutions sequentially unless locked by admin override
     let evolvedName = null;
-    for (let step = 0; step < 3; step++) {
-      const nextStep = this.chooseAdaptiveEvolution(unlockedSet, playerChassis, allAllies, waveNumber);
-      if (!nextStep || !unlockedSet.has(nextStep)) break;
-
-      this.activeChassis = nextStep;
-      this.currentRole = inferChassisRole(nextStep);
-      const newCfg = CONFIG.CHASSIS[nextStep];
-      const smasherRules = CONFIG.PLAYER.smasherRules;
-      const blockBullets = newCfg?.statRules ? Boolean(newCfg.statRules.blockBulletStats) : (nextStep === 'smasher');
-      if (blockBullets) {
-        smasherRules.blockedStats.forEach(k => {
-          this.stats[k] = 0;
-        });
+    if (this.adminLockedChassis && CONFIG.CHASSIS[this.adminLockedChassis]) {
+      if (this.activeChassis !== this.adminLockedChassis) {
+        this.activeChassis = this.adminLockedChassis;
+        this.currentRole = inferChassisRole(this.adminLockedChassis);
+        this.weaponSys.loadChassisConfig(this.adminLockedChassis);
       }
-      this.weaponSys.loadChassisConfig(nextStep);
-      evolvedName = newCfg?.name || nextStep;
-    }
+    } else {
+      for (let step = 0; step < 3; step++) {
+        const nextStep = this.chooseAdaptiveEvolution(unlockedSet, playerChassis, allAllies, waveNumber);
+        if (!nextStep || !unlockedSet.has(nextStep)) break;
 
-    if (evolvedName && prevLevel > 1) {
-      AllyCommunicationSystem.tryBroadcast(
-        this,
-        allAllies.length ? allAllies : [this],
-        'EVOLVED',
-        false,
-        2.1,
-        false,
-        { chassisName: evolvedName }
-      );
+        this.activeChassis = nextStep;
+        this.currentRole = inferChassisRole(nextStep);
+        const newCfg = CONFIG.CHASSIS[nextStep];
+        const smasherRules = CONFIG.PLAYER.smasherRules;
+        const blockBullets = newCfg?.statRules ? Boolean(newCfg.statRules.blockBulletStats) : (nextStep === 'smasher');
+        if (blockBullets) {
+          smasherRules.blockedStats.forEach(k => {
+            this.stats[k] = 0;
+          });
+        }
+        this.weaponSys.loadChassisConfig(nextStep);
+        evolvedName = newCfg?.name || nextStep;
+      }
+
+      if (evolvedName && prevLevel > 1) {
+        AllyCommunicationSystem.tryBroadcast(
+          this,
+          allAllies.length ? allAllies : [this],
+          'EVOLVED',
+          false,
+          2.1,
+          false,
+          { chassisName: evolvedName }
+        );
+      }
     }
 
     // Determine active build profile dynamically from current chassis role + early leaning
@@ -649,7 +823,7 @@ export class AllyTank {
     const currentSpent = ALLY_STAT_KEYS.reduce((sum, k) => sum + (this.stats[k] || 0), 0);
     let available = Math.max(0, totalEarned - currentSpent);
 
-    if (available > 0) {
+    if (!this.adminLockedStats && available > 0) {
       const chassisCfg = CONFIG.CHASSIS[this.activeChassis] || {};
       const smasherRules = CONFIG.PLAYER.smasherRules;
       const statRules = chassisCfg.statRules || null;
@@ -703,7 +877,7 @@ export class AllyTank {
       level: this.level,
       stats: this.stats,
       crewLevels,
-      godMode
+      godMode: effectiveGodMode
     });
   }
 
@@ -729,7 +903,7 @@ export class AllyTank {
   }
 
   takeDamage(amount, attacker = null, waveMgr = null, allAllies = []) {
-    if (this.dead || this.isDying || this.isDowned || this.dashTimer > 0 || this.iFrameTimer > 0) return;
+    if (this.dead || this.isDying || this.isDowned || this.dashTimer > 0 || this.iFrameTimer > 0 || this.godMode) return;
 
     const chassisCfg = CONFIG.CHASSIS[this.activeChassis] || {};
     const resistance = chassisCfg.damageResistance !== undefined ? chassisCfg.damageResistance : 1.0;
@@ -761,7 +935,7 @@ export class AllyTank {
   }
 
   enterDownedState(waveMgr = null, allAllies = []) {
-    if (this.dead || this.isDying || this.isDowned) return;
+    if (this.dead || this.isDying || this.isDowned || this.godMode) return;
     this.hp = 0;
     this.isDowned = true;
     this.downedTimer = CONFIG.ALLIES.bleedoutDuration || 15.0;
@@ -788,7 +962,7 @@ export class AllyTank {
     this.downedTimer = 0;
     this.reviveProgress = 0;
     this.isBeingRevived = false;
-    this.hp = Math.max(1, Math.round(this.maxHp * (CONFIG.ALLIES.reviveHpRatio || 0.5)));
+    this.hp = this.godMode ? Infinity : Math.max(1, Math.round(this.maxHp * (CONFIG.ALLIES.reviveHpRatio || 0.5)));
     this.iFrameTimer = CONFIG.ALLIES.iFrameAfterRevive || 2.0;
     this.timeSinceLastDamage = 0;
     this.isRetreatingToHeal = false;
@@ -858,12 +1032,12 @@ export class AllyTank {
       playerLevel,
       unlockedChassis,
       crewLevels,
-      false,
+      this.godMode,
       playerChassis,
       allAllies,
       waveMgr?.waveNumber || 1
     );
-    this.hp = this.maxHp;
+    this.hp = this.godMode ? Infinity : this.maxHp;
 
     if (waveMgr && typeof waveMgr.spawnShatterParticles === 'function') {
       waveMgr.spawnShatterParticles(this.x, this.y, this.fillColor || '#34d399', 16);
@@ -954,7 +1128,10 @@ export class AllyTank {
   }
 
   update(dt, ctx) {
-    const { player, allies, enemies, shapes, enemyBullets, waveMgr, squadStance = 'AUTO', crewLevels = {} } = ctx;
+    const { player, allies, enemies, shapes, enemyBullets, waveMgr, squadStance = 'AUTO', crewLevels = {}, allyGodMode } = ctx;
+    if (allyGodMode !== undefined) {
+      this.godMode = Boolean(allyGodMode);
+    }
 
     if (this.chatCooldown > 0) this.chatCooldown -= dt;
     if (this.moraleCommentCooldown > 0) this.moraleCommentCooldown -= dt;
@@ -1017,13 +1194,24 @@ export class AllyTank {
 
     // Downed State Update
     if (this.isDowned) {
-      this.vx *= Math.max(0, 1 - 6.0 * dt);
-      this.vy *= Math.max(0, 1 - 6.0 * dt);
-      this.x += this.vx * dt;
-      this.y += this.vy * dt;
-      this.cloakAlpha = 1.0;
+      if (this.godMode) {
+        this.isDowned = false;
+        this.downedTimer = 0;
+        this.reviveProgress = 0;
+        this.isBeingRevived = false;
+        this.maxHp = Infinity;
+        this.hp = Infinity;
+        this.isRetreatingToHeal = false;
+        this.currentTask = 'ESCORT';
+      } else {
+        this.vx *= Math.max(0, 1 - 6.0 * dt);
+        this.vy *= Math.max(0, 1 - 6.0 * dt);
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.cloakAlpha = 1.0;
 
-      return;
+        return;
+      }
     }
 
     // Active Unit Timers & Regeneration
@@ -1042,7 +1230,7 @@ export class AllyTank {
 
     const regenStat = this.stats.regenRate || 0;
     const regenRate = CONFIG.PLAYER.baseRegenRate + (regenStat * CONFIG.PLAYER.regenRatePerPoint);
-    if (this.timeSinceLastDamage >= CONFIG.PLAYER.regenDelay || regenStat > 0) {
+    if (Number.isFinite(this.maxHp) && (this.timeSinceLastDamage >= CONFIG.PLAYER.regenDelay || regenStat > 0)) {
       const activeRegen = (this.timeSinceLastDamage >= CONFIG.PLAYER.regenDelay)
         ? (regenRate * CONFIG.PLAYER.outOfCombatRegenMult)
         : regenRate;
@@ -1064,7 +1252,9 @@ export class AllyTank {
     this.strafePhase += dt * 1.65;
     this.aimNoisePhase += dt * 2.4;
 
-    const hpRatio = this.hp / Math.max(1, this.maxHp);
+    const hpRatio = (!Number.isFinite(this.hp) || !Number.isFinite(this.maxHp))
+      ? 1.0
+      : (this.hp / Math.max(1, this.maxHp));
     const isRammer = this.isRammerBuild();
     const isDrone = Boolean(this.weaponSys.isDroneClass || this.weaponSys.infectSquares);
     const isSniper = ['sniper', 'assassin', 'ranger', 'stalker', 'hunter', 'predator'].includes(this.activeChassis);
@@ -2029,11 +2219,11 @@ export class AllyTank {
       level: this.level,
       stats: this.stats,
       crewLevels,
-      godMode: false
+      godMode: Boolean(allyGodMode || this.godMode)
     });
   }
 
-  draw(canvasMgr) {
+  draw(canvasMgr, showOverlays = true) {
     if (this.destroyed) return;
     const ctx = canvasMgr.ctx;
 
@@ -2147,32 +2337,46 @@ export class AllyTank {
       }
     }
 
-    if (!this.isDying) {
-      if (this.dashTimer > 0) {
-        const dashProgress = Math.max(0, this.dashTimer / (CONFIG.WEAPONS.smasherDashDuration || 0.45));
-        const ringRadius = radius * (1.15 + (1.0 - dashProgress) * 0.7);
-        ctx.save();
-        ctx.globalAlpha = dashProgress * 0.85;
-        ctx.strokeStyle = '#00ffff';
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
+    if (showOverlays) {
+      this.drawOverlays(canvasMgr);
+    }
+  }
 
+  drawOverlays(canvasMgr) {
+    if (this.isDying) return;
+    if (!this.isDowned && this.iFrameTimer > 0 && Math.floor(performance.now() / 50) % 2 === 0) {
+      return;
+    }
+
+    const ctx = canvasMgr.ctx;
+    const chassis = CONFIG.CHASSIS[this.activeChassis] || CONFIG.CHASSIS.basic;
+    const { x, y, radius } = this;
+    const cloakAlpha = this.isDowned ? 1.0 : (this.cloakAlpha !== undefined ? this.cloakAlpha : 1.0);
+
+    if (this.dashTimer > 0) {
+      const dashProgress = Math.max(0, this.dashTimer / (CONFIG.WEAPONS.smasherDashDuration || 0.45));
+      const ringRadius = radius * (1.15 + (1.0 - dashProgress) * 0.7);
       ctx.save();
-      ctx.globalAlpha = 1.0;
-      const label = `${this.name} · ${chassis.name}`;
-      canvasMgr.drawPlayerNameAbove(x, y, label, radius);
-      if (!this.isDowned) {
-        canvasMgr.drawPlayerHealthBar(x, y, this.hp, this.maxHp, radius);
-      }
+      ctx.globalAlpha = dashProgress * 0.85;
+      ctx.strokeStyle = '#00ffff';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.restore();
+    }
 
-      if (this.chatText && this.chatTimer > 0) {
-        this.drawSpeechBubble(ctx, Math.max(0.8, cloakAlpha));
-      }
+    ctx.save();
+    ctx.globalAlpha = 1.0;
+    const label = `${this.name} · ${chassis.name}`;
+    canvasMgr.drawPlayerNameAbove(x, y, label, radius);
+    if (!this.isDowned) {
+      canvasMgr.drawPlayerHealthBar(x, y, this.hp, this.maxHp, radius);
+    }
+    ctx.restore();
+
+    if (this.chatText && this.chatTimer > 0) {
+      this.drawSpeechBubble(ctx, Math.max(0.8, cloakAlpha));
     }
   }
 

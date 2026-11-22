@@ -23,7 +23,11 @@ const ENEMY_DESCRIPTIONS = {
   phantom: 'Cloaked thruster unit that accelerates into a direct ramming charge at close range.',
   guardian: 'Massive pink triangular boss carrying a rear spawner that deploys swarms of fast pink drones.',
   summoner: 'Massive yellow square boss carrying four side spawners that deploy swarms of peach square drones.',
-  defender: 'Massive red triangular boss with three high-reload side trap launchers and three corner-mounted auto turrets.'
+  defender: 'Massive red triangular boss with three high-reload side trap launchers and three corner-mounted auto turrets.',
+  fallen_booster: 'Massive light-gray circular boss modeled after the Booster, propelled into relentless ramming charges by four staggered rear thrusters.',
+  fallen_overlord: 'Massive light-gray circular boss modeled after the Overlord, slowly deploying up to 24 powerful gray drones from four wide spawners.',
+  hivemind: 'Massive green hexagonal boss armed with three Drone spawners, three Small Drone spawners, and a spinning three-barrel center auto cannon.',
+  alpha: 'Massive blue circular boss armed with a front Destroyer cannon, an inner Basic auto-cannon, two angled side cannons, and two rear drone spawners.'
 };
 
 const ROLE_LABELS = {
@@ -37,7 +41,11 @@ const ROLE_LABELS = {
   phantom: 'Stealth Charger',
   boss_guardian: 'Boss · Drone Carrier',
   boss_summoner: 'Boss · Drone Carrier',
-  boss_defender: 'Boss · Trap Fortress'
+  boss_defender: 'Boss · Trap Fortress',
+  boss_fallen_booster: 'Boss · Thruster Rammer',
+  boss_fallen_overlord: 'Boss · Heavy Drone Carrier',
+  boss_hivemind: 'Boss · Swarm Carrier',
+  boss_alpha: 'Boss · Assault Carrier'
 };
 
 function escapeHtml(value) {
@@ -905,7 +913,9 @@ export class EnemyGlossaryController {
         const my = Math.sin(mountAngle) * xOff + Math.cos(mountAngle) * yOff;
         let aimAngle = mountAngle;
 
-        if (this.hasPointer && this.previewCanvas) {
+        if (turret.autoSpinSpeed) {
+          aimAngle = mountAngle + this.swayTime * turret.autoSpinSpeed;
+        } else if (this.hasPointer && this.previewCanvas) {
           const rect = this.previewCanvas.getBoundingClientRect();
           const worldX = rect.left + cx + mx;
           const worldY = rect.top + cy + my;

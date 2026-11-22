@@ -166,8 +166,9 @@ export class EnemyUnit {
     this.chatCooldown = 2.5 + Math.random() * 3.5;
     this.allEnemiesRef = null;
 
-    this.morale = 55;
-    this.moraleState = 'NORMAL';
+    const isFearless = this.isBoss || Boolean(this.config?.neverRetreat || this.config?.ai?.neverRetreat);
+    this.morale = isFearless ? 100 : 55;
+    this.moraleState = isFearless ? 'HIGH' : 'NORMAL';
     this.moraleCommentCooldown = 2.0 + Math.random() * 3.0;
     this.cautiousOrbitDir = (Math.random() < 0.5) ? 1 : -1;
     this.cautiousOrbitTimer = 1.5 + Math.random() * 2.0;
@@ -358,9 +359,9 @@ export class EnemyUnit {
   }
 
   addMorale(delta) {
-    if (this.isBoss) {
-      this.morale = 75;
-      this.moraleState = 'NORMAL';
+    if (this.isBoss || this.config?.neverRetreat || this.config?.ai?.neverRetreat) {
+      this.morale = 100;
+      this.moraleState = 'HIGH';
       return;
     }
     this.morale = Math.max(0, Math.min(100, this.morale + delta));
@@ -620,7 +621,7 @@ export class EnemyUnit {
       const aDistSq = adx * adx + ady * ady;
       if (aDistSq < minAllyDistSq) minAllyDistSq = aDistSq;
 
-      if (aDistSq < desiredSepSq && aDistSq > 0.001) {
+      if (aDistSq < desiredSepSq && aDistSq > 0.001 && (!this.isBoss || ally.isBoss)) {
         const aDist = Math.sqrt(aDistSq);
         const force = (desiredSep - aDist) / desiredSep;
         sepX += (adx / aDist) * force;
@@ -664,45 +665,53 @@ export class EnemyUnit {
     const isInPlayerFiringCone = (aimDiffWithPlayer < 0.52 && dist < 480);
     const isStranded = (livingAlliesTotal > 0 && minAllyDist > 420);
 
-    let moraleRate = 0;
-    if (this.morale < 65) moraleRate += 0.8;
-    if (livingAlliesTotal >= 5) moraleRate += 1.4;
-    else if (livingAlliesTotal >= 3) moraleRate += 0.6;
-    else if (livingAlliesTotal === 1) moraleRate -= 0.2;
-    else if (livingAlliesTotal === 0) moraleRate -= 0.5;
+    if (this.isBoss || this.config?.neverRetreat || this.config?.ai?.neverRetreat) {
+      this.morale = 100;
+      this.moraleState = 'HIGH';
+      this.isRetreating = false;
+      this.isLastStand = false;
+      this.isEvading = false;
+    } else {
+      let moraleRate = 0;
+      if (this.morale < 65) moraleRate += 0.8;
+      if (livingAlliesTotal >= 5) moraleRate += 1.4;
+      else if (livingAlliesTotal >= 3) moraleRate += 0.6;
+      else if (livingAlliesTotal === 1) moraleRate -= 0.2;
+      else if (livingAlliesTotal === 0) moraleRate -= 0.5;
 
-    if (hasLivingHeavy) moraleRate += 0.6;
-    else if (allEnemies.length > 2 && this.archetypeKey !== 'heavy') moraleRate -= 0.15;
+      if (hasLivingHeavy) moraleRate += 0.6;
+      else if (allEnemies.length > 2 && this.archetypeKey !== 'heavy') moraleRate -= 0.15;
 
-    if (friendlyHeavy && closestHeavyDist < 180 && (dist > closestHeavyDist)) moraleRate += 0.8;
-    if (aimDiffWithPlayer > 1.8) moraleRate += 0.6;
-    if (isStranded) moraleRate -= 0.5;
-    if (isInPlayerFiringCone && dist < 175) moraleRate -= 0.6;
-    if (isPlayerWounded) moraleRate += 1.2;
-    if (isLowHealth) moraleRate -= 0.5;
+      if (friendlyHeavy && closestHeavyDist < 180 && (dist > closestHeavyDist)) moraleRate += 0.8;
+      if (aimDiffWithPlayer > 1.8) moraleRate += 0.6;
+      if (isStranded) moraleRate -= 0.5;
+      if (isInPlayerFiringCone && dist < 175) moraleRate -= 0.6;
+      if (isPlayerWounded) moraleRate += 1.2;
+      if (isLowHealth) moraleRate -= 0.5;
 
-    this.addMorale(moraleRate * dt);
+      this.addMorale(moraleRate * dt);
 
-    this.moraleCommentCooldown -= dt;
-    if (this.moraleCommentCooldown <= 0) {
-      this.moraleCommentCooldown = 2.5 + Math.random() * 3.5;
-      if (this.isLastStand) {
-        EnemyCommunicationSystem.tryBroadcast(this, 'LAST_STAND');
-      } else if (this.isRetreating || this.moraleState === 'TERRIFIED') {
-        EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
-      } else if (this.moraleState === 'HIGH') {
-        EnemyCommunicationSystem.tryBroadcast(this, Math.random() < 0.65 ? 'TAUNT' : 'CHEER');
-      } else if (this.moraleState === 'LOW') {
-        EnemyCommunicationSystem.tryBroadcast(this, Math.random() < 0.60 ? 'ORDER_BACK_UP' : 'JEER');
+      this.moraleCommentCooldown -= dt;
+      if (this.moraleCommentCooldown <= 0) {
+        this.moraleCommentCooldown = 2.5 + Math.random() * 3.5;
+        if (this.isLastStand) {
+          EnemyCommunicationSystem.tryBroadcast(this, 'LAST_STAND');
+        } else if (this.isRetreating || this.moraleState === 'TERRIFIED') {
+          EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
+        } else if (this.moraleState === 'HIGH') {
+          EnemyCommunicationSystem.tryBroadcast(this, Math.random() < 0.65 ? 'TAUNT' : 'CHEER');
+        } else if (this.moraleState === 'LOW') {
+          EnemyCommunicationSystem.tryBroadcast(this, Math.random() < 0.60 ? 'ORDER_BACK_UP' : 'JEER');
+        }
       }
-    }
 
-    const remainingEnemiesTotal = this.remainingWaveEnemies;
+      const remainingEnemiesTotal = this.remainingWaveEnemies;
 
-    if (!this.isRetreating && !this.isLastStand) {
-      const retreatStartCount = CONFIG.WAVE?.retreatStartCount ?? 10;
-      if (remainingEnemiesTotal <= retreatStartCount || (this.moraleState === 'TERRIFIED' && this.morale < 15)) {
-        this.decideDesperationState(remainingEnemiesTotal);
+      if (!this.isRetreating && !this.isLastStand) {
+        const retreatStartCount = CONFIG.WAVE?.retreatStartCount ?? 10;
+        if (remainingEnemiesTotal <= retreatStartCount || (this.moraleState === 'TERRIFIED' && this.morale < 15)) {
+          this.decideDesperationState(remainingEnemiesTotal);
+        }
       }
     }
 
@@ -763,7 +772,8 @@ export class EnemyUnit {
       if (this.evadeThreatTimer <= 0) this.evadeCommitSide = 0;
     }
 
-    if (this.config.ai && this.config.ai.evasion && playerProjectiles && playerProjectiles.length > 0) {
+    const canEvade = !this.isBoss && !this.config?.neverRetreat && !this.config?.ai?.neverRetreat;
+    if (canEvade && this.config.ai && this.config.ai.evasion && playerProjectiles && playerProjectiles.length > 0) {
       const maxThreatDist = isRanged ? (this.config.ai.evasionDangerDist || 210) : 180;
       const canAttemptDodge = !isRanged || this.isEvading || (this.dodgeCooldown <= 0);
 
@@ -882,7 +892,7 @@ export class EnemyUnit {
         }
       }
 
-      const sepWeight = (this.config.ai && this.config.ai.separationWeight) ? this.config.ai.separationWeight : 1.0;
+      const sepWeight = (this.config.ai && this.config.ai.separationWeight !== undefined) ? this.config.ai.separationWeight : 1.0;
       const effSepWeight = (isRanged && dist < (this.config.ai?.kitingDistance || 350))
         ? (sepWeight * 0.35)
         : sepWeight;
@@ -1098,7 +1108,7 @@ export class EnemyUnit {
     }
   }
 
-  draw(canvasMgr) {
+  draw(canvasMgr, showOverlays = true) {
     const deathAlpha = this.isDying ? Math.max(0, 1.0 - (this.deathTimer / this.deathDuration)) : 1.0;
     const cloakAlpha = (this.cloakAlpha !== undefined) ? this.cloakAlpha : 1.0;
     const unitAlpha = Math.max(0, Math.min(1.0, deathAlpha * cloakAlpha));
@@ -1229,16 +1239,25 @@ export class EnemyUnit {
       canvasMgr.ctx.restore();
     }
 
-    if (!this.isDying && this.isReloadingMag && this.magReloadDuration > 0 && cloakAlpha > 0.002) {
-      this.drawReloadBar(canvasMgr.ctx, cloakAlpha);
+    if (showOverlays) {
+      this.drawOverlays(canvasMgr.ctx);
+    }
+  }
+
+  drawOverlays(ctx) {
+    const cloakAlpha = (this.cloakAlpha !== undefined) ? this.cloakAlpha : 1.0;
+    if (this.isDying || cloakAlpha <= 0.002) return;
+
+    if (this.isReloadingMag && this.magReloadDuration > 0) {
+      this.drawReloadBar(ctx, cloakAlpha);
     }
 
-    if (!this.isDying && this.hp < this.maxHp && cloakAlpha > 0.002) {
-      this.drawHealthBar(canvasMgr.ctx, cloakAlpha);
+    if (this.hp < this.maxHp) {
+      this.drawHealthBar(ctx, cloakAlpha);
     }
 
-    if (this.chatText && this.chatTimer > 0 && cloakAlpha > 0.002) {
-      this.drawSpeechBubble(canvasMgr.ctx, cloakAlpha);
+    if (this.chatText && this.chatTimer > 0) {
+      this.drawSpeechBubble(ctx, cloakAlpha);
     }
   }
 

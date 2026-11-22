@@ -233,7 +233,7 @@ export const SPECIALIZED_ENEMIES_CONFIG = {
     turrets: [
       {
         width: 11,
-        length: 36,
+        length: 24,
         frontWidth: 11,
         angleOffset: Math.PI - 0.30,
         xOffset: 0,
@@ -245,7 +245,7 @@ export const SPECIALIZED_ENEMIES_CONFIG = {
 
       {
         width: 11,
-        length: 36,
+        length: 24,
         frontWidth: 11,
         angleOffset: Math.PI + 0.30,
         xOffset: 0,

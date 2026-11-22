@@ -470,11 +470,9 @@ export class SettingsPreviewController {
     }
     ctx.stroke();
 
-    // Decorative arena shapes
-    const bob1 = Math.sin(this.swayTime * 1.1) * 4;
-    const bob2 = Math.cos(this.swayTime * 0.9) * 4;
-    drawPreviewPolygon(ctx, x + cardW * 0.2, y + cardH * 0.28 + bob1, 13, 4, this.spinAngle * 0.4, '#ffe869', '#bfa642', 2.6);
-    drawPreviewPolygon(ctx, x + cardW * 0.82, y + cardH * 0.72 + bob2, 14, 3, -this.spinAngle * 0.5, '#fc7677', '#bd5354', 2.6);
+    const previewShadows = (this.currentItem.kind === 'shadows')
+      ? Boolean(this.currentItem.shadows)
+      : (typeof this.ui.storage?.data?.settings?.shadows === 'boolean' ? this.ui.storage.data.settings.shadows : true);
 
     const activeColorKey = this.ui.storage?.data?.activeColor || 'default';
     let fillColor = (activeColorKey === 'custom')
@@ -491,24 +489,76 @@ export class SettingsPreviewController {
 
     const scaleMult = this.currentItem.kind === 'scale' ? (this.currentItem.scale || 1.0) : 1.0;
 
-    // Tank inside the preview arena
     const cx = x + cardW * 0.5;
     const cy = y + cardH * 0.52;
     const tankR = (this.currentItem.kind === 'scale' ? 20 : 25) * (0.85 + 0.15 * scaleMult);
     const barrelLen = tankR * 1.9;
     const barrelW = tankR * 0.84;
 
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(this.tankAngle);
-    ctx.fillStyle = '#999999';
-    ctx.strokeStyle = '#666666';
-    ctx.lineWidth = 3;
-    ctx.fillRect(0, -barrelW * 0.5, barrelLen, barrelW);
-    ctx.strokeRect(0, -barrelW * 0.5, barrelLen, barrelW);
-    ctx.restore();
+    const drawArenaEntities = (targetCtx) => {
+      // Decorative arena shapes
+      const bob1 = Math.sin(this.swayTime * 1.1) * 4;
+      const bob2 = Math.cos(this.swayTime * 0.9) * 4;
+      drawPreviewPolygon(targetCtx, x + cardW * 0.2, y + cardH * 0.28 + bob1, 13, 4, this.spinAngle * 0.4, '#ffe869', '#bfa642', 2.6);
+      drawPreviewPolygon(targetCtx, x + cardW * 0.82, y + cardH * 0.72 + bob2, 14, 3, -this.spinAngle * 0.5, '#fc7677', '#bd5354', 2.6);
 
-    drawPreviewPolygon(ctx, cx, cy, tankR, 0, this.tankAngle, fillColor, strokeColor, 3.2);
+      // Tank inside the preview arena
+      targetCtx.save();
+      targetCtx.translate(cx, cy);
+      targetCtx.rotate(this.tankAngle);
+      targetCtx.fillStyle = '#999999';
+      targetCtx.strokeStyle = '#666666';
+      targetCtx.lineWidth = 3;
+      targetCtx.fillRect(0, -barrelW * 0.5, barrelLen, barrelW);
+      targetCtx.strokeRect(0, -barrelW * 0.5, barrelLen, barrelW);
+      targetCtx.restore();
+
+      drawPreviewPolygon(targetCtx, cx, cy, tankR, 0, this.tankAngle, fillColor, strokeColor, 3.2);
+    };
+
+    if (previewShadows) {
+      if (!this._previewEntityCanvas) {
+        this._previewEntityCanvas = document.createElement('canvas');
+        this._previewEntityCtx = this._previewEntityCanvas.getContext('2d');
+      }
+      const pw = this.previewCanvas.width;
+      const ph = this.previewCanvas.height;
+      if (this._previewEntityCanvas.width !== pw || this._previewEntityCanvas.height !== ph) {
+        this._previewEntityCanvas.width = pw;
+        this._previewEntityCanvas.height = ph;
+      }
+      const pctx = this._previewEntityCtx;
+      pctx.setTransform(1, 0, 0, 1, 0, 0);
+      pctx.clearRect(0, 0, pw, ph);
+      pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawArenaEntities(pctx);
+
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const sx = -5 * dpr;
+      const sy = 6 * dpr;
+      const by = 7 * dpr;
+      const br = 12 * dpr;
+      if (typeof ctx.filter === 'string') {
+        ctx.filter = `drop-shadow(${sx.toFixed(1)}px ${sy.toFixed(1)}px 0px rgba(0, 0, 0, 0.42)) drop-shadow(0px ${by.toFixed(1)}px ${br.toFixed(1)}px rgba(0, 0, 0, 0.28))`;
+        ctx.drawImage(this._previewEntityCanvas, 0, 0);
+        ctx.filter = 'none';
+      } else {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
+        ctx.shadowBlur = br;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = by;
+        ctx.drawImage(this._previewEntityCanvas, 0, 0);
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.42)';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = sx;
+        ctx.shadowOffsetY = sy;
+        ctx.drawImage(this._previewEntityCanvas, 0, 0);
+      }
+      ctx.restore();
+    } else {
+      drawArenaEntities(ctx);
+    }
 
     // If previewing HUD scale, render miniature scaled HUD elements inside the viewport
     if (this.currentItem.kind === 'scale') {
@@ -816,6 +866,36 @@ function buildRefreshRatePreviewData(ui, refreshVal) {
   };
 }
 
+function buildShadowsPreviewData(ui, shadowsVal) {
+  const enabled = Boolean(shadowsVal);
+  const activeShadows = (typeof ui.storage?.data?.settings?.shadows === 'boolean')
+    ? ui.storage.data.settings.shadows
+    : true;
+  const isActive = activeShadows === enabled;
+  return {
+    kind: 'shadows',
+    key: `shadows-${enabled ? 'on' : 'off'}`,
+    shadows: enabled,
+    name: `Arena Shadows · ${enabled ? 'ON' : 'OFF'}`,
+    metaText: enabled ? 'Visual Polish · Cartoony + Soft Blur' : 'Visual Polish · Flat Classic Arena',
+    desc: enabled
+      ? 'Adds crisp cartoony drop shadows paired with soft ambient blur beneath tanks, shapes, and projectiles—matching the main menu style.'
+      : 'Disables in-game entity drop shadows for flat classic rendering and maximum raw frame-time efficiency.',
+    btnClass: isActive ? 'equipped' : 'equip-ready',
+    btnHtml: isActive ? (enabled ? 'SHADOWS ON' : 'SHADOWS OFF') : (enabled ? 'ENABLE SHADOWS' : 'DISABLE SHADOWS'),
+    btnDisabled: isActive,
+    onAction: () => {
+      if (isActive) return;
+      const currentTheme = ui.storage.data.settings?.theme || 'light';
+      const currentScale = parseFloat(ui.storage.data.settings?.uiScale || 1.0);
+      const currentHz = normalizeRefreshRate(ui.storage.data.settings?.refreshRate || 240);
+      ui.storage.saveSettings(currentTheme, currentScale, currentHz, enabled);
+      ui.applySettings();
+      ui.showToast(`ARENA SHADOWS ${enabled ? 'ENABLED' : 'DISABLED'}`);
+    }
+  };
+}
+
 function buildControlPreviewData(ui, controlKey) {
   const item = CONTROL_ITEMS[controlKey] || CONTROL_ITEMS.move;
   const isEsc = controlKey === 'esc';
@@ -857,6 +937,11 @@ function selectActiveTabDefaultPreview(ui, { animate = false } = {}) {
     document.querySelectorAll('#settings-modal .is-preview-active').forEach(el => el.classList.remove('is-preview-active'));
     refreshCard?.classList.add('is-preview-active');
     controller.setPreviewItem(buildRefreshRatePreviewData(ui, savedDisplay.refreshRate), { animate });
+  } else if (savedDisplay?.kind === 'shadows') {
+    const shadowsCard = document.getElementById('settings-shadows-card');
+    document.querySelectorAll('#settings-modal .is-preview-active').forEach(el => el.classList.remove('is-preview-active'));
+    shadowsCard?.classList.add('is-preview-active');
+    controller.setPreviewItem(buildShadowsPreviewData(ui, savedDisplay.shadows), { animate });
   } else {
     const themeKey = savedDisplay?.themeKey || ui.storage?.data?.settings?.theme || 'light';
     const card = document.getElementById(themeKey === 'dark' ? 'theme-card-dark' : 'theme-card-light');
@@ -870,11 +955,14 @@ export function syncSettingsView(ui) {
   const theme = ui.storage?.data?.settings?.theme || 'light';
   const scale = parseFloat(ui.storage?.data?.settings?.uiScale || 1.0);
   const hz = normalizeRefreshRate(ui.storage?.data?.settings?.refreshRate || 240);
+  const shadowsEnabled = (typeof ui.storage?.data?.settings?.shadows === 'boolean')
+    ? ui.storage.data.settings.shadows
+    : true;
   const pct = Math.round(scale * 100);
 
   const summaryEl = document.getElementById('settings-header-summary');
   if (summaryEl) {
-    summaryEl.textContent = `${theme === 'light' ? 'LIGHT' : 'DARK'} · ${pct}% · ${hz}Hz`;
+    summaryEl.textContent = `${theme === 'light' ? 'LIGHT' : 'DARK'} · ${pct}% · ${hz}Hz · SHADOWS ${shadowsEnabled ? 'ON' : 'OFF'}`;
   }
 
   const lightCard = document.getElementById('theme-card-light');
@@ -914,6 +1002,8 @@ export function syncSettingsView(ui) {
       controller.setPreviewItem(buildScalePreviewData(ui, controller.currentItem.scale), { animate: false });
     } else if (controller.currentItem.kind === 'refresh') {
       controller.setPreviewItem(buildRefreshRatePreviewData(ui, controller.currentItem.refreshRate), { animate: false });
+    } else if (controller.currentItem.kind === 'shadows') {
+      controller.setPreviewItem(buildShadowsPreviewData(ui, controller.currentItem.shadows), { animate: false });
     }
   }
   controller.syncSlantGeometry();
@@ -1081,7 +1171,7 @@ export function initSettingsUI(ui) {
     }
   });
 
-  document.querySelectorAll('.scale-chip-btn').forEach(chip => {
+  document.querySelectorAll('.scale-chip-btn[data-scale]').forEach(chip => {
     const scaleVal = parseFloat(chip.getAttribute('data-scale'));
     if (isNaN(scaleVal)) return;
 
@@ -1126,6 +1216,39 @@ export function initSettingsUI(ui) {
       ui.storage.saveSettings(currentTheme, currentScale, hz);
       ui.applySettings();
       ui.showToast(`REFRESH RATE SET TO ${hz}Hz`);
+    });
+  });
+
+  // Arena shadows card & chips dynamic hover + click
+  const shadowsCard = document.getElementById('settings-shadows-card');
+  const previewShadows = (shadowsVal) => {
+    const enabled = Boolean(shadowsVal);
+    ui.selectedSettingsPreviewByTab.display = { kind: 'shadows', shadows: enabled };
+    setActivePreviewCard(shadowsCard);
+    controller.setPreviewItem(buildShadowsPreviewData(ui, enabled), { animate: true });
+  };
+
+  shadowsCard?.addEventListener('mouseenter', () => {
+    const currentShadows = (typeof ui.storage?.data?.settings?.shadows === 'boolean')
+      ? ui.storage.data.settings.shadows
+      : true;
+    if (ui.selectedSettingsPreviewByTab.display?.kind !== 'shadows') {
+      previewShadows(currentShadows);
+    }
+  });
+
+  document.querySelectorAll('.shadows-chip-btn').forEach(chip => {
+    const shadowsVal = chip.getAttribute('data-shadows') === 'true';
+    chip.addEventListener('mouseenter', () => previewShadows(shadowsVal));
+    chip.addEventListener('focusin', () => previewShadows(shadowsVal));
+    chip.addEventListener('click', () => {
+      previewShadows(shadowsVal);
+      const currentTheme = ui.storage.data.settings?.theme || 'light';
+      const currentScale = parseFloat(ui.storage.data.settings?.uiScale || 1.0);
+      const currentHz = normalizeRefreshRate(ui.storage.data.settings?.refreshRate || 240);
+      ui.storage.saveSettings(currentTheme, currentScale, currentHz, shadowsVal);
+      ui.applySettings();
+      ui.showToast(`ARENA SHADOWS ${shadowsVal ? 'ENABLED' : 'DISABLED'}`);
     });
   });
 

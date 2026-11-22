@@ -10,6 +10,7 @@ import { HUDUpdater } from './hudUpdater.js';
 import { MobileControls } from './mobileControls.js';
 import {
   populateAdminChassisSelect,
+  populateAdminAllyChassisSelect,
   populateAdminShapeSelect,
   populateAdminEnemySelect,
   setupAdminPanelListeners
@@ -42,6 +43,7 @@ const state = {
   isPlaying: false,
   debugMode: false,
   godMode: false,
+  allyGodMode: false,
   autoFire: false,
   autoSpin: false,
   squadStance: 'AUTO',
@@ -255,12 +257,14 @@ async function initGame() {
 
   setupInputs();
   populateAdminChassisSelect(uiMgr);
+  populateAdminAllyChassisSelect(uiMgr);
   populateAdminShapeSelect(uiMgr);
   populateAdminEnemySelect(uiMgr);
   setupAdminPanelListeners({
     state,
     player,
     waveMgr,
+    storageMgr,
     uiMgr,
     setActiveChassis,
     addXP,
@@ -498,7 +502,7 @@ function loadAndStartGame() {
   state.squadHudMinimized = false;
   waveMgr.clearAll();
   waveMgr.startWave(1);
-  waveMgr.spawnAlliesForRun(player, storageMgr.data, state.level, state.activeChassis);
+  waveMgr.spawnAlliesForRun(player, storageMgr.data, state.level, state.activeChassis, state.allyGodMode);
   if (mobileControls) {
     mobileControls.setInGameVisible(true);
     mobileControls.syncToggleStates(state.autoFire, state.autoSpin);
@@ -604,7 +608,7 @@ function addXP(amount, isDirect = false) {
     if (waveMgr && waveMgr.allies && waveMgr.allies.length > 0) {
       const unlocked = storageMgr.data.unlockedChassis || ['basic'];
       const crew = storageMgr.data.crewLevels || {};
-      waveMgr.allies.forEach(a => a.syncLevelAndProgression(state.level, unlocked, crew, false, state.activeChassis, waveMgr.allies, waveMgr.waveNumber));
+      waveMgr.allies.forEach(a => a.syncLevelAndProgression(state.level, unlocked, crew, Boolean(state.allyGodMode || a.godMode), state.activeChassis, waveMgr.allies, waveMgr.waveNumber));
     }
   }
 }
@@ -1269,7 +1273,7 @@ function updatePlayer(dt) {
   }
 }
 
-function renderPlayerChassis() {
+function renderPlayerChassis(showOverlays = true) {
   if (state.isGameOver && !player.isDying) return;
 
   const { x, y, angle } = player;
@@ -1391,6 +1395,33 @@ function renderPlayerChassis() {
   } else {
     ctx.restore();
   }
+
+  if (showOverlays) {
+    renderPlayerOverlays();
+  }
+}
+
+function renderPlayerOverlays() {
+  if (state.isGameOver && !player.isDying) return;
+  if (!player.isDying && player.iFrameTimer > 0 && Math.floor(performance.now() / 50) % 2 === 0) {
+    return;
+  }
+
+  const { x, y } = player;
+  const cloakAlpha = player.isDowned ? 1.0 : ((player.cloakAlpha !== undefined) ? player.cloakAlpha : 1.0);
+  const stateAlpha = player.isDying
+    ? player.deathAlpha
+    : (player.isDowned ? 0.62 : (player.isSpawning ? player.spawnAlpha : 1.0));
+  const unitAlpha = Math.max(0, Math.min(1.0, stateAlpha * cloakAlpha));
+  if (unitAlpha <= 0.002) {
+    return;
+  }
+
+  const activeScale = player.isDying
+    ? player.deathScale
+    : (player.isSpawning ? player.spawnScale : 1.0);
+  const radius = player.radius * activeScale;
+  const ctx = canvasMgr.ctx;
 
   if (!player.isDying) {
     if (cloakAlpha > 0.12) {
@@ -1664,14 +1695,15 @@ function gameLoop(timestamp) {
       if (needsLevelSync) {
         const unlocked = storageMgr.data.unlockedChassis || ['basic'];
         const crew = storageMgr.data.crewLevels || {};
-        waveMgr.allies.forEach(a => a.syncLevelAndProgression(state.level, unlocked, crew, false, state.activeChassis, waveMgr.allies, waveMgr.waveNumber));
+        waveMgr.allies.forEach(a => a.syncLevelAndProgression(state.level, unlocked, crew, Boolean(state.allyGodMode || a.godMode), state.activeChassis, waveMgr.allies, waveMgr.waveNumber));
       }
     }
 
     waveMgr.update(dt, player, weaponSys, state.activeChassis, state.stats, {
       squadStance: state.squadStance,
       crewLevels: storageMgr.data.crewLevels,
-      playerLevel: state.level
+      playerLevel: state.level,
+      allyGodMode: state.allyGodMode
     });
 
     updateRevivesAndSquadWipe(dt);
@@ -1706,10 +1738,33 @@ function gameLoop(timestamp) {
     canvasMgr.clear();
     canvasMgr.drawGrid(camera, CONFIG.ARENA.gridSize);
 
-    canvasMgr.beginCamera(camera);
-    waveMgr.draw(canvasMgr);
-    weaponSys.draw(canvasMgr.ctx);
-    renderPlayerChassis();
+    if (canvasMgr.shadowsEnabled) {
+      canvasMgr.beginShadowEntityPass(camera);
+      waveMgr.draw(canvasMgr, { skipOverlays: true, skipParticles: true });
+      weaponSys.draw(canvasMgr.ctx);
+      renderPlayerChassis(false);
+      canvasMgr.endShadowEntityPass(camera);
+
+      canvasMgr.beginCamera(camera);
+      waveMgr.drawOverlays(canvasMgr);
+      renderPlayerOverlays();
+    } else {
+      canvasMgr.beginCamera(camera);
+      waveMgr.draw(canvasMgr);
+      weaponSys.draw(canvasMgr.ctx);
+      renderPlayerChassis(true);
+    }
+    if (state.debugMode && waveMgr?.enemies) {
+      for (let i = 0; i < waveMgr.enemies.length; i++) {
+        const e = waveMgr.enemies[i];
+        if (!e || e.dead || !e.isBoss) continue;
+        if ((e.sides || 0) >= 3) {
+          canvasMgr.drawDebugPolygon(e.x, e.y, e.radius, e.sides, (e.angle || 0) + (e.config?.bodyAngleOffset || 0), '#ff0055');
+        } else {
+          canvasMgr.drawDebugCircle(e.x, e.y, e.radius, '#ff0055');
+        }
+      }
+    }
     renderReviveIndicators(canvasMgr.ctx);
     canvasMgr.endCamera();
 

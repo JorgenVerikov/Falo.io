@@ -231,7 +231,7 @@ export class BossDrone {
     this.y += this.vy * dt;
   }
 
-  draw(canvasMgr) {
+  draw(canvasMgr, showOverlays = true) {
     const deathAlpha = this.isDying ? Math.max(0, 1.0 - (this.deathTimer / this.deathDuration)) : 1.0;
     if (deathAlpha <= 0.005) return;
 
@@ -253,6 +253,12 @@ export class BossDrone {
     );
     ctx.restore();
 
+    if (showOverlays) {
+      this.drawOverlays(ctx);
+    }
+  }
+
+  drawOverlays(ctx) {
     if (!this.isDying && this.hp < this.maxHp) {
       const width = this.radius * 2.0;
       const height = 4;
@@ -275,10 +281,11 @@ export function updateBossBehavior(unit, dt, ctx, out) {
   const ai = unit.config.ai || {};
   unit.isRetreating = false;
   unit.isLastStand = false;
+  unit.isEvading = false;
 
   if (ai.autoSpinSpeed) {
     unit.angle += ai.autoSpinSpeed * dt;
-    const pref = ai.preferredRange ?? 320;
+    const pref = ai.preferredRange ?? 270;
     const dirX = Math.cos(ctx.directAngle);
     const dirY = Math.sin(ctx.directAngle);
     const orbitSign = unit.orbitDir || 1;
@@ -287,15 +294,19 @@ export function updateBossBehavior(unit, dt, ctx, out) {
 
     let moveX;
     let moveY;
-    if (ctx.dist > pref + 70) {
-      moveX = dirX * 0.85 + tangX * 0.35;
-      moveY = dirY * 0.85 + tangY * 0.35;
-    } else if (ctx.dist < pref - 70) {
-      moveX = -dirX * 0.65 + tangX * 0.65;
-      moveY = -dirY * 0.65 + tangY * 0.65;
+    if (ctx.dist > pref + 90) {
+      moveX = dirX;
+      moveY = dirY;
+    } else if (ctx.dist > pref + 25) {
+      moveX = dirX * 0.92 + tangX * 0.39;
+      moveY = dirY * 0.92 + tangY * 0.39;
+    } else if (ctx.dist < pref - 65) {
+      // Never backpedal: keep forward pressure while pressing laterally around the target
+      moveX = tangX * 0.95 + dirX * 0.31;
+      moveY = tangY * 0.95 + dirY * 0.31;
     } else {
-      moveX = tangX * 0.92 + dirX * 0.25;
-      moveY = tangY * 0.92 + dirY * 0.25;
+      moveX = tangX * 0.74 + dirX * 0.67;
+      moveY = tangY * 0.74 + dirY * 0.67;
     }
 
     const mag = Math.hypot(moveX, moveY) || 1;
@@ -306,12 +317,65 @@ export function updateBossBehavior(unit, dt, ctx, out) {
     return;
   }
 
-  const targetAngle = ctx.directAngle;
+  let targetAngle = ctx.directAngle;
+  if (ai.leadBulletSpeed) {
+    const intercept = solveBallisticIntercept(
+      unit.x,
+      unit.y,
+      ctx.player.x,
+      ctx.player.y,
+      ctx.pVx || 0,
+      ctx.pVy || 0,
+      ai.leadBulletSpeed
+    );
+    targetAngle = Math.atan2(intercept.y - unit.y, intercept.x - unit.x);
+  }
   const angleDiff = Math.atan2(Math.sin(targetAngle - unit.angle), Math.cos(targetAngle - unit.angle));
-  const turnRate = ai.turnRate ?? 0.92;
+  const turnRate = ai.turnRate ?? 1.85;
   unit.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), turnRate * dt);
 
-  // Move strictly forward along current heading without strafing
+  if (ai.strafe) {
+    unit.orbitTimer = (unit.orbitTimer ?? 2.0) - dt;
+    if (unit.orbitTimer <= 0) {
+      unit.orbitDir = (unit.orbitDir || 1) * -1;
+      unit.orbitTimer = 2.0 + Math.random() * 1.6;
+    }
+
+    const pref = ai.preferredRange ?? 230;
+    const buffer = ai.strafeBuffer ?? 40;
+    const minRange = ai.minRange ?? Math.max(120, (unit.radius || 150) + 25);
+    const dirX = Math.cos(ctx.directAngle);
+    const dirY = Math.sin(ctx.directAngle);
+    const orbitSign = unit.orbitDir || 1;
+    const tangX = -dirY * orbitSign;
+    const tangY = dirX * orbitSign;
+
+    let moveX;
+    let moveY;
+    if (ctx.dist > pref + 90) {
+      moveX = dirX;
+      moveY = dirY;
+    } else if (ctx.dist > pref + buffer) {
+      moveX = dirX * 0.94 + tangX * 0.34;
+      moveY = dirY * 0.94 + tangY * 0.34;
+    } else if (ctx.dist < minRange) {
+      // Never backpedal: keep aggressive lateral + forward pressure at point-blank range
+      moveX = tangX * 0.95 + dirX * 0.31;
+      moveY = tangY * 0.95 + dirY * 0.31;
+    } else {
+      moveX = tangX * 0.70 + dirX * 0.71;
+      moveY = tangY * 0.70 + dirY * 0.71;
+    }
+
+    const mag = Math.hypot(moveX, moveY) || 1;
+    out.dirX = moveX / mag;
+    out.dirY = moveY / mag;
+    out.targetWaypointX = ctx.player.x;
+    out.targetWaypointY = ctx.player.y;
+    return;
+  }
+
+  // Move strictly forward along current heading without retreating
   out.dirX = Math.cos(unit.angle);
   out.dirY = Math.sin(unit.angle);
 
@@ -375,7 +439,13 @@ export function updateBossWeapons(unit, dt, playerArg, enemyBullets = [], allies
 
     const bSpeed = t.bulletSpeed ?? wCfg.bulletSpeed ?? 220;
 
-    if (t.isAutoTurret) {
+    if (t.isAutoTurret && t.autoSpinSpeed) {
+      state.spinOffset = (state.spinOffset || 0) + t.autoSpinSpeed * dt;
+      state.worldAngle = mountAngle + state.spinOffset;
+      const autoRange = t.autoRange ?? 1050;
+      state.shouldFire = Boolean(t.alwaysFire)
+        || candidates.some((cand) => Math.hypot(cand.x - mx, cand.y - my) <= autoRange);
+    } else if (t.isAutoTurret) {
       const autoRange = t.autoRange ?? 980;
       const fovHalf = (((t.autoFov ?? 200) * Math.PI) / 180) * 0.5;
       const turnSpeed = t.autoTurnSpeed ?? 6.5;
@@ -562,6 +632,14 @@ export function updateBossSpawner(unit, dt, allEnemies = []) {
     const { turretIdx, turret, cfg } = entry;
     const maxDrones = cfg.maxDrones ?? 22;
     if (unit.ownedDrones.length >= maxDrones) return false;
+    if (cfg.maxDronesForType != null) {
+      const typeKey = cfg.droneKey || (unit.archetypeKey ? `${unit.archetypeKey}_drone` : 'boss_drone');
+      let typeCount = 0;
+      for (let i = 0; i < unit.ownedDrones.length; i++) {
+        if (unit.ownedDrones[i].archetypeKey === typeKey) typeCount++;
+      }
+      if (typeCount >= cfg.maxDronesForType) return false;
+    }
 
     const spawnerAngle = unit.angle + (turret.angleOffset ?? Math.PI);
     const spread = (Math.random() - 0.5) * 0.34;

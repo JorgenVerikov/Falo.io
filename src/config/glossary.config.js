@@ -106,6 +106,38 @@ export const ENEMY_MASTERY_REWARDS = {
     perkSummary: '+5% Damage',
     perkLabel: '+5% Damage vs Defenders',
     perkDesc: 'Deals 5% extra damage against Defender bosses.'
+  },
+  fallen_booster: {
+    masteryKills: 10,
+    damageBonus: 0.05,
+    xpBonus: 0,
+    perkSummary: '+5% Damage',
+    perkLabel: '+5% Damage vs Fallen Boosters',
+    perkDesc: 'Deals 5% extra damage against Fallen Booster bosses.'
+  },
+  fallen_overlord: {
+    masteryKills: 10,
+    damageBonus: 0.05,
+    xpBonus: 0,
+    perkSummary: '+5% Damage',
+    perkLabel: '+5% Damage vs Fallen Overlords',
+    perkDesc: 'Deals 5% extra damage against Fallen Overlord bosses.'
+  },
+  hivemind: {
+    masteryKills: 10,
+    damageBonus: 0.05,
+    xpBonus: 0,
+    perkSummary: '+5% Damage',
+    perkLabel: '+5% Damage vs Hiveminds',
+    perkDesc: 'Deals 5% extra damage against Hivemind bosses.'
+  },
+  alpha: {
+    masteryKills: 10,
+    damageBonus: 0.05,
+    xpBonus: 0,
+    perkSummary: '+5% Damage',
+    perkLabel: '+5% Damage vs Alphas',
+    perkDesc: 'Deals 5% extra damage against Alpha bosses.'
   }
 };
 
