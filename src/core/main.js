@@ -1255,21 +1255,41 @@ function updatePlayer(dt) {
   input.mouse.worldY = (input.mouse.screenY - canvasMgr.height / 2) / camera.zoom + camera.y;
 
   if (state.autoSpin) {
-    player.angle += 1.35 * dt;
+    const spinRate = (typeof chassisConfig.turnSpeed === 'number' && chassisConfig.turnSpeed > 0)
+      ? Math.min(1.35, chassisConfig.turnSpeed)
+      : 1.35;
+    player.angle += spinRate * dt;
     if (player.angle > Math.PI) player.angle -= Math.PI * 2;
     else if (player.angle < -Math.PI) player.angle += Math.PI * 2;
   } else if (chassisConfig.alwaysAutoSpin) {
     player.angle += (chassisConfig.autoSpinSpeed || 0.55) * dt;
     if (player.angle > Math.PI) player.angle -= Math.PI * 2;
     else if (player.angle < -Math.PI) player.angle += Math.PI * 2;
-  } else if (isMobileMode) {
-    if (mobileControls.aimState.hasAimed) {
-      player.angle = mobileControls.aimState.angle;
-    }
   } else {
-    const dx = input.mouse.worldX - player.x;
-    const dy = input.mouse.worldY - player.y;
-    player.angle = Math.atan2(dy, dx);
+    let targetAngle = null;
+    if (isMobileMode) {
+      if (mobileControls.aimState.hasAimed) {
+        targetAngle = mobileControls.aimState.angle;
+      }
+    } else {
+      const dx = input.mouse.worldX - player.x;
+      const dy = input.mouse.worldY - player.y;
+      if (dx * dx + dy * dy > 0.0001) {
+        targetAngle = Math.atan2(dy, dx);
+      }
+    }
+
+    if (targetAngle !== null) {
+      if (typeof chassisConfig.turnSpeed === 'number' && chassisConfig.turnSpeed > 0) {
+        const diff = Math.atan2(Math.sin(targetAngle - player.angle), Math.cos(targetAngle - player.angle));
+        const maxStep = chassisConfig.turnSpeed * dt;
+        player.angle = Math.abs(diff) <= maxStep
+          ? targetAngle
+          : Math.atan2(Math.sin(player.angle + Math.sign(diff) * maxStep), Math.cos(player.angle + Math.sign(diff) * maxStep));
+      } else {
+        player.angle = targetAngle;
+      }
+    }
   }
 }
 

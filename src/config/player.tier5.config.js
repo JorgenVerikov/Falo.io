@@ -72,6 +72,8 @@ export const TIER5_CHASSIS_CONFIG = {
     bodyAngleOffset: Math.PI / 4,
     radiusMultiplier: 1.85,
     speedMultiplier: 0.5,
+    turnSpeed: 0.75,
+    damageResistance: 0.5,
     turrets: [
       // Rear railway loading & crane stern deck
       createBarrelTurret(
@@ -128,7 +130,8 @@ export const TIER5_CHASSIS_CONFIG = {
           xOffset: 52,
           yOffset: 0,
           playsRecoil: true,
-          recoilKickAmount: 50,
+          barrelRecoilAmount: 20,
+          barrelRecoilDecay: 40,
           layer: 1
         },
         {
@@ -184,7 +187,8 @@ export const TIER5_CHASSIS_CONFIG = {
           yOffset: 0,
           shootsBullet: false,
           playsRecoil: true,
-          recoilKickAmount: 50,
+          barrelRecoilAmount: 20,
+          barrelRecoilDecay: 40,
           layer: 1
         },
         { reload: 1.65 }

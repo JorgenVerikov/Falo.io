@@ -1285,7 +1285,8 @@ export class WeaponSystem {
         shootsBullet: shootsBullet,
         playsRecoil: t.playsRecoil === true || (t.playsRecoil !== false && shootsBullet),
         fireDelayTicks: t.fireDelayTicks || 0,
-        recoilKickAmount: t.recoilKickAmount || 10,
+        barrelRecoilAmount: t.barrelRecoilAmount ?? w.barrelRecoilAmount,
+        barrelRecoilDecay: t.barrelRecoilDecay ?? w.barrelRecoilDecay ?? chassis.barrelRecoilDecay,
 
         // Falo.io Tank Editor parameters & multipliers
         damageMult: (t.damage !== undefined) ? t.damage : 1.0,
@@ -1493,7 +1494,8 @@ export class WeaponSystem {
     // 1. Decay barrel recoil offset for all turrets
     this.turrets.forEach((turret, i) => {
       const state = this.turretStates[i];
-      state.recoilOffset = Math.max(0, state.recoilOffset - dt * CONFIG.WEAPONS.barrelRecoilDecay);
+      const decay = turret.barrelRecoilDecay ?? CONFIG.WEAPONS.barrelRecoilDecay;
+      state.recoilOffset = Math.max(0, state.recoilOffset - dt * decay);
 
       // Cooldown timer decay for independent turrets
       if (state.cooldownTimer > 0) state.cooldownTimer -= dt;
@@ -1505,7 +1507,7 @@ export class WeaponSystem {
         );
         if (!hasPairedShooter && turret.playsRecoil && anyManualFiring && state.cooldownTimer <= 0) {
           state.cooldownTimer = turret.fireIntervalSec || 0.3;
-          state.recoilOffset = turret.recoilKickAmount || 10;
+          state.recoilOffset = turret.barrelRecoilAmount ?? 10;
         }
         return;
       }
@@ -2108,7 +2110,7 @@ export class WeaponSystem {
     const sizeScale = (player && player.radius) ? (player.radius / CONFIG.PLAYER.radius) : 1.0;
 
     if (turret.playsRecoil) {
-      turretState.recoilOffset = turret.recoilKickAmount || 8;
+      turretState.recoilOffset = turret.barrelRecoilAmount ?? 8;
     }
 
     const barrelAngle = angle + turret.angleOffset;
@@ -2222,11 +2224,12 @@ export class WeaponSystem {
     const sizeScale = (player && player.radius) ? (player.radius / CONFIG.PLAYER.radius) : 1.0;
 
     if (turret.playsRecoil) {
-      turretState.recoilOffset = turret.recoilKickAmount || 10;
+      const kick = turret.barrelRecoilAmount ?? 10;
+      turretState.recoilOffset = kick;
       if (!turret.isAutoTurret) {
         this.turrets.forEach((other, idx) => {
           if (!other.shootsBullet && !other.isAutoTurret && other.playsRecoil && Math.abs((other.angleOffset || 0) - (turret.angleOffset || 0)) < 0.01) {
-            this.turretStates[idx].recoilOffset = other.recoilKickAmount || 10;
+            this.turretStates[idx].recoilOffset = other.barrelRecoilAmount ?? kick;
           }
         });
       }

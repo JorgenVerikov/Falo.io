@@ -86,6 +86,8 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
   const autoRange = weaponExtra.autoRange ?? multipliers.autoRange ?? geom.autoRange;
   const autoFov = weaponExtra.autoFov ?? multipliers.autoFov ?? geom.autoFov;
   const autoTurnSpeed = weaponExtra.autoTurnSpeed ?? multipliers.autoTurnSpeed ?? geom.autoTurnSpeed;
+  const barrelRecoilAmount = weaponExtra.barrelRecoilAmount ?? multipliers.barrelRecoilAmount ?? geom.barrelRecoilAmount;
+  const barrelRecoilDecay = weaponExtra.barrelRecoilDecay ?? multipliers.barrelRecoilDecay ?? geom.barrelRecoilDecay;
 
   const bulletShape = weaponExtra.bulletShape ?? multipliers.bulletShape ?? geom.bulletShape;
   const bulletSides = weaponExtra.bulletSides ?? multipliers.bulletSides ?? geom.bulletSides;
@@ -165,6 +167,8 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     ...(autoRange !== undefined ? { autoRange } : {}),
     ...(autoFov !== undefined ? { autoFov } : {}),
     ...(autoTurnSpeed !== undefined ? { autoTurnSpeed } : {}),
+    ...(barrelRecoilAmount !== undefined ? { barrelRecoilAmount } : {}),
+    ...(barrelRecoilDecay !== undefined ? { barrelRecoilDecay } : {}),
     ...optionalProjectileFields,
     ...weaponExtra
   } : null;
@@ -204,6 +208,8 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     ...(autoRange !== undefined ? { autoRange } : {}),
     ...(autoFov !== undefined ? { autoFov } : {}),
     ...(autoTurnSpeed !== undefined ? { autoTurnSpeed } : {}),
+    ...(barrelRecoilAmount !== undefined ? { barrelRecoilAmount } : {}),
+    ...(barrelRecoilDecay !== undefined ? { barrelRecoilDecay } : {}),
     ...optionalProjectileFields,
 
     weapon
@@ -232,7 +238,7 @@ export const WEAPONS_CONFIG = {
   bulletVsBulletDrain: 3.0,
   bulletVsBulletDamageScale: 0.15,
   bulletVsBodyDamageScale: 0.15,
-  barrelRecoilDecay: 40,
+  barrelRecoilDecay: 24,
   recoilForceMultiplier: 1.35,
   smasherDashDuration: 0.45,
   smasherDashForce: 450,

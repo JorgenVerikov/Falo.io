@@ -815,7 +815,9 @@ export const TIER3_CHASSIS_CONFIG = {
           frontWidth: 38,
           angleOffset: 0,
           xOffset: 0,
-          yOffset: 0
+          yOffset: 0,
+          barrelRecoilAmount: 12,
+          barrelRecoilDecay: 14
         },
 
         {

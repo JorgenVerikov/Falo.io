@@ -3754,7 +3754,9 @@ export const TIER4_CHASSIS_CONFIG = {
           frontWidth: 38,
           angleOffset: 0,
           xOffset: 0,
-          yOffset: 0
+          yOffset: 0,
+          barrelRecoilAmount: 12,
+          barrelRecoilDecay: 14
         },
 
         {
@@ -3836,7 +3838,9 @@ export const TIER4_CHASSIS_CONFIG = {
           frontWidth: 48,
           angleOffset: 0,
           xOffset: 0,
-          yOffset: 0
+          yOffset: 0,
+          barrelRecoilAmount: 14,
+          barrelRecoilDecay: 12
         },
 
         {

@@ -1934,7 +1934,9 @@ export class AllyTank {
       } else {
         // Spring-damped turret rotation (smooth acceleration & deceleration, zero snap)
         const diff = Math.atan2(Math.sin(desiredAngle - this.angle), Math.cos(desiredAngle - this.angle));
-        const maxTurnSpeed = 6.2;
+        const maxTurnSpeed = (typeof chassisConfig.turnSpeed === 'number' && chassisConfig.turnSpeed > 0)
+          ? Math.min(6.2, chassisConfig.turnSpeed)
+          : 6.2;
         const desiredAngVel = Math.max(-maxTurnSpeed, Math.min(maxTurnSpeed, diff * 7.5));
         this.angularVel += (desiredAngVel - this.angularVel) * Math.min(1.0, dt * 11.0);
         this.angle += this.angularVel * dt;
@@ -2075,7 +2077,9 @@ export class AllyTank {
         this.angle += (chassisConfig.autoSpinSpeed || 0.55) * dt;
       } else {
         const diff = Math.atan2(Math.sin(desiredAngle - this.angle), Math.cos(desiredAngle - this.angle));
-        const maxTurnSpeed = 6.2;
+        const maxTurnSpeed = (typeof chassisConfig.turnSpeed === 'number' && chassisConfig.turnSpeed > 0)
+          ? Math.min(6.2, chassisConfig.turnSpeed)
+          : 6.2;
         const desiredAngVel = Math.max(-maxTurnSpeed, Math.min(maxTurnSpeed, diff * 7.5));
         this.angularVel += (desiredAngVel - this.angularVel) * Math.min(1.0, dt * 11.0);
         this.angle += this.angularVel * dt;
