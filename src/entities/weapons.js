@@ -1377,6 +1377,7 @@ export class WeaponSystem {
 
       // Energy State
       energy: t.maxEnergy,
+      isRechargingEnergy: false,
 
       // Auto Turret State
       worldAngle: null,
@@ -1660,6 +1661,18 @@ export class WeaponSystem {
         const diff = desiredRelAngle - curRel;
         const nextRel = Math.abs(diff) <= maxStep ? desiredRelAngle : curRel + Math.sign(diff) * maxStep;
         state.worldAngle = normalizeAngle(mountAngle + clampVal(nextRel, -fovHalf, fovHalf));
+      }
+      if (turret.type === WEAPON_TYPE.ENERGY) {
+        const cost = turret.costPerShot ?? 10;
+        const maxE = turret.maxEnergy ?? 100;
+        if (state.energy <= 0 || state.energy < cost) {
+          state.isRechargingEnergy = true;
+        } else if (state.energy >= maxE - 0.01) {
+          state.isRechargingEnergy = false;
+        }
+        if (state.isRechargingEnergy) {
+          shouldFire = false;
+        }
       }
       state.autoShouldFire = shouldFire;
     });

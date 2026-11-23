@@ -369,7 +369,10 @@ export class PhysicsSystem {
     const playerDrones = playerWeapon.drones || [];
     const enemyBullets = waveMgr.enemyBullets;
     const shapePenDrain = CONFIG.WEAPONS.shapePenetrationDrain || 2.0;
-    const enemyPenDrain = CONFIG.WEAPONS.enemyPenetrationDrain || 1.5;
+    const enemyPenDrain = CONFIG.WEAPONS.enemyPenetrationDrain ?? 4.5;
+    const bulletVsBulletDrain = CONFIG.WEAPONS.bulletVsBulletDrain ?? 3.0;
+    const bulletVsBulletDmgScale = CONFIG.WEAPONS.bulletVsBulletDamageScale ?? 0.15;
+    const bulletVsBodyDmgScale = CONFIG.WEAPONS.bulletVsBodyDamageScale ?? 0.15;
     const repelStrength = CONFIG.WEAPONS.repelStrength;
 
     const isPlayerStanding = Boolean(player && !player.isDowned && !player.isDying);
@@ -632,7 +635,7 @@ export class PhysicsSystem {
 
         const masteryDmgMult = this.getEnemyDamageMultiplier(waveMgr, enemy);
         enemy.takeDamage(proj.damage * masteryDmgMult);
-        proj.takePenetrationDamage(enemyPenDrain);
+        proj.takePenetrationDamage(enemyPenDrain + (enemy.damage || 0) * bulletVsBodyDmgScale);
         if (isPolygonBoss(enemy)) {
           proj.applyCenterRepulsion(proj.x - _colOut.nx, proj.y - _colOut.ny, dt, repelStrength + 10);
         } else {
@@ -670,8 +673,10 @@ export class PhysicsSystem {
         if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) continue;
 
         if (dx * dx + dy * dy < minDist * minDist) {
-          playerProj.takePenetrationDamage(1.0);
-          enemyProj.takePenetrationDamage(1.0);
+          const playerDrain = bulletVsBulletDrain + (enemyProj.damage || 0) * bulletVsBulletDmgScale;
+          const enemyDrain = bulletVsBulletDrain + (playerProj.damage || 0) * bulletVsBulletDmgScale;
+          playerProj.takePenetrationDamage(playerDrain);
+          enemyProj.takePenetrationDamage(enemyDrain);
           playerProj.applyCenterRepulsion(enemyProj.x, enemyProj.y, dt, 120);
           waveMgr.spawnShatterParticles(playerProj.x, playerProj.y, '#ffffff', 2);
         }
@@ -701,7 +706,7 @@ export class PhysicsSystem {
           if (bullet.isTrap) {
             bullet.applyCenterRepulsion(player.x, player.y, dt, repelStrength + 10);
             if ((player.iFrameTimer || 0) <= 0 && (player.dashTimer || 0) <= 0) {
-              bullet.takePenetrationDamage(enemyPenDrain);
+              bullet.takePenetrationDamage(enemyPenDrain + playerRamDamage * bulletVsBodyDmgScale);
               player.takeDamage(bullet.damage, activeChassisKey, bullet.owner || null);
               EnemyCommunicationSystem.onPlayerDamaged(enemies, null, false);
               AllyCommunicationSystem.onPlayerDamaged(player, allies, false);
@@ -729,7 +734,7 @@ export class PhysicsSystem {
           if (bullet.isTrap) {
             bullet.applyCenterRepulsion(ally.x, ally.y, dt, repelStrength + 10);
             if ((ally.iFrameTimer || 0) <= 0 && (ally.dashTimer || 0) <= 0) {
-              bullet.takePenetrationDamage(enemyPenDrain);
+              bullet.takePenetrationDamage(enemyPenDrain + allyRamTank * bulletVsBodyDmgScale);
               ally.takeDamage(bullet.damage, bullet.owner || null, waveMgr, allies);
               waveMgr.spawnShatterParticles(ally.x, ally.y, '#f14e54', CONFIG.VFX.playerDamageParticleCount);
             }
@@ -932,7 +937,7 @@ export class PhysicsSystem {
 
           const masteryDmgMult = this.getEnemyDamageMultiplier(waveMgr, enemy);
           enemy.takeDamage(proj.damage * masteryDmgMult);
-          proj.takePenetrationDamage(enemyPenDrain);
+          proj.takePenetrationDamage(enemyPenDrain + (enemy.damage || 0) * bulletVsBodyDmgScale);
           if (isPolygonBoss(enemy)) {
             proj.applyCenterRepulsion(proj.x - _colOut.nx, proj.y - _colOut.ny, dt, repelStrength + 10);
           } else {
@@ -962,8 +967,10 @@ export class PhysicsSystem {
           const minDist = proj.radius + enemyProj.radius;
           if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) continue;
           if (dx * dx + dy * dy < minDist * minDist) {
-            proj.takePenetrationDamage(1.0);
-            enemyProj.takePenetrationDamage(1.0);
+            const allyDrain = bulletVsBulletDrain + (enemyProj.damage || 0) * bulletVsBulletDmgScale;
+            const enemyDrain = bulletVsBulletDrain + (proj.damage || 0) * bulletVsBulletDmgScale;
+            proj.takePenetrationDamage(allyDrain);
+            enemyProj.takePenetrationDamage(enemyDrain);
             proj.applyCenterRepulsion(enemyProj.x, enemyProj.y, dt, 120);
             waveMgr.spawnShatterParticles(proj.x, proj.y, '#ffffff', 2);
           }

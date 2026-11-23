@@ -231,14 +231,15 @@ export function renderAdminChassisPills(ui) {
     { tier: 1, label: 'TIER 1 — STARTER (LVL 1)', keys: [] },
     { tier: 2, label: 'TIER 2 — EVOLUTION (LVL 15)', keys: [] },
     { tier: 3, label: 'TIER 3 — ADVANCED (LVL 30)', keys: [] },
-    { tier: 4, label: 'TIER 4 — APEX (LVL 45)', keys: [] }
+    { tier: 4, label: 'TIER 4 — APEX (LVL 45)', keys: [] },
+    { tier: 5, label: 'TIER 5 — OVERDRIVE (LVL 60)', keys: [] }
   ];
 
   Object.keys(CONFIG.CHASSIS).forEach(key => {
     const chassis = CONFIG.CHASSIS[key];
     const displayTier = typeof chassis.tier === 'number'
-      ? Math.min(4, Math.max(1, chassis.tier + 1))
-      : (chassis.reqLevel >= 45 ? 4 : chassis.reqLevel >= 30 ? 3 : chassis.reqLevel >= 15 ? 2 : 1);
+      ? Math.min(5, Math.max(1, chassis.tier + 1))
+      : (chassis.reqLevel >= 60 ? 5 : chassis.reqLevel >= 45 ? 4 : chassis.reqLevel >= 30 ? 3 : chassis.reqLevel >= 15 ? 2 : 1);
     const group = tierGroups.find(g => g.tier === displayTier) || tierGroups[2];
     group.keys.push(key);
   });

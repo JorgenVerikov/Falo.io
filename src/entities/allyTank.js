@@ -77,7 +77,7 @@ export function inferChassisRole(chassisKey) {
   if (chassisKey === 'necromancer') return 'necromancer';
   if (['overseer', 'overlord', 'manager', 'battleship', 'factory', 'overtrapper'].includes(chassisKey)) return 'drone';
   if (['sniper', 'assassin', 'ranger', 'stalker', 'hunter', 'predator', 'streamliner'].includes(chassisKey)) return 'sniper';
-  if (['destroyer', 'annihilator', 'hybrid', 'skimmer', 'rocketeer', 'glider', 'firework'].includes(chassisKey)) return 'heavy';
+  if (['destroyer', 'annihilator', 'hybrid', 'skimmer', 'rocketeer', 'glider', 'firework', 'gustav'].includes(chassisKey)) return 'heavy';
   if (['trapper', 'tritrapper', 'gunnertrapper', 'autotrapper'].includes(chassisKey)) return 'trapper';
   if (['triangle', 'fighter', 'shotgun', 'pelletshot', 'dualbarrel'].includes(chassisKey)) return 'skirmisher';
 
@@ -439,6 +439,8 @@ export class AllyTank {
     this.aimNoisePhase = Math.random() * Math.PI * 2;
     this.lastCombatTarget = null;
     this.isFiringLatched = false;
+    this.isRechargingEnergy = false;
+    this.isRechargingSecondaryEnergy = false;
     this.postKillFollowThrough = 0;
 
     this.inputMoveX = 0;
@@ -630,6 +632,8 @@ export class AllyTank {
       }
     });
 
+    this.isRechargingEnergy = false;
+    this.isRechargingSecondaryEnergy = false;
     this.weaponSys.loadChassisConfig(chassisKey);
     this.syncLevelAndProgression(
       this.level,
@@ -796,6 +800,8 @@ export class AllyTank {
             this.stats[k] = 0;
           });
         }
+        this.isRechargingEnergy = false;
+        this.isRechargingSecondaryEnergy = false;
         this.weaponSys.loadChassisConfig(nextStep);
         evolvedName = newCfg?.name || nextStep;
       }
@@ -1024,6 +1030,9 @@ export class AllyTank {
     this.cloakAlpha = 1.0;
     this.sonarTimer = 0;
 
+    this.isFiringLatched = false;
+    this.isRechargingEnergy = false;
+    this.isRechargingSecondaryEnergy = false;
     this.weaponSys.projectiles = [];
     this.weaponSys.drones = [];
     this.weaponSys.activeDroneCount = 0;
@@ -2150,10 +2159,72 @@ export class AllyTank {
       }
     }
 
+    const primaryEnergyTurrets = this.weaponSys.turrets.filter(
+      t => t.shootsBullet && !t.isAutoTurret && t.type === WEAPON_TYPE.ENERGY && t.fireTrigger !== 'secondary'
+    );
+    if (primaryEnergyTurrets.length > 0) {
+      let needsRecharge = false;
+      let allFull = true;
+      for (let i = 0; i < primaryEnergyTurrets.length; i++) {
+        const t = primaryEnergyTurrets[i];
+        const st = this.weaponSys.turretStates[t.index];
+        if (!st) continue;
+        const cost = t.costPerShot ?? 10;
+        const maxE = t.maxEnergy ?? 100;
+        if (st.energy <= 0 || st.energy < cost) {
+          needsRecharge = true;
+        }
+        if (st.energy < maxE - 0.01) {
+          allFull = false;
+        }
+      }
+      if (needsRecharge) {
+        this.isRechargingEnergy = true;
+      } else if (allFull) {
+        this.isRechargingEnergy = false;
+      }
+    } else {
+      this.isRechargingEnergy = false;
+    }
+
+    const secondaryEnergyTurrets = this.weaponSys.turrets.filter(
+      t => t.shootsBullet && !t.isAutoTurret && t.type === WEAPON_TYPE.ENERGY && t.fireTrigger === 'secondary'
+    );
+    if (secondaryEnergyTurrets.length > 0) {
+      let needsRecharge = false;
+      let allFull = true;
+      for (let i = 0; i < secondaryEnergyTurrets.length; i++) {
+        const t = secondaryEnergyTurrets[i];
+        const st = this.weaponSys.turretStates[t.index];
+        if (!st) continue;
+        const cost = t.costPerShot ?? 10;
+        const maxE = t.maxEnergy ?? 100;
+        if (st.energy <= 0 || st.energy < cost) {
+          needsRecharge = true;
+        }
+        if (st.energy < maxE - 0.01) {
+          allFull = false;
+        }
+      }
+      if (needsRecharge) {
+        this.isRechargingSecondaryEnergy = true;
+      } else if (allFull) {
+        this.isRechargingSecondaryEnergy = false;
+      }
+    } else {
+      this.isRechargingSecondaryEnergy = false;
+    }
+
+    const primaryShouldFire = this.isRechargingEnergy ? false : shouldFire;
+    const secondaryShouldFire = this.isRechargingSecondaryEnergy ? false : shouldFire;
+    if (this.isRechargingEnergy) {
+      this.isFiringLatched = false;
+    }
+
     const hasSecondaryFire = Boolean(chassisConfig?.turrets?.some(t => t.fireTrigger === 'secondary'));
     const weaponFireInput = hasSecondaryFire
-      ? { primary: shouldFire, secondary: shouldFire }
-      : shouldFire;
+      ? { primary: primaryShouldFire, secondary: secondaryShouldFire }
+      : primaryShouldFire;
 
     const recoilImpulse = this.weaponSys.update(
       dt,

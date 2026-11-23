@@ -2,15 +2,21 @@ import { CONFIG, computeStrokeColor, getTankRenderParts, getOuterArmorLayers } f
 import { generateTankPreviewDataUrl, drawPreviewPolygon } from './uiPreviews.js';
 
 const WORLD_WIDTH = 4120;
-const WORLD_HEIGHT = 860;
+const WORLD_HEIGHT = 1060;
 const NODE_RADIUS = 46;
 
 const ROW_Y = {
   1: 110,
   2: 300,
   3: 500,
-  4: 710
+  4: 710,
+  5: 910
 };
+
+const TIER_5_SLOTS = [
+  { key: 'gustav', col: 25 },
+  { key: 'tesla', col: 32.2 }
+];
 
 const TIER_4_SLOTS = [
   { key: 'triplet', col: 0 },
@@ -45,7 +51,6 @@ const TIER_4_SLOTS = [
   { key: 'firework', col: 29 },
   { key: 'pelletshot', col: 30 },
   { key: 'dualbarrel', col: 31 },
-  { key: 'tesla', col: 32.2 },
   { key: 'autotank', col: 33.2 },
   { key: 'landmine', col: 34.4 },
   { key: 'autosmasher', col: 35.4 },
@@ -77,8 +82,9 @@ const TIER_2_SLOTS = [
 
 function getDisplayTier(chassis) {
   if (typeof chassis.tier === 'number') {
-    return Math.min(4, Math.max(1, chassis.tier + 1));
+    return Math.min(5, Math.max(1, chassis.tier + 1));
   }
+  if ((chassis.reqLevel || 1) >= 60) return 5;
   if ((chassis.reqLevel || 1) >= 45) return 4;
   if ((chassis.reqLevel || 1) >= 30) return 3;
   if ((chassis.reqLevel || 1) >= 15) return 2;
@@ -94,6 +100,13 @@ function buildTreeLayout() {
   const placed = new Set();
 
   let maxCol = 26.5;
+  TIER_5_SLOTS.forEach(slot => {
+    if (CONFIG.CHASSIS[slot.key]) {
+      positions[slot.key] = { x: colToX(slot.col), y: ROW_Y[5], tier: 5 };
+      placed.add(slot.key);
+    }
+  });
+
   TIER_4_SLOTS.forEach(slot => {
     if (CONFIG.CHASSIS[slot.key]) {
       positions[slot.key] = { x: colToX(slot.col), y: ROW_Y[4], tier: 4 };
@@ -494,7 +507,8 @@ export class EvolutionTreeController {
       { label: 'TIER 1 · LVL 1', y: ROW_Y[1] },
       { label: 'TIER 2 · LVL 15', y: ROW_Y[2] },
       { label: 'TIER 3 · LVL 30', y: ROW_Y[3] },
-      { label: 'TIER 4 · LVL 45', y: ROW_Y[4] }
+      { label: 'TIER 4 · LVL 45', y: ROW_Y[4] },
+      { label: 'TIER 5 · LVL 60', y: ROW_Y[5] }
     ];
 
     tierBands.forEach(band => {
@@ -746,19 +760,20 @@ export class EvolutionTreeController {
     const cx = w * 0.52;
     const cy = h * 0.5;
     const playerR = CONFIG.PLAYER.radius || 25;
-    let maxUnitExtent = chassis.radiusMultiplier || 1.0;
+    const bodyMult = chassis.radiusMultiplier || 1.0;
+    let maxUnitExtent = bodyMult;
 
     const armorLayers = getOuterArmorLayers(chassis);
     for (let i = 0; i < armorLayers.length; i++) {
-      maxUnitExtent = Math.max(maxUnitExtent, armorLayers[i].radiusMultiplier || 1.4);
+      maxUnitExtent = Math.max(maxUnitExtent, bodyMult * (armorLayers[i].radiusMultiplier || 1.4));
     }
 
     if (chassis.turrets && chassis.turrets.length > 0) {
       chassis.turrets.forEach(turret => {
-        const bxUnit = (turret.xOffset || 0) / playerR;
-        const lenUnit = (turret.length || 48) / playerR;
-        const yUnit = Math.abs(turret.yOffset || 0) / playerR;
-        const halfWidthUnit = Math.max(turret.width || 20, turret.frontWidth || turret.width || 20) / (2 * playerR);
+        const bxUnit = ((turret.xOffset || 0) / playerR) * bodyMult;
+        const lenUnit = ((turret.length || 48) / playerR) * bodyMult;
+        const yUnit = (Math.abs(turret.yOffset || 0) / playerR) * bodyMult;
+        const halfWidthUnit = (Math.max(turret.width || 20, turret.frontWidth || turret.width || 20) / (2 * playerR)) * bodyMult;
         const reach = Math.hypot(bxUnit + lenUnit, yUnit + halfWidthUnit);
         maxUnitExtent = Math.max(maxUnitExtent, reach);
       });
@@ -788,17 +803,18 @@ export class EvolutionTreeController {
     ctx.clearRect(0, 0, w, h);
 
     const { cx, cy, baseRadius, playerR } = this.computeTankLayout(w, h, chassis);
-    const radius = baseRadius * (chassis.radiusMultiplier || 1.0);
-    const scale = baseRadius / playerR;
-    const strokeWidth = Math.max(3.2, Math.round(baseRadius * 0.088));
+    const bodyMult = chassis.radiusMultiplier || 1.0;
+    const radius = baseRadius * bodyMult;
+    const scale = (baseRadius / playerR) * bodyMult;
+    const strokeWidth = Math.max(3.2, Math.round(radius * 0.088));
 
     ctx.translate(cx, cy);
 
     const armorLayers = getOuterArmorLayers(chassis);
     for (let i = 0; i < armorLayers.length; i++) {
       const layer = armorLayers[i];
-      const outerRadius = baseRadius * (layer.radiusMultiplier || 1.55);
-      const innerRadius = layer.innerRadiusMultiplier ? baseRadius * layer.innerRadiusMultiplier : 0;
+      const outerRadius = radius * (layer.radiusMultiplier || 1.55);
+      const innerRadius = layer.innerRadiusMultiplier ? radius * layer.innerRadiusMultiplier : 0;
       const layerAngle = (layer.initialAngle || 0) + this.spinAngle * ((layer.spinSpeed ?? 2.2) / 4);
       drawPreviewPolygon(
         ctx, 0, 0, outerRadius,

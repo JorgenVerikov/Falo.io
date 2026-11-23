@@ -1,4 +1,4 @@
-import { CONFIG } from '../core/config.js';
+import { CONFIG, ENEMY_UPGRADE_CONFIG } from '../core/config.js';
 import { WEAPON_TYPE } from '../config/weapons.config.js';
 import { Projectile, extractBulletOptions } from './weapons.js';
 import { getShapeManeuverVector, solveBallisticIntercept } from './enemyMath.js';
@@ -395,7 +395,8 @@ export function updateBossWeapons(unit, dt, playerArg, enemyBullets = [], allies
     unit.turretStates = turrets.map((t) => ({
       worldAngle: unit.angle + (t.angleOffset || 0),
       fireTimer: -(t.initialFireDelay || 0),
-      shouldFire: false
+      shouldFire: false,
+      wasFiring: false
     }));
   }
 
@@ -405,6 +406,13 @@ export function updateBossWeapons(unit, dt, playerArg, enemyBullets = [], allies
   const globalSizeMult = (CONFIG.WEAPONS && CONFIG.WEAPONS.bulletSizeMultiplier !== undefined)
     ? CONFIG.WEAPONS.bulletSizeMultiplier
     : 1.0;
+
+  const upgStats = (!unit.isBoss && unit.upgrades && unit.upgrades.stats) ? unit.upgrades.stats : null;
+  const inc = ENEMY_UPGRADE_CONFIG.increments;
+  const bSpeedMult = upgStats ? (1.0 + (upgStats.bulletSpeed || 0) * inc.bulletSpeed) : 1.0;
+  const bDmgMult = upgStats ? (1.0 + (upgStats.bulletDamage || 0) * inc.bulletDamage) : 1.0;
+  const bPenMult = upgStats ? (1.0 + (upgStats.bulletPenetration || 0) * inc.bulletPenetration) : 1.0;
+  const reloadMult = upgStats ? (1.0 + (upgStats.reloadSpeed || 0) * inc.reloadSpeed) : 1.0;
 
   // Gather all standing non-cloaked candidates for independent auto turrets
   const candidates = [];
@@ -437,7 +445,7 @@ export function updateBossWeapons(unit, dt, playerArg, enemyBullets = [], allies
     const mx = unit.x + cosM * xOff - sinM * yOff;
     const my = unit.y + sinM * xOff + cosM * yOff;
 
-    const bSpeed = t.bulletSpeed ?? wCfg.bulletSpeed ?? 220;
+    const bSpeed = (t.bulletSpeed ?? wCfg.bulletSpeed ?? 220) * bSpeedMult;
 
     if (t.isAutoTurret && t.autoSpinSpeed) {
       state.spinOffset = (state.spinOffset || 0) + t.autoSpinSpeed * dt;
@@ -493,14 +501,47 @@ export function updateBossWeapons(unit, dt, playerArg, enemyBullets = [], allies
       state.shouldFire = true;
     }
 
-    const fireRateSec = t.fireRateSec ?? wCfg.fireRateSec ?? 0.7;
+    const baseFireRateSec = t.fireRateSec ?? wCfg.fireRateSec ?? 0.7;
+    const minRate = (t.minFireRateSec ?? wCfg.minFireRateSec ?? 0);
+    const fireRateSec = Math.max(minRate, baseFireRateSec / reloadMult);
     state.fireTimer += dt;
+    if (!state.shouldFire && state.fireTimer > fireRateSec) {
+      state.fireTimer = fireRateSec;
+    }
+    state._mount = { mountAngle, xOff, yOff, cosM, sinM, mx, my, bSpeed, fireRateSec };
+  }
+
+  // Offset alternating barrels (fireDelay > 0) when transitioning from idle/ready into firing
+  for (let tIdx = 0; tIdx < turrets.length; tIdx++) {
+    const t = turrets[tIdx];
+    const state = unit.turretStates[tIdx];
+    if (!t || !state?._mount || !t.fireDelay || state.wasFiring || !state.shouldFire) continue;
+    const { fireRateSec } = state._mount;
     if (state.fireTimer < fireRateSec) continue;
 
-    if (!state.shouldFire) {
-      state.fireTimer = fireRateSec;
-      continue;
+    const allGroupReady = turrets.every((other, oIdx) => {
+      if (!other || other.type === WEAPON_TYPE.DRONE_SPAWNER || other.shootsBullet === false) return true;
+      if (Boolean(other.isAutoTurret) !== Boolean(t.isAutoTurret)) return true;
+      if (Math.abs((other.angleOffset || 0) - (t.angleOffset || 0)) >= 0.001) return true;
+      const oState = unit.turretStates[oIdx];
+      const oRate = oState?._mount?.fireRateSec ?? other.fireRateSec ?? wCfg.fireRateSec ?? 0.7;
+      return oState && oState.fireTimer >= oRate;
+    });
+
+    if (allGroupReady) {
+      state.fireTimer = (1 - t.fireDelay) * fireRateSec;
     }
+  }
+
+  for (let tIdx = 0; tIdx < turrets.length; tIdx++) {
+    const t = turrets[tIdx];
+    if (!t || t.type === WEAPON_TYPE.DRONE_SPAWNER || t.shootsBullet === false) continue;
+
+    const state = unit.turretStates[tIdx];
+    const { mountAngle, xOff, yOff, cosM, sinM, mx, my, bSpeed, fireRateSec } = state._mount;
+    state.wasFiring = state.shouldFire;
+
+    if (!state.shouldFire || state.fireTimer < fireRateSec) continue;
 
     state.fireTimer -= fireRateSec;
 
@@ -522,8 +563,8 @@ export function updateBossWeapons(unit, dt, playerArg, enemyBullets = [], allies
     const baseShotAngle = t.isAutoTurret ? state.worldAngle : mountAngle;
     const tSpread = t.bulletSpread ?? wCfg.bulletSpread ?? 0;
     const tShots = Math.max(1, t.bulletsPerShot ?? wCfg.bulletsPerShot ?? 1);
-    const tDmg = t.bulletDamage ?? wCfg.bulletDamage ?? 6.0;
-    const tPen = t.bulletPenetration ?? wCfg.bulletPenetration ?? 2.0;
+    const tDmg = (t.bulletDamage ?? wCfg.bulletDamage ?? 6.0) * bDmgMult;
+    const tPen = (t.bulletPenetration ?? wCfg.bulletPenetration ?? 2.0) * bPenMult;
     const tLifetime = t.bulletLifetime ?? wCfg.bulletLifetime ?? 3.5;
     const tColor = t.bulletColor || wCfg.bulletColor || '#f14e54';
     const tStroke = t.bulletStroke || wCfg.bulletStroke || '#b82a30';
@@ -543,11 +584,12 @@ export function updateBossWeapons(unit, dt, playerArg, enemyBullets = [], allies
       const spreadOffset = tSpread ? (Math.random() - 0.5) * tSpread : 0;
       const shotAngle = baseShotAngle + spreadOffset;
 
+      const barrelYOff = (t.barrelYOffset || 0) * sizeScale;
       const spawnX = t.isAutoTurret
-        ? mx + Math.cos(shotAngle) * tipLen
+        ? mx + Math.cos(shotAngle) * tipLen - Math.sin(shotAngle) * barrelYOff
         : unit.x + cosM * (xOff + tipLen) - sinM * yOff;
       const spawnY = t.isAutoTurret
-        ? my + Math.sin(shotAngle) * tipLen
+        ? my + Math.sin(shotAngle) * tipLen + Math.cos(shotAngle) * barrelYOff
         : unit.y + sinM * (xOff + tipLen) + cosM * yOff;
 
       if (tRecoil) {

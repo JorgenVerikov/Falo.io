@@ -915,7 +915,7 @@ function setActiveChassis(chassisKey) {
 }
 
 function getCurrentMilestone(level) {
-  const milestones = CONFIG.EVOLUTION?.milestones || [15, 30, 45];
+  const milestones = CONFIG.EVOLUTION?.milestones || [15, 30, 45, 60];
   let cur = 0;
   for (const m of milestones) {
     if (level >= m) cur = m;

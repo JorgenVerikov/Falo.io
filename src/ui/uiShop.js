@@ -329,19 +329,20 @@ export class ShopPreviewController {
     const cx = w * 0.52;
     const cy = h * 0.5;
     const playerR = CONFIG.PLAYER.radius || 25;
-    let maxUnitExtent = chassis.radiusMultiplier || 1.0;
+    const bodyMult = chassis.radiusMultiplier || 1.0;
+    let maxUnitExtent = bodyMult;
 
     const armorLayers = getOuterArmorLayers(chassis);
     for (let i = 0; i < armorLayers.length; i++) {
-      maxUnitExtent = Math.max(maxUnitExtent, armorLayers[i].radiusMultiplier || 1.4);
+      maxUnitExtent = Math.max(maxUnitExtent, bodyMult * (armorLayers[i].radiusMultiplier || 1.4));
     }
 
     if (chassis.turrets && chassis.turrets.length > 0) {
       chassis.turrets.forEach(turret => {
-        const bxUnit = (turret.xOffset || 0) / playerR;
-        const lenUnit = (turret.length || 48) / playerR;
-        const yUnit = Math.abs(turret.yOffset || 0) / playerR;
-        const halfWidthUnit = Math.max(turret.width || 20, turret.frontWidth || turret.width || 20) / (2 * playerR);
+        const bxUnit = ((turret.xOffset || 0) / playerR) * bodyMult;
+        const lenUnit = ((turret.length || 48) / playerR) * bodyMult;
+        const yUnit = (Math.abs(turret.yOffset || 0) / playerR) * bodyMult;
+        const halfWidthUnit = (Math.max(turret.width || 20, turret.frontWidth || turret.width || 20) / (2 * playerR)) * bodyMult;
         const reach = Math.hypot(bxUnit + lenUnit, yUnit + halfWidthUnit);
         maxUnitExtent = Math.max(maxUnitExtent, reach);
       });
@@ -372,17 +373,18 @@ export class ShopPreviewController {
     ctx.clearRect(0, 0, w, h);
 
     const { cx, cy, baseRadius, playerR } = this.computeTankLayout(w, h, chassis);
-    const radius = baseRadius * (chassis.radiusMultiplier || 1.0);
-    const scale = baseRadius / playerR;
-    const strokeWidth = Math.max(3.5, Math.round(baseRadius * 0.088));
+    const bodyMult = chassis.radiusMultiplier || 1.0;
+    const radius = baseRadius * bodyMult;
+    const scale = (baseRadius / playerR) * bodyMult;
+    const strokeWidth = Math.max(3.5, Math.round(radius * 0.088));
 
     ctx.translate(cx, cy);
 
     const armorLayers = getOuterArmorLayers(chassis);
     for (let i = 0; i < armorLayers.length; i++) {
       const layer = armorLayers[i];
-      const outerRadius = baseRadius * (layer.radiusMultiplier || 1.55);
-      const innerRadius = layer.innerRadiusMultiplier ? baseRadius * layer.innerRadiusMultiplier : 0;
+      const outerRadius = radius * (layer.radiusMultiplier || 1.55);
+      const innerRadius = layer.innerRadiusMultiplier ? radius * layer.innerRadiusMultiplier : 0;
       const layerAngle = (layer.initialAngle || 0) + this.spinAngle * ((layer.spinSpeed ?? 2.2) / 4);
       drawPreviewPolygon(
         ctx, 0, 0, outerRadius,
@@ -748,6 +750,7 @@ export function renderShopContent(ui, { animatePreview = false } = {}) {
 }
 
 export function getTankTierByPrice(cost = 0) {
+  if (cost >= 2000) return 5;
   if (cost >= 1500) return 4;
   if (cost >= 1000) return 3;
   if (cost >= 500) return 2;
@@ -802,7 +805,8 @@ export function renderTanksShop(ui, container, { animatePreview = false } = {}) 
     { key: 'spike', name: 'Spike', cost: CONFIG.CHASSIS.spike?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.spike?.reqLevel ?? 45, desc: CONFIG.CHASSIS.spike?.desc || 'Heavy rammer surrounded by 12 fast-spinning spikes dealing amplified body damage to overpower rival rammers.' },
     { key: 'autotank', name: 'Auto Tank', cost: CONFIG.CHASSIS.autotank?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.autotank?.reqLevel ?? 45, desc: CONFIG.CHASSIS.autotank?.desc || 'Basic Tank fitted with an auxiliary uncontrolled Auto Turret mounted on top for secondary defense (requires staying Basic Tank until Level 45).' },
     { key: 'factory', name: 'Factory', cost: CONFIG.CHASSIS.factory?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.factory?.reqLevel ?? 45, desc: CONFIG.CHASSIS.factory?.desc || 'Square chassis with a single front spawner deploying up to 6 armed Minions.' },
-    { key: 'tesla', name: 'Tesla Surge', cost: CONFIG.CHASSIS.tesla?.shopCost ?? 1500, reqLvl: CONFIG.CHASSIS.tesla?.reqLevel ?? 45, desc: 'High-energy arc capacitor chassis with pentagonal frame.' },
+    { key: 'gustav', name: 'Gustav', cost: CONFIG.CHASSIS.gustav?.shopCost ?? 2000, reqLvl: CONFIG.CHASSIS.gustav?.reqLevel ?? 60, desc: CONFIG.CHASSIS.gustav?.desc || 'Heavy railway siege artillery evolving from Annihilator; fires colossal 80cm armor-piercing shells that detonate into HE shrapnel with wide siege vision and right-click/Shift camera scoping.' },
+    { key: 'tesla', name: 'Tesla Surge', cost: CONFIG.CHASSIS.tesla?.shopCost ?? 2000, reqLvl: CONFIG.CHASSIS.tesla?.reqLevel ?? 60, desc: CONFIG.CHASSIS.tesla?.desc || 'High-energy arc capacitor chassis with pentagonal frame.' },
     { key: 'tripleshot', name: 'Triple Shot', cost: CONFIG.CHASSIS.tripleshot?.shopCost ?? 1000, reqLvl: 30, desc: 'Three front-spread cannons covering a wide arc with strong recoil.' },
     { key: 'quadtank', name: 'Quad Tank', cost: CONFIG.CHASSIS.quadtank?.shopCost ?? 1000, reqLvl: 30, desc: 'Four cannons in a plus sign firing in four directions with nullified recoil.' },
     { key: 'twinflank', name: 'Twin Flank', cost: CONFIG.CHASSIS.twinflank?.shopCost ?? 1000, reqLvl: 30, desc: 'Dual front and rear cannons providing balanced coverage with nullified recoil.' },
@@ -823,10 +827,13 @@ export function renderTanksShop(ui, container, { animatePreview = false } = {}) 
     { key: 'basic', name: 'Basic Tank', cost: CONFIG.CHASSIS.basic?.shopCost ?? 0, reqLvl: 1, desc: 'Reliable all-around starter chassis with standard cannon.' }
   ];
 
-  const tanks = rawTanks.map(t => ({
-    ...t,
-    tier: getTankTierByPrice(t.cost)
-  }));
+  const tanks = rawTanks.map(t => {
+    const cfgTier = CONFIG.CHASSIS[t.key]?.tier;
+    return {
+      ...t,
+      tier: typeof cfgTier === 'number' ? cfgTier + 1 : getTankTierByPrice(t.cost)
+    };
+  });
 
   const activeTierFilter = ui.shopTankTierFilter || 'all';
 
@@ -843,6 +850,7 @@ export function renderTanksShop(ui, container, { animatePreview = false } = {}) 
           <button class="falo-tier-filter-btn tier-2 ${activeTierFilter === '2' ? 'active' : ''}" data-tier="2">TIER 2</button>
           <button class="falo-tier-filter-btn tier-3 ${activeTierFilter === '3' ? 'active' : ''}" data-tier="3">TIER 3</button>
           <button class="falo-tier-filter-btn tier-4 ${activeTierFilter === '4' ? 'active' : ''}" data-tier="4">TIER 4</button>
+          <button class="falo-tier-filter-btn tier-5 ${activeTierFilter === '5' ? 'active' : ''}" data-tier="5">TIER 5</button>
         </div>
         <select id="falo-shop-sort-select" class="falo-sort-select">
           <option value="featured" ${ui.shopSort === 'featured' ? 'selected' : ''}>Default</option>
@@ -872,7 +880,8 @@ export function renderTanksShop(ui, container, { animatePreview = false } = {}) 
     { tier: 1, title: 'TIER 1 TANKS', priceTag: 'FREE' },
     { tier: 2, title: 'TIER 2 TANKS', priceTag: '500 COINS' },
     { tier: 3, title: 'TIER 3 TANKS', priceTag: '1,000 COINS' },
-    { tier: 4, title: 'TIER 4 TANKS', priceTag: '1,500 COINS' }
+    { tier: 4, title: 'TIER 4 TANKS', priceTag: '1,500 COINS' },
+    { tier: 5, title: 'TIER 5 TANKS', priceTag: '2,000 COINS' }
   ];
 
   const orderedTiers = (ui.shopSort === 'price-high') ? [...tierMeta].reverse() : tierMeta;
@@ -929,7 +938,8 @@ export function createTankCard(ui, tank, coins, unlocked, playerPaintColor, play
     1: '#6b7280',
     2: '#3b82f6',
     3: '#a855f7',
-    4: '#ca8a04'
+    4: '#ca8a04',
+    5: '#ef4444'
   };
   const tierLabel = `Tier ${tierNum}`;
   const tierColor = tierColorMap[tierNum] || '#6b7280';

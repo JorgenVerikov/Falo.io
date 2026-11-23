@@ -255,57 +255,6 @@ export const TIER4_CHASSIS_CONFIG = {
     }
   },
 
-  tesla: {
-    name: 'Tesla Surge',
-    desc: 'High-energy arc capacitor chassis with pentagonal frame.',
-    reqLevel: 45,
-    tier: 3,
-    upgradesFrom: ['basic'],
-    shopCost: 1500,
-    cameraZoom: 0.85,
-    sides: 5,
-    radiusMultiplier: 1.1,
-    turrets: [
-      createBarrelTurret(
-        {
-          width: 14,
-          length: 52,
-          frontWidth: 14,
-          angleOffset: 0,
-          xOffset: 0,
-          yOffset: 0
-        },
-
-        {
-          damage: 1.3,
-          penetration: 1.5,
-          bulletSpeed: 1.4,
-          bulletSize: 0.7,
-          reload: 0.9,
-          spread: 0,
-          recoil: 0.5,
-          knockback: 1,
-          launchSpeed: 1,
-          bulletsPerShot: 1,
-          lifetime: 3,
-          fireDelay: 0,
-          bulletShape: 'circle',
-          bulletSides: 0,
-          bulletInnerRadius: 0.45,
-          bulletAngleOffset: 0,
-          bulletSpinSpeed: 0
-        },
-
-        {
-          type: 'ENERGY',
-          maxEnergy: 100,
-          costPerShot: 25,
-          rechargeRate: 14
-        }
-      )
-    ]
-  },
-
   triplet: {
     name: 'Triplet',
     desc: 'Three parallel front cannons firing a concentrated high-speed bullet stream.',

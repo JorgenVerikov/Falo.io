@@ -165,6 +165,12 @@ export const ENEMY_CHAT_CALLOUTS = {
     "Taking cover behind armor!",
     "Stack behind the tank!",
     "Using friendly armor as cover!"
+  ],
+  BARRICADE_DEPLOY: [
+    "Laying down barricades!",
+    "Fortifying the line!",
+    "Deploying trap cover!",
+    "Get behind the traps!"
   ]
 };
 

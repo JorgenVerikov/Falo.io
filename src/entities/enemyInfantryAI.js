@@ -60,7 +60,7 @@ export function evaluateInfantrySquadContext(unit, player, allEnemies, dist, ctx
     if (
       !ally.isRetreating &&
       aDistSq <= coverSearchDistSq &&
-      (ally.archetypeKey === 'heavy' || ally.archetypeKey === 'howitzer' || ally.archetypeKey === 'ranged' || ally.archetypeKey === 'suppressor')
+      (ally.archetypeKey === 'heavy' || ally.archetypeKey === 'auto_hex' || ally.archetypeKey === 'howitzer' || ally.archetypeKey === 'ranged' || ally.archetypeKey === 'suppressor' || ally.archetypeKey === 'sapper')
     ) {
       const tpdx = player.x - ally.x;
       const tpdy = player.y - ally.y;
@@ -68,8 +68,9 @@ export function evaluateInfantrySquadContext(unit, player, allEnemies, dist, ctx
       if (tpDistSq >= 12100 && tpDistSq <= 409600) { // 110^2 .. 640^2
         const aDist = Math.sqrt(aDistSq);
         const tpDist = Math.sqrt(tpDistSq);
-        const armorBonus = (ally.archetypeKey === 'heavy') ? 260
+        const armorBonus = (ally.archetypeKey === 'heavy' || ally.archetypeKey === 'auto_hex') ? 260
                          : (ally.archetypeKey === 'howitzer') ? 140
+                         : (ally.archetypeKey === 'sapper') ? 120
                          : (ally.archetypeKey === 'suppressor') ? 105
                          : 85;
         const forwardBonus = (tpDist < dist) ? 75 : 0;

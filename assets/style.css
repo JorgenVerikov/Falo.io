@@ -3056,6 +3056,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 .falo-tier-filter-btn.tier-2.active { background-color: #3b82f6; }
 .falo-tier-filter-btn.tier-3.active { background-color: #a855f7; }
 .falo-tier-filter-btn.tier-4.active { background-color: #ca8a04; }
+.falo-tier-filter-btn.tier-5.active { background-color: #ef4444; }
 
 .falo-shop-empty-state {
   grid-column: 1 / -1;
