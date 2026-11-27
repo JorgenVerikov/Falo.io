@@ -86,8 +86,6 @@ export const ENEMY_UPGRADE_CONFIG = {
     watcher: ['bulletSpeed', 'bulletDamage', 'bulletPenetration', 'reloadSpeed', 'maxHp', 'moveSpeed', 'regenRate'],
     suppressor: ['reloadSpeed', 'bulletSpeed', 'bulletDamage', 'bulletPenetration', 'moveSpeed', 'maxHp', 'regenRate'],
     phantom: ['moveSpeed', 'bodyDamage', 'reloadSpeed', 'maxHp'],
-    auto_hex: ['maxHp', 'bodyDamage', 'bulletDamage', 'reloadSpeed', 'bulletSpeed', 'moveSpeed', 'regenRate', 'bulletPenetration'],
-    sapper: ['bulletPenetration', 'reloadSpeed', 'maxHp', 'bulletDamage', 'bulletSpeed', 'moveSpeed', 'regenRate'],
     operative: ['reloadSpeed', 'bulletSpeed', 'moveSpeed', 'bulletDamage', 'maxHp', 'bulletPenetration', 'regenRate']
   }
 };

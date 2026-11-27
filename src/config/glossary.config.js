@@ -83,22 +83,6 @@ export const ENEMY_MASTERY_REWARDS = {
     perkLabel: '+5% Damage vs Phantoms',
     perkDesc: 'Deals 5% extra damage against Phantoms.'
   },
-  auto_hex: {
-    masteryKills: 50,
-    damageBonus: 0.04,
-    xpBonus: 0,
-    perkSummary: '+4% Damage',
-    perkLabel: '+4% Damage vs Auto Hexes',
-    perkDesc: 'Deals 4% extra damage against Auto Hexes.'
-  },
-  sapper: {
-    masteryKills: 50,
-    damageBonus: 0.04,
-    xpBonus: 0,
-    perkSummary: '+4% Damage',
-    perkLabel: '+4% Damage vs Sappers',
-    perkDesc: 'Deals 4% extra damage against Sapper units.'
-  },
   guardian: {
     masteryKills: 10,
     damageBonus: 0.05,
@@ -122,46 +106,6 @@ export const ENEMY_MASTERY_REWARDS = {
     perkSummary: '+5% Damage',
     perkLabel: '+5% Damage vs Defenders',
     perkDesc: 'Deals 5% extra damage against Defender bosses.'
-  },
-  fallen_booster: {
-    masteryKills: 10,
-    damageBonus: 0.05,
-    xpBonus: 0,
-    perkSummary: '+5% Damage',
-    perkLabel: '+5% Damage vs Fallen Boosters',
-    perkDesc: 'Deals 5% extra damage against Fallen Booster bosses.'
-  },
-  fallen_overlord: {
-    masteryKills: 10,
-    damageBonus: 0.05,
-    xpBonus: 0,
-    perkSummary: '+5% Damage',
-    perkLabel: '+5% Damage vs Fallen Overlords',
-    perkDesc: 'Deals 5% extra damage against Fallen Overlord bosses.'
-  },
-  hivemind: {
-    masteryKills: 10,
-    damageBonus: 0.05,
-    xpBonus: 0,
-    perkSummary: '+5% Damage',
-    perkLabel: '+5% Damage vs Hiveminds',
-    perkDesc: 'Deals 5% extra damage against Hivemind bosses.'
-  },
-  alpha: {
-    masteryKills: 10,
-    damageBonus: 0.05,
-    xpBonus: 0,
-    perkSummary: '+5% Damage',
-    perkLabel: '+5% Damage vs Alphas',
-    perkDesc: 'Deals 5% extra damage against Alpha bosses.'
-  },
-  beta: {
-    masteryKills: 10,
-    damageBonus: 0.05,
-    xpBonus: 0,
-    perkSummary: '+5% Damage',
-    perkLabel: '+5% Damage vs Betas',
-    perkDesc: 'Deals 5% extra damage against Beta bosses.'
   }
 };
 

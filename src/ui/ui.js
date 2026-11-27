@@ -471,16 +471,6 @@ export class UIManager {
       this.applySettings();
     });
 
-    document.getElementById('shadows-select')?.addEventListener('change', (e) => {
-      this.storage.saveSettings(
-        document.getElementById('theme-select')?.value || 'light',
-        parseFloat(document.getElementById('ui-scale-select')?.value || 1.0),
-        normalizeRefreshRate(document.getElementById('refresh-rate-select')?.value || 240),
-        e.target.value === 'true'
-      );
-      this.applySettings();
-    });
-
     document.getElementById('close-admin-btn').addEventListener('click', () => this.hideAdminPanel());
 
     document.getElementById('falo-ignore-btn').addEventListener('click', () => {
@@ -519,11 +509,9 @@ export class UIManager {
     const theme = s.theme || 'light';
     const scale = parseFloat(s.uiScale) || 1.0;
     const refreshRate = normalizeRefreshRate(s.refreshRate || 240);
-    const shadowsEnabled = (typeof s.shadows === 'boolean') ? s.shadows : true;
     this.userUiScale = scale;
 
     this.canvasMgr.setTheme(theme);
-    this.canvasMgr.setShadowsEnabled(shadowsEnabled);
     this.applyResponsiveUiScale();
 
     if (this.playerNameInput) {
@@ -540,7 +528,7 @@ export class UIManager {
       scaleBadge.textContent = `${Math.round(scale * 100)}% (${scale === 1.0 ? 'Default' : scale < 1.0 ? 'Compact' : 'Large'})`;
     }
 
-    document.querySelectorAll('.scale-chip-btn[data-scale]').forEach(chip => {
+    document.querySelectorAll('.scale-chip-btn:not(.refresh-chip-btn)').forEach(chip => {
       const chipVal = parseFloat(chip.getAttribute('data-scale'));
       chip.classList.toggle('active', Math.abs(chipVal - scale) < 0.05);
     });
@@ -554,16 +542,6 @@ export class UIManager {
     document.querySelectorAll('.refresh-chip-btn').forEach(chip => {
       const chipHz = parseInt(chip.getAttribute('data-refresh'), 10);
       chip.classList.toggle('active', chipHz === refreshRate);
-    });
-
-    const shadowsBadge = document.getElementById('current-shadows-badge');
-    if (shadowsBadge) {
-      shadowsBadge.textContent = shadowsEnabled ? 'ON (Enabled)' : 'OFF (Disabled)';
-    }
-
-    document.querySelectorAll('.shadows-chip-btn').forEach(chip => {
-      const chipShadows = chip.getAttribute('data-shadows') === 'true';
-      chip.classList.toggle('active', chipShadows === shadowsEnabled);
     });
 
     const themeSelect = document.getElementById('theme-select');
@@ -585,11 +563,6 @@ export class UIManager {
     const refreshSelect = document.getElementById('refresh-rate-select');
     if (refreshSelect) {
       refreshSelect.value = String(refreshRate);
-    }
-
-    const shadowsSelect = document.getElementById('shadows-select');
-    if (shadowsSelect) {
-      shadowsSelect.value = shadowsEnabled ? 'true' : 'false';
     }
   }
 
@@ -635,7 +608,6 @@ export class UIManager {
     if (this.uiContainer) {
       this.uiContainer.classList.add('hidden');
       this.uiContainer.classList.remove('has-active-boss');
-      this.uiContainer.style.removeProperty('--boss-hud-count');
     }
     if (this.faloPanel) this.faloPanel.classList.add('hidden');
     if (this.statPanel) this.statPanel.classList.add('hidden');
@@ -1135,13 +1107,6 @@ export class UIManager {
     return createColorCard(this, theme, coins, unlockedColors, activeColor, isFeatured);
   }
 
-  _triggerAdminPreviewPop(cube) {
-    if (!cube) return;
-    cube.classList.remove('is-popping');
-    void cube.offsetWidth;
-    cube.classList.add('is-popping');
-  }
-
   updateAdminTankPreview(chassisKey) {
     const cube = document.getElementById('adm-tank-preview-cube');
     const key = chassisKey || document.getElementById('adm-chassis-select')?.value || 'basic';
@@ -1155,23 +1120,6 @@ export class UIManager {
       ? computeStrokeColor(color)
       : (CONFIG.COLOR_THEMES[activeColorKey]?.stroke || '#0083a8');
     cube.innerHTML = generateTankSvg(key, color, stroke, 72);
-    this._triggerAdminPreviewPop(cube);
-  }
-
-  updateAdminAllyPreview(chassisKey) {
-    const cube = document.getElementById('adm-ally-tank-preview-cube');
-    const key = chassisKey || document.getElementById('adm-ally-chassis-select')?.value || 'basic';
-
-    if (!cube) return;
-    const activeColorKey = this.storage?.data?.activeColor || 'default';
-    const color = (activeColorKey === 'custom')
-      ? (this.storage?.data?.customColor || '#00b2e1')
-      : (CONFIG.COLOR_THEMES[activeColorKey]?.color || '#00b2e1');
-    const stroke = (activeColorKey === 'custom')
-      ? computeStrokeColor(color)
-      : (CONFIG.COLOR_THEMES[activeColorKey]?.stroke || '#0083a8');
-    cube.innerHTML = generateTankSvg(key, color, stroke, 72);
-    this._triggerAdminPreviewPop(cube);
   }
 
   updateAdminShapePreview(shapeKey) {
@@ -1179,7 +1127,6 @@ export class UIManager {
     if (!cube) return;
     const key = shapeKey || document.getElementById('adm-shape-select')?.value || 'egg';
     cube.innerHTML = generateShapeSvg(key, 72);
-    this._triggerAdminPreviewPop(cube);
   }
 
   updateAdminEnemyPreview(enemyKey) {
@@ -1187,16 +1134,10 @@ export class UIManager {
     if (!cube) return;
     const key = enemyKey || document.getElementById('adm-enemy-select')?.value || 'chaser';
     cube.innerHTML = generateEnemySvg(key, 72);
-    this._triggerAdminPreviewPop(cube);
   }
 
   updateAllAdminPreviews() {
     this.updateAdminTankPreview();
-    if (this.refreshAdminAllyControls) {
-      this.refreshAdminAllyControls();
-    } else {
-      this.updateAdminAllyPreview();
-    }
     this.updateAdminShapePreview();
     this.updateAdminEnemyPreview();
     const waveInput = document.getElementById('adm-wave-input');

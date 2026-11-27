@@ -94,29 +94,26 @@ export const PLAYER_CONFIG = {
 };
 
 export const EVOLUTION_CONFIG = {
-  milestones: [15, 30, 45, 60]
+  milestones: [15, 30, 45]
 };
 
 import { TIER1_CHASSIS_CONFIG } from './player.tier1.config.js';
 import { TIER2_CHASSIS_CONFIG } from './player.tier2.config.js';
 import { TIER3_CHASSIS_CONFIG } from './player.tier3.config.js';
 import { TIER4_CHASSIS_CONFIG } from './player.tier4.config.js';
-import { TIER5_CHASSIS_CONFIG } from './player.tier5.config.js';
 
 export {
   TIER1_CHASSIS_CONFIG,
   TIER2_CHASSIS_CONFIG,
   TIER3_CHASSIS_CONFIG,
-  TIER4_CHASSIS_CONFIG,
-  TIER5_CHASSIS_CONFIG
+  TIER4_CHASSIS_CONFIG
 };
 
 export const CHASSIS_CONFIG = {
   ...TIER1_CHASSIS_CONFIG,
   ...TIER2_CHASSIS_CONFIG,
   ...TIER3_CHASSIS_CONFIG,
-  ...TIER4_CHASSIS_CONFIG,
-  ...TIER5_CHASSIS_CONFIG
+  ...TIER4_CHASSIS_CONFIG
 };
 
 // Official Falo.io leveling formula:

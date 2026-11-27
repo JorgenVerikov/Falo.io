@@ -1,5 +1,5 @@
 import { EnemyCommunicationSystem } from './enemyComms.js';
-import { computeStandardRangedMovement, computeHeavyMovement } from './enemyNormalAI.js';
+import { computeStandardRangedMovement } from './enemyNormalAI.js';
 
 /**
  * Specialized Class: Phantom ('phantom') stealth ambush and high-speed charge waypoint logic
@@ -159,130 +159,11 @@ export function computeSuppressorMovement(unit, dt, ctx, out) {
   computeStandardRangedMovement(unit, dt, ctx, out);
 }
 
-/**
- * Specialized Class: Sapper ('sapper') combat engineer positioning between threats and allies to build trap cover
- */
-export function computeSapperMovement(unit, dt, ctx, out) {
-  const { player, allEnemies, dx, dy, dist, directAngle } = ctx;
-  const aiCfg = unit.config.ai || {};
-
-  if (unit.isRetreating) {
-    unit._protectAlly = null;
-    out.dirX = -dx / dist;
-    out.dirY = -dy / dist;
-    if (Math.random() < 0.08) {
-      EnemyCommunicationSystem.tryBroadcast(unit, 'TERRIFIED');
-    }
-    return;
-  }
-
-  if (unit.isLastStand) {
-    unit._protectAlly = null;
-    const lastStandDist = aiCfg.lastStandDistance || 240;
-    if (dist > lastStandDist) {
-      out.dirX = dx / dist;
-      out.dirY = dy / dist;
-    } else {
-      out.dirX = -Math.sin(directAngle) * unit.orbitDir;
-      out.dirY = Math.cos(directAngle) * unit.orbitDir;
-    }
-    return;
-  }
-
-  const searchDist = aiCfg.barricadeAllySearchDist || 680;
-  const searchDistSq = searchDist * searchDist;
-  let bestAlly = null;
-  let bestScore = -Infinity;
-
-  if (Array.isArray(allEnemies)) {
-    for (let i = 0; i < allEnemies.length; i++) {
-      const ally = allEnemies[i];
-      if (!ally || ally === unit || ally.dead || ally.destroyed || ally.isDying || ally.isBossMinion) continue;
-      if (ally.archetypeKey === 'sapper') continue;
-
-      const udx = ally.x - unit.x;
-      const udy = ally.y - unit.y;
-      const uDistSq = udx * udx + udy * udy;
-      if (uDistSq > searchDistSq) continue;
-
-      const apDist = Math.hypot(player.x - ally.x, player.y - ally.y);
-      const isRangedOrSquad = (
-        ally.archetypeKey === 'howitzer' ||
-        ally.archetypeKey === 'watcher' ||
-        ally.archetypeKey === 'suppressor' ||
-        ally.archetypeKey === 'ranged' ||
-        ally.archetypeKey === 'operative'
-      );
-      const hpRatio = Math.max(0, (ally.hp || 1) / (ally.maxHp || 1));
-      const roleBonus = isRangedOrSquad ? 180 : 40;
-      const woundedBonus = hpRatio < 0.55 ? 95 : 0;
-      const threatProximityBonus = Math.max(0, 620 - apDist) * 0.45;
-      const distPenalty = Math.sqrt(uDistSq) * 0.35;
-      const score = roleBonus + woundedBonus + threatProximityBonus - distPenalty;
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestAlly = ally;
-      }
-    }
-  }
-
-  unit._protectAlly = bestAlly;
-
-  if (bestAlly) {
-    const apX = player.x - bestAlly.x;
-    const apY = player.y - bestAlly.y;
-    const apDist = Math.hypot(apX, apY) || 1;
-    const dirToPlayerX = apX / apDist;
-    const dirToPlayerY = apY / apDist;
-
-    const leadDist = aiCfg.barricadeAllyLeadDist || 115;
-    const minPlayerDist = aiCfg.barricadeMinPlayerDist || 255;
-    const maxSafeLead = Math.max(40, apDist - minPlayerDist);
-    const actualLead = Math.min(leadDist, maxSafeLead);
-
-    unit.orbitTimer -= dt;
-    if (unit.orbitTimer <= 0) {
-      unit.orbitDir *= -1;
-      unit.orbitTimer = 1.8 + Math.random() * 1.2;
-    }
-
-    const tangX = -dirToPlayerY * unit.orbitDir;
-    const tangY = dirToPlayerX * unit.orbitDir;
-    const guardX = bestAlly.x + dirToPlayerX * actualLead + tangX * 68;
-    const guardY = bestAlly.y + dirToPlayerY * actualLead + tangY * 68;
-
-    const toGuardX = guardX - unit.x;
-    const toGuardY = guardY - unit.y;
-    const guardDist = Math.hypot(toGuardX, toGuardY) || 1;
-
-    if (guardDist > 34) {
-      out.dirX = toGuardX / guardDist;
-      out.dirY = toGuardY / guardDist;
-    } else {
-      const orbitSpeed = aiCfg.orbitSpeed || 0.85;
-      out.dirX = tangX * orbitSpeed;
-      out.dirY = tangY * orbitSpeed;
-    }
-
-    if (Math.random() < 0.04) {
-      EnemyCommunicationSystem.tryBroadcast(unit, 'BARRICADE_DEPLOY');
-    }
-    return;
-  }
-
-  computeStandardRangedMovement(unit, dt, ctx, out);
-}
-
 export function updateSpecializedEnemyBehavior(unit, dt, ctx, out) {
   if (unit.archetypeKey === 'phantom') {
     computePhantomWaypoint(unit, dt, ctx, out);
   } else if (unit.archetypeKey === 'suppressor') {
     computeSuppressorMovement(unit, dt, ctx, out);
-  } else if (unit.archetypeKey === 'auto_hex') {
-    computeHeavyMovement(unit, dt, ctx, out);
-  } else if (unit.archetypeKey === 'sapper') {
-    computeSapperMovement(unit, dt, ctx, out);
   } else {
     // Howitzer & Watcher use adaptive ranged triangulation
     computeStandardRangedMovement(unit, dt, ctx, out);

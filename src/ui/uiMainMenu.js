@@ -142,20 +142,19 @@ export class MainMenuController {
     const cy = isPortraitNarrow ? h * 0.52 : h * 0.48;
 
     const playerR = CONFIG.PLAYER.radius || 25;
-    const bodyMult = chassis.radiusMultiplier || 1.0;
-    let maxUnitExtent = bodyMult;
+    let maxUnitExtent = chassis.radiusMultiplier || 1.0;
 
     const armorLayers = getOuterArmorLayers(chassis);
     for (let i = 0; i < armorLayers.length; i++) {
-      maxUnitExtent = Math.max(maxUnitExtent, bodyMult * (armorLayers[i].radiusMultiplier || 1.4));
+      maxUnitExtent = Math.max(maxUnitExtent, armorLayers[i].radiusMultiplier || 1.4);
     }
 
     if (chassis.turrets && chassis.turrets.length > 0) {
       chassis.turrets.forEach(turret => {
-        const bxUnit = ((turret.xOffset || 0) / playerR) * bodyMult;
-        const lenUnit = ((turret.length || 48) / playerR) * bodyMult;
-        const yUnit = (Math.abs(turret.yOffset || 0) / playerR) * bodyMult;
-        const halfWidthUnit = (Math.max(turret.width || 20, turret.frontWidth || turret.width || 20) / (2 * playerR)) * bodyMult;
+        const bxUnit = (turret.xOffset || 0) / playerR;
+        const lenUnit = (turret.length || 48) / playerR;
+        const yUnit = Math.abs(turret.yOffset || 0) / playerR;
+        const halfWidthUnit = Math.max(turret.width || 20, turret.frontWidth || turret.width || 20) / (2 * playerR);
         const reach = Math.hypot(bxUnit + lenUnit, yUnit + halfWidthUnit);
         maxUnitExtent = Math.max(maxUnitExtent, reach);
       });
@@ -188,18 +187,17 @@ export class MainMenuController {
 
     const { chassis, fillColor, strokeColor } = this.getTankVisualConfig();
     const { cx, cy, baseRadius, playerR } = this.computeTankLayout(w, h, chassis);
-    const bodyMult = chassis.radiusMultiplier || 1.0;
-    const radius = baseRadius * bodyMult;
-    const scale = (baseRadius / playerR) * bodyMult;
-    const strokeWidth = Math.max(3.5, Math.round(radius * 0.085));
+    const radius = baseRadius * (chassis.radiusMultiplier || 1.0);
+    const scale = baseRadius / playerR;
+    const strokeWidth = Math.max(3.5, Math.round(baseRadius * 0.085));
 
     ctx.translate(cx, cy);
 
     const armorLayers = getOuterArmorLayers(chassis);
     for (let i = 0; i < armorLayers.length; i++) {
       const layer = armorLayers[i];
-      const outerRadius = radius * (layer.radiusMultiplier || 1.55);
-      const innerRadius = layer.innerRadiusMultiplier ? radius * layer.innerRadiusMultiplier : 0;
+      const outerRadius = baseRadius * (layer.radiusMultiplier || 1.55);
+      const innerRadius = layer.innerRadiusMultiplier ? baseRadius * layer.innerRadiusMultiplier : 0;
       const layerAngle = (layer.initialAngle || 0) + this.spinAngle * ((layer.spinSpeed ?? 2.2) / 4);
       drawPreviewPolygon(
         ctx, 0, 0, outerRadius,
@@ -229,23 +227,14 @@ export class MainMenuController {
       ctx.lineWidth = strokeWidth * 0.9;
 
       ctx.beginPath();
-      if (Array.isArray(turret.vertices) && turret.vertices.length >= 3) {
-        for (let i = 0; i < turret.vertices.length; i++) {
-          const vx = bx + (turret.vertices[i][0] ?? turret.vertices[i].x ?? 0) * scale;
-          const vy = tY + (turret.vertices[i][1] ?? turret.vertices[i].y ?? 0) * scale;
-          if (i === 0) ctx.moveTo(vx, vy);
-          else ctx.lineTo(vx, vy);
-        }
-      } else {
-        ctx.moveTo(bx, tY - halfBack);
-        ctx.lineTo(bx + tLen, tY - halfFront);
-        ctx.lineTo(bx + tLen, tY + halfFront);
-        ctx.lineTo(bx, tY + halfBack);
-      }
+      ctx.moveTo(bx, tY - halfBack);
+      ctx.lineTo(bx + tLen, tY - halfFront);
+      ctx.lineTo(bx + tLen, tY + halfFront);
+      ctx.lineTo(bx, tY + halfBack);
       ctx.closePath();
 
       ctx.fill();
-      ctx.lineJoin = turret.lineJoin || 'miter';
+      ctx.lineJoin = 'miter';
       ctx.stroke();
 
       if (turret.isAutoTurret) {

@@ -50,8 +50,6 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
   const yOffset = geom.yOffset ?? 0;
   const shootsBullet = geom.shootsBullet !== false;
   const playsRecoil = geom.playsRecoil !== false;
-  const vertices = Array.isArray(geom.vertices) ? geom.vertices : (Array.isArray(weaponExtra.vertices) ? weaponExtra.vertices : (Array.isArray(multipliers.vertices) ? multipliers.vertices : undefined));
-  const lineJoin = geom.lineJoin ?? weaponExtra.lineJoin ?? multipliers.lineJoin;
 
   const mergedBullet = (geom.bullet || geom.bulletOptions || multipliers.bullet || multipliers.bulletOptions || weaponExtra.bullet || weaponExtra.bulletOptions)
     ? {
@@ -88,8 +86,6 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
   const autoRange = weaponExtra.autoRange ?? multipliers.autoRange ?? geom.autoRange;
   const autoFov = weaponExtra.autoFov ?? multipliers.autoFov ?? geom.autoFov;
   const autoTurnSpeed = weaponExtra.autoTurnSpeed ?? multipliers.autoTurnSpeed ?? geom.autoTurnSpeed;
-  const barrelRecoilAmount = weaponExtra.barrelRecoilAmount ?? multipliers.barrelRecoilAmount ?? geom.barrelRecoilAmount;
-  const barrelRecoilDecay = weaponExtra.barrelRecoilDecay ?? multipliers.barrelRecoilDecay ?? geom.barrelRecoilDecay;
 
   const bulletShape = weaponExtra.bulletShape ?? multipliers.bulletShape ?? geom.bulletShape;
   const bulletSides = weaponExtra.bulletSides ?? multipliers.bulletSides ?? geom.bulletSides;
@@ -113,7 +109,6 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     : undefined;
   const droneTurret = weaponExtra.droneTurret ?? multipliers.droneTurret;
   const missileProfile = weaponExtra.missileProfile ?? multipliers.missileProfile ?? geom.missileProfile ?? weaponExtra.missile ?? multipliers.missile;
-  const waveProfile = weaponExtra.waveProfile ?? multipliers.waveProfile ?? geom.waveProfile ?? weaponExtra.wave ?? multipliers.wave;
   const fireTrigger = weaponExtra.fireTrigger ?? multipliers.fireTrigger ?? geom.fireTrigger;
   const pelletGroups = weaponExtra.pelletGroups ?? multipliers.pelletGroups ?? geom.pelletGroups;
 
@@ -145,7 +140,6 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     ...(droneOptions !== undefined ? { droneOptions } : {}),
     ...(droneTurret !== undefined ? { droneTurret } : {}),
     ...(missileProfile !== undefined ? { missileProfile } : {}),
-    ...(waveProfile !== undefined ? { waveProfile } : {}),
     ...(fireTrigger !== undefined ? { fireTrigger } : {}),
     ...(pelletGroups !== undefined ? { pelletGroups } : {})
   };
@@ -171,8 +165,6 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     ...(autoRange !== undefined ? { autoRange } : {}),
     ...(autoFov !== undefined ? { autoFov } : {}),
     ...(autoTurnSpeed !== undefined ? { autoTurnSpeed } : {}),
-    ...(barrelRecoilAmount !== undefined ? { barrelRecoilAmount } : {}),
-    ...(barrelRecoilDecay !== undefined ? { barrelRecoilDecay } : {}),
     ...optionalProjectileFields,
     ...weaponExtra
   } : null;
@@ -192,8 +184,6 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     isAutoDrone,
     mountRadius,
     layer,
-    ...(vertices !== undefined ? { vertices } : {}),
-    ...(lineJoin !== undefined ? { lineJoin } : {}),
 
     // Falo.io Tank Editor barrel configuration (all turrets have these matching the editor)
     damage,
@@ -214,8 +204,6 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     ...(autoRange !== undefined ? { autoRange } : {}),
     ...(autoFov !== undefined ? { autoFov } : {}),
     ...(autoTurnSpeed !== undefined ? { autoTurnSpeed } : {}),
-    ...(barrelRecoilAmount !== undefined ? { barrelRecoilAmount } : {}),
-    ...(barrelRecoilDecay !== undefined ? { barrelRecoilDecay } : {}),
     ...optionalProjectileFields,
 
     weapon
@@ -237,14 +225,12 @@ export const WEAPONS_CONFIG = {
   droneOrbitSpeed: 0.9,
   repelStrength: 160,
   penDrainMultiplier: 1.0,
-  shapePenetrationDrain: 4.5,
-  enemyPenetrationDrain: 4.5,
+  shapePenetrationDrain: 3.0,
+  enemyPenetrationDrain: 2.5,
   damageMultiplier: 1.0,
   bulletSizeMultiplier: 1.0,
-  bulletVsBulletDrain: 3.0,
-  bulletVsBulletDamageScale: 0.15,
-  bulletVsBodyDamageScale: 0.15,
-  barrelRecoilDecay: 24,
+  bulletVsBulletDrain: 1.0,
+  barrelRecoilDecay: 40,
   recoilForceMultiplier: 1.35,
   smasherDashDuration: 0.45,
   smasherDashForce: 450,

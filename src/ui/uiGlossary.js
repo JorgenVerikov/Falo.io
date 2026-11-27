@@ -21,16 +21,9 @@ const ENEMY_DESCRIPTIONS = {
   suppressor: 'Rapid-fire unit with a flared barrel that heats up under sustained fire.',
   operative: 'Small infantry unit operating in squads with magazine-fed burst fire.',
   phantom: 'Cloaked thruster unit that accelerates into a direct ramming charge at close range.',
-  auto_hex: 'Reinforced hexagonal rammer with spinning outer armor, a boost dash, and a 360-degree top auto turret.',
-  sapper: 'Combat-engineer Mega Trapper unit that launches massive, highly durable trap barricades between threats and allies to shield friendly squads.',
   guardian: 'Massive pink triangular boss carrying a rear spawner that deploys swarms of fast pink drones.',
   summoner: 'Massive yellow square boss carrying four side spawners that deploy swarms of peach square drones.',
-  defender: 'Massive red triangular boss with three high-reload side trap launchers and three corner-mounted auto turrets.',
-  fallen_booster: 'Massive light-gray circular boss modeled after the Booster, propelled into relentless ramming charges by four staggered rear thrusters.',
-  fallen_overlord: 'Massive light-gray circular boss modeled after the Overlord, slowly deploying up to 24 powerful gray drones from four wide spawners.',
-  hivemind: 'Massive green hexagonal boss armed with three Drone spawners, six paired Small Drone spawners across three sides, and a spinning three-barrel center auto cannon.',
-  alpha: 'Massive blue circular boss armed with a front Destroyer cannon, inner twin auto-cannons, two angled side cannons, and two rear drone spawners.',
-  beta: 'Massive red circular boss built on a Gunner chassis, driven forward by three alternating rear propulsion cannons and topped with a spinning three-barrel auto cannon.'
+  defender: 'Massive red triangular boss with three high-reload side trap launchers and three corner-mounted auto turrets.'
 };
 
 const ROLE_LABELS = {
@@ -42,16 +35,9 @@ const ROLE_LABELS = {
   suppressor: 'Rapid Suppressor',
   operative: 'Squad Infantry',
   phantom: 'Stealth Charger',
-  auto_hex: 'Auto-Turret Rammer',
-  sapper: 'Barricade Engineer',
   boss_guardian: 'Boss · Drone Carrier',
   boss_summoner: 'Boss · Drone Carrier',
-  boss_defender: 'Boss · Trap Fortress',
-  boss_fallen_booster: 'Boss · Thruster Rammer',
-  boss_fallen_overlord: 'Boss · Heavy Drone Carrier',
-  boss_hivemind: 'Boss · Swarm Carrier',
-  boss_alpha: 'Boss · Assault Carrier',
-  boss_beta: 'Boss · Thruster Gunner'
+  boss_defender: 'Boss · Trap Fortress'
 };
 
 function escapeHtml(value) {
@@ -919,9 +905,7 @@ export class EnemyGlossaryController {
         const my = Math.sin(mountAngle) * xOff + Math.cos(mountAngle) * yOff;
         let aimAngle = mountAngle;
 
-        if (turret.autoSpinSpeed) {
-          aimAngle = mountAngle + this.swayTime * turret.autoSpinSpeed;
-        } else if (this.hasPointer && this.previewCanvas) {
+        if (this.hasPointer && this.previewCanvas) {
           const rect = this.previewCanvas.getBoundingClientRect();
           const worldX = rect.left + cx + mx;
           const worldY = rect.top + cy + my;
@@ -931,7 +915,6 @@ export class EnemyGlossaryController {
           aimAngle = mountAngle + Math.max(-fovHalf, Math.min(fovHalf, relAim));
         }
 
-        const barrelYOff = (turret.barrelYOffset || 0) * sizeScale;
         ctx.save();
         ctx.translate(mx, my);
         ctx.rotate(aimAngle);
@@ -939,10 +922,10 @@ export class EnemyGlossaryController {
         ctx.strokeStyle = turretStroke;
         ctx.lineWidth = strokeWidth * 0.9;
         ctx.beginPath();
-        ctx.moveTo(0, barrelYOff - halfBack);
-        ctx.lineTo(tLen, barrelYOff - halfFront);
-        ctx.lineTo(tLen, barrelYOff + halfFront);
-        ctx.lineTo(0, barrelYOff + halfBack);
+        ctx.moveTo(0, -halfBack);
+        ctx.lineTo(tLen, -halfFront);
+        ctx.lineTo(tLen, halfFront);
+        ctx.lineTo(0, halfBack);
         ctx.closePath();
         ctx.fill();
         ctx.lineJoin = 'miter';

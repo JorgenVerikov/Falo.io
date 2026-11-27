@@ -290,17 +290,9 @@ export class Projectile {
     this.strokeColor = options.strokeColor || strokeColor;
     this.owner = options.owner || null;
     this.isTrap = Boolean(options.isTrap);
-    this.isSetTrap = Boolean(options.isSetTrap);
-    this.applyDrag = Boolean(options.applyDrag || (this.isTrap && !this.isSetTrap));
+    this.applyDrag = Boolean(options.applyDrag || this.isTrap);
     this.drag = options.drag ?? (CONFIG.WEAPONS.trapDrag || 4.6);
     this.stopSpeed = options.stopSpeed ?? (CONFIG.WEAPONS.trapStopSpeed || 3.0);
-    if (this.isSetTrap) {
-      this.anchorX = options.anchorX ?? x;
-      this.anchorY = options.anchorY ?? y;
-      this.anchorActive = true;
-      this.anchorSettled = false;
-      this.clingTimer = options.setTrapClingDuration ?? 2.4;
-    }
 
     this.sides = (options.sides !== undefined) ? options.sides : (this.isTrap ? 3 : (defaults.sides ?? 0));
     this.shape = options.shape || (this.isTrap ? 'trap' : (this.sides > 0 ? 'polygon' : (defaults.shape || 'circle')));
@@ -336,21 +328,6 @@ export class Projectile {
     }
     this.trapAngle = options.trapAngle ?? (this.currentAngle + this.angleOffset);
     this.renderAngle = this.trapAngle;
-
-    const waveCfg = options.wave || null;
-    this.isWaveBullet = Boolean(waveCfg && waveCfg.enabled !== false);
-    if (this.isWaveBullet) {
-      const fwdAngle = waveCfg.forwardAngle ?? this.currentAngle;
-      this.waveFwdX = Math.cos(fwdAngle);
-      this.waveFwdY = Math.sin(fwdAngle);
-      this.wavePerpX = -this.waveFwdY;
-      this.wavePerpY = this.waveFwdX;
-      this.wavePolarity = waveCfg.polarity ?? 1;
-      this.waveWavelength = Math.max(40, waveCfg.wavelength || 240);
-      this.waveAmplitude = waveCfg.amplitude ?? 42;
-      this.waveOmega = (Math.PI * 2 * this.speed) / this.waveWavelength;
-      this.waveElapsed = 0;
-    }
 
     this.dead = false; // When true, ceases active collision
     this.isDying = false;
@@ -440,53 +417,7 @@ export class Projectile {
       return;
     }
 
-    if (this.isSetTrap) {
-      if (this.anchorActive) {
-        const adx = this.anchorX - this.x;
-        const ady = this.anchorY - this.y;
-        const distToAnchor = Math.hypot(adx, ady);
-        if (!this.anchorSettled) {
-          if (distToAnchor <= 5) {
-            this.x = this.anchorX;
-            this.y = this.anchorY;
-            this.vx = 0;
-            this.vy = 0;
-            this.anchorSettled = true;
-          } else {
-            const desiredSpd = Math.min(this.speed, Math.max(24, distToAnchor * 7.5));
-            this.vx = (adx / distToAnchor) * desiredSpd;
-            this.vy = (ady / distToAnchor) * desiredSpd;
-            this.x += this.vx * dt;
-            this.y += this.vy * dt;
-            if (this.initialSpeed > 0 && this.spinSpeed) {
-              this.renderAngle += this.spinSpeed * (desiredSpd / this.initialSpeed) * dt;
-              this.trapAngle = this.renderAngle;
-            }
-          }
-        } else {
-          if (distToAnchor > 1.5) {
-            const pull = Math.min(this.speed * 0.65, distToAnchor * 5.0);
-            this.vx = (adx / distToAnchor) * pull;
-            this.vy = (ady / distToAnchor) * pull;
-            this.x += this.vx * dt;
-            this.y += this.vy * dt;
-          } else {
-            this.vx = 0;
-            this.vy = 0;
-          }
-        }
-      } else {
-        const dragFactor = Math.exp(-this.drag * dt);
-        this.vx *= dragFactor;
-        this.vy *= dragFactor;
-        if (Math.hypot(this.vx, this.vy) < this.stopSpeed) {
-          this.vx = 0;
-          this.vy = 0;
-        }
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
-      }
-    } else if (this.applyDrag) {
+    if (this.applyDrag) {
       const dragFactor = Math.exp(-this.drag * dt);
       this.vx *= dragFactor;
       this.vy *= dragFactor;
@@ -502,22 +433,6 @@ export class Projectile {
 
       this.x += this.vx * dt;
       this.y += this.vy * dt;
-    } else if (this.isWaveBullet) {
-      const prevSin = Math.sin(this.waveOmega * this.waveElapsed);
-      this.waveElapsed += dt;
-      const nextSin = Math.sin(this.waveOmega * this.waveElapsed);
-      const dLat = this.wavePolarity * this.waveAmplitude * (nextSin - prevSin);
-      const safeDt = Math.max(1e-5, dt);
-      this.vx = this.waveFwdX * this.speed + (this.wavePerpX * dLat) / safeDt;
-      this.vy = this.waveFwdY * this.speed + (this.wavePerpY * dLat) / safeDt;
-      this.x += this.vx * dt;
-      this.y += this.vy * dt;
-      this.currentAngle = Math.atan2(this.vy, this.vx);
-      if (this.spinSpeed) {
-        this.renderAngle += this.spinSpeed * dt;
-      } else {
-        this.renderAngle = this.currentAngle + this.angleOffset;
-      }
     } else {
       const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.currentAngle), Math.cos(this.targetAngle - this.currentAngle));
       this.currentAngle += angleDiff * Math.min(1.0, this.turnSpeed * dt);
@@ -741,8 +656,6 @@ export class Drone {
     this.guardRange = options.guardRange ?? null;
     this.leashRange = options.leashRange ?? null;
     this.behavior = options.behavior || null;
-    this.passiveForwardDrift = Boolean(options.passiveForwardDrift || this.behavior?.passiveForwardDrift);
-    this.lastDirectedAngle = options.aimAngle ?? this.angle;
 
     // Adjustable turret(s) for Factory minions or any armed drone
     const rawTurretList = Array.isArray(options.turrets)
@@ -991,9 +904,6 @@ export class Drone {
       const dy = controlState.targetY - this.y;
       const dist = Math.hypot(dx, dy);
       desiredAimAngle = Math.atan2(dy, dx);
-      if (dist > 8) {
-        this.lastDirectedAngle = desiredAimAngle;
-      }
       shouldShoot = hasTurrets;
       const isAttacking = Boolean(controlState.attackTarget || controlState.isAttackingTarget);
       if (isAttacking) {
@@ -1022,7 +932,6 @@ export class Drone {
         desiredVx = (-pDx / distFromPlayer) * maxSpd;
         desiredVy = (-pDy / distFromPlayer) * maxSpd;
         desiredAimAngle = Math.atan2(desiredVy, desiredVx);
-        this.lastDirectedAngle = desiredAimAngle;
         shouldShoot = false;
       } else {
         const dx = this.x - controlState.targetX;
@@ -1031,11 +940,10 @@ export class Drone {
         desiredVx = (dx / dist) * maxSpd;
         desiredVy = (dy / dist) * maxSpd;
         desiredAimAngle = Math.atan2(dy, dx);
-        this.lastDirectedAngle = desiredAimAngle;
         shouldShoot = hasTurrets;
       }
     } else {
-      // IDLE: target nearby enemy or shape, otherwise orbit around player (or drift forward for Swarm Drones)
+      // IDLE: target nearby enemy or shape, otherwise orbit around player
       if (targetEntity) {
         const dx = targetEntity.x - this.x;
         const dy = targetEntity.y - this.y;
@@ -1043,13 +951,7 @@ export class Drone {
         desiredVx = (dx / dist) * maxSpd;
         desiredVy = (dy / dist) * maxSpd;
         desiredAimAngle = Math.atan2(dy, dx);
-        this.lastDirectedAngle = desiredAimAngle;
         shouldShoot = hasTurrets;
-      } else if (this.passiveForwardDrift) {
-        const driftAngle = this.lastDirectedAngle ?? this.angle;
-        desiredVx = Math.cos(driftAngle) * maxSpd;
-        desiredVy = Math.sin(driftAngle) * maxSpd;
-        desiredAimAngle = driftAngle;
       } else {
         const orbitRadius = (player.radius || 25) + (this.orbitRadiusOffset ?? 58);
         const slotAngle = idleOrbitTime * orbitSpeed + (droneIndex / Math.max(1, totalDrones)) * Math.PI * 2;
@@ -1296,7 +1198,6 @@ export class WeaponSystem {
     this.isDroneClass = Boolean(chassis.isDroneClass);
     this.isFactoryClass = Boolean(chassis.isFactoryClass);
     this.unlimitedDrones = Boolean(chassis.unlimitedDrones);
-    this.manualDroneSpawn = Boolean(chassis.manualDroneSpawn);
     this.infectSquares = Boolean(chassis.infectSquares);
     this.alwaysAutoSpin = Boolean(chassis.alwaysAutoSpin);
     this.starterDroneCap = chassis.starterDroneCap || 0;
@@ -1384,8 +1285,7 @@ export class WeaponSystem {
         shootsBullet: shootsBullet,
         playsRecoil: t.playsRecoil === true || (t.playsRecoil !== false && shootsBullet),
         fireDelayTicks: t.fireDelayTicks || 0,
-        barrelRecoilAmount: t.barrelRecoilAmount ?? w.barrelRecoilAmount,
-        barrelRecoilDecay: t.barrelRecoilDecay ?? w.barrelRecoilDecay ?? chassis.barrelRecoilDecay,
+        recoilKickAmount: t.recoilKickAmount || 10,
 
         // Falo.io Tank Editor parameters & multipliers
         damageMult: (t.damage !== undefined) ? t.damage : 1.0,
@@ -1401,15 +1301,10 @@ export class WeaponSystem {
         lifetime: t.lifetime || CONFIG.WEAPONS.defaultLifetime || 3.0,
         fireDelay: t.fireDelay || 0,
         isTrap: Boolean(w.isTrap || t.isTrap),
-        isSetTrap: Boolean(w.isSetTrap || t.isSetTrap),
-        setTrapClingDuration: w.setTrapClingDuration ?? t.setTrapClingDuration ?? 2.4,
-        setTrapMaxRange: w.setTrapMaxRange ?? t.setTrapMaxRange ?? 760,
         trapDrag: w.trapDrag ?? t.trapDrag,
         isAutoTurret: Boolean(t.isAutoTurret || w.isAutoTurret),
         uncontrolled: Boolean(t.uncontrolled || w.uncontrolled),
         isAutoDrone: Boolean(t.isAutoDrone || w.isAutoDrone),
-        manualDroneSpawn: Boolean(w.manualDroneSpawn ?? t.manualDroneSpawn ?? chassis.manualDroneSpawn),
-        droneLifetimePenScale: w.droneLifetimePenScale ?? t.droneLifetimePenScale ?? 0,
         maxDronesForType: w.maxDronesForType ?? t.maxDronesForType ?? null,
         mountRadius: t.mountRadius || 11,
         autoRange: w.autoRange ?? t.autoRange,
@@ -1420,7 +1315,6 @@ export class WeaponSystem {
         droneTurret: t.droneTurret || w.droneTurret,
         fireTrigger: w.fireTrigger || t.fireTrigger || 'primary',
         pelletGroups: Array.isArray(w.pelletGroups || t.pelletGroups) ? (w.pelletGroups || t.pelletGroups) : null,
-        waveProfile: t.waveProfile || w.waveProfile || null,
         missileProfile: t.missileProfile || w.missileProfile || null,
         missileStats: (t.missileProfile || w.missileProfile) ? {
           baseDamage: baseCfg.damage || 7.0,
@@ -1483,7 +1377,6 @@ export class WeaponSystem {
 
       // Energy State
       energy: t.maxEnergy,
-      isRechargingEnergy: false,
 
       // Auto Turret State
       worldAngle: null,
@@ -1493,7 +1386,6 @@ export class WeaponSystem {
     // Firing mode and state tracking
     this.firingMode = chassis.firingMode || 'simultaneous';
     this.wasFiring = false;
-    this.wasDroneFiring = false;
 
     // Bind primary HUD readouts across each distinct weapon system on the tank
     const shootingTurrets = this.turrets.filter(t => t.shootsBullet);
@@ -1591,12 +1483,6 @@ export class WeaponSystem {
     this.firedThisFrame = false;
     this.summonedDroneThisFrame = false;
     this.spinReverse = Boolean(controlState && controlState.spinReverse);
-    this.waveInvert = Boolean(controlState && controlState.waveInvert);
-    this.targetX = (controlState && controlState.targetX !== undefined) ? controlState.targetX : undefined;
-    this.targetY = (controlState && controlState.targetY !== undefined) ? controlState.targetY : undefined;
-    this.targetDist = (this.targetX !== undefined && this.targetY !== undefined)
-      ? Math.hypot(this.targetX - player.x, this.targetY - player.y)
-      : 320;
 
     const primaryFiring = (typeof isFiring === 'object' && isFiring !== null) ? Boolean(isFiring.primary) : Boolean(isFiring);
     const secondaryFiring = (typeof isFiring === 'object' && isFiring !== null) ? Boolean(isFiring.secondary) : Boolean(isFiring);
@@ -1606,8 +1492,7 @@ export class WeaponSystem {
     // 1. Decay barrel recoil offset for all turrets
     this.turrets.forEach((turret, i) => {
       const state = this.turretStates[i];
-      const decay = turret.barrelRecoilDecay ?? CONFIG.WEAPONS.barrelRecoilDecay;
-      state.recoilOffset = Math.max(0, state.recoilOffset - dt * decay);
+      state.recoilOffset = Math.max(0, state.recoilOffset - dt * CONFIG.WEAPONS.barrelRecoilDecay);
 
       // Cooldown timer decay for independent turrets
       if (state.cooldownTimer > 0) state.cooldownTimer -= dt;
@@ -1619,7 +1504,7 @@ export class WeaponSystem {
         );
         if (!hasPairedShooter && turret.playsRecoil && anyManualFiring && state.cooldownTimer <= 0) {
           state.cooldownTimer = turret.fireIntervalSec || 0.3;
-          state.recoilOffset = turret.barrelRecoilAmount ?? 10;
+          state.recoilOffset = turret.recoilKickAmount || 10;
         }
         return;
       }
@@ -1775,18 +1660,6 @@ export class WeaponSystem {
         const diff = desiredRelAngle - curRel;
         const nextRel = Math.abs(diff) <= maxStep ? desiredRelAngle : curRel + Math.sign(diff) * maxStep;
         state.worldAngle = normalizeAngle(mountAngle + clampVal(nextRel, -fovHalf, fovHalf));
-      }
-      if (turret.type === WEAPON_TYPE.ENERGY) {
-        const cost = turret.costPerShot ?? 10;
-        const maxE = turret.maxEnergy ?? 100;
-        if (state.energy <= 0 || state.energy < cost) {
-          state.isRechargingEnergy = true;
-        } else if (state.energy >= maxE - 0.01) {
-          state.isRechargingEnergy = false;
-        }
-        if (state.isRechargingEnergy) {
-          shouldFire = false;
-        }
       }
       state.autoShouldFire = shouldFire;
     });
@@ -1974,22 +1847,9 @@ export class WeaponSystem {
       }
     }
 
-    // Drone Spawner execution (auto-replenishes up to maxDrones, or fires manually when manualDroneSpawn is enabled)
+    // Drone Spawner execution (auto-replenishes up to maxDrones)
     const droneTurrets = shootingTurrets.filter(t => t.type === WEAPON_TYPE.DRONE_SPAWNER);
     if (droneTurrets.length > 0) {
-      const anyManualDroneFiring = droneTurrets.some(t => t.manualDroneSpawn && isTurretManualFiring(t));
-      if (anyManualDroneFiring && !this.wasDroneFiring && isAlternating) {
-        const allManualReady = droneTurrets.every(t => !t.manualDroneSpawn || this.turretStates[t.index].cooldownTimer <= 0);
-        if (allManualReady) {
-          droneTurrets.forEach(turret => {
-            if (!turret.manualDroneSpawn) return;
-            const delayFraction = (turret.fireDelay !== undefined) ? turret.fireDelay : (turret.fireDelayTicks ? (turret.fireDelayTicks / 60 / turret.fireIntervalSec) : 0);
-            this.turretStates[turret.index].cooldownTimer = delayFraction * turret.fireIntervalSec;
-          });
-        }
-      }
-      this.wasDroneFiring = anyManualDroneFiring;
-
       let livingCount = 0;
       for (let i = 0; i < this.drones.length; i++) {
         if (!this.drones[i].dead) livingCount++;
@@ -2007,7 +1867,6 @@ export class WeaponSystem {
         for (let k = 0; k < droneTurrets.length; k++) {
           if (livingCount >= cap) break;
           const turret = droneTurrets[(startIdx + k) % droneTurrets.length];
-          if (turret.manualDroneSpawn && !isTurretManualFiring(turret)) continue;
           if (turret.maxDronesForType !== null && turret.maxDronesForType !== undefined) {
             const typeCount = turret.isAutoDrone ? autoCount : manualCount;
             if (typeCount >= turret.maxDronesForType) continue;
@@ -2023,8 +1882,6 @@ export class WeaponSystem {
           }
         }
       }
-    } else {
-      this.wasDroneFiring = false;
     }
 
     // Necromancer starter drone spawner (replenishes up to starterDroneCap = 4 from side spawners)
@@ -2214,80 +2071,21 @@ export class WeaponSystem {
 
     // Update active projectiles (in-place compaction for O(N) performance)
     const initialProjCount = this.projectiles.length;
-    const setTraps = [];
     let pWrite = 0;
     for (let i = 0; i < initialProjCount; i++) {
       const p = this.projectiles[i];
       p.update(dt, this.projectiles);
       if (!p.destroyed) {
         this.projectiles[pWrite++] = p;
-        if (p.isSetTrap && !p.dead) {
-          setTraps.push(p);
-        }
       }
     }
     for (let i = initialProjCount; i < this.projectiles.length; i++) {
       const p = this.projectiles[i];
       if (!p.destroyed) {
         this.projectiles[pWrite++] = p;
-        if (p.isSetTrap && !p.dead) {
-          setTraps.push(p);
-        }
       }
     }
     this.projectiles.length = pWrite;
-
-    // Set Traps arranged in a tight bundle cling briefly, then release and expel outward
-    if (setTraps.length > 1) {
-      const bundledFlags = new Uint8Array(setTraps.length);
-      for (let i = 0; i < setTraps.length; i++) {
-        const a = setTraps[i];
-        if (!a.anchorSettled) continue;
-        for (let j = i + 1; j < setTraps.length; j++) {
-          const b = setTraps[j];
-          if (!b.anchorSettled) continue;
-          const dx = b.x - a.x;
-          const dy = b.y - a.y;
-          const minDist = (a.radius + b.radius) * 0.92;
-          if (Math.abs(dx) >= minDist || Math.abs(dy) >= minDist) continue;
-          const dSq = dx * dx + dy * dy;
-          if (dSq < minDist * minDist) {
-            bundledFlags[i] = 1;
-            bundledFlags[j] = 1;
-            if (!a.anchorActive && !b.anchorActive) {
-              const dist = Math.sqrt(dSq);
-              let nx, ny;
-              if (dist > 0.01) {
-                nx = dx / dist;
-                ny = dy / dist;
-              } else {
-                const randA = (i * 2.39996 + j * 1.1) % (Math.PI * 2);
-                nx = Math.cos(randA);
-                ny = Math.sin(randA);
-              }
-              const overlap = minDist - dist;
-              const push = (260 + overlap * 18) * dt;
-              a.vx -= nx * push;
-              a.vy -= ny * push;
-              b.vx += nx * push;
-              b.vy += ny * push;
-            }
-          }
-        }
-      }
-      for (let i = 0; i < setTraps.length; i++) {
-        if (bundledFlags[i]) {
-          const st = setTraps[i];
-          if (st.anchorActive) {
-            st.clingTimer -= dt;
-            if (st.clingTimer <= 0) {
-              st.clingTimer = 0;
-              st.anchorActive = false;
-            }
-          }
-        }
-      }
-    }
 
     return totalRecoilImpulse;
   }
@@ -2297,7 +2095,7 @@ export class WeaponSystem {
     const sizeScale = (player && player.radius) ? (player.radius / CONFIG.PLAYER.radius) : 1.0;
 
     if (turret.playsRecoil) {
-      turretState.recoilOffset = turret.barrelRecoilAmount ?? 8;
+      turretState.recoilOffset = turret.recoilKickAmount || 8;
     }
 
     const barrelAngle = angle + turret.angleOffset;
@@ -2411,12 +2209,11 @@ export class WeaponSystem {
     const sizeScale = (player && player.radius) ? (player.radius / CONFIG.PLAYER.radius) : 1.0;
 
     if (turret.playsRecoil) {
-      const kick = turret.barrelRecoilAmount ?? 10;
-      turretState.recoilOffset = kick;
+      turretState.recoilOffset = turret.recoilKickAmount || 10;
       if (!turret.isAutoTurret) {
         this.turrets.forEach((other, idx) => {
           if (!other.shootsBullet && !other.isAutoTurret && other.playsRecoil && Math.abs((other.angleOffset || 0) - (turret.angleOffset || 0)) < 0.01) {
-            this.turretStates[idx].recoilOffset = other.barrelRecoilAmount ?? kick;
+            this.turretStates[idx].recoilOffset = other.recoilKickAmount || 10;
           }
         });
       }
@@ -2466,46 +2263,12 @@ export class WeaponSystem {
           baseProjOpts.drag = turret.trapDrag ?? baseProjOpts.drag ?? CONFIG.WEAPONS.trapDrag;
           baseProjOpts.trapAngle = shotAngle + (baseProjOpts.angleOffset || 0);
         }
-        if (turret.isSetTrap) {
-          baseProjOpts.isSetTrap = true;
-          baseProjOpts.setTrapClingDuration = turret.setTrapClingDuration ?? 2.4;
-          const maxRange = (turret.setTrapMaxRange ?? 760) * sizeScale;
-          const rawDist = (this.targetX !== undefined && this.targetY !== undefined)
-            ? Math.hypot(this.targetX - spawnX, this.targetY - spawnY)
-            : 280;
-          const placeDist = Math.max(18 * sizeScale, Math.min(maxRange, rawDist));
-          baseProjOpts.anchorX = spawnX + Math.cos(shotAngle) * placeDist;
-          baseProjOpts.anchorY = spawnY + Math.sin(shotAngle) * placeDist;
-        }
         if (turret.missileProfile) {
           baseProjOpts.missile = {
             ...turret.missileProfile,
             stats: turret.missileStats || null,
             maxSpeed: turret.missileStats?.maxSpeed,
             spinDirection: this.spinReverse ? -1 : 1
-          };
-        }
-        if (turret.waveProfile && turret.waveProfile.enabled !== false) {
-          const wCfg = turret.waveProfile;
-          const minW = wCfg.minWavelength ?? 110;
-          const maxW = wCfg.maxWavelength ?? 660;
-          const rawDist = (wCfg.fixedWavelength !== undefined)
-            ? wCfg.fixedWavelength
-            : (this.targetDist ?? 320) * (wCfg.wavelengthScale ?? 1.0);
-          const wavelength = Math.max(minW, Math.min(maxW, rawDist));
-          const minA = wCfg.minAmplitude ?? 20;
-          const maxA = wCfg.maxAmplitude ?? 86;
-          const amplitude = (wCfg.fixedAmplitude !== undefined)
-            ? wCfg.fixedAmplitude
-            : Math.max(minA, Math.min(maxA, wavelength * (wCfg.amplitudeRatio ?? 0.16)));
-          const basePol = wCfg.defaultPolarity ?? 1;
-          const allowInvert = wCfg.allowInvert !== false;
-          baseProjOpts.wave = {
-            enabled: true,
-            forwardAngle: shotAngle,
-            wavelength,
-            amplitude,
-            polarity: (allowInvert && this.waveInvert) ? -basePol : basePol
           };
         }
         return baseProjOpts;

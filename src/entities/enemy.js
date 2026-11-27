@@ -37,8 +37,6 @@ const _aiCtx = {
   totalSquadCount: 1,
   friendlyHeavy: null,
   closestHeavyDist: 550,
-  friendlyCoverTrap: null,
-  closestTrapDist: Infinity,
   closestAdvancingAlly: null,
   sepX: 0,
   sepY: 0,
@@ -168,9 +166,8 @@ export class EnemyUnit {
     this.chatCooldown = 2.5 + Math.random() * 3.5;
     this.allEnemiesRef = null;
 
-    const isFearless = this.isBoss || Boolean(this.config?.neverRetreat || this.config?.ai?.neverRetreat);
-    this.morale = isFearless ? 100 : 55;
-    this.moraleState = isFearless ? 'HIGH' : 'NORMAL';
+    this.morale = 55;
+    this.moraleState = 'NORMAL';
     this.moraleCommentCooldown = 2.0 + Math.random() * 3.0;
     this.cautiousOrbitDir = (Math.random() < 0.5) ? 1 : -1;
     this.cautiousOrbitTimer = 1.5 + Math.random() * 2.0;
@@ -225,7 +222,6 @@ export class EnemyUnit {
       this.archetypeKey === 'howitzer' ||
       this.archetypeKey === 'watcher' ||
       this.archetypeKey === 'suppressor' ||
-      this.archetypeKey === 'sapper' ||
       this.archetypeKey === 'operative'
     );
   }
@@ -335,7 +331,7 @@ export class EnemyUnit {
 
     if (remainingInWave <= 2) {
       const retreatChance = (neverRetreat ? 0
-                          : (this.archetypeKey === 'heavy' || this.archetypeKey === 'auto_hex') ? 0.08
+                          : (this.archetypeKey === 'heavy') ? 0.08
                           : (this.archetypeKey === 'chaser') ? 0.20
                           : 0.25) * retreatChanceMultiplier;
 
@@ -350,7 +346,7 @@ export class EnemyUnit {
       }
     } else if (!neverRetreat && this.morale < 15 && this.lastMoraleRetreatCheckRemaining !== remainingInWave) {
       this.lastMoraleRetreatCheckRemaining = remainingInWave;
-      const retreatChance = (this.archetypeKey === 'heavy' || this.archetypeKey === 'auto_hex') ? 0.03
+      const retreatChance = (this.archetypeKey === 'heavy') ? 0.03
                           : (this.archetypeKey === 'chaser') ? 0.12
                           : 0.15;
       if (Math.random() < retreatChance * retreatChanceMultiplier) {
@@ -362,9 +358,9 @@ export class EnemyUnit {
   }
 
   addMorale(delta) {
-    if (this.isBoss || this.config?.neverRetreat || this.config?.ai?.neverRetreat) {
-      this.morale = 100;
-      this.moraleState = 'HIGH';
+    if (this.isBoss) {
+      this.morale = 75;
+      this.moraleState = 'NORMAL';
       return;
     }
     this.morale = Math.max(0, Math.min(100, this.morale + delta));
@@ -562,30 +558,6 @@ export class EnemyUnit {
         const probeX = this.lastKnownPlayerX + Math.cos(this.searchSweepPhase) * 145;
         const probeY = this.lastKnownPlayerY + Math.sin(this.searchSweepPhase * 0.85) * 145;
         targetAimAngle = Math.atan2(probeY - this.y, probeX - this.x);
-      } else if (this.archetypeKey === 'sapper') {
-        const protectAlly = (this._protectAlly && !this._protectAlly.dead && !this._protectAlly.destroyed)
-          ? this._protectAlly
-          : null;
-        let baseAngle = directAngle;
-        if (protectAlly && dist > 230) {
-          const apX = perceivedPlayer.x - protectAlly.x;
-          const apY = perceivedPlayer.y - protectAlly.y;
-          const apDist = Math.hypot(apX, apY) || 1;
-          const wallDist = Math.min(260, Math.max(160, apDist * 0.52));
-          const wallX = protectAlly.x + (apX / apDist) * wallDist;
-          const wallY = protectAlly.y + (apY / apDist) * wallDist;
-          const toWallX = wallX - this.x;
-          const toWallY = wallY - this.y;
-          if (Math.hypot(toWallX, toWallY) > 18) {
-            const candAngle = Math.atan2(toWallY, toWallX);
-            if (Math.cos(candAngle - directAngle) > 0.35) {
-              baseAngle = candAngle;
-            }
-          }
-        }
-        const sweepAmp = (dist > 240) ? (this.config.ai?.barricadeSweepAmp ?? 0.44) : 0.18;
-        const sweepOffset = Math.sin(nowMs * 0.0026 + this.unitId * 1.7) * sweepAmp;
-        targetAimAngle = baseAngle + sweepOffset;
       } else {
         const inc = ENEMY_UPGRADE_CONFIG.increments;
         const bSpeedMult = 1.0 + (this.upgrades.stats.bulletSpeed * inc.bulletSpeed);
@@ -604,7 +576,7 @@ export class EnemyUnit {
       const turnRate = (this.config.ai && this.config.ai.turretTurnSpeed) ? this.config.ai.turretTurnSpeed : 8.5;
       this.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), turnRate * dt);
       this.aimError = Math.abs(Math.atan2(Math.sin(targetAimAngle - this.angle), Math.cos(targetAimAngle - this.angle)));
-    } else if (this.archetypeKey === 'heavy' || this.archetypeKey === 'auto_hex') {
+    } else if (this.archetypeKey === 'heavy') {
       this.angle = directAngle;
     }
 
@@ -641,15 +613,14 @@ export class EnemyUnit {
       if (ally === this || ally.dead || ally.destroyed) continue;
 
       livingAlliesTotal++;
-      const isAllyHeavy = (ally.archetypeKey === 'heavy' || ally.archetypeKey === 'auto_hex');
-      if (isAllyHeavy) hasLivingHeavy = true;
+      if (ally.archetypeKey === 'heavy') hasLivingHeavy = true;
 
       const adx = this.x - ally.x;
       const ady = this.y - ally.y;
       const aDistSq = adx * adx + ady * ady;
       if (aDistSq < minAllyDistSq) minAllyDistSq = aDistSq;
 
-      if (aDistSq < desiredSepSq && aDistSq > 0.001 && (!this.isBoss || ally.isBoss)) {
+      if (aDistSq < desiredSepSq && aDistSq > 0.001) {
         const aDist = Math.sqrt(aDistSq);
         const force = (desiredSep - aDist) / desiredSep;
         sepX += (adx / aDist) * force;
@@ -661,7 +632,7 @@ export class EnemyUnit {
         if (ally.unitId < this.unitId) squadRank++;
       }
 
-      if (needsSuppressorAlly && (ally.archetypeKey === 'chaser' || isAllyHeavy) && !ally.isRetreating) {
+      if (needsSuppressorAlly && (ally.archetypeKey === 'chaser' || ally.archetypeKey === 'heavy') && !ally.isRetreating) {
         const apx = player.x - ally.x;
         const apy = player.y - ally.y;
         const apDistSq = apx * apx + apy * apy;
@@ -671,7 +642,7 @@ export class EnemyUnit {
         }
       }
 
-      if (isRanged && isAllyHeavy && aDistSq < closestHeavyDistSq) {
+      if (isRanged && ally.archetypeKey === 'heavy' && aDistSq < closestHeavyDistSq) {
         closestHeavyDistSq = aDistSq;
         friendlyHeavy = ally;
       }
@@ -679,29 +650,6 @@ export class EnemyUnit {
 
     const minAllyDist = Math.sqrt(minAllyDistSq);
     const closestHeavyDist = Math.sqrt(closestHeavyDistSq);
-
-    let friendlyCoverTrap = null;
-    let closestTrapDistSq = 440 * 440;
-    if (isRanged && this.archetypeKey !== 'sapper' && Array.isArray(enemyBullets) && enemyBullets.length > 0) {
-      const toPlayerX = dx / dist;
-      const toPlayerY = dy / dist;
-      for (let i = 0; i < enemyBullets.length; i++) {
-        const b = enemyBullets[i];
-        if (!b || b.dead || !b.isTrap) continue;
-        const tdx = b.x - this.x;
-        const tdy = b.y - this.y;
-        const tDistSq = tdx * tdx + tdy * tdy;
-        if (tDistSq >= closestTrapDistSq || tDistSq < 1) continue;
-        const tDist = Math.sqrt(tDistSq);
-        // Prefer traps positioned in front of this unit toward the player
-        const forwardDot = (tdx / tDist) * toPlayerX + (tdy / tDist) * toPlayerY;
-        if (forwardDot > 0.35) {
-          closestTrapDistSq = tDistSq;
-          friendlyCoverTrap = b;
-        }
-      }
-    }
-    const closestTrapDist = friendlyCoverTrap ? Math.sqrt(closestTrapDistSq) : Infinity;
 
     // 3. Morale & Desperation Evaluation
     const playerMaxHp = player.maxHp || (CONFIG.PLAYER ? CONFIG.PLAYER.baseMaxHp : 50) || 50;
@@ -716,53 +664,45 @@ export class EnemyUnit {
     const isInPlayerFiringCone = (aimDiffWithPlayer < 0.52 && dist < 480);
     const isStranded = (livingAlliesTotal > 0 && minAllyDist > 420);
 
-    if (this.isBoss || this.config?.neverRetreat || this.config?.ai?.neverRetreat) {
-      this.morale = 100;
-      this.moraleState = 'HIGH';
-      this.isRetreating = false;
-      this.isLastStand = false;
-      this.isEvading = false;
-    } else {
-      let moraleRate = 0;
-      if (this.morale < 65) moraleRate += 0.8;
-      if (livingAlliesTotal >= 5) moraleRate += 1.4;
-      else if (livingAlliesTotal >= 3) moraleRate += 0.6;
-      else if (livingAlliesTotal === 1) moraleRate -= 0.2;
-      else if (livingAlliesTotal === 0) moraleRate -= 0.5;
+    let moraleRate = 0;
+    if (this.morale < 65) moraleRate += 0.8;
+    if (livingAlliesTotal >= 5) moraleRate += 1.4;
+    else if (livingAlliesTotal >= 3) moraleRate += 0.6;
+    else if (livingAlliesTotal === 1) moraleRate -= 0.2;
+    else if (livingAlliesTotal === 0) moraleRate -= 0.5;
 
-      if (hasLivingHeavy) moraleRate += 0.6;
-      else if (allEnemies.length > 2 && this.archetypeKey !== 'heavy' && this.archetypeKey !== 'auto_hex') moraleRate -= 0.15;
+    if (hasLivingHeavy) moraleRate += 0.6;
+    else if (allEnemies.length > 2 && this.archetypeKey !== 'heavy') moraleRate -= 0.15;
 
-      if (friendlyHeavy && closestHeavyDist < 180 && (dist > closestHeavyDist)) moraleRate += 0.8;
-      if (aimDiffWithPlayer > 1.8) moraleRate += 0.6;
-      if (isStranded) moraleRate -= 0.5;
-      if (isInPlayerFiringCone && dist < 175) moraleRate -= 0.6;
-      if (isPlayerWounded) moraleRate += 1.2;
-      if (isLowHealth) moraleRate -= 0.5;
+    if (friendlyHeavy && closestHeavyDist < 180 && (dist > closestHeavyDist)) moraleRate += 0.8;
+    if (aimDiffWithPlayer > 1.8) moraleRate += 0.6;
+    if (isStranded) moraleRate -= 0.5;
+    if (isInPlayerFiringCone && dist < 175) moraleRate -= 0.6;
+    if (isPlayerWounded) moraleRate += 1.2;
+    if (isLowHealth) moraleRate -= 0.5;
 
-      this.addMorale(moraleRate * dt);
+    this.addMorale(moraleRate * dt);
 
-      this.moraleCommentCooldown -= dt;
-      if (this.moraleCommentCooldown <= 0) {
-        this.moraleCommentCooldown = 2.5 + Math.random() * 3.5;
-        if (this.isLastStand) {
-          EnemyCommunicationSystem.tryBroadcast(this, 'LAST_STAND');
-        } else if (this.isRetreating || this.moraleState === 'TERRIFIED') {
-          EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
-        } else if (this.moraleState === 'HIGH') {
-          EnemyCommunicationSystem.tryBroadcast(this, Math.random() < 0.65 ? 'TAUNT' : 'CHEER');
-        } else if (this.moraleState === 'LOW') {
-          EnemyCommunicationSystem.tryBroadcast(this, Math.random() < 0.60 ? 'ORDER_BACK_UP' : 'JEER');
-        }
+    this.moraleCommentCooldown -= dt;
+    if (this.moraleCommentCooldown <= 0) {
+      this.moraleCommentCooldown = 2.5 + Math.random() * 3.5;
+      if (this.isLastStand) {
+        EnemyCommunicationSystem.tryBroadcast(this, 'LAST_STAND');
+      } else if (this.isRetreating || this.moraleState === 'TERRIFIED') {
+        EnemyCommunicationSystem.tryBroadcast(this, 'TERRIFIED');
+      } else if (this.moraleState === 'HIGH') {
+        EnemyCommunicationSystem.tryBroadcast(this, Math.random() < 0.65 ? 'TAUNT' : 'CHEER');
+      } else if (this.moraleState === 'LOW') {
+        EnemyCommunicationSystem.tryBroadcast(this, Math.random() < 0.60 ? 'ORDER_BACK_UP' : 'JEER');
       }
+    }
 
-      const remainingEnemiesTotal = this.remainingWaveEnemies;
+    const remainingEnemiesTotal = this.remainingWaveEnemies;
 
-      if (!this.isRetreating && !this.isLastStand) {
-        const retreatStartCount = CONFIG.WAVE?.retreatStartCount ?? 10;
-        if (remainingEnemiesTotal <= retreatStartCount || (this.moraleState === 'TERRIFIED' && this.morale < 15)) {
-          this.decideDesperationState(remainingEnemiesTotal);
-        }
+    if (!this.isRetreating && !this.isLastStand) {
+      const retreatStartCount = CONFIG.WAVE?.retreatStartCount ?? 10;
+      if (remainingEnemiesTotal <= retreatStartCount || (this.moraleState === 'TERRIFIED' && this.morale < 15)) {
+        this.decideDesperationState(remainingEnemiesTotal);
       }
     }
 
@@ -787,8 +727,6 @@ export class EnemyUnit {
     _aiCtx.totalSquadCount = totalSquadCount;
     _aiCtx.friendlyHeavy = friendlyHeavy;
     _aiCtx.closestHeavyDist = closestHeavyDist;
-    _aiCtx.friendlyCoverTrap = friendlyCoverTrap;
-    _aiCtx.closestTrapDist = closestTrapDist;
     _aiCtx.closestAdvancingAlly = closestAdvancingAlly;
     _aiCtx.sepX = sepX;
     _aiCtx.sepY = sepY;
@@ -825,8 +763,7 @@ export class EnemyUnit {
       if (this.evadeThreatTimer <= 0) this.evadeCommitSide = 0;
     }
 
-    const canEvade = !this.isBoss && !this.config?.neverRetreat && !this.config?.ai?.neverRetreat;
-    if (canEvade && this.config.ai && this.config.ai.evasion && playerProjectiles && playerProjectiles.length > 0) {
+    if (this.config.ai && this.config.ai.evasion && playerProjectiles && playerProjectiles.length > 0) {
       const maxThreatDist = isRanged ? (this.config.ai.evasionDangerDist || 210) : 180;
       const canAttemptDodge = !isRanged || this.isEvading || (this.dodgeCooldown <= 0);
 
@@ -945,7 +882,7 @@ export class EnemyUnit {
         }
       }
 
-      const sepWeight = (this.config.ai && this.config.ai.separationWeight !== undefined) ? this.config.ai.separationWeight : 1.0;
+      const sepWeight = (this.config.ai && this.config.ai.separationWeight) ? this.config.ai.separationWeight : 1.0;
       const effSepWeight = (isRanged && dist < (this.config.ai?.kitingDistance || 350))
         ? (sepWeight * 0.35)
         : sepWeight;
@@ -994,8 +931,6 @@ export class EnemyUnit {
       if (this.config.turrets?.some(t => t.shootsBullet !== false && t.type !== WEAPON_TYPE.DRONE_SPAWNER)) {
         updateBossWeapons(this, dt, playerArg, enemyBullets, allies);
       }
-    } else if (this.config.turrets?.some(t => t.isAutoTurret && t.shootsBullet !== false)) {
-      updateBossWeapons(this, dt, playerArg, enemyBullets, allies);
     }
 
     // 8. Weapon Discharge (fires normally at visible targets, or fires sweep probes into the nearest last-seen area when searching)
@@ -1057,21 +992,9 @@ export class EnemyUnit {
       if (turret.shootsBullet === false) continue;
 
       if (tIdx < this.barrelRecoilOffsets.length) {
-        const recoilVal = (turret.barrelRecoilAmount !== undefined)
+        this.barrelRecoilOffsets[tIdx] = (turret.barrelRecoilAmount !== undefined)
           ? turret.barrelRecoilAmount
           : ((wCfg.barrelRecoilAmount !== undefined) ? wCfg.barrelRecoilAmount : 10);
-        this.barrelRecoilOffsets[tIdx] = recoilVal;
-        if ((turret.xOffset || 0) > 0 && !turret.isAutoTurret) {
-          for (let oIdx = 0; oIdx < turrets.length; oIdx++) {
-            if (oIdx === tIdx) continue;
-            const other = turrets[oIdx];
-            if (other && !other.isAutoTurret && other.shootsBullet === false && other.playsRecoil !== false
-              && Math.abs((other.angleOffset || 0) - (turret.angleOffset || 0)) < 0.001
-              && oIdx < this.barrelRecoilOffsets.length) {
-              this.barrelRecoilOffsets[oIdx] = recoilVal;
-            }
-          }
-        }
       }
 
       const tb = (turret.bullet && typeof turret.bullet === 'object') ? turret.bullet : null;
@@ -1175,7 +1098,7 @@ export class EnemyUnit {
     }
   }
 
-  draw(canvasMgr, showOverlays = true) {
+  draw(canvasMgr) {
     const deathAlpha = this.isDying ? Math.max(0, 1.0 - (this.deathTimer / this.deathDuration)) : 1.0;
     const cloakAlpha = (this.cloakAlpha !== undefined) ? this.cloakAlpha : 1.0;
     const unitAlpha = Math.max(0, Math.min(1.0, deathAlpha * cloakAlpha));
@@ -1266,13 +1189,12 @@ export class EnemyUnit {
           : mountAngle;
         const mountR = (turret.mountRadius || 4) * sizeScale;
         const barrelLen = Math.max(4, (turret.length - recoil) * sizeScale);
-        const barrelYOff = (turret.barrelYOffset || 0) * sizeScale;
 
         canvasMgr.drawTurretBarrel(
           mx, my,
           barrelWidth, barrelLen,
           aimAngle,
-          0, barrelYOff,
+          0, 0,
           frontWidth,
           barrelFill,
           barrelStroke,
@@ -1307,25 +1229,16 @@ export class EnemyUnit {
       canvasMgr.ctx.restore();
     }
 
-    if (showOverlays) {
-      this.drawOverlays(canvasMgr.ctx);
-    }
-  }
-
-  drawOverlays(ctx) {
-    const cloakAlpha = (this.cloakAlpha !== undefined) ? this.cloakAlpha : 1.0;
-    if (this.isDying || cloakAlpha <= 0.002) return;
-
-    if (this.isReloadingMag && this.magReloadDuration > 0) {
-      this.drawReloadBar(ctx, cloakAlpha);
+    if (!this.isDying && this.isReloadingMag && this.magReloadDuration > 0 && cloakAlpha > 0.002) {
+      this.drawReloadBar(canvasMgr.ctx, cloakAlpha);
     }
 
-    if (this.hp < this.maxHp) {
-      this.drawHealthBar(ctx, cloakAlpha);
+    if (!this.isDying && this.hp < this.maxHp && cloakAlpha > 0.002) {
+      this.drawHealthBar(canvasMgr.ctx, cloakAlpha);
     }
 
-    if (this.chatText && this.chatTimer > 0) {
-      this.drawSpeechBubble(ctx, cloakAlpha);
+    if (this.chatText && this.chatTimer > 0 && cloakAlpha > 0.002) {
+      this.drawSpeechBubble(canvasMgr.ctx, cloakAlpha);
     }
   }
 

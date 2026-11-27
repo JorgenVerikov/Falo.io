@@ -101,9 +101,7 @@ export function syncUnitChassisAndStats({
     turret.recoilMult = mRecoil;
     turret.launchSpeedMult = mLaunch;
     turret.bulletsPerShot = baseW.bulletsPerShot ?? turretConfig.bulletsPerShot ?? 1;
-    const baseLifetime = baseW.lifetime ?? turretConfig.lifetime ?? baseCfg.lifetime ?? 3.0;
-    const lifePenScale = baseW.droneLifetimePenScale ?? turretConfig.droneLifetimePenScale ?? 0;
-    turret.lifetime = lifePenScale > 0 ? baseLifetime * (1 + penStat * lifePenScale) : baseLifetime;
+    turret.lifetime = baseW.lifetime ?? turretConfig.lifetime ?? baseCfg.lifetime ?? 3.0;
 
     const baseFireRateTicks = (baseW.fireRateTicks !== undefined) ? baseW.fireRateTicks : Math.round(baseCfg.fireRateTicks * mReload);
     const reloadFireRateMult = 1.0 + (reloadStat * (rCfg.fireRateScalePerPoint || 0.08));

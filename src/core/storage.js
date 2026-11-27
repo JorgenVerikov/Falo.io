@@ -38,7 +38,6 @@ const DEFAULT_DATA = {
     theme: 'light',
     uiScale: 1.0,
     refreshRate: 240,
-    shadows: true,
     _explicitTheme: false,
     _explicitRefreshRate: false
   },
@@ -99,7 +98,6 @@ export class StorageManager {
     const effectiveRefresh = rawSettings._explicitRefreshRate
       ? normalizeRefreshRate(rawSettings.refreshRate)
       : 240;
-    const effectiveShadows = (typeof rawSettings.shadows === 'boolean') ? rawSettings.shadows : true;
 
     const rawUnlocked = data.unlockedColors || ['default'];
     const normalizedUnlocked = Array.from(new Set(
@@ -119,11 +117,10 @@ export class StorageManager {
         ...DEFAULT_DATA.settings,
         ...rawSettings,
         theme: effectiveTheme,
-        refreshRate: effectiveRefresh,
-        shadows: effectiveShadows
+        refreshRate: effectiveRefresh
       },
-      unlockedChassis: Array.from(new Set(['basic', ...(data.unlockedChassis || []).map(k => k === 'quadtank' ? 'hexatank' : k)])),
-      activeChassis: (data.activeChassis === 'quadtank' ? 'hexatank' : data.activeChassis) || 'basic',
+      unlockedChassis: Array.from(new Set(['basic', ...(data.unlockedChassis || [])])),
+      activeChassis: data.activeChassis || 'basic',
       unlockedColors: normalizedUnlocked,
       activeColor,
       enemyKills: Object.fromEntries(
@@ -388,7 +385,7 @@ export class StorageManager {
     return false;
   }
 
-  saveSettings(theme, uiScale, refreshRate, shadows) {
+  saveSettings(theme, uiScale, refreshRate) {
     this.data.settings.theme = theme;
     this.data.settings.uiScale = uiScale;
     if (refreshRate !== undefined) {
@@ -396,11 +393,6 @@ export class StorageManager {
       this.data.settings._explicitRefreshRate = true;
     } else {
       this.data.settings.refreshRate = normalizeRefreshRate(this.data.settings.refreshRate);
-    }
-    if (shadows !== undefined) {
-      this.data.settings.shadows = Boolean(shadows);
-    } else if (typeof this.data.settings.shadows !== 'boolean') {
-      this.data.settings.shadows = true;
     }
     this.data.settings._explicitTheme = true;
     this.save();
