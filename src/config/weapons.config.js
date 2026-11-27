@@ -50,6 +50,8 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
   const yOffset = geom.yOffset ?? 0;
   const shootsBullet = geom.shootsBullet !== false;
   const playsRecoil = geom.playsRecoil !== false;
+  const vertices = Array.isArray(geom.vertices) ? geom.vertices : (Array.isArray(weaponExtra.vertices) ? weaponExtra.vertices : (Array.isArray(multipliers.vertices) ? multipliers.vertices : undefined));
+  const lineJoin = geom.lineJoin ?? weaponExtra.lineJoin ?? multipliers.lineJoin;
 
   const mergedBullet = (geom.bullet || geom.bulletOptions || multipliers.bullet || multipliers.bulletOptions || weaponExtra.bullet || weaponExtra.bulletOptions)
     ? {
@@ -111,6 +113,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     : undefined;
   const droneTurret = weaponExtra.droneTurret ?? multipliers.droneTurret;
   const missileProfile = weaponExtra.missileProfile ?? multipliers.missileProfile ?? geom.missileProfile ?? weaponExtra.missile ?? multipliers.missile;
+  const waveProfile = weaponExtra.waveProfile ?? multipliers.waveProfile ?? geom.waveProfile ?? weaponExtra.wave ?? multipliers.wave;
   const fireTrigger = weaponExtra.fireTrigger ?? multipliers.fireTrigger ?? geom.fireTrigger;
   const pelletGroups = weaponExtra.pelletGroups ?? multipliers.pelletGroups ?? geom.pelletGroups;
 
@@ -142,6 +145,7 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     ...(droneOptions !== undefined ? { droneOptions } : {}),
     ...(droneTurret !== undefined ? { droneTurret } : {}),
     ...(missileProfile !== undefined ? { missileProfile } : {}),
+    ...(waveProfile !== undefined ? { waveProfile } : {}),
     ...(fireTrigger !== undefined ? { fireTrigger } : {}),
     ...(pelletGroups !== undefined ? { pelletGroups } : {})
   };
@@ -188,6 +192,8 @@ export function createBarrelTurret(geom = {}, multipliers = {}, weaponExtra = {}
     isAutoDrone,
     mountRadius,
     layer,
+    ...(vertices !== undefined ? { vertices } : {}),
+    ...(lineJoin !== undefined ? { lineJoin } : {}),
 
     // Falo.io Tank Editor barrel configuration (all turrets have these matching the editor)
     damage,

@@ -122,8 +122,8 @@ export class StorageManager {
         refreshRate: effectiveRefresh,
         shadows: effectiveShadows
       },
-      unlockedChassis: Array.from(new Set(['basic', ...(data.unlockedChassis || [])])),
-      activeChassis: data.activeChassis || 'basic',
+      unlockedChassis: Array.from(new Set(['basic', ...(data.unlockedChassis || []).map(k => k === 'quadtank' ? 'hexatank' : k)])),
+      activeChassis: (data.activeChassis === 'quadtank' ? 'hexatank' : data.activeChassis) || 'basic',
       unlockedColors: normalizedUnlocked,
       activeColor,
       enemyKills: Object.fromEntries(

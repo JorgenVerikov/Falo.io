@@ -189,7 +189,7 @@ export class CanvasManager {
     ctx.restore();
   }
 
-  drawTurretBarrel(x, y, width, length, angle, offsetX = 0, offsetY = 0, frontWidth = width, fillColor = '#999999', strokeColor = '#727272', strokeWidth = 3.5) {
+  drawTurretBarrel(x, y, width, length, angle, offsetX = 0, offsetY = 0, frontWidth = width, fillColor = '#999999', strokeColor = '#727272', strokeWidth = 3.5, options = null) {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(x, y);
@@ -200,18 +200,29 @@ export class CanvasManager {
     ctx.lineWidth = strokeWidth;
 
     const bx = offsetX;
-    const halfBack = width / 2;
-    const halfFront = frontWidth / 2;
+    const verts = options && Array.isArray(options.vertices) && options.vertices.length >= 3 ? options.vertices : null;
+    const scale = (options && typeof options.scale === 'number') ? options.scale : 1;
 
     ctx.beginPath();
-    ctx.moveTo(bx, offsetY - halfBack);
-    ctx.lineTo(bx + length, offsetY - halfFront);
-    ctx.lineTo(bx + length, offsetY + halfFront);
-    ctx.lineTo(bx, offsetY + halfBack);
+    if (verts) {
+      for (let i = 0; i < verts.length; i++) {
+        const vx = bx + (verts[i][0] ?? verts[i].x ?? 0) * scale;
+        const vy = offsetY + (verts[i][1] ?? verts[i].y ?? 0) * scale;
+        if (i === 0) ctx.moveTo(vx, vy);
+        else ctx.lineTo(vx, vy);
+      }
+    } else {
+      const halfBack = width / 2;
+      const halfFront = frontWidth / 2;
+      ctx.moveTo(bx, offsetY - halfBack);
+      ctx.lineTo(bx + length, offsetY - halfFront);
+      ctx.lineTo(bx + length, offsetY + halfFront);
+      ctx.lineTo(bx, offsetY + halfBack);
+    }
     ctx.closePath();
 
     ctx.fill();
-    ctx.lineJoin = 'miter';
+    ctx.lineJoin = (options && options.lineJoin) ? options.lineJoin : 'miter';
     ctx.stroke();
 
     ctx.restore();

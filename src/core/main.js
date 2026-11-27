@@ -1001,7 +1001,9 @@ function updatePlayer(dt) {
       const isSniperLeanChassis = Boolean(chassisConfig.cameraScope) ||
         state.activeChassis === 'sniper' || state.activeChassis === 'assassin' ||
         state.activeChassis === 'ranger' || state.activeChassis === 'stalker' ||
-        state.activeChassis === 'hunter' || state.activeChassis === 'streamliner';
+        state.activeChassis === 'hunter' || state.activeChassis === 'rifle' ||
+        state.activeChassis === 'marksman' || state.activeChassis === 'minigun' ||
+        state.activeChassis === 'streamliner';
       const leanFactor = isSniperLeanChassis
         ? CONFIG.CAMERA.sniperLeanFactor
         : (CONFIG.CAMERA.globalLeanFactor ?? 0.04);
@@ -1087,10 +1089,11 @@ function updatePlayer(dt) {
   const hasCameraScope = Boolean(chassisConfig && chassisConfig.cameraScope) && !isMobileMode;
   const hasRightClickDetonate = !isMobileMode && Boolean(chassisConfig?.turrets?.some(t => t.missileProfile?.detonation?.onRightClick));
   const hasSecondaryFire = Boolean(chassisConfig?.turrets?.some(t => t.fireTrigger === 'secondary'));
+  const hasManualDroneSpawn = Boolean(chassisConfig?.manualDroneSpawn || chassisConfig?.turrets?.some(t => t.manualDroneSpawn || t.weapon?.manualDroneSpawn));
   const isScopeHeld = hasCameraScope && (input.mouse.isRightDown || Boolean(input.keys && input.keys['shift']));
   const detonatePressed = hasRightClickDetonate && input.mouse.isRightDown && !input.mouse.wasRightDown;
   input.mouse.wasRightDown = input.mouse.isRightDown;
-  const pointerFiring = !isMobileMode && (input.mouse.isDown || (!hasCameraScope && !hasRightClickDetonate && !hasSecondaryFire && input.mouse.isRightDown));
+  const pointerFiring = !isMobileMode && (input.mouse.isDown || (!hasCameraScope && !hasRightClickDetonate && !hasSecondaryFire && !hasManualDroneSpawn && input.mouse.isRightDown));
   const sharedFire = Boolean(input.keys && input.keys[' ']) || state.autoFire || mobileFiring;
   const isFiring = pointerFiring || sharedFire;
   const weaponFireInput = hasSecondaryFire
@@ -1135,6 +1138,7 @@ function updatePlayer(dt) {
       targetX: droneTargetX,
       targetY: droneTargetY,
       spinReverse: Boolean(!isMobileMode && input.mouse.isRightDown),
+      waveInvert: Boolean(!isMobileMode && (input.mouse.isRightDown || Boolean(input.keys && input.keys['shift']))),
       detonatePressed
     },
     waveMgr.enemies,
@@ -1191,6 +1195,9 @@ function updatePlayer(dt) {
     state.activeChassis === 'ranger' ||
     state.activeChassis === 'stalker' ||
     state.activeChassis === 'hunter' ||
+    state.activeChassis === 'rifle' ||
+    state.activeChassis === 'marksman' ||
+    state.activeChassis === 'minigun' ||
     state.activeChassis === 'streamliner';
 
   if (hasCameraScope && isScopeHeld) {
@@ -1390,7 +1397,11 @@ function renderPlayerChassis(showOverlays = true) {
     const xOff = (hasXOffset ? Math.max(0, (turret.xOffset || 0) - recoil) : (turret.xOffset || 0)) * sizeScale;
     const yOff = (turret.yOffset || 0) * sizeScale;
 
-    canvasMgr.drawTurretBarrel(x, y, barrelWidth, barrelLen, angle + turret.angleOffset, xOff, yOff, frontWidth);
+    const barrelOptions = (turret.vertices || turret.lineJoin)
+      ? { vertices: turret.vertices, lineJoin: turret.lineJoin, scale: sizeScale }
+      : null;
+
+    canvasMgr.drawTurretBarrel(x, y, barrelWidth, barrelLen, angle + turret.angleOffset, xOff, yOff, frontWidth, '#999999', '#727272', 3.5, barrelOptions);
   };
 
   const renderParts = getTankRenderParts(chassis, turrets);

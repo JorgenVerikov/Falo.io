@@ -110,14 +110,23 @@ export function drawTankPreview(ctx, chassisKey, spinAngle, playerFillColor = '#
     ctx.lineWidth = 2.5;
 
     ctx.beginPath();
-    ctx.moveTo(bx, tY - halfBack);
-    ctx.lineTo(bx + tLen, tY - halfFront);
-    ctx.lineTo(bx + tLen, tY + halfFront);
-    ctx.lineTo(bx, tY + halfBack);
+    if (Array.isArray(turret.vertices) && turret.vertices.length >= 3) {
+      for (let i = 0; i < turret.vertices.length; i++) {
+        const vx = bx + (turret.vertices[i][0] ?? turret.vertices[i].x ?? 0) * turretScale;
+        const vy = tY + (turret.vertices[i][1] ?? turret.vertices[i].y ?? 0) * turretScale;
+        if (i === 0) ctx.moveTo(vx, vy);
+        else ctx.lineTo(vx, vy);
+      }
+    } else {
+      ctx.moveTo(bx, tY - halfBack);
+      ctx.lineTo(bx + tLen, tY - halfFront);
+      ctx.lineTo(bx + tLen, tY + halfFront);
+      ctx.lineTo(bx, tY + halfBack);
+    }
     ctx.closePath();
 
     ctx.fill();
-    ctx.lineJoin = 'miter';
+    ctx.lineJoin = turret.lineJoin || 'miter';
     ctx.stroke();
 
     if (turret.isAutoTurret) {
@@ -232,13 +241,22 @@ export function generateTankPreviewDataUrl(chassisKey, color = '#00b2e1', stroke
     ctx.fillStyle = '#999999';
     ctx.strokeStyle = '#555555';
     ctx.lineWidth = 2.5 * dpr;
-    ctx.lineJoin = 'miter';
+    ctx.lineJoin = t.lineJoin || 'miter';
 
     ctx.beginPath();
-    ctx.moveTo(xOff, yOff - tWidth / 2);
-    ctx.lineTo(xOff + tLen, yOff - tFront / 2);
-    ctx.lineTo(xOff + tLen, yOff + tFront / 2);
-    ctx.lineTo(xOff, yOff + tWidth / 2);
+    if (Array.isArray(t.vertices) && t.vertices.length >= 3) {
+      for (let i = 0; i < t.vertices.length; i++) {
+        const vx = xOff + (t.vertices[i][0] ?? t.vertices[i].x ?? 0) * turretScale;
+        const vy = yOff + (t.vertices[i][1] ?? t.vertices[i].y ?? 0) * turretScale;
+        if (i === 0) ctx.moveTo(vx, vy);
+        else ctx.lineTo(vx, vy);
+      }
+    } else {
+      ctx.moveTo(xOff, yOff - tWidth / 2);
+      ctx.lineTo(xOff + tLen, yOff - tFront / 2);
+      ctx.lineTo(xOff + tLen, yOff + tFront / 2);
+      ctx.lineTo(xOff, yOff + tWidth / 2);
+    }
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
@@ -363,15 +381,19 @@ export function generateTankSvg(chassisKey, color = '#00b2e1', stroke = null, si
     const xOff = (t.xOffset || 0) * turretScale;
     const yOff = (t.yOffset || 0) * turretScale;
 
-    const p1 = `${xOff},${yOff - tWidth / 2}`;
-    const p2 = `${xOff + tLen},${yOff - tFront / 2}`;
-    const p3 = `${xOff + tLen},${yOff + tFront / 2}`;
-    const p4 = `${xOff},${yOff + tWidth / 2}`;
+    const polyPts = Array.isArray(t.vertices) && t.vertices.length >= 3
+      ? t.vertices.map(v => `${xOff + (v[0] ?? v.x ?? 0) * turretScale},${yOff + (v[1] ?? v.y ?? 0) * turretScale}`).join(' ')
+      : [
+          `${xOff},${yOff - tWidth / 2}`,
+          `${xOff + tLen},${yOff - tFront / 2}`,
+          `${xOff + tLen},${yOff + tFront / 2}`,
+          `${xOff},${yOff + tWidth / 2}`
+        ].join(' ');
     const mountSvg = t.isAutoTurret
       ? `<circle cx="${xOff}" cy="${yOff}" r="${(t.mountRadius || 11) * turretScale}" fill="#999999" stroke="#555555" stroke-width="${turretStroke}"/>`
       : '';
     return `<g transform="translate(${center}, ${center}) rotate(${angle})">
-      <polygon points="${p1} ${p2} ${p3} ${p4}" fill="#999999" stroke="#555555" stroke-width="${turretStroke}" stroke-linejoin="miter"/>
+      <polygon points="${polyPts}" fill="#999999" stroke="#555555" stroke-width="${turretStroke}" stroke-linejoin="${t.lineJoin || 'miter'}"/>
       ${mountSvg}
     </g>`;
   }).join('');

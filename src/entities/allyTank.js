@@ -75,10 +75,10 @@ export function inferChassisRole(chassisKey) {
   if (['smasher', 'landmine', 'spike'].includes(chassisKey)) return 'smasher';
   if (chassisKey === 'booster') return 'rammer';
   if (chassisKey === 'necromancer') return 'necromancer';
-  if (['overseer', 'overlord', 'manager', 'battleship', 'factory', 'overtrapper'].includes(chassisKey)) return 'drone';
-  if (['sniper', 'assassin', 'ranger', 'stalker', 'hunter', 'predator', 'streamliner'].includes(chassisKey)) return 'sniper';
-  if (['destroyer', 'annihilator', 'hybrid', 'skimmer', 'rocketeer', 'glider', 'firework', 'gustav'].includes(chassisKey)) return 'heavy';
-  if (['trapper', 'tritrapper', 'gunnertrapper', 'autotrapper'].includes(chassisKey)) return 'trapper';
+  if (['director', 'cruiser', 'overseer', 'overlord', 'manager', 'battleship', 'factory', 'overtrapper'].includes(chassisKey)) return 'drone';
+  if (['sniper', 'marksman', 'rifle', 'assassin', 'ranger', 'stalker', 'hunter', 'predator', 'minigun', 'streamliner'].includes(chassisKey)) return 'sniper';
+  if (['pounder', 'artillery', 'destroyer', 'launcher', 'annihilator', 'hybrid', 'skimmer', 'rocketeer', 'glider', 'firework', 'gustav'].includes(chassisKey)) return 'heavy';
+  if (['trapper', 'trapguard', 'tritrapper', 'gunnertrapper', 'autotrapper', 'builder'].includes(chassisKey)) return 'trapper';
   if (['triangle', 'fighter', 'shotgun', 'pelletshot', 'dualbarrel'].includes(chassisKey)) return 'skirmisher';
 
   const cfg = CONFIG.CHASSIS[chassisKey];
@@ -501,11 +501,9 @@ export class AllyTank {
 
   rollSpecialHoldDecision(unlockedChassis = ['basic']) {
     const unlockedSet = new Set(unlockedChassis);
-    // Small organic chance to stay Basic until 45 for Auto Tank, or stay Machine Gun until 45 for Sprayer
+    // Small organic chance to stay Basic until 45 for Auto Tank
     if (unlockedSet.has('autotank') && Math.random() < 0.12) {
       this.holdForSpecial45 = 'autotank';
-    } else if (unlockedSet.has('sprayer') && unlockedSet.has('machinegun') && Math.random() < 0.25) {
-      this.holdForSpecial45 = 'sprayer';
     } else {
       this.holdForSpecial45 = null;
     }
@@ -528,11 +526,8 @@ export class AllyTank {
     const candidates = getDirectUnlockedEvolutions(this.activeChassis, this.level, unlockedSet);
     if (candidates.length === 0) return null;
 
-    // Respect optional autonomous holdouts (e.g., Basic -> Auto Tank at 45, or Machine Gun -> Sprayer at 45)
+    // Respect optional autonomous holdouts (e.g., Basic -> Auto Tank at 45)
     if (this.activeChassis === 'basic' && this.level < 45 && this.holdForSpecial45 === 'autotank' && unlockedSet.has('autotank')) {
-      return null;
-    }
-    if (this.activeChassis === 'machinegun' && this.level < 45 && this.holdForSpecial45 === 'sprayer' && unlockedSet.has('sprayer')) {
       return null;
     }
 
@@ -1266,7 +1261,7 @@ export class AllyTank {
       : (this.hp / Math.max(1, this.maxHp));
     const isRammer = this.isRammerBuild();
     const isDrone = Boolean(this.weaponSys.isDroneClass || this.weaponSys.infectSquares);
-    const isSniper = ['sniper', 'assassin', 'ranger', 'stalker', 'hunter', 'predator'].includes(this.activeChassis);
+    const isSniper = ['sniper', 'marksman', 'rifle', 'assassin', 'ranger', 'stalker', 'hunter', 'predator'].includes(this.activeChassis);
 
     // Health-watching hysteresis (applies to both non-rammers and rammers/smashers)
     const retreatEnterRatio = isRammer ? 0.45 : 0.38;
@@ -2385,7 +2380,11 @@ export class AllyTank {
         const xOff = (hasXOffset ? Math.max(0, (turret.xOffset || 0) - recoil) : (turret.xOffset || 0)) * sizeScale;
         const yOff = (turret.yOffset || 0) * sizeScale;
 
-        canvasMgr.drawTurretBarrel(x, y, barrelWidth, barrelLen, angle + turret.angleOffset, xOff, yOff, frontWidth);
+        const barrelOptions = (turret.vertices || turret.lineJoin)
+          ? { vertices: turret.vertices, lineJoin: turret.lineJoin, scale: sizeScale }
+          : null;
+
+        canvasMgr.drawTurretBarrel(x, y, barrelWidth, barrelLen, angle + turret.angleOffset, xOff, yOff, frontWidth, '#999999', '#727272', 3.5, barrelOptions);
       };
 
       const renderParts = getTankRenderParts(chassis, turrets);

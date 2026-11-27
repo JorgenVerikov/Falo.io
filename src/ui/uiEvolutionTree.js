@@ -33,7 +33,6 @@ const TIER_4_SLOTS = [
   { key: 'manager', col: 11 },
   { key: 'factory', col: 12 },
   { key: 'overtrapper', col: 13 },
-  { key: 'tritrapper', col: 14 },
   { key: 'megatrapper', col: 15 },
   { key: 'autotrapper', col: 16 },
   { key: 'ranger', col: 17 },
@@ -42,7 +41,6 @@ const TIER_4_SLOTS = [
   { key: 'gunnertrapper', col: 20 },
   { key: 'streamliner', col: 21 },
   { key: 'autogunner', col: 22 },
-  { key: 'sprayer', col: 23 },
   { key: 'hybrid', col: 24 },
   { key: 'annihilator', col: 25 },
   { key: 'skimmer', col: 26 },
@@ -59,25 +57,39 @@ const TIER_4_SLOTS = [
 
 const TIER_3_SLOTS = [
   { key: 'tripleshot', col: 1 },
-  { key: 'quadtank', col: 3 },
+  { key: 'hexatank', col: 3 },
   { key: 'auto3', col: 4 },
   { key: 'triangle', col: 5.5 },
   { key: 'twinflank', col: 7.5 },
+  { key: 'cruiser', col: 9.0 },
   { key: 'overseer', col: 10.5 },
-  { key: 'trapper', col: 14.5 },
-  { key: 'assassin', col: 17.5 },
-  { key: 'hunter', col: 19.5 },
-  { key: 'gunner', col: 21 },
-  { key: 'destroyer', col: 26.5 },
+  { key: 'trapguard', col: 12.0 },
+  { key: 'tritrapper', col: 13.3 },
+  { key: 'marksman', col: 14.7 },
+  { key: 'rifle', col: 16.0 },
+  { key: 'assassin', col: 17.4 },
+  { key: 'hunter', col: 19.2 },
+  { key: 'gunner', col: 20.8 },
+  { key: 'minigun', col: 22.2 },
+  { key: 'sprayer', col: 23.7 },
+  { key: 'artillery', col: 25.1 },
+  { key: 'destroyer', col: 26.3 },
+  { key: 'launcher', col: 27.7 },
+  { key: 'builder', col: 29.1 },
   { key: 'shotgun', col: 30.5 },
+  { key: 'helix', col: 32.5 },
   { key: 'smasher', col: 35.4 }
 ];
 
 const TIER_2_SLOTS = [
   { key: 'twin', col: 2.0 },
   { key: 'flank', col: 4.8 },
-  { key: 'sniper', col: 15.2 },
-  { key: 'machinegun', col: 26.0 }
+  { key: 'director', col: 10.5 },
+  { key: 'trapper', col: 14.5 },
+  { key: 'sniper', col: 17.2 },
+  { key: 'machinegun', col: 22.0 },
+  { key: 'pounder', col: 28.5 },
+  { key: 'desmos', col: 32.5 }
 ];
 
 function getDisplayTier(chassis) {
@@ -164,11 +176,15 @@ function getBusY(fromKey, toKey, fromPos, toPos) {
   if (fromKey === 'basic') return 200;
   if (fromKey === 'twin') return 380;
   if (fromKey === 'flank') return 416;
-  if (fromKey === 'sniper' || fromKey === 'machinegun') return 398;
-  if (fromKey === 'trapper') return 580;
-  if (fromKey === 'quadtank' || fromKey === 'twinflank' || fromKey === 'triangle') return 590;
+  if (fromKey === 'director' || fromKey === 'sniper' || fromKey === 'machinegun' || fromKey === 'pounder' || fromKey === 'desmos') return 398;
+  if (fromKey === 'trapper') {
+    if (toKey === 'builder') return 382;
+    return (toKey === 'tritrapper' || toKey === 'trapguard') ? 398 : 580;
+  }
+  if (fromKey === 'hexatank' || fromKey === 'twinflank' || fromKey === 'triangle') return 590;
   if (fromKey === 'auto3' || fromKey === 'overseer') return 616;
-  if (fromKey === 'tripleshot' || fromKey === 'assassin' || fromKey === 'hunter' || fromKey === 'destroyer' || fromKey === 'smasher') return 606;
+  if (fromKey === 'tripleshot' || fromKey === 'marksman' || fromKey === 'rifle' || fromKey === 'assassin' || fromKey === 'hunter' || fromKey === 'destroyer' || fromKey === 'smasher') return 606;
+  if (fromKey === 'minigun') return 598;
   if (fromKey === 'gunner') return 634;
   return (fromPos.y + toPos.y) / 2;
 }
@@ -844,14 +860,23 @@ export class EvolutionTreeController {
       ctx.lineWidth = strokeWidth * 0.9;
 
       ctx.beginPath();
-      ctx.moveTo(bx, tY - halfBack);
-      ctx.lineTo(bx + tLen, tY - halfFront);
-      ctx.lineTo(bx + tLen, tY + halfFront);
-      ctx.lineTo(bx, tY + halfBack);
+      if (Array.isArray(turret.vertices) && turret.vertices.length >= 3) {
+        for (let i = 0; i < turret.vertices.length; i++) {
+          const vx = bx + (turret.vertices[i][0] ?? turret.vertices[i].x ?? 0) * scale;
+          const vy = tY + (turret.vertices[i][1] ?? turret.vertices[i].y ?? 0) * scale;
+          if (i === 0) ctx.moveTo(vx, vy);
+          else ctx.lineTo(vx, vy);
+        }
+      } else {
+        ctx.moveTo(bx, tY - halfBack);
+        ctx.lineTo(bx + tLen, tY - halfFront);
+        ctx.lineTo(bx + tLen, tY + halfFront);
+        ctx.lineTo(bx, tY + halfBack);
+      }
       ctx.closePath();
 
       ctx.fill();
-      ctx.lineJoin = 'miter';
+      ctx.lineJoin = turret.lineJoin || 'miter';
       ctx.stroke();
 
       if (turret.isAutoTurret) {

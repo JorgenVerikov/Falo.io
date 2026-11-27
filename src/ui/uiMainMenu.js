@@ -229,14 +229,23 @@ export class MainMenuController {
       ctx.lineWidth = strokeWidth * 0.9;
 
       ctx.beginPath();
-      ctx.moveTo(bx, tY - halfBack);
-      ctx.lineTo(bx + tLen, tY - halfFront);
-      ctx.lineTo(bx + tLen, tY + halfFront);
-      ctx.lineTo(bx, tY + halfBack);
+      if (Array.isArray(turret.vertices) && turret.vertices.length >= 3) {
+        for (let i = 0; i < turret.vertices.length; i++) {
+          const vx = bx + (turret.vertices[i][0] ?? turret.vertices[i].x ?? 0) * scale;
+          const vy = tY + (turret.vertices[i][1] ?? turret.vertices[i].y ?? 0) * scale;
+          if (i === 0) ctx.moveTo(vx, vy);
+          else ctx.lineTo(vx, vy);
+        }
+      } else {
+        ctx.moveTo(bx, tY - halfBack);
+        ctx.lineTo(bx + tLen, tY - halfFront);
+        ctx.lineTo(bx + tLen, tY + halfFront);
+        ctx.lineTo(bx, tY + halfBack);
+      }
       ctx.closePath();
 
       ctx.fill();
-      ctx.lineJoin = 'miter';
+      ctx.lineJoin = turret.lineJoin || 'miter';
       ctx.stroke();
 
       if (turret.isAutoTurret) {
