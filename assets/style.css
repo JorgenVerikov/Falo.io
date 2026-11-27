@@ -3056,6 +3056,7 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 .falo-tier-filter-btn.tier-2.active { background-color: #3b82f6; }
 .falo-tier-filter-btn.tier-3.active { background-color: #a855f7; }
 .falo-tier-filter-btn.tier-4.active { background-color: #ca8a04; }
+.falo-tier-filter-btn.tier-5.active { background-color: #ef4444; }
 
 .falo-shop-empty-state {
   grid-column: 1 / -1;
@@ -3785,197 +3786,421 @@ body.theme-light .falo-tier-filter-btn.active {
 }
 
 /* ========================================================
-   ADMIN PANEL TIDY UP: WHITE MODULES, BLUE/GREY BUTTONS, RED EXIT
+   ADMIN PANEL: MODERN FALO BEVELED THEME, ANIMATIONS & POLISH
    ======================================================== */
 
 .falo-admin-window {
-  background-color: #e2e8f0 !important;
-  color: #0f172a !important;
+  background-color: #16181f !important;
+  color: #f1f5f9 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 body.theme-light .falo-admin-window {
-  background-color: #e2e8f0 !important;
+  background-color: #e4e7ec !important;
   color: #0f172a !important;
+}
+
+#admin-panel-modal.modal-overlay.active .falo-admin-window {
+  transform: none;
+  filter: none;
 }
 
 /* Header */
 .falo-admin-window .falo-shop-header {
-  background-color: #ffffff !important;
-  border-bottom: 2px solid #cbd5e1 !important;
+  position: relative;
+  z-index: 20;
+  background-color: #1c1f27 !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 2px 0 rgba(0, 178, 225, 0.25);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.theme-light .falo-admin-window .falo-shop-header {
+  background-color: #d6dbe2 !important;
+  border-bottom: 2px solid rgba(15, 23, 42, 0.14) !important;
+  box-shadow: 0 2px 0 rgba(0, 130, 168, 0.22);
 }
 
 .falo-admin-window .falo-shop-logo {
-  color: #00b2e1 !important;
-  text-shadow: none !important;
+  color: #ffffff !important;
+  text-shadow: 2px 3px 0 rgba(0, 0, 0, 0.45) !important;
   -webkit-text-stroke: 0px !important;
   font-weight: 900 !important;
-  letter-spacing: 1.5px !important;
+  letter-spacing: 1.4px !important;
+}
+
+body.theme-light .falo-admin-window .falo-shop-logo {
+  color: #111827 !important;
+  text-shadow: none !important;
 }
 
 .falo-admin-window .falo-shop-tabs {
   gap: calc(10px * var(--ui-scale));
 }
 
+/* Skewed 3D Beveled Tabs (Matching Armory / Settings / Glossary) */
 .falo-admin-window .falo-shop-tab {
-  background-color: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #475569;
-  text-shadow: none;
-  -webkit-text-stroke: 0px;
+  position: relative;
+  border-radius: calc(4px * var(--ui-scale)) !important;
+  padding: calc(8px * var(--ui-scale)) calc(18px * var(--ui-scale)) !important;
+  background: linear-gradient(130deg, #2d333f 0%, #1b1f27 100%) !important;
+  border: calc(2.5px * var(--ui-scale)) solid #0e1116 !important;
+  border-bottom-width: calc(5px * var(--ui-scale)) !important;
+  border-bottom-color: #090b0e !important;
+  color: #f3f6fa !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  transform: skewX(-10deg);
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 0, 0, 0.28) !important;
+  transition:
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.14s ease,
+    box-shadow 0.16s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.16s ease !important;
+}
+
+body.theme-light .falo-admin-window .falo-shop-tab:not(.active) {
+  background: linear-gradient(165deg, #f8fafc 0%, #e2e7ef 100%) !important;
+  border-color: #161a22 !important;
+  border-bottom-color: #5b6370 !important;
+  color: #151922 !important;
+}
+
+.falo-admin-window .falo-shop-tab.active,
+body.theme-light .falo-admin-window .falo-shop-tab.active {
+  background: linear-gradient(125deg, #00c4f4 0%, #009ac4 68%, #0082a8 100%) !important;
+  border-color: #0b1924 !important;
+  border-bottom-color: #005873 !important;
+  color: #ffffff !important;
+  text-shadow: 1.5px 2px 0 rgba(0, 40, 56, 0.55) !important;
+  -webkit-text-stroke: 0 !important;
 }
 
 .falo-admin-window .falo-shop-tab:hover {
-  background-color: #e2e8f0;
-  color: #0f172a;
-  filter: none;
+  transform: translate3d(-3px, -2px, 0) skewX(-10deg) scale(1.035) !important;
+  filter: brightness(1.08) !important;
+  box-shadow: -7px 8px 0 rgba(0, 0, 0, 0.48), 0 12px 24px rgba(0, 0, 0, 0.35) !important;
 }
 
-.falo-admin-window .falo-shop-tab.active {
-  background-color: #00b2e1 !important;
+.falo-admin-window .falo-shop-tab:active {
+  transform: translate3d(1px, 2px, 0) skewX(-10deg) scale(0.985) !important;
+  box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.44) !important;
+}
+
+/* Profile Status Chip */
+.falo-admin-window .falo-coins-chip {
+  background: linear-gradient(130deg, #252a36 0%, #191d26 100%) !important;
+  border-radius: calc(4px * var(--ui-scale)) !important;
+  border: calc(2.5px * var(--ui-scale)) solid rgba(255, 255, 255, 0.16) !important;
+  border-bottom-width: calc(4.5px * var(--ui-scale)) !important;
+  border-bottom-color: #007a9e !important;
+  transform: skewX(-10deg);
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 0, 0, 0.28) !important;
+}
+
+body.theme-light .falo-admin-window .falo-coins-chip {
+  background: linear-gradient(165deg, #f8fafc 0%, #e2e7ef 100%) !important;
+  border-color: #161a22 !important;
+  border-bottom-color: #007a9e !important;
+}
+
+.falo-admin-window .falo-coins-chip .chip-coin-icon {
+  transform: skewX(10deg);
+  background: #00b2e1 !important;
   border-color: #007a9e !important;
-  color: #ffffff !important;
-  text-shadow: -1px -1px 0 #222, 1px -1px 0 #222, -1px 1px 0 #222, 1px 1px 0 #222 !important;
-  -webkit-text-stroke: 0.4px #222 !important;
 }
 
-/* Red Exit / Close Button */
+.falo-admin-window #admin-active-profile-badge {
+  color: #7dd3fc !important;
+  transform: skewX(10deg);
+  display: inline-block;
+}
+
+body.theme-light .falo-admin-window #admin-active-profile-badge {
+  color: #0284c7 !important;
+}
+
+/* Red Skewed 3D Beveled Exit / Close Button */
 .falo-admin-window .falo-shop-close-btn,
-.falo-admin-window #close-admin-btn {
-  background-color: #f14e54 !important;
-  background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%) !important;
-  border: calc(2.5px * var(--ui-scale)) solid #b3393e !important;
-  border-radius: calc(6px * var(--ui-scale)) !important;
-  color: #ffffff !important;
+.falo-admin-window #close-admin-btn,
+body.theme-light .falo-admin-window #close-admin-btn {
+  width: auto !important;
+  padding: calc(7px * var(--ui-scale)) calc(16px * var(--ui-scale)) !important;
   font-family: 'Ubuntu', sans-serif !important;
   font-weight: 900 !important;
-  font-size: calc(18px * var(--ui-scale)) !important;
-  text-shadow: 
-    -1.5px -1.5px 0 #222,
-     1.5px -1.5px 0 #222,
-    -1.5px  1.5px 0 #222,
-     1.5px  1.5px 0 #222 !important;
-  -webkit-text-stroke: 0.4px #222 !important;
-  box-shadow: none !important;
+  font-size: calc(14px * var(--ui-scale)) !important;
+  letter-spacing: 0.5px !important;
+  border-radius: calc(4px * var(--ui-scale)) !important;
+  background: linear-gradient(135deg, #f8575e 0%, #d9383f 100%) !important;
+  border: calc(2.5px * var(--ui-scale)) solid #240c0f !important;
+  border-bottom-width: calc(5px * var(--ui-scale)) !important;
+  border-bottom-color: #88171c !important;
+  color: #ffffff !important;
+  text-shadow: 1.5px 2px 0 rgba(69, 10, 10, 0.55) !important;
+  -webkit-text-stroke: 0 !important;
+  transform: skewX(-10deg);
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 0, 0, 0.28) !important;
   cursor: pointer !important;
-  transition: filter 0.12s ease !important;
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), filter 0.12s ease, box-shadow 0.16s ease !important;
 }
 
 .falo-admin-window .falo-shop-close-btn:hover,
-.falo-admin-window #close-admin-btn:hover {
-  filter: brightness(1.15) !important;
-  transform: none !important;
+.falo-admin-window #close-admin-btn:hover,
+body.theme-light .falo-admin-window #close-admin-btn:hover {
+  transform: translate3d(-3px, -2px, 0) skewX(-10deg) scale(1.04) !important;
+  filter: brightness(1.08) !important;
+  box-shadow: -7px 8px 0 rgba(0, 0, 0, 0.48), 0 12px 24px rgba(0, 0, 0, 0.35) !important;
 }
 
 .falo-admin-window .falo-shop-close-btn:active,
-.falo-admin-window #close-admin-btn:active {
-  filter: brightness(0.92) !important;
-  transform: none !important;
-}
-
-.falo-admin-window .falo-coins-chip {
-  background-color: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-  box-shadow: none !important;
+.falo-admin-window #close-admin-btn:active,
+body.theme-light .falo-admin-window #close-admin-btn:active {
+  transform: translate3d(1px, 2px, 0) skewX(-10deg) scale(0.98) !important;
+  box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.44) !important;
 }
 
 /* Scroll area container */
 .falo-admin-window .falo-shop-scroll-area {
-  padding: calc(20px * var(--ui-scale)) calc(24px * var(--ui-scale)) !important;
+  padding: calc(22px * var(--ui-scale)) calc(26px * var(--ui-scale)) !important;
   gap: calc(16px * var(--ui-scale)) !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 178, 225, 0.45) transparent;
 }
 
-/* White Module Backgrounds with Grid for all sections, cards, and modules */
-.falo-admin-window .admin-module-card,
-.falo-admin-window .falo-shop-section,
-.falo-admin-window .falo-card,
-.falo-admin-window .admin-field-card,
-.falo-admin-window .admin-crew-card-full {
-  background-color: #ffffff !important;
-  background-image: 
-    linear-gradient(to right, rgba(148, 163, 184, 0.35) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.35) 1px, transparent 1px) !important;
-  background-size: 16px 16px !important;
-  border: calc(2px * var(--ui-scale)) solid #cbd5e1 !important;
-  border-radius: calc(8px * var(--ui-scale)) !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+.falo-admin-window .falo-shop-scroll-area::-webkit-scrollbar {
+  width: 8px;
 }
 
+.falo-admin-window .falo-shop-scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.38);
+  border-radius: 9999px;
+}
+
+.falo-admin-window .falo-shop-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: #00b2e1;
+}
+
+/* Staggered Tab / Modal Card Reveal Animations */
+@keyframes adminCardEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+#admin-panel-modal.active .falo-admin-window .settings-tab-pane:not(.hidden) .admin-module-card {
+  animation: adminCardEnter 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+#admin-panel-modal.active .falo-admin-window .settings-tab-pane:not(.hidden) .admin-module-card:nth-child(1) { animation-delay: 0ms; }
+#admin-panel-modal.active .falo-admin-window .settings-tab-pane:not(.hidden) .admin-module-card:nth-child(2) { animation-delay: 40ms; }
+#admin-panel-modal.active .falo-admin-window .settings-tab-pane:not(.hidden) .admin-module-card:nth-child(3) { animation-delay: 80ms; }
+#admin-panel-modal.active .falo-admin-window .settings-tab-pane:not(.hidden) .admin-module-card:nth-child(4) { animation-delay: 120ms; }
+#admin-panel-modal.active .falo-admin-window .settings-tab-pane:not(.hidden) .admin-module-card:nth-child(5) { animation-delay: 160ms; }
+#admin-panel-modal.active .falo-admin-window .settings-tab-pane:not(.hidden) .admin-module-card:nth-child(6) { animation-delay: 200ms; }
+
+/* Blueprint Module Cards (Dark Default + Light Mode) */
 .falo-admin-window .admin-module-card {
-  padding: calc(16px * var(--ui-scale)) calc(20px * var(--ui-scale)) !important;
-  margin-bottom: calc(14px * var(--ui-scale)) !important;
+  background-color: #1d212b !important;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.032) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.032) 1px, transparent 1px) !important;
+  background-size: 18px 18px !important;
+  border: calc(2px * var(--ui-scale)) solid #2c3342 !important;
+  border-bottom-width: calc(4.5px * var(--ui-scale)) !important;
+  border-bottom-color: #0e1118 !important;
+  border-radius: calc(8px * var(--ui-scale)) !important;
+  box-shadow: -4px 5px 0 rgba(0, 0, 0, 0.36), 0 8px 20px rgba(0, 0, 0, 0.24) !important;
+  padding: calc(18px * var(--ui-scale)) calc(20px * var(--ui-scale)) !important;
+  margin-bottom: calc(16px * var(--ui-scale)) !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
 }
 
+.falo-admin-window .admin-module-card:hover {
+  border-color: rgba(0, 178, 225, 0.42) !important;
+  border-bottom-color: #005873 !important;
+}
+
+body.theme-light .falo-admin-window .admin-module-card {
+  background-color: #f8fafc !important;
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.24) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.24) 1px, transparent 1px) !important;
+  border-color: #cbd5e1 !important;
+  border-bottom-color: #94a3b8 !important;
+  box-shadow: -4px 5px 0 rgba(15, 23, 42, 0.12), 0 6px 14px rgba(15, 23, 42, 0.08) !important;
+}
+
+body.theme-light .falo-admin-window .admin-module-card:hover {
+  border-color: #00b2e1 !important;
+  border-bottom-color: #007a9e !important;
+}
+
+/* Nested Sub-cards (Single-Level Elevation: Recessed Clean Surfaces) */
 .falo-admin-window .admin-field-card,
 .falo-admin-window .admin-crew-card-full {
-  border-color: #cbd5e1 !important;
-  box-shadow: none !important;
+  background-color: rgba(15, 19, 27, 0.72) !important;
+  background-image: none !important;
+  border: calc(1.5px * var(--ui-scale)) solid #2d3545 !important;
+  border-radius: calc(7px * var(--ui-scale)) !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  transition: border-color 0.16s ease, background-color 0.16s ease !important;
 }
 
-/* Headers and text inside white modules */
+.falo-admin-window .admin-field-card:hover,
+.falo-admin-window .admin-crew-card-full:hover {
+  border-color: rgba(0, 178, 225, 0.45) !important;
+  background-color: rgba(20, 25, 36, 0.85) !important;
+}
+
+body.theme-light .falo-admin-window .admin-field-card,
+body.theme-light .falo-admin-window .admin-crew-card-full {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+}
+
+body.theme-light .falo-admin-window .admin-field-card:hover,
+body.theme-light .falo-admin-window .admin-crew-card-full:hover {
+  border-color: #00b2e1 !important;
+  background-color: #ffffff !important;
+}
+
+/* Typography & Contrast */
 .falo-admin-window .falo-section-title {
-  color: #0f172a !important;
-  font-size: calc(13px * var(--ui-scale)) !important;
+  color: #f8fafc !important;
+  font-size: calc(13.5px * var(--ui-scale)) !important;
   font-weight: 900 !important;
   letter-spacing: 0.8px !important;
+  text-shadow: 1px 2px 0 rgba(0, 0, 0, 0.35) !important;
+}
+
+body.theme-light .falo-admin-window .falo-section-title {
+  color: #0f172a !important;
   text-shadow: none !important;
 }
 
 .falo-admin-window .falo-section-subtitle,
 .falo-admin-window .falo-card-subdesc,
 .falo-admin-window .admin-crew-card-header .falo-card-subdesc {
-  color: #64748b !important;
+  color: #94a3b8 !important;
   font-size: calc(11.5px * var(--ui-scale)) !important;
   font-weight: 600 !important;
 }
 
+body.theme-light .falo-admin-window .falo-section-subtitle,
+body.theme-light .falo-admin-window .falo-card-subdesc,
+body.theme-light .falo-admin-window .admin-crew-card-header .falo-card-subdesc {
+  color: #475569 !important;
+}
+
 .falo-admin-window .field-card-label {
-  color: #0284c7 !important;
+  color: #38bdf8 !important;
   font-size: calc(11px * var(--ui-scale)) !important;
   font-weight: 900 !important;
   letter-spacing: 0.8px !important;
 }
 
+body.theme-light .falo-admin-window .field-card-label {
+  color: #0284c7 !important;
+}
+
 .falo-admin-window .falo-card-title {
-  color: #0f172a !important;
+  color: #f8fafc !important;
   font-weight: 900 !important;
+}
+
+body.theme-light .falo-admin-window .falo-card-title {
+  color: #0f172a !important;
 }
 
 .falo-admin-window .admin-crew-badge {
-  background: #f1f5f9 !important;
-  color: #0284c7 !important;
-  border: 1px solid #cbd5e1 !important;
+  background: rgba(0, 178, 225, 0.16) !important;
+  color: #7dd3fc !important;
+  border: 1.5px solid rgba(56, 189, 248, 0.36) !important;
   font-weight: 900 !important;
 }
 
+body.theme-light .falo-admin-window .admin-crew-badge {
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  border-color: #7dd3fc !important;
+}
+
 .falo-admin-window .admin-checkbox-label {
-  color: #334155 !important;
+  color: #cbd5e1 !important;
   font-weight: 800 !important;
 }
 
-/* Inputs in admin panel */
+body.theme-light .falo-admin-window .admin-checkbox-label {
+  color: #334155 !important;
+}
+
+/* Inputs & Selects in Admin Panel */
 .falo-admin-window .setting-input,
 .falo-admin-window .admin-num-control input,
 .falo-admin-window select.setting-input {
-  background: #f8fafc !important;
-  border: calc(2px * var(--ui-scale)) solid #cbd5e1 !important;
-  color: #0f172a !important;
-  border-radius: calc(6px * var(--ui-scale)) !important;
-  font-weight: 700 !important;
+  background: #11141c !important;
+  border: calc(2px * var(--ui-scale)) solid #2e3647 !important;
+  color: #f8fafc !important;
+  border-radius: calc(5px * var(--ui-scale)) !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+}
+
+.falo-admin-window select.setting-input option {
+  background: #161a24 !important;
+  color: #f8fafc !important;
 }
 
 .falo-admin-window .setting-input:focus,
 .falo-admin-window .admin-num-control input:focus,
 .falo-admin-window select.setting-input:focus {
   border-color: #00b2e1 !important;
+  background: #151a24 !important;
   outline: none !important;
-  box-shadow: 0 0 0 2px rgba(0, 178, 225, 0.2) !important;
+  box-shadow: 0 0 0 3px rgba(0, 178, 225, 0.24) !important;
+}
+
+body.theme-light .falo-admin-window .setting-input,
+body.theme-light .falo-admin-window .admin-num-control input,
+body.theme-light .falo-admin-window select.setting-input {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+body.theme-light .falo-admin-window select.setting-input option {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+body.theme-light .falo-admin-window .setting-input:focus,
+body.theme-light .falo-admin-window .admin-num-control input:focus,
+body.theme-light .falo-admin-window select.setting-input:focus {
+  border-color: #00b2e1 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(0, 178, 225, 0.22) !important;
 }
 
 /* ========================================================
-   ADMIN BUTTON RULES: ONLY FALO BLUE OR GREY
+   NEW TACTILE FALO 3D BEVELED BUTTONS (BLUE & GREY)
    ======================================================== */
 
-/* 1. BLUE BUTTONS (Default for primary / action buttons) */
+.falo-admin-window .admin-btn-row {
+  gap: calc(8px * var(--ui-scale));
+}
+
+/* 1. PRIMARY BLUE BUTTONS */
 .falo-admin-window .admin-btn,
 .falo-admin-window .falo-card-action-btn,
 .falo-admin-window .adm-save-crew-btn,
@@ -3995,122 +4220,181 @@ body.theme-light .falo-admin-window {
 .falo-admin-window #adm-unlock-all-colors-btn,
 .falo-admin-window #adm-lvl-10,
 .falo-admin-window #adm-lvl-max,
-.falo-admin-window #adm-give-level150-btn,
+.falo-admin-window #adm-ally-randomize-chassis,
+.falo-admin-window #adm-ally-revive-btn,
+.falo-admin-window #adm-ally-upgrades-max,
 .falo-admin-window #adm-wave-next,
 .falo-admin-window #adm-spawn-shape,
-.falo-admin-window #adm-spawn-enemy,
-.falo-admin-window #adm-spawn-swarmer,
-.falo-admin-window #adm-spawn-sniper,
-.falo-admin-window #adm-spawn-heavy {
-  background-color: #00b2e1 !important;
-  background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%) !important;
-  border: calc(2.5px * var(--ui-scale)) solid #007a9e !important;
-  border-radius: calc(6px * var(--ui-scale)) !important;
+.falo-admin-window #adm-spawn-enemy {
+  position: relative;
+  background: linear-gradient(125deg, #00c4f4 0%, #009ac4 68%, #0082a8 100%) !important;
+  border: calc(2px * var(--ui-scale)) solid #0b1924 !important;
+  border-bottom-width: calc(4.5px * var(--ui-scale)) !important;
+  border-bottom-color: #005873 !important;
+  border-radius: calc(5px * var(--ui-scale)) !important;
+  padding: calc(8px * var(--ui-scale)) calc(14px * var(--ui-scale));
   color: #ffffff !important;
   font-family: 'Ubuntu', sans-serif !important;
   font-weight: 900 !important;
+  letter-spacing: 0.45px !important;
   text-transform: uppercase !important;
-  text-shadow: 
-    -1.5px -1.5px 0 #222,
-     1.5px -1.5px 0 #222,
-    -1.5px  1.5px 0 #222,
-     1.5px  1.5px 0 #222 !important;
-  -webkit-text-stroke: 0.4px #222 !important;
-  box-shadow: none !important;
+  white-space: nowrap;
+  text-shadow: 1px 1.5px 0 rgba(0, 40, 56, 0.55) !important;
+  -webkit-text-stroke: 0 !important;
+  box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.36), 0 4px 10px rgba(0, 0, 0, 0.2) !important;
   cursor: pointer !important;
-  transition: filter 0.12s ease !important;
+  transition:
+    transform 0.15s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.12s ease,
+    box-shadow 0.15s ease !important;
 }
 
-.falo-admin-window .admin-btn:hover,
-.falo-admin-window .falo-card-action-btn:hover,
-.falo-admin-window .adm-save-crew-btn:hover,
-.falo-admin-window #adm-save-all-btn:hover,
-.falo-admin-window #adm-equip-custom-color-btn:hover {
-  filter: brightness(1.16) !important;
+.falo-admin-window .admin-btn:hover:not(:disabled),
+.falo-admin-window .falo-card-action-btn:hover:not(:disabled),
+.falo-admin-window .adm-save-crew-btn:hover:not(:disabled),
+.falo-admin-window #adm-save-all-btn:hover:not(:disabled),
+.falo-admin-window #adm-equip-custom-color-btn:hover:not(:disabled) {
+  transform: translate3d(-1.5px, -2px, 0) scale(1.02) !important;
+  filter: brightness(1.09) !important;
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 18px rgba(0, 178, 225, 0.24) !important;
+}
+
+.falo-admin-window .admin-btn:active:not(:disabled),
+.falo-admin-window .falo-card-action-btn:active:not(:disabled),
+.falo-admin-window .adm-save-crew-btn:active:not(:disabled),
+.falo-admin-window #adm-save-all-btn:active:not(:disabled),
+.falo-admin-window #adm-equip-custom-color-btn:active:not(:disabled) {
+  transform: translate3d(1px, 2px, 0) scale(0.98) !important;
+  filter: brightness(0.96) !important;
+  box-shadow: -1.5px 2px 0 rgba(0, 0, 0, 0.38) !important;
+}
+
+.falo-admin-window .admin-btn:disabled,
+.falo-admin-window select.setting-input:disabled {
+  opacity: 0.46 !important;
+  cursor: not-allowed !important;
+  filter: grayscale(0.25) !important;
   transform: none !important;
+  box-shadow: none !important;
 }
 
-.falo-admin-window .admin-btn:active,
-.falo-admin-window .falo-card-action-btn:active,
-.falo-admin-window .adm-save-crew-btn:active,
-.falo-admin-window #adm-save-all-btn:active,
-.falo-admin-window #adm-equip-custom-color-btn:active {
-  filter: brightness(0.92) !important;
-  transform: none !important;
-}
-
-/* 2. GREY BUTTONS (For Resets, Clears, Revert, Previous) */
+/* 2. SLATE GREY UTILITY BUTTONS (Resets, Clears, Revert, Previous) */
 .falo-admin-window .admin-btn.btn-grey,
 .falo-admin-window .btn-grey,
 .falo-admin-window button.btn-grey,
 .falo-admin-window #adm-preset-reset,
 .falo-admin-window #adm-revert-custom-color-btn,
+.falo-admin-window #adm-ally-upgrades-reset,
 .falo-admin-window #adm-wave-prev,
 .falo-admin-window #adm-clear-all,
 .falo-admin-window #adm-clear-shapes,
 .falo-admin-window #adm-clear-enemies,
 .falo-admin-window #adm-clear-telemetry-btn {
-  background-color: #64748b !important;
-  background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.20) 68%) !important;
-  border: calc(2.5px * var(--ui-scale)) solid #475569 !important;
-  border-radius: calc(6px * var(--ui-scale)) !important;
-  color: #ffffff !important;
+  background: linear-gradient(130deg, #525f73 0%, #394354 100%) !important;
+  border: calc(2px * var(--ui-scale)) solid #151a24 !important;
+  border-bottom-width: calc(4.5px * var(--ui-scale)) !important;
+  border-bottom-color: #0d1017 !important;
+  border-radius: calc(5px * var(--ui-scale)) !important;
+  color: #f8fafc !important;
   font-family: 'Ubuntu', sans-serif !important;
   font-weight: 900 !important;
   text-transform: uppercase !important;
-  text-shadow: 
-    -1.5px -1.5px 0 #222,
-     1.5px -1.5px 0 #222,
-    -1.5px  1.5px 0 #222,
-     1.5px  1.5px 0 #222 !important;
-  -webkit-text-stroke: 0.4px #222 !important;
-  box-shadow: none !important;
+  text-shadow: 1px 1.5px 0 rgba(15, 23, 42, 0.55) !important;
+  -webkit-text-stroke: 0 !important;
+  box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.34), 0 4px 10px rgba(0, 0, 0, 0.18) !important;
   cursor: pointer !important;
-  transition: filter 0.12s ease !important;
+  transition:
+    transform 0.15s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.12s ease,
+    box-shadow 0.15s ease !important;
 }
 
-.falo-admin-window .admin-btn.btn-grey:hover,
-.falo-admin-window .btn-grey:hover,
-.falo-admin-window #adm-preset-reset:hover,
-.falo-admin-window #adm-revert-custom-color-btn:hover,
-.falo-admin-window #adm-wave-prev:hover,
-.falo-admin-window #adm-clear-all:hover,
-.falo-admin-window #adm-clear-shapes:hover,
-.falo-admin-window #adm-clear-telemetry-btn:hover {
-  filter: brightness(1.15) !important;
-  transform: none !important;
+.falo-admin-window .admin-btn.btn-grey:hover:not(:disabled),
+.falo-admin-window .btn-grey:hover:not(:disabled),
+.falo-admin-window #adm-preset-reset:hover:not(:disabled),
+.falo-admin-window #adm-revert-custom-color-btn:hover:not(:disabled),
+.falo-admin-window #adm-ally-upgrades-reset:hover:not(:disabled),
+.falo-admin-window #adm-wave-prev:hover:not(:disabled),
+.falo-admin-window #adm-clear-all:hover:not(:disabled),
+.falo-admin-window #adm-clear-shapes:hover:not(:disabled),
+.falo-admin-window #adm-clear-enemies:hover:not(:disabled),
+.falo-admin-window #adm-clear-telemetry-btn:hover:not(:disabled) {
+  transform: translate3d(-1.5px, -2px, 0) scale(1.02) !important;
+  filter: brightness(1.12) !important;
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 16px rgba(0, 0, 0, 0.28) !important;
 }
 
-.falo-admin-window .admin-btn.btn-grey:active,
-.falo-admin-window .btn-grey:active,
-.falo-admin-window #adm-preset-reset:active,
-.falo-admin-window #adm-revert-custom-color-btn:active,
-.falo-admin-window #adm-wave-prev:active,
-.falo-admin-window #adm-clear-all:active,
-.falo-admin-window #adm-clear-shapes:active,
-.falo-admin-window #adm-clear-telemetry-btn:active {
-  filter: brightness(0.92) !important;
-  transform: none !important;
+.falo-admin-window .admin-btn.btn-grey:active:not(:disabled),
+.falo-admin-window .btn-grey:active:not(:disabled),
+.falo-admin-window #adm-preset-reset:active:not(:disabled),
+.falo-admin-window #adm-revert-custom-color-btn:active:not(:disabled),
+.falo-admin-window #adm-ally-upgrades-reset:active:not(:disabled),
+.falo-admin-window #adm-wave-prev:active:not(:disabled),
+.falo-admin-window #adm-clear-all:active:not(:disabled),
+.falo-admin-window #adm-clear-shapes:active:not(:disabled),
+.falo-admin-window #adm-clear-enemies:active:not(:disabled),
+.falo-admin-window #adm-clear-telemetry-btn:active:not(:disabled) {
+  transform: translate3d(1px, 2px, 0) scale(0.98) !important;
+  filter: brightness(0.95) !important;
+  box-shadow: -1.5px 2px 0 rgba(0, 0, 0, 0.36) !important;
 }
 
-/* Chassis Toggle Pills (Blue when active, Grey when inactive) */
+.falo-admin-window .admin-btn:focus-visible,
+.falo-admin-window .admin-toggle-btn:focus-visible,
+.falo-admin-window .falo-shop-tab:focus-visible,
+.falo-admin-window #close-admin-btn:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+/* Chassis Unlock Pills (Tactile Beveled Mini-Buttons) */
+.falo-admin-window .admin-pills-tier-header {
+  color: #38bdf8 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.theme-light .falo-admin-window .admin-pills-tier-header {
+  color: #0284c7 !important;
+  border-bottom-color: #cbd5e1 !important;
+}
+
 .falo-admin-window .admin-toggle-pill {
-  background: #f1f5f9 !important;
-  border: calc(2px * var(--ui-scale)) solid #cbd5e1 !important;
-  color: #475569 !important;
+  background: linear-gradient(130deg, #2b3240 0%, #1c202a 100%) !important;
+  border: calc(2px * var(--ui-scale)) solid #0e1118 !important;
+  border-bottom-width: calc(3.5px * var(--ui-scale)) !important;
+  border-bottom-color: #090b10 !important;
+  color: #cbd5e1 !important;
   font-weight: 900 !important;
+  border-radius: calc(5px * var(--ui-scale)) !important;
+  box-shadow: -2px 3px 0 rgba(0, 0, 0, 0.3) !important;
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), filter 0.12s ease, border-color 0.14s ease, color 0.14s ease !important;
 }
 
 .falo-admin-window .admin-toggle-pill:hover {
+  transform: translateY(-1.5px) !important;
   border-color: #00b2e1 !important;
-  color: #00b2e1 !important;
+  color: #ffffff !important;
 }
 
 .falo-admin-window .admin-toggle-pill.active {
-  background: #00b2e1 !important;
-  border-color: #007a9e !important;
+  background: linear-gradient(125deg, #00c4f4 0%, #009ac4 68%, #0082a8 100%) !important;
+  border-color: #0b1924 !important;
+  border-bottom-color: #005873 !important;
   color: #ffffff !important;
-  text-shadow: -1px -1px 0 #222, 1px -1px 0 #222, -1px 1px 0 #222, 1px 1px 0 #222 !important;
+  text-shadow: 1px 1.5px 0 rgba(0, 40, 56, 0.55) !important;
+}
+
+body.theme-light .falo-admin-window .admin-toggle-pill:not(.active) {
+  background: linear-gradient(165deg, #f8fafc 0%, #e2e8f0 100%) !important;
+  border-color: #94a3b8 !important;
+  border-bottom-color: #64748b !important;
+  color: #334155 !important;
+  box-shadow: -2px 3px 0 rgba(15, 23, 42, 0.12) !important;
+}
+
+body.theme-light .falo-admin-window .admin-toggle-pill:not(.active):hover {
+  border-color: #00b2e1 !important;
+  color: #0284c7 !important;
 }
 
 /* Custom Color Controls in Admin */
@@ -4118,7 +4402,28 @@ body.theme-light .falo-admin-window {
   font-size: calc(10.5px * var(--ui-scale)) !important;
   font-weight: 900 !important;
   padding: calc(4px * var(--ui-scale)) calc(10px * var(--ui-scale)) !important;
-  border-radius: 9999px !important;
+  border-radius: calc(4px * var(--ui-scale)) !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  border: 1.5px solid #334155 !important;
+  color: #94a3b8 !important;
+}
+
+.falo-admin-window #adm-custom-color-status.is-active {
+  background: rgba(0, 178, 225, 0.18) !important;
+  border-color: #00b2e1 !important;
+  color: #7dd3fc !important;
+}
+
+body.theme-light .falo-admin-window #adm-custom-color-status {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+body.theme-light .falo-admin-window #adm-custom-color-status.is-active {
+  background: #e0f2fe !important;
+  border-color: #00b2e1 !important;
+  color: #0284c7 !important;
 }
 
 .falo-admin-window #adm-custom-color-picker {
@@ -4128,45 +4433,76 @@ body.theme-light .falo-admin-window {
 
 /* Telemetry Log Console */
 .falo-admin-window .debug-log-console {
-  background: #f8fafc !important;
+  background: #0f1218 !important;
+  border: 2px solid #2b3344 !important;
+  border-radius: calc(6px * var(--ui-scale)) !important;
+  color: #cbd5e1 !important;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.42);
+}
+
+body.theme-light .falo-admin-window .debug-log-console {
+  background: #ffffff !important;
   border: 2px solid #cbd5e1 !important;
   color: #0f172a !important;
+  box-shadow: inset 0 2px 6px rgba(15, 23, 42, 0.08);
 }
 
 /* ========================================================
    IN-GAME ADMIN CHEATS POP-UP WINDOW
    ======================================================== */
 
+@keyframes adminPopupModalIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
 #admin-panel-modal.ingame-popup-mode {
   align-items: center !important;
   justify-content: center !important;
   padding: calc(16px * var(--ui-scale)) !important;
-  background: rgba(10, 12, 16, 0.5) !important;
-  backdrop-filter: blur(4px) !important;
-  -webkit-backdrop-filter: blur(4px) !important;
+  background: rgba(10, 12, 16, 0.58) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
 }
 
 #admin-panel-modal.ingame-popup-mode .falo-admin-window {
-  width: calc(640px * var(--ui-scale)) !important;
+  width: calc(660px * var(--ui-scale)) !important;
   max-width: 94vw !important;
   height: auto !important;
-  max-height: 84vh !important;
-  border-radius: calc(12px * var(--ui-scale)) !important;
-  border: calc(3px * var(--ui-scale)) solid #94a3b8 !important;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  max-height: 85vh !important;
+  border-radius: calc(10px * var(--ui-scale)) !important;
+  border: calc(2.5px * var(--ui-scale)) solid #334155 !important;
+  border-bottom-width: calc(5px * var(--ui-scale)) !important;
+  border-bottom-color: #007a9e !important;
+  box-shadow: -8px 10px 0 rgba(0, 0, 0, 0.45), 0 22px 54px rgba(0, 0, 0, 0.65) !important;
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
 }
 
+body.theme-light #admin-panel-modal.ingame-popup-mode .falo-admin-window {
+  border-color: #1e293b !important;
+  border-bottom-color: #007a9e !important;
+}
+
+#admin-panel-modal.ingame-popup-mode.active .falo-admin-window {
+  animation: adminPopupModalIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 #admin-panel-modal.ingame-popup-mode .falo-shop-header {
-  padding: calc(10px * var(--ui-scale)) calc(16px * var(--ui-scale)) !important;
-  min-height: calc(48px * var(--ui-scale)) !important;
+  padding: calc(11px * var(--ui-scale)) calc(18px * var(--ui-scale)) !important;
+  min-height: calc(50px * var(--ui-scale)) !important;
   flex-shrink: 0 !important;
 }
 
 #admin-panel-modal.ingame-popup-mode .falo-shop-logo {
-  font-size: calc(15px * var(--ui-scale)) !important;
+  font-size: calc(16px * var(--ui-scale)) !important;
   letter-spacing: 1.2px !important;
 }
 
@@ -4182,15 +4518,15 @@ body.theme-light .falo-admin-window {
 }
 
 #admin-panel-modal.ingame-popup-mode .falo-shop-scroll-area {
-  max-height: calc(84vh - 54px) !important;
-  padding: calc(14px * var(--ui-scale)) !important;
+  max-height: calc(85vh - 58px) !important;
+  padding: calc(16px * var(--ui-scale)) !important;
   overflow-y: auto !important;
   flex: 1 1 auto !important;
 }
 
 #admin-panel-modal.ingame-popup-mode .admin-module-card {
-  margin-bottom: calc(12px * var(--ui-scale)) !important;
-  padding: calc(14px * var(--ui-scale)) !important;
+  margin-bottom: calc(14px * var(--ui-scale)) !important;
+  padding: calc(15px * var(--ui-scale)) !important;
 }
 
 #admin-panel-modal.ingame-popup-mode .admin-module-card:last-child {
@@ -4200,6 +4536,21 @@ body.theme-light .falo-admin-window {
 /* ========================================================
    ADMIN CUBE PREVIEW WINDOWS (TANK, SHAPE, ENEMY)
    ======================================================== */
+
+@keyframes adminPreviewPop {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.82);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
 .admin-control-with-preview {
   display: flex;
@@ -4213,32 +4564,56 @@ body.theme-light .falo-admin-window {
   height: calc(84px * var(--ui-scale));
   min-width: calc(84px * var(--ui-scale));
   min-height: calc(84px * var(--ui-scale));
-  background-color: #f8fafc;
-  background-image: 
-    linear-gradient(to right, rgba(148, 163, 184, 0.30) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.30) 1px, transparent 1px);
+  background-color: #131720;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
   background-size: 14px 14px;
-  border: calc(2.5px * var(--ui-scale)) solid #cbd5e1;
-  border-radius: calc(8px * var(--ui-scale));
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05), 0 2px 6px rgba(0, 0, 0, 0.04);
+  border: calc(2.5px * var(--ui-scale)) solid #2c3445;
+  border-bottom-width: calc(4px * var(--ui-scale));
+  border-bottom-color: #0b0e14;
+  border-radius: calc(7px * var(--ui-scale));
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35), -3px 4px 0 rgba(0, 0, 0, 0.28);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   position: relative;
   flex-shrink: 0;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.theme-light .admin-preview-cube {
+  background-color: #eef2f6;
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.3) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.3) 1px, transparent 1px);
+  border-color: #cbd5e1;
+  border-bottom-color: #94a3b8;
+  box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.08), -3px 4px 0 rgba(15, 23, 42, 0.12);
 }
 
 .admin-preview-cube:hover {
   border-color: #00b2e1;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 2px rgba(0, 178, 225, 0.25);
+  border-bottom-color: #007a9e;
+  transform: translateY(-1.5px);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3), -4px 5px 0 rgba(0, 0, 0, 0.32), 0 0 0 2px rgba(0, 178, 225, 0.25);
 }
 
 .admin-preview-cube svg {
   display: block;
   margin: auto;
   pointer-events: none;
+  filter: drop-shadow(-3px 4px 0 rgba(0, 0, 0, 0.36));
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.admin-preview-cube:hover svg {
+  transform: scale(1.07);
+}
+
+.admin-preview-cube.is-popping svg {
+  animation: adminPreviewPop 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .admin-control-rows {
@@ -4390,7 +4765,7 @@ body.theme-light .falo-admin-window {
 
 .admin-toggle-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: calc(10px * var(--ui-scale));
   width: 100%;
 }
@@ -4411,38 +4786,51 @@ body.theme-light .falo-admin-window {
   gap: calc(8px * var(--ui-scale));
   width: 100%;
   padding: calc(9px * var(--ui-scale)) calc(12px * var(--ui-scale));
-  background-color: #64748b;
-  background-image: linear-gradient(to bottom, transparent 68%, rgba(0, 0, 0, 0.22) 68%);
-  border: calc(2.5px * var(--ui-scale)) solid #475569;
-  border-radius: calc(6px * var(--ui-scale));
-  color: #ffffff;
+  background: linear-gradient(130deg, #4b5563 0%, #374151 100%);
+  border: calc(2px * var(--ui-scale)) solid #111827;
+  border-bottom-width: calc(4.5px * var(--ui-scale));
+  border-bottom-color: #0b0f17;
+  border-radius: calc(5px * var(--ui-scale));
+  color: #f8fafc;
   font-family: 'Ubuntu', sans-serif;
   font-size: calc(11.5px * var(--ui-scale));
   font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.45px;
   cursor: pointer;
   user-select: none;
-  text-shadow:
-    -1.5px -1.5px 0 #222,
-     1.5px -1.5px 0 #222,
-    -1.5px  1.5px 0 #222,
-     1.5px  1.5px 0 #222;
-  -webkit-text-stroke: 0.4px #222;
-  transition: filter 0.12s ease, background-color 0.15s ease, border-color 0.15s ease;
+  text-shadow: 1px 1.5px 0 rgba(15, 23, 42, 0.55);
+  -webkit-text-stroke: 0;
+  box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.34), 0 4px 10px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 0.15s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.12s ease,
+    box-shadow 0.15s ease,
+    background 0.16s ease,
+    border-color 0.16s ease;
 }
 
 .falo-admin-window .admin-toggle-btn:hover {
-  filter: brightness(1.14);
+  transform: translate3d(-1.5px, -2px, 0) scale(1.015);
+  filter: brightness(1.09);
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 8px 16px rgba(0, 0, 0, 0.28);
 }
 
 .falo-admin-window .admin-toggle-btn:active {
-  filter: brightness(0.92);
+  transform: translate3d(1px, 2px, 0) scale(0.985);
+  box-shadow: -1.5px 2px 0 rgba(0, 0, 0, 0.36);
 }
 
 .falo-admin-window .admin-toggle-btn.is-active {
-  background-color: #00b2e1;
-  border-color: #007a9e;
+  background: linear-gradient(125deg, #00c4f4 0%, #009ac4 68%, #0082a8 100%);
+  border-color: #0b1924;
+  border-bottom-color: #005873;
+  text-shadow: 1px 1.5px 0 rgba(0, 40, 56, 0.55);
+  box-shadow: -3px 4px 0 rgba(0, 0, 0, 0.36), 0 6px 16px rgba(0, 178, 225, 0.24);
+}
+
+.falo-admin-window .admin-toggle-btn.is-active:hover {
+  box-shadow: -5px 6px 0 rgba(0, 0, 0, 0.42), 0 10px 20px rgba(0, 178, 225, 0.32);
 }
 
 .falo-admin-window .toggle-btn-label {
@@ -4455,20 +4843,202 @@ body.theme-light .falo-admin-window {
   flex-shrink: 0;
   font-size: calc(10px * var(--ui-scale));
   font-weight: 900;
-  padding: calc(2px * var(--ui-scale)) calc(7px * var(--ui-scale));
+  padding: calc(2px * var(--ui-scale)) calc(8px * var(--ui-scale));
   border-radius: calc(4px * var(--ui-scale));
-  background: rgba(15, 23, 42, 0.45);
-  border: 1.5px solid rgba(255, 255, 255, 0.22);
-  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  color: #cbd5e1;
   text-shadow: none;
-  -webkit-text-stroke: 0px;
+  -webkit-text-stroke: 0;
   letter-spacing: 0.6px;
+  transition: background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease;
 }
 
 .falo-admin-window .admin-toggle-btn.is-active .toggle-btn-state {
-  background: rgba(255, 255, 255, 0.92);
+  background: #ffffff;
   border-color: #ffffff;
   color: #0284c7;
+}
+
+/* Teammate Upgrades Section */
+.admin-ally-upgrades-section {
+  margin-top: calc(14px * var(--ui-scale));
+  padding-top: calc(12px * var(--ui-scale));
+  border-top: 1.5px solid rgba(148, 163, 184, 0.22);
+}
+
+body.theme-light .admin-ally-upgrades-section {
+  border-top-color: #cbd5e1;
+}
+
+.admin-ally-upgrades-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(10px * var(--ui-scale));
+  margin-bottom: calc(10px * var(--ui-scale));
+  flex-wrap: wrap;
+}
+
+.admin-ally-upgrades-title {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(8px * var(--ui-scale));
+  font-size: calc(11px * var(--ui-scale));
+  font-weight: 900;
+  letter-spacing: 0.7px;
+  color: #e2e8f0;
+  text-transform: uppercase;
+}
+
+body.theme-light .admin-ally-upgrades-title {
+  color: #1e293b;
+}
+
+.admin-ally-upgrades-points {
+  padding: calc(2.5px * var(--ui-scale)) calc(8px * var(--ui-scale));
+  border-radius: calc(4px * var(--ui-scale));
+  background: rgba(15, 23, 42, 0.78);
+  border: 1.5px solid rgba(56, 189, 248, 0.4);
+  font-size: calc(10px * var(--ui-scale));
+  font-weight: 900;
+  color: #7dd3fc;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+body.theme-light .admin-ally-upgrades-points {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0369a1;
+}
+
+.admin-ally-upgrades-actions {
+  display: flex;
+  align-items: center;
+  gap: calc(7px * var(--ui-scale));
+}
+
+.falo-admin-window .admin-ally-upgrades-actions .admin-btn {
+  padding: calc(4.5px * var(--ui-scale)) calc(11px * var(--ui-scale)) !important;
+  font-size: calc(10.5px * var(--ui-scale)) !important;
+}
+
+.admin-ally-upgrades-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(8px * var(--ui-scale)) calc(12px * var(--ui-scale));
+}
+
+.admin-ally-stat-row {
+  display: flex;
+  align-items: center;
+  gap: calc(6px * var(--ui-scale));
+}
+
+.admin-ally-stat-bar {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: calc(28px * var(--ui-scale));
+  background: #11151f;
+  border: 1.5px solid #2e3647;
+  border-radius: calc(5px * var(--ui-scale));
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 calc(9px * var(--ui-scale));
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+body.theme-light .admin-ally-stat-bar {
+  background: #1e293b;
+  border-color: #475569;
+}
+
+.admin-ally-stat-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  opacity: 0.84;
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.22) 0%, transparent 55%, rgba(0, 0, 0, 0.18) 100%);
+  transition: width 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.admin-ally-stat-name {
+  position: relative;
+  z-index: 1;
+  font-size: calc(10.5px * var(--ui-scale));
+  font-weight: 800;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 1px 1.5px 0 rgba(15, 23, 42, 0.85);
+}
+
+.admin-ally-stat-val {
+  position: relative;
+  z-index: 1;
+  margin-left: calc(6px * var(--ui-scale));
+  flex-shrink: 0;
+  font-size: calc(10.5px * var(--ui-scale));
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: #f8fafc;
+  text-shadow: 1px 1.5px 0 rgba(15, 23, 42, 0.85);
+}
+
+.falo-admin-window .admin-ally-stat-step-btn {
+  width: calc(28px * var(--ui-scale)) !important;
+  height: calc(28px * var(--ui-scale)) !important;
+  min-width: calc(28px * var(--ui-scale)) !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(13px * var(--ui-scale)) !important;
+  line-height: 1 !important;
+  flex-shrink: 0;
+  border-bottom-width: calc(3.5px * var(--ui-scale)) !important;
+}
+
+@media (max-width: 820px) {
+  .falo-admin-window .falo-shop-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .falo-admin-window .falo-shop-header-left {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .falo-admin-window .falo-shop-header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .falo-admin-window .falo-shop-tabs {
+    flex: 1;
+    flex-wrap: wrap;
+  }
+
+  .falo-admin-window .falo-shop-tab {
+    padding: 6px 10px !important;
+    font-size: 10.5px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-ally-upgrades-grid,
+  .admin-toggle-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ========================================================
@@ -7567,19 +8137,33 @@ body.theme-light .shop-preview-rename-input {
   transition: width 0.18s ease;
 }
 
-/* Boss Health Bar HUD Banner */
-.boss-hud-banner {
+/* Boss Health Bar HUD Banner Stack */
+.boss-hud-stack {
   position: fixed;
   top: calc(74px * var(--ui-scale));
   left: 50%;
   transform-origin: top center;
-  transform: perspective(680px) translate3d(calc(-50% + var(--hud-tx, 0px)), var(--hud-ty, 0px), 0) rotateY(var(--hud-ry, 0deg)) rotateX(calc(-9deg + var(--hud-rx, 0deg))) rotateZ(var(--hud-rz, 0deg)) skewX(-10deg);
+  transform: perspective(680px) translate3d(calc(-50% + var(--hud-tx, 0px)), var(--hud-ty, 0px), 0) rotateY(var(--hud-ry, 0deg)) rotateX(calc(-9deg + var(--hud-rx, 0deg))) rotateZ(var(--hud-rz, 0deg));
   will-change: transform;
-  min-width: calc(300px * var(--ui-scale));
   max-width: calc(92vw);
+  z-index: 46;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(6px * var(--ui-scale));
+  pointer-events: none;
+}
+
+.boss-hud-stack.hidden {
+  display: none !important;
+}
+
+.boss-hud-banner {
+  transform: skewX(-10deg);
+  min-width: calc(300px * var(--ui-scale));
+  max-width: 100%;
   padding: calc(7px * var(--ui-scale)) calc(18px * var(--ui-scale));
   border-bottom-color: #b459a5;
-  z-index: 46;
   display: flex;
   flex-direction: column;
   gap: calc(5px * var(--ui-scale));
@@ -7675,7 +8259,7 @@ body.theme-light .boss-hp-track {
 }
 
 #ui-container.has-active-boss .downed-status-banner {
-  top: calc(134px * var(--ui-scale));
+  top: calc((78px + var(--boss-hud-count, 1) * 56px) * var(--ui-scale));
 }
 
 .downed-status-banner > * {
@@ -7848,6 +8432,10 @@ body.theme-light .downed-status-banner.is-reviving .downed-status-text {
   .falo-glossary-window .falo-shop-unified-plane,
   .falo-evo-window .falo-shop-header-left,
   .falo-evo-window .falo-shop-header-right,
+  .falo-admin-window .admin-module-card,
+  .falo-admin-window .admin-preview-cube,
+  .falo-admin-window .admin-preview-cube svg,
+  #admin-panel-modal.ingame-popup-mode.active .falo-admin-window,
   .falo-shop-catalog-pane,
   .falo-shop-section,
   .shop-preview-stage,
@@ -7870,6 +8458,7 @@ body.theme-light .downed-status-banner.is-reviving .downed-status-text {
   #ui-container,
   .toast-banner,
   .boss-alert-banner,
+  .boss-hud-stack,
   .boss-hud-banner {
     --hud-tx: 0px !important;
     --hud-ty: 0px !important;

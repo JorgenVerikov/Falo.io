@@ -84,6 +84,24 @@ export function computeStandardRangedMovement(unit, dt, ctx, out) {
     }
   }
 
+  const coverTrap = ctx.friendlyCoverTrap;
+  const closestTrapDist = ctx.closestTrapDist ?? Infinity;
+  if (aiCfg.meatShieldSeeking && coverTrap && (isLowHealth || closestTrapDist < 280)) {
+    const tToPlayer = Math.atan2(player.y - coverTrap.y, player.x - coverTrap.x);
+    const trapSafeDist = (coverTrap.radius || 14) + (unit.radius || 25) + 42;
+    const coverX = coverTrap.x - Math.cos(tToPlayer) * trapSafeDist;
+    const coverY = coverTrap.y - Math.sin(tToPlayer) * trapSafeDist;
+    const toCoverX = coverX - unit.x;
+    const toCoverY = coverY - unit.y;
+    const distToCoverSq = toCoverX * toCoverX + toCoverY * toCoverY;
+    if (distToCoverSq > 484) {
+      const distToCover = Math.sqrt(distToCoverSq);
+      out.dirX = toCoverX / distToCover;
+      out.dirY = toCoverY / distToCover;
+      return;
+    }
+  }
+
   const buffer = aiCfg.kitingBuffer || 40;
   let radialX = 0;
   let radialY = 0;

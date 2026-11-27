@@ -55,13 +55,15 @@
       <div id="wave-timer-text" class="wave-timer">ENEMIES REMAINING: 4</div>
     </div>
 
-    <div id="boss-hud-banner" class="hud-panel boss-hud-banner hidden" aria-live="polite">
-      <div class="boss-hud-header">
-        <span id="boss-hud-name" class="boss-hud-name">GUARDIAN OF THE PENTAGONS</span>
-        <span id="boss-hud-hp-text" class="boss-hud-hp-text">30,000 / 30,000</span>
-      </div>
-      <div class="boss-hp-track">
-        <div id="boss-hud-hp-fill" class="boss-hp-fill"></div>
+    <div id="boss-hud-banner" class="boss-hud-stack hidden" aria-live="polite">
+      <div class="hud-panel boss-hud-banner">
+        <div class="boss-hud-header">
+          <span id="boss-hud-name" class="boss-hud-name">GUARDIAN OF THE PENTAGONS</span>
+          <span id="boss-hud-hp-text" class="boss-hud-hp-text">30,000 / 30,000</span>
+        </div>
+        <div class="boss-hp-track">
+          <div id="boss-hud-hp-fill" class="boss-hp-fill"></div>
+        </div>
       </div>
     </div>
 
@@ -361,7 +363,7 @@
         <div class="falo-shop-header-right">
           <div class="falo-coins-chip falo-settings-status-chip">
             <span class="settings-chip-dot"></span>
-            <span id="settings-header-summary" class="chip-coins-amount">LIGHT · 100% · 240Hz</span>
+            <span id="settings-header-summary" class="chip-coins-amount">LIGHT · 100% · 240Hz · SHADOWS ON</span>
           </div>
           <button id="close-settings-btn" class="falo-shop-close-btn" title="Close Settings">✕</button>
         </div>
@@ -462,6 +464,10 @@
                     <option value="165">165</option>
                     <option value="240">240</option>
                   </select>
+                  <select id="shadows-select" class="hidden">
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
                 </div>
               </div>
 
@@ -491,6 +497,32 @@
                     <button class="scale-chip-btn refresh-chip-btn" type="button" data-refresh="144">144Hz</button>
                     <button class="scale-chip-btn refresh-chip-btn" type="button" data-refresh="165">165Hz</button>
                     <button class="scale-chip-btn refresh-chip-btn" type="button" data-refresh="240">240Hz (Max)</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Arena Shadows Section -->
+              <div class="falo-shop-section" style="--section-idx: 3;">
+                <div class="falo-section-header">
+                  <div class="falo-section-title-wrap">
+                    <div class="falo-section-title">
+                      ARENA SHADOWS
+                    </div>
+                  </div>
+                </div>
+
+                <div id="settings-shadows-card" class="settings-scale-bar-container falo-card falo-shop-tilt-card rarity-common">
+                  <div class="scale-bar-header">
+                    <div>
+                      <div class="falo-card-title" style="margin: 0;">ENTITY DROP SHADOWS</div>
+                      <div class="falo-card-subdesc" style="margin: 2px 0 0 0;">Render cartoony hard shadows and soft ambient blur shadows under tanks, shapes, and projectiles.</div>
+                    </div>
+                    <div id="current-shadows-badge" class="settings-scale-chip">ON (Enabled)</div>
+                  </div>
+
+                  <div class="scale-chips-row">
+                    <button class="scale-chip-btn shadows-chip-btn" type="button" data-shadows="true">ON (Cartoony + Blur)</button>
+                    <button class="scale-chip-btn shadows-chip-btn" type="button" data-shadows="false">OFF (Disabled)</button>
                   </div>
                 </div>
               </div>
@@ -870,7 +902,7 @@
                 <div class="falo-section-title">
                   PLAYER MODIFICATION
                 </div>
-                <div class="falo-section-subtitle">Hot-swap tank chassis, adjust pilot levels, and grant stat points</div>
+                <div class="falo-section-subtitle">Hot-swap tank chassis and adjust pilot levels</div>
               </div>
             </div>
 
@@ -886,9 +918,50 @@
                 <div class="admin-btn-row">
                   <button id="adm-lvl-10" class="admin-btn">+10 PILOT LEVELS</button>
                   <button id="adm-lvl-max" class="admin-btn">MAX LEVEL 150</button>
-                  <button id="adm-give-level150-btn" class="admin-btn">GRANT ALL STAT POINTS</button>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- 2. Teammate Modification -->
+          <div class="admin-module-card">
+            <div class="falo-section-header">
+              <div class="falo-section-title-wrap">
+                <div class="falo-section-title">
+                  TEAMMATE MODIFICATION
+                </div>
+                <div class="falo-section-subtitle">Select a teammate to hot-swap tank chassis or revive</div>
+              </div>
+            </div>
+
+            <div class="admin-control-with-preview" style="margin-top: 14px;">
+              <div id="adm-ally-tank-preview-cube" class="admin-preview-cube" title="Selected Teammate Tank Preview"></div>
+              <div class="admin-control-rows">
+                <div style="display: flex; gap: 10px; align-items: center; width: 100%; flex-wrap: wrap;">
+                  <select id="adm-ally-select" class="setting-input" style="flex: 1; min-width: 140px; font-weight: 800; font-size: 13px;">
+                    <option value="all">ALL TEAMMATES</option>
+                  </select>
+                  <select id="adm-ally-chassis-select" class="setting-input" style="flex: 1; min-width: 140px; font-weight: 800; font-size: 13px;">
+                    <option value="basic">BASIC TANK</option>
+                  </select>
+                </div>
+
+                <div class="admin-btn-row">
+                  <button id="adm-ally-randomize-chassis" class="admin-btn" type="button">RANDOMIZE CHASSIS</button>
+                  <button id="adm-ally-revive-btn" class="admin-btn" type="button">REVIVE / FULL HEAL</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="admin-ally-upgrades-section" id="adm-ally-upgrades-section">
+              <div class="admin-ally-upgrades-header">
+                <span class="admin-ally-upgrades-title">TEAMMATE UPGRADES <span id="adm-ally-upgrades-points" class="admin-ally-upgrades-points">0 / 33 PTS</span></span>
+                <div class="admin-ally-upgrades-actions">
+                  <button id="adm-ally-upgrades-max" class="admin-btn" type="button">MAX ALL</button>
+                  <button id="adm-ally-upgrades-reset" class="admin-btn btn-grey" type="button">ZERO ALL</button>
+                </div>
+              </div>
+              <div id="adm-ally-upgrades-grid" class="admin-ally-upgrades-grid"></div>
             </div>
           </div>
 
@@ -935,6 +1008,12 @@
                 <input type="checkbox" id="adm-godmode-toggle" class="admin-toggle-hidden-input">
                 <span class="toggle-btn-label">GOD MODE</span>
                 <span class="toggle-btn-state" id="adm-godmode-state">OFF</span>
+              </label>
+
+              <label class="admin-toggle-btn" id="adm-ally-godmode-btn-label" for="adm-ally-godmode-toggle">
+                <input type="checkbox" id="adm-ally-godmode-toggle" class="admin-toggle-hidden-input">
+                <span class="toggle-btn-label">TEAMMATE GOD MODE</span>
+                <span class="toggle-btn-state" id="adm-ally-godmode-state">OFF</span>
               </label>
 
               <label class="admin-toggle-btn" id="adm-debug-btn-label" for="adm-debug-overlay">

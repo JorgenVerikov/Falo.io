@@ -170,7 +170,7 @@ export function populateAdminUserDataForm(ui) {
     badge.textContent = isUser
       ? `LOGGED IN: ${ui.storage.currentUser.email || 'USER ACCOUNT'}`
       : 'ACTIVE PROFILE: LOCAL GUEST PROGRESS';
-    badge.style.color = '#38bdf8';
+    badge.style.removeProperty('color');
   }
 
   const coinsInput = document.getElementById('adm-input-coins');
@@ -206,9 +206,10 @@ export function populateAdminUserDataForm(ui) {
   const isCustomActive = (data.activeColor === 'custom');
   if (customStatus) {
     customStatus.textContent = isCustomActive ? 'ACTIVE: EQUIPPED' : 'INACTIVE';
-    customStatus.style.background = isCustomActive ? '#e0f2fe' : '#f1f5f9';
-    customStatus.style.color = isCustomActive ? '#0284c7' : '#64748b';
-    customStatus.style.borderColor = isCustomActive ? '#00b2e1' : '#cbd5e1';
+    customStatus.classList.toggle('is-active', isCustomActive);
+    customStatus.style.removeProperty('background');
+    customStatus.style.removeProperty('color');
+    customStatus.style.removeProperty('border-color');
   }
 
   if (customPreview) {
@@ -230,14 +231,15 @@ export function renderAdminChassisPills(ui) {
     { tier: 1, label: 'TIER 1 — STARTER (LVL 1)', keys: [] },
     { tier: 2, label: 'TIER 2 — EVOLUTION (LVL 15)', keys: [] },
     { tier: 3, label: 'TIER 3 — ADVANCED (LVL 30)', keys: [] },
-    { tier: 4, label: 'TIER 4 — APEX (LVL 45)', keys: [] }
+    { tier: 4, label: 'TIER 4 — APEX (LVL 45)', keys: [] },
+    { tier: 5, label: 'TIER 5 — OVERDRIVE (LVL 60)', keys: [] }
   ];
 
   Object.keys(CONFIG.CHASSIS).forEach(key => {
     const chassis = CONFIG.CHASSIS[key];
     const displayTier = typeof chassis.tier === 'number'
-      ? Math.min(4, Math.max(1, chassis.tier + 1))
-      : (chassis.reqLevel >= 45 ? 4 : chassis.reqLevel >= 30 ? 3 : chassis.reqLevel >= 15 ? 2 : 1);
+      ? Math.min(5, Math.max(1, chassis.tier + 1))
+      : (chassis.reqLevel >= 60 ? 5 : chassis.reqLevel >= 45 ? 4 : chassis.reqLevel >= 30 ? 3 : chassis.reqLevel >= 15 ? 2 : 1);
     const group = tierGroups.find(g => g.tier === displayTier) || tierGroups[2];
     group.keys.push(key);
   });
@@ -475,15 +477,6 @@ export function setupAdminDataActions(ui) {
   document.getElementById('adm-open-battle-console-btn')?.addEventListener('click', () => {
     ui.hideAdminUserDataModal();
     ui.showAdminPanel();
-  });
-
-  document.getElementById('adm-give-level150-btn')?.addEventListener('click', () => {
-    const maxLvlBtn = document.getElementById('adm-lvl-max');
-    if (maxLvlBtn) {
-      maxLvlBtn.click();
-    } else {
-      ui.showToast('ADMIN: IN-RUN ONLY (START A RUN TO GRANT LEVEL)');
-    }
   });
 
   document.getElementById('adm-toggle-godmode-btn')?.addEventListener('click', () => {

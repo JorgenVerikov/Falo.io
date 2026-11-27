@@ -2,15 +2,21 @@ import { CONFIG, computeStrokeColor, getTankRenderParts, getOuterArmorLayers } f
 import { generateTankPreviewDataUrl, drawPreviewPolygon } from './uiPreviews.js';
 
 const WORLD_WIDTH = 4120;
-const WORLD_HEIGHT = 860;
+const WORLD_HEIGHT = 1060;
 const NODE_RADIUS = 46;
 
 const ROW_Y = {
   1: 110,
   2: 300,
   3: 500,
-  4: 710
+  4: 710,
+  5: 910
 };
+
+const TIER_5_SLOTS = [
+  { key: 'gustav', col: 25 },
+  { key: 'tesla', col: 32.2 }
+];
 
 const TIER_4_SLOTS = [
   { key: 'triplet', col: 0 },
@@ -27,7 +33,6 @@ const TIER_4_SLOTS = [
   { key: 'manager', col: 11 },
   { key: 'factory', col: 12 },
   { key: 'overtrapper', col: 13 },
-  { key: 'tritrapper', col: 14 },
   { key: 'megatrapper', col: 15 },
   { key: 'autotrapper', col: 16 },
   { key: 'ranger', col: 17 },
@@ -36,7 +41,6 @@ const TIER_4_SLOTS = [
   { key: 'gunnertrapper', col: 20 },
   { key: 'streamliner', col: 21 },
   { key: 'autogunner', col: 22 },
-  { key: 'sprayer', col: 23 },
   { key: 'hybrid', col: 24 },
   { key: 'annihilator', col: 25 },
   { key: 'skimmer', col: 26 },
@@ -45,7 +49,6 @@ const TIER_4_SLOTS = [
   { key: 'firework', col: 29 },
   { key: 'pelletshot', col: 30 },
   { key: 'dualbarrel', col: 31 },
-  { key: 'tesla', col: 32.2 },
   { key: 'autotank', col: 33.2 },
   { key: 'landmine', col: 34.4 },
   { key: 'autosmasher', col: 35.4 },
@@ -54,31 +57,46 @@ const TIER_4_SLOTS = [
 
 const TIER_3_SLOTS = [
   { key: 'tripleshot', col: 1 },
-  { key: 'quadtank', col: 3 },
+  { key: 'hexatank', col: 3 },
   { key: 'auto3', col: 4 },
   { key: 'triangle', col: 5.5 },
   { key: 'twinflank', col: 7.5 },
+  { key: 'cruiser', col: 9.0 },
   { key: 'overseer', col: 10.5 },
-  { key: 'trapper', col: 14.5 },
-  { key: 'assassin', col: 17.5 },
-  { key: 'hunter', col: 19.5 },
-  { key: 'gunner', col: 21 },
-  { key: 'destroyer', col: 26.5 },
+  { key: 'trapguard', col: 12.0 },
+  { key: 'tritrapper', col: 13.3 },
+  { key: 'marksman', col: 14.7 },
+  { key: 'rifle', col: 16.0 },
+  { key: 'assassin', col: 17.4 },
+  { key: 'hunter', col: 19.2 },
+  { key: 'gunner', col: 20.8 },
+  { key: 'minigun', col: 22.2 },
+  { key: 'sprayer', col: 23.7 },
+  { key: 'artillery', col: 25.1 },
+  { key: 'destroyer', col: 26.3 },
+  { key: 'launcher', col: 27.7 },
+  { key: 'builder', col: 29.1 },
   { key: 'shotgun', col: 30.5 },
+  { key: 'helix', col: 32.5 },
   { key: 'smasher', col: 35.4 }
 ];
 
 const TIER_2_SLOTS = [
   { key: 'twin', col: 2.0 },
   { key: 'flank', col: 4.8 },
-  { key: 'sniper', col: 15.2 },
-  { key: 'machinegun', col: 26.0 }
+  { key: 'director', col: 10.5 },
+  { key: 'trapper', col: 14.5 },
+  { key: 'sniper', col: 17.2 },
+  { key: 'machinegun', col: 22.0 },
+  { key: 'pounder', col: 28.5 },
+  { key: 'desmos', col: 32.5 }
 ];
 
 function getDisplayTier(chassis) {
   if (typeof chassis.tier === 'number') {
-    return Math.min(4, Math.max(1, chassis.tier + 1));
+    return Math.min(5, Math.max(1, chassis.tier + 1));
   }
+  if ((chassis.reqLevel || 1) >= 60) return 5;
   if ((chassis.reqLevel || 1) >= 45) return 4;
   if ((chassis.reqLevel || 1) >= 30) return 3;
   if ((chassis.reqLevel || 1) >= 15) return 2;
@@ -94,6 +112,13 @@ function buildTreeLayout() {
   const placed = new Set();
 
   let maxCol = 26.5;
+  TIER_5_SLOTS.forEach(slot => {
+    if (CONFIG.CHASSIS[slot.key]) {
+      positions[slot.key] = { x: colToX(slot.col), y: ROW_Y[5], tier: 5 };
+      placed.add(slot.key);
+    }
+  });
+
   TIER_4_SLOTS.forEach(slot => {
     if (CONFIG.CHASSIS[slot.key]) {
       positions[slot.key] = { x: colToX(slot.col), y: ROW_Y[4], tier: 4 };
@@ -151,11 +176,15 @@ function getBusY(fromKey, toKey, fromPos, toPos) {
   if (fromKey === 'basic') return 200;
   if (fromKey === 'twin') return 380;
   if (fromKey === 'flank') return 416;
-  if (fromKey === 'sniper' || fromKey === 'machinegun') return 398;
-  if (fromKey === 'trapper') return 580;
-  if (fromKey === 'quadtank' || fromKey === 'twinflank' || fromKey === 'triangle') return 590;
+  if (fromKey === 'director' || fromKey === 'sniper' || fromKey === 'machinegun' || fromKey === 'pounder' || fromKey === 'desmos') return 398;
+  if (fromKey === 'trapper') {
+    if (toKey === 'builder') return 382;
+    return (toKey === 'tritrapper' || toKey === 'trapguard') ? 398 : 580;
+  }
+  if (fromKey === 'hexatank' || fromKey === 'twinflank' || fromKey === 'triangle') return 590;
   if (fromKey === 'auto3' || fromKey === 'overseer') return 616;
-  if (fromKey === 'tripleshot' || fromKey === 'assassin' || fromKey === 'hunter' || fromKey === 'destroyer' || fromKey === 'smasher') return 606;
+  if (fromKey === 'tripleshot' || fromKey === 'marksman' || fromKey === 'rifle' || fromKey === 'assassin' || fromKey === 'hunter' || fromKey === 'destroyer' || fromKey === 'smasher') return 606;
+  if (fromKey === 'minigun') return 598;
   if (fromKey === 'gunner') return 634;
   return (fromPos.y + toPos.y) / 2;
 }
@@ -494,7 +523,8 @@ export class EvolutionTreeController {
       { label: 'TIER 1 · LVL 1', y: ROW_Y[1] },
       { label: 'TIER 2 · LVL 15', y: ROW_Y[2] },
       { label: 'TIER 3 · LVL 30', y: ROW_Y[3] },
-      { label: 'TIER 4 · LVL 45', y: ROW_Y[4] }
+      { label: 'TIER 4 · LVL 45', y: ROW_Y[4] },
+      { label: 'TIER 5 · LVL 60', y: ROW_Y[5] }
     ];
 
     tierBands.forEach(band => {
@@ -746,19 +776,20 @@ export class EvolutionTreeController {
     const cx = w * 0.52;
     const cy = h * 0.5;
     const playerR = CONFIG.PLAYER.radius || 25;
-    let maxUnitExtent = chassis.radiusMultiplier || 1.0;
+    const bodyMult = chassis.radiusMultiplier || 1.0;
+    let maxUnitExtent = bodyMult;
 
     const armorLayers = getOuterArmorLayers(chassis);
     for (let i = 0; i < armorLayers.length; i++) {
-      maxUnitExtent = Math.max(maxUnitExtent, armorLayers[i].radiusMultiplier || 1.4);
+      maxUnitExtent = Math.max(maxUnitExtent, bodyMult * (armorLayers[i].radiusMultiplier || 1.4));
     }
 
     if (chassis.turrets && chassis.turrets.length > 0) {
       chassis.turrets.forEach(turret => {
-        const bxUnit = (turret.xOffset || 0) / playerR;
-        const lenUnit = (turret.length || 48) / playerR;
-        const yUnit = Math.abs(turret.yOffset || 0) / playerR;
-        const halfWidthUnit = Math.max(turret.width || 20, turret.frontWidth || turret.width || 20) / (2 * playerR);
+        const bxUnit = ((turret.xOffset || 0) / playerR) * bodyMult;
+        const lenUnit = ((turret.length || 48) / playerR) * bodyMult;
+        const yUnit = (Math.abs(turret.yOffset || 0) / playerR) * bodyMult;
+        const halfWidthUnit = (Math.max(turret.width || 20, turret.frontWidth || turret.width || 20) / (2 * playerR)) * bodyMult;
         const reach = Math.hypot(bxUnit + lenUnit, yUnit + halfWidthUnit);
         maxUnitExtent = Math.max(maxUnitExtent, reach);
       });
@@ -788,17 +819,18 @@ export class EvolutionTreeController {
     ctx.clearRect(0, 0, w, h);
 
     const { cx, cy, baseRadius, playerR } = this.computeTankLayout(w, h, chassis);
-    const radius = baseRadius * (chassis.radiusMultiplier || 1.0);
-    const scale = baseRadius / playerR;
-    const strokeWidth = Math.max(3.2, Math.round(baseRadius * 0.088));
+    const bodyMult = chassis.radiusMultiplier || 1.0;
+    const radius = baseRadius * bodyMult;
+    const scale = (baseRadius / playerR) * bodyMult;
+    const strokeWidth = Math.max(3.2, Math.round(radius * 0.088));
 
     ctx.translate(cx, cy);
 
     const armorLayers = getOuterArmorLayers(chassis);
     for (let i = 0; i < armorLayers.length; i++) {
       const layer = armorLayers[i];
-      const outerRadius = baseRadius * (layer.radiusMultiplier || 1.55);
-      const innerRadius = layer.innerRadiusMultiplier ? baseRadius * layer.innerRadiusMultiplier : 0;
+      const outerRadius = radius * (layer.radiusMultiplier || 1.55);
+      const innerRadius = layer.innerRadiusMultiplier ? radius * layer.innerRadiusMultiplier : 0;
       const layerAngle = (layer.initialAngle || 0) + this.spinAngle * ((layer.spinSpeed ?? 2.2) / 4);
       drawPreviewPolygon(
         ctx, 0, 0, outerRadius,
@@ -828,14 +860,23 @@ export class EvolutionTreeController {
       ctx.lineWidth = strokeWidth * 0.9;
 
       ctx.beginPath();
-      ctx.moveTo(bx, tY - halfBack);
-      ctx.lineTo(bx + tLen, tY - halfFront);
-      ctx.lineTo(bx + tLen, tY + halfFront);
-      ctx.lineTo(bx, tY + halfBack);
+      if (Array.isArray(turret.vertices) && turret.vertices.length >= 3) {
+        for (let i = 0; i < turret.vertices.length; i++) {
+          const vx = bx + (turret.vertices[i][0] ?? turret.vertices[i].x ?? 0) * scale;
+          const vy = tY + (turret.vertices[i][1] ?? turret.vertices[i].y ?? 0) * scale;
+          if (i === 0) ctx.moveTo(vx, vy);
+          else ctx.lineTo(vx, vy);
+        }
+      } else {
+        ctx.moveTo(bx, tY - halfBack);
+        ctx.lineTo(bx + tLen, tY - halfFront);
+        ctx.lineTo(bx + tLen, tY + halfFront);
+        ctx.lineTo(bx, tY + halfBack);
+      }
       ctx.closePath();
 
       ctx.fill();
-      ctx.lineJoin = 'miter';
+      ctx.lineJoin = turret.lineJoin || 'miter';
       ctx.stroke();
 
       if (turret.isAutoTurret) {

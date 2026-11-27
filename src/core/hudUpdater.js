@@ -27,7 +27,9 @@ export class HUDUpdater {
     this.prevDownedHidden = null;
     this.prevDownedSignature = '';
     this.prevBossHidden = null;
+    this.prevBossCount = -1;
     this.prevBossSignature = '';
+    this.bossViews = [];
 
     this.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || false;
     this.swayVx = 0;
@@ -89,7 +91,46 @@ export class HUDUpdater {
       ];
     }
 
+    if (this.els.bossHudBanner) {
+      const initialCard = this.els.bossHudBanner.querySelector('.boss-hud-banner');
+      if (initialCard) {
+        this.bossViews = [{
+          root: initialCard,
+          nameEl: initialCard.querySelector('.boss-hud-name'),
+          hpTextEl: initialCard.querySelector('.boss-hud-hp-text'),
+          hpFillEl: initialCard.querySelector('.boss-hp-fill')
+        }];
+      }
+    }
+
     return this.els;
+  }
+
+  ensureBossView(els, index) {
+    if (this.bossViews[index]) return this.bossViews[index];
+    if (!els.bossHudBanner) return null;
+
+    const card = document.createElement('div');
+    card.className = 'hud-panel boss-hud-banner';
+    card.innerHTML = `
+      <div class="boss-hud-header">
+        <span class="boss-hud-name"></span>
+        <span class="boss-hud-hp-text"></span>
+      </div>
+      <div class="boss-hp-track">
+        <div class="boss-hp-fill"></div>
+      </div>
+    `;
+    els.bossHudBanner.appendChild(card);
+
+    const view = {
+      root: card,
+      nameEl: card.querySelector('.boss-hud-name'),
+      hpTextEl: card.querySelector('.boss-hud-hp-text'),
+      hpFillEl: card.querySelector('.boss-hp-fill')
+    };
+    this.bossViews[index] = view;
+    return view;
   }
 
   createSlotViewState(nodes) {
@@ -406,7 +447,9 @@ export class HUDUpdater {
       const maxHp = Math.max(1, a.maxHp || 1);
       const hpPct = (a.dead || a.destroyed || a.isDying || a.isDowned)
         ? 0
-        : Math.max(0, Math.min(100, Math.round((a.hp / maxHp) * 100)));
+        : (!Number.isFinite(a.hp) || !Number.isFinite(a.maxHp))
+          ? 100
+          : Math.max(0, Math.min(100, Math.round((a.hp / maxHp) * 100)));
 
       let stateLabel = 'READY';
       let stateClass = 'is-ready';
@@ -599,8 +642,16 @@ export class HUDUpdater {
 
   updateBossHUD(els, waveMgr) {
     if (!els.bossHudBanner) return;
-    const boss = (waveMgr && typeof waveMgr.getActiveBoss === 'function') ? waveMgr.getActiveBoss() : null;
-    const shouldHide = !boss;
+    let bosses = [];
+    if (waveMgr && typeof waveMgr.getActiveBosses === 'function') {
+      bosses = waveMgr.getActiveBosses();
+    } else if (waveMgr && typeof waveMgr.getActiveBoss === 'function') {
+      const single = waveMgr.getActiveBoss();
+      if (single) bosses = [single];
+    }
+
+    const bossCount = bosses.length;
+    const shouldHide = bossCount === 0;
     const domHidden = els.bossHudBanner.classList.contains('hidden');
     if (shouldHide !== this.prevBossHidden || domHidden !== shouldHide) {
       this.prevBossHidden = shouldHide;
@@ -609,25 +660,56 @@ export class HUDUpdater {
         els.uiContainer.classList.toggle('has-active-boss', !shouldHide);
       }
     }
+
+    const countStr = String(bossCount);
+    if (els.uiContainer && (bossCount !== this.prevBossCount || (bossCount > 0 && els.uiContainer.style.getPropertyValue('--boss-hud-count') !== countStr))) {
+      this.prevBossCount = bossCount;
+      if (bossCount > 0) {
+        els.uiContainer.style.setProperty('--boss-hud-count', countStr);
+      } else {
+        els.uiContainer.style.removeProperty('--boss-hud-count');
+      }
+    }
+
     if (shouldHide) {
       this.prevBossSignature = '';
+      for (let i = 0; i < this.bossViews.length; i++) {
+        this.bossViews[i].root.classList.add('hidden');
+      }
       return;
     }
 
-    const nameStr = (boss.config?.fullName || boss.config?.name || 'Boss').toUpperCase();
-    const curHp = Math.max(0, Math.ceil(boss.hp || 0));
-    const maxHp = Math.max(1, Math.round(boss.maxHp || 1));
-    const pct = Math.max(0, Math.min(100, (boss.hp / maxHp) * 100));
-    const sig = `${nameStr}|${curHp}|${maxHp}`;
+    let sig = `${bossCount}`;
+    const rows = [];
+    for (let i = 0; i < bossCount; i++) {
+      const boss = bosses[i];
+      const nameStr = (boss.config?.fullName || boss.config?.name || 'Boss').toUpperCase();
+      const curHp = Math.max(0, Math.ceil(boss.hp || 0));
+      const maxHp = Math.max(1, Math.round(boss.maxHp || 1));
+      const pct = Math.max(0, Math.min(100, (boss.hp / maxHp) * 100));
+      sig += `;${boss.unitId || i}|${nameStr}|${curHp}|${maxHp}`;
+      rows.push({ nameStr, curHp, maxHp, pct });
+    }
+
     if (sig === this.prevBossSignature) return;
     this.prevBossSignature = sig;
 
-    if (els.bossHudName) els.bossHudName.textContent = nameStr;
-    if (els.bossHudHpText) {
-      els.bossHudHpText.textContent = `${curHp.toLocaleString()} / ${maxHp.toLocaleString()}`;
+    for (let i = 0; i < rows.length; i++) {
+      const view = this.ensureBossView(els, i);
+      if (!view) continue;
+      const row = rows[i];
+      view.root.classList.remove('hidden');
+      if (view.nameEl) view.nameEl.textContent = row.nameStr;
+      if (view.hpTextEl) {
+        view.hpTextEl.textContent = `${row.curHp.toLocaleString()} / ${row.maxHp.toLocaleString()}`;
+      }
+      if (view.hpFillEl) {
+        view.hpFillEl.style.width = `${row.pct.toFixed(2)}%`;
+      }
     }
-    if (els.bossHudHpFill) {
-      els.bossHudHpFill.style.width = `${pct.toFixed(2)}%`;
+
+    for (let i = rows.length; i < this.bossViews.length; i++) {
+      this.bossViews[i].root.classList.add('hidden');
     }
   }
 
@@ -731,7 +813,7 @@ export class HUDUpdater {
         };
       };
 
-      const isSniperFamily = (weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'ranger' || weaponSys.chassisKey === 'stalker' || weaponSys.chassisKey === 'hunter' || weaponSys.chassisKey === 'predator');
+      const isSniperFamily = (weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'marksman' || weaponSys.chassisKey === 'rifle' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'ranger' || weaponSys.chassisKey === 'stalker' || weaponSys.chassisKey === 'hunter' || weaponSys.chassisKey === 'predator' || weaponSys.chassisKey === 'gustav');
       const bulletRacks = readyRackTurrets.filter(t => !t.isTrap);
       const trapRacks = readyRackTurrets.filter(t => t.isTrap);
       const hasDualRacks = bulletRacks.some(t => t.fireTrigger === 'secondary');
@@ -830,7 +912,7 @@ export class HUDUpdater {
       gauges.push({
         kind: 'rack',
         mode: 'rack',
-        title: (weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'hunter' || weaponSys.chassisKey === 'predator') ? 'BREECH LOADER' : 'READY-RACK SYSTEM',
+        title: (weaponSys.chassisKey === 'sniper' || weaponSys.chassisKey === 'marksman' || weaponSys.chassisKey === 'rifle' || weaponSys.chassisKey === 'assassin' || weaponSys.chassisKey === 'hunter' || weaponSys.chassisKey === 'predator' || weaponSys.chassisKey === 'gustav') ? 'BREECH LOADER' : 'READY-RACK SYSTEM',
         maxRack: weaponSys.maxRack || 0,
         curRack: weaponSys.currentRack || 0,
         isReloading: (weaponSys.reloadTimer || 0) > 0,

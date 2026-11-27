@@ -124,7 +124,7 @@ export const ALLY_BUILDS = {
     role: 'drone',
     buildCode: '0/2/3/7/7/7/0/7',
     desc: 'Commands high-speed drones for offensive strikes and ally defense.',
-    targetPath: ['sniper', 'overseer', 'overlord'],
+    targetPath: ['director', 'overseer', 'overlord'],
     fallbackTargets: ['manager', 'factory', 'overseer'],
     stats: [0, 2, 3, 7, 7, 7, 0, 7],
     statPriority: ['shellSpeed', 'shellPenetration', 'shellDamage', 'moveSpeed', 'bodyDamage', 'maxHp']
@@ -168,7 +168,7 @@ export const ALLY_BUILDS = {
     role: 'ambush',
     buildCode: '0/2/3/7/7/7/7/0',
     desc: 'Massive high-damage heavy shells or airburst firework rockets.',
-    targetPath: ['machinegun', 'destroyer', 'annihilator'],
+    targetPath: ['pounder', 'destroyer', 'annihilator'],
     fallbackTargets: ['hybrid', 'firework', 'rocketeer', 'destroyer'],
     stats: [0, 2, 3, 7, 7, 7, 7, 0],
     statPriority: ['shellPenetration', 'shellDamage', 'shellSpeed', 'reloadSpeed', 'bodyDamage', 'maxHp']
@@ -179,7 +179,7 @@ export const ALLY_BUILDS = {
     role: 'skirmisher',
     buildCode: '0/2/2/6/6/6/5/6',
     desc: 'Close-to-mid range twin pellet burst skirmisher.',
-    targetPath: ['machinegun', 'shotgun', 'dualbarrel'],
+    targetPath: ['pounder', 'shotgun', 'dualbarrel'],
     fallbackTargets: ['pelletshot', 'shotgun'],
     stats: [0, 2, 2, 6, 6, 6, 5, 6],
     statPriority: ['shellPenetration', 'shellDamage', 'reloadSpeed', 'shellSpeed', 'moveSpeed', 'maxHp', 'bodyDamage']
@@ -201,7 +201,7 @@ export const ALLY_BUILDS = {
     role: 'support',
     buildCode: '0/2/0/5/7/7/7/5',
     desc: 'Deploys defensive traps around the squad while laying down auto fire.',
-    targetPath: ['sniper', 'trapper', 'autotrapper'],
+    targetPath: ['trapper', 'autotrapper'],
     fallbackTargets: ['gunnertrapper', 'tritrapper', 'overtrapper', 'trapper'],
     stats: [0, 2, 0, 5, 7, 7, 7, 5],
     statPriority: ['shellPenetration', 'shellDamage', 'reloadSpeed', 'shellSpeed', 'moveSpeed', 'maxHp']
@@ -212,7 +212,7 @@ export const ALLY_BUILDS = {
     role: 'drone',
     buildCode: '0/0/0/7/7/7/6/6',
     desc: 'Prioritizes resource squares to build a massive protective drone fleet.',
-    targetPath: ['sniper', 'overseer', 'necromancer'],
+    targetPath: ['director', 'overseer', 'necromancer'],
     fallbackTargets: ['overlord', 'battleship', 'overseer'],
     stats: [0, 0, 0, 7, 7, 7, 6, 6],
     statPriority: ['shellSpeed', 'shellPenetration', 'shellDamage', 'reloadSpeed', 'moveSpeed']

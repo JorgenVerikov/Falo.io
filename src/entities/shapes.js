@@ -187,7 +187,7 @@ export class ResourceShape {
     }
   }
 
-  draw(canvasMgr) {
+  draw(canvasMgr, showOverlays = true) {
     const ctx = canvasMgr.ctx;
     ctx.save();
     if (this.isDying) {
@@ -202,8 +202,14 @@ export class ResourceShape {
     canvasMgr.drawPolygon(this.x, this.y, this.radius, cfg.sides || this.sides, this.angle, fillColor, strokeColor, strokeWidth);
     ctx.restore();
 
+    if (showOverlays) {
+      this.drawOverlays(canvasMgr.ctx);
+    }
+  }
+
+  drawOverlays(ctx) {
     if (!this.isDying && this.hp < this.maxHp) {
-      this.drawHealthBar(canvasMgr.ctx);
+      this.drawHealthBar(ctx);
     }
   }
 

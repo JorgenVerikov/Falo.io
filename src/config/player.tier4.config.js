@@ -255,57 +255,6 @@ export const TIER4_CHASSIS_CONFIG = {
     }
   },
 
-  tesla: {
-    name: 'Tesla Surge',
-    desc: 'High-energy arc capacitor chassis with pentagonal frame.',
-    reqLevel: 45,
-    tier: 3,
-    upgradesFrom: ['basic'],
-    shopCost: 1500,
-    cameraZoom: 0.85,
-    sides: 5,
-    radiusMultiplier: 1.1,
-    turrets: [
-      createBarrelTurret(
-        {
-          width: 14,
-          length: 52,
-          frontWidth: 14,
-          angleOffset: 0,
-          xOffset: 0,
-          yOffset: 0
-        },
-
-        {
-          damage: 1.3,
-          penetration: 1.5,
-          bulletSpeed: 1.4,
-          bulletSize: 0.7,
-          reload: 0.9,
-          spread: 0,
-          recoil: 0.5,
-          knockback: 1,
-          launchSpeed: 1,
-          bulletsPerShot: 1,
-          lifetime: 3,
-          fireDelay: 0,
-          bulletShape: 'circle',
-          bulletSides: 0,
-          bulletInnerRadius: 0.45,
-          bulletAngleOffset: 0,
-          bulletSpinSpeed: 0
-        },
-
-        {
-          type: 'ENERGY',
-          maxEnergy: 100,
-          costPerShot: 25,
-          rechargeRate: 14
-        }
-      )
-    ]
-  },
-
   triplet: {
     name: 'Triplet',
     desc: 'Three parallel front cannons firing a concentrated high-speed bullet stream.',
@@ -1075,7 +1024,7 @@ export const TIER4_CHASSIS_CONFIG = {
     desc: 'Eight equidistant cannons firing alternating 4-way cross volleys with nullified recoil.',
     reqLevel: 45,
     tier: 3,
-    upgradesFrom: ['quadtank'],
+    upgradesFrom: ['hexatank'],
     shopCost: 1500,
     cameraZoom: 0.85,
     sides: 0,
@@ -1393,7 +1342,7 @@ export const TIER4_CHASSIS_CONFIG = {
     desc: 'Five evenly spaced automatic turrets that track targets independently or steer manually.',
     reqLevel: 45,
     tier: 3,
-    upgradesFrom: ['quadtank', 'auto3'],
+    upgradesFrom: ['hexatank', 'auto3'],
     shopCost: 1500,
     cameraZoom: 0.82,
     sides: 0,
@@ -2273,7 +2222,7 @@ export const TIER4_CHASSIS_CONFIG = {
     desc: 'Five equal-width overlapping barrels firing rapid small bullets in sequence like a continuous stream.',
     reqLevel: 45,
     tier: 3,
-    upgradesFrom: ['hunter', 'gunner'],
+    upgradesFrom: ['hunter', 'gunner', 'minigun'],
     shopCost: 1500,
     cameraZoom: 0.76,
     sides: 0,
@@ -2621,7 +2570,7 @@ export const TIER4_CHASSIS_CONFIG = {
     desc: 'Square chassis with two side spawners that deploys up to 4 starter Square Drones and infects Squares up to 36 drones.',
     reqLevel: 45,
     tier: 3,
-    upgradesFrom: ['overseer'],
+    upgradesFrom: ['director', 'overseer'],
     shopCost: 1500,
     cameraZoom: 0.80,
     sides: 4,
@@ -2714,7 +2663,7 @@ export const TIER4_CHASSIS_CONFIG = {
     desc: 'Single fast front spawner with up to 8 controllable drones; fades to invisibility even while moving, briefly revealing itself when summoning a drone.',
     reqLevel: 45,
     tier: 3,
-    upgradesFrom: ['overseer'],
+    upgradesFrom: ['director', 'overseer'],
     shopCost: 1500,
     cameraZoom: 0.80,
     sides: 0,
@@ -2926,7 +2875,7 @@ export const TIER4_CHASSIS_CONFIG = {
     desc: 'Square chassis with a single front spawner deploying up to 6 armed Minions.',
     reqLevel: 45,
     tier: 3,
-    upgradesFrom: ['overseer'],
+    upgradesFrom: ['director', 'overseer'],
     shopCost: 1500,
     cameraZoom: 0.76,
     sides: 4,
@@ -2996,221 +2945,6 @@ export const TIER4_CHASSIS_CONFIG = {
         {
           type: 'DRONE_SPAWNER',
           maxDrones: 6
-        }
-      )
-    ]
-  },
-
-  tritrapper: {
-    name: 'Tri-Trapper',
-    desc: 'Three 120-degree trap launchers with faster reload and nullified recoil, trading trap lifespan and damage for dense defensive walls.',
-    reqLevel: 45,
-    tier: 3,
-    upgradesFrom: ['trapper'],
-    shopCost: 1500,
-    cameraZoom: 0.76,
-    sides: 0,
-    radiusMultiplier: 1.0,
-    firingMode: 'simultaneous',
-    turrets: [
-      createBarrelTurret(
-        {
-          width: 20,
-          length: 30,
-          frontWidth: 20,
-          angleOffset: 0,
-          xOffset: 0,
-          yOffset: 0,
-          shootsBullet: false,
-          playsRecoil: true
-        },
-
-        {
-          damage: 1,
-          penetration: 1,
-          bulletSpeed: 1,
-          bulletSize: 1,
-          reload: 0.55,
-          spread: 1,
-          recoil: 0,
-          knockback: 1,
-          launchSpeed: 1,
-          bulletsPerShot: 1,
-          lifetime: 10,
-          fireDelay: 0
-        }
-      ),
-
-      createBarrelTurret(
-        {
-          width: 20,
-          length: 14,
-          frontWidth: 38,
-          angleOffset: 0,
-          xOffset: 30,
-          yOffset: 0,
-          shootsBullet: true,
-          playsRecoil: true
-        },
-
-        {
-          damage: 0.96,
-          penetration: 4.5,
-          bulletSpeed: 2.2,
-          bulletSize: 1.45,
-          reload: 0.55,
-          spread: 1.5,
-          recoil: 0,
-          knockback: 1.2,
-          launchSpeed: 1,
-          bulletsPerShot: 1,
-          lifetime: 10,
-          fireDelay: 0,
-          bulletShape: 'trap',
-          bulletSides: 3,
-          bulletInnerRadius: 0.40,
-          bulletAngleOffset: 0
-        },
-
-        {
-          type: 'READY_RACK',
-          maxRack: 6,
-          refillSpeed: 1.35,
-          isTrap: true
-        }
-      ),
-
-      createBarrelTurret(
-        {
-          width: 20,
-          length: 30,
-          frontWidth: 20,
-          angleOffset: 120,
-          xOffset: 0,
-          yOffset: 0,
-          shootsBullet: false,
-          playsRecoil: true
-        },
-
-        {
-          damage: 1,
-          penetration: 1,
-          bulletSpeed: 1,
-          bulletSize: 1,
-          reload: 0.55,
-          spread: 1,
-          recoil: 0,
-          knockback: 1,
-          launchSpeed: 1,
-          bulletsPerShot: 1,
-          lifetime: 10,
-          fireDelay: 0
-        }
-      ),
-
-      createBarrelTurret(
-        {
-          width: 20,
-          length: 14,
-          frontWidth: 38,
-          angleOffset: 120,
-          xOffset: 30,
-          yOffset: 0,
-          shootsBullet: true,
-          playsRecoil: true
-        },
-
-        {
-          damage: 0.96,
-          penetration: 4.5,
-          bulletSpeed: 2.2,
-          bulletSize: 1.45,
-          reload: 0.55,
-          spread: 1.5,
-          recoil: 0,
-          knockback: 1.2,
-          launchSpeed: 1,
-          bulletsPerShot: 1,
-          lifetime: 10,
-          fireDelay: 0,
-          bulletShape: 'trap',
-          bulletSides: 3,
-          bulletInnerRadius: 0.40,
-          bulletAngleOffset: 0
-        },
-
-        {
-          type: 'READY_RACK',
-          maxRack: 6,
-          refillSpeed: 1.35,
-          isTrap: true
-        }
-      ),
-
-      createBarrelTurret(
-        {
-          width: 20,
-          length: 30,
-          frontWidth: 20,
-          angleOffset: -120,
-          xOffset: 0,
-          yOffset: 0,
-          shootsBullet: false,
-          playsRecoil: true
-        },
-
-        {
-          damage: 1,
-          penetration: 1,
-          bulletSpeed: 1,
-          bulletSize: 1,
-          reload: 0.55,
-          spread: 1,
-          recoil: 0,
-          knockback: 1,
-          launchSpeed: 1,
-          bulletsPerShot: 1,
-          lifetime: 10,
-          fireDelay: 0
-        }
-      ),
-
-      createBarrelTurret(
-        {
-          width: 20,
-          length: 14,
-          frontWidth: 38,
-          angleOffset: -120,
-          xOffset: 30,
-          yOffset: 0,
-          shootsBullet: true,
-          playsRecoil: true
-        },
-
-        {
-          damage: 0.96,
-          penetration: 4.5,
-          bulletSpeed: 2.2,
-          bulletSize: 1.45,
-          reload: 0.55,
-          spread: 1.5,
-          recoil: 0,
-          knockback: 1.2,
-          launchSpeed: 1,
-          bulletsPerShot: 1,
-          lifetime: 10,
-          fireDelay: 0,
-          bulletShape: 'trap',
-          bulletSides: 3,
-          bulletInnerRadius: 0.40,
-          bulletAngleOffset: 0
-        },
-
-        {
-          type: 'READY_RACK',
-          maxRack: 6,
-          refillSpeed: 1.35,
-          isTrap: true
         }
       )
     ]
@@ -3805,7 +3539,9 @@ export const TIER4_CHASSIS_CONFIG = {
           frontWidth: 38,
           angleOffset: 0,
           xOffset: 0,
-          yOffset: 0
+          yOffset: 0,
+          barrelRecoilAmount: 12,
+          barrelRecoilDecay: 14
         },
 
         {
@@ -3887,7 +3623,9 @@ export const TIER4_CHASSIS_CONFIG = {
           frontWidth: 48,
           angleOffset: 0,
           xOffset: 0,
-          yOffset: 0
+          yOffset: 0,
+          barrelRecoilAmount: 14,
+          barrelRecoilDecay: 12
         },
 
         {
@@ -3973,7 +3711,7 @@ export const TIER4_CHASSIS_CONFIG = {
                 frontWidth: 10,
                 protrudeLength: 8,
                 angleOffset: 90,
-                fireRateTicks: 6,
+                fireRateTicks: 16,
                 damage: 0.60,
                 penetration: 0.40,
                 bulletSpeed: 1.1,
@@ -3986,7 +3724,7 @@ export const TIER4_CHASSIS_CONFIG = {
                 frontWidth: 10,
                 protrudeLength: 8,
                 angleOffset: -90,
-                fireRateTicks: 6,
+                fireRateTicks: 16,
                 damage: 0.60,
                 penetration: 0.40,
                 bulletSpeed: 1.1,
@@ -4592,96 +4330,6 @@ export const TIER4_CHASSIS_CONFIG = {
 
         {
           reload: 1.55
-        }
-      )
-    ]
-  },
-
-  sprayer: {
-    name: 'Sprayer',
-    desc: 'Machine Gun evolution adding an accurate center cylindrical cannon that fires light Gunner rounds on every second main blast (requires staying Machine Gun until Level 45).',
-    reqLevel: 45,
-    tier: 3,
-    upgradesFrom: ['machinegun'],
-    shopCost: 1500,
-    cameraZoom: 0.82,
-    sides: 0,
-    radiusMultiplier: 1.0,
-    firingMode: 'alternating',
-    turrets: [
-      createBarrelTurret(
-        {
-          width: 20,
-          length: 56,
-          frontWidth: 20,
-          angleOffset: 0,
-          xOffset: 0,
-          yOffset: 0
-        },
-
-        {
-          damage: 0.10,
-          penetration: 0.60,
-          bulletSpeed: 1.1,
-          bulletSize: 0.55,
-          reload: 0.80,
-          spread: 1.2,
-          recoil: 0.20,
-          knockback: 0.5,
-          launchSpeed: 1,
-          bulletsPerShot: 1,
-          lifetime: 3.0,
-          fireDelay: 0.5,
-          bulletShape: 'circle',
-          bulletSides: 0,
-          bulletInnerRadius: 0.45,
-          bulletAngleOffset: 0,
-          bulletSpinSpeed: 0
-        },
-
-        {
-          type: 'THERMAL',
-          heatPerShot: 1.8,
-          coolRate: 16,
-          overheatLockoutTime: 2.3
-        }
-      ),
-
-      createBarrelTurret(
-        {
-          width: 20,
-          length: 48,
-          frontWidth: 34,
-          angleOffset: 0,
-          xOffset: 0,
-          yOffset: 0
-        },
-
-        {
-          damage: 0.70,
-          penetration: 1.0,
-          bulletSpeed: 1.0,
-          bulletSize: 0.85,
-          reload: 0.40,
-          spread: 4.4,
-          recoil: 0.85,
-          knockback: 1.0,
-          launchSpeed: 1,
-          bulletsPerShot: 1,
-          lifetime: 3.0,
-          fireDelay: 0,
-          bulletShape: 'circle',
-          bulletSides: 0,
-          bulletInnerRadius: 0.45,
-          bulletAngleOffset: 0,
-          bulletSpinSpeed: 0
-        },
-
-        {
-          type: 'THERMAL',
-          heatPerShot: 3.4,
-          coolRate: 16,
-          overheatLockoutTime: 2.3
         }
       )
     ]

@@ -9,6 +9,7 @@ export class CanvasManager {
     this.width = 0;
     this.height = 0;
     this.theme = 'light';
+    this.shadowsEnabled = true;
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -22,6 +23,10 @@ export class CanvasManager {
 
   setTheme(themeName) {
     this.theme = themeName;
+  }
+
+  setShadowsEnabled(enabled) {
+    this.shadowsEnabled = Boolean(enabled);
   }
 
   resize() {
@@ -85,6 +90,63 @@ export class CanvasManager {
     this.ctx.restore();
   }
 
+  beginShadowEntityPass(camera) {
+    if (!this._entityCanvas) {
+      this._entityCanvas = document.createElement('canvas');
+      this._entityCtx = this._entityCanvas.getContext('2d');
+    }
+    const w = Math.max(1, this.canvas.width);
+    const h = Math.max(1, this.canvas.height);
+    if (this._entityCanvas.width !== w || this._entityCanvas.height !== h) {
+      this._entityCanvas.width = w;
+      this._entityCanvas.height = h;
+    }
+
+    const ectx = this._entityCtx;
+    ectx.setTransform(1, 0, 0, 1, 0, 0);
+    ectx.clearRect(0, 0, w, h);
+
+    this._shadowSavedCtx = this.ctx;
+    this.ctx = ectx;
+    this.beginCamera(camera);
+  }
+
+  endShadowEntityPass(camera) {
+    if (!this._shadowSavedCtx || !this._entityCanvas) return;
+    this.endCamera();
+    this.ctx = this._shadowSavedCtx;
+    this._shadowSavedCtx = null;
+
+    const ctx = this.ctx;
+    const zoom = (camera && camera.zoom) ? camera.zoom : 0.85;
+    const s = Math.max(0.35, zoom * this.dpr);
+    const cartoonyX = -5.5 * s;
+    const cartoonyY = 6.5 * s;
+    const blurY = 7.5 * s;
+    const blurR = Math.min(24, 14 * s);
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (typeof ctx.filter === 'string') {
+      ctx.filter = `drop-shadow(${cartoonyX.toFixed(1)}px ${cartoonyY.toFixed(1)}px 0px rgba(0, 0, 0, 0.42)) drop-shadow(0px ${blurY.toFixed(1)}px ${blurR.toFixed(1)}px rgba(0, 0, 0, 0.28))`;
+      ctx.drawImage(this._entityCanvas, 0, 0);
+      ctx.filter = 'none';
+    } else {
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
+      ctx.shadowBlur = blurR;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = blurY;
+      ctx.drawImage(this._entityCanvas, 0, 0);
+
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.42)';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = cartoonyX;
+      ctx.shadowOffsetY = cartoonyY;
+      ctx.drawImage(this._entityCanvas, 0, 0);
+    }
+    ctx.restore();
+  }
+
   drawPolygon(x, y, radius, sides, angle = 0, fillColor = '#00e5ff', strokeColor = '#00a8bc', strokeWidth = 4, innerRadius = 0) {
     const ctx = this.ctx;
     ctx.save();
@@ -127,7 +189,7 @@ export class CanvasManager {
     ctx.restore();
   }
 
-  drawTurretBarrel(x, y, width, length, angle, offsetX = 0, offsetY = 0, frontWidth = width, fillColor = '#999999', strokeColor = '#727272', strokeWidth = 3.5) {
+  drawTurretBarrel(x, y, width, length, angle, offsetX = 0, offsetY = 0, frontWidth = width, fillColor = '#999999', strokeColor = '#727272', strokeWidth = 3.5, options = null) {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(x, y);
@@ -138,18 +200,29 @@ export class CanvasManager {
     ctx.lineWidth = strokeWidth;
 
     const bx = offsetX;
-    const halfBack = width / 2;
-    const halfFront = frontWidth / 2;
+    const verts = options && Array.isArray(options.vertices) && options.vertices.length >= 3 ? options.vertices : null;
+    const scale = (options && typeof options.scale === 'number') ? options.scale : 1;
 
     ctx.beginPath();
-    ctx.moveTo(bx, offsetY - halfBack);
-    ctx.lineTo(bx + length, offsetY - halfFront);
-    ctx.lineTo(bx + length, offsetY + halfFront);
-    ctx.lineTo(bx, offsetY + halfBack);
+    if (verts) {
+      for (let i = 0; i < verts.length; i++) {
+        const vx = bx + (verts[i][0] ?? verts[i].x ?? 0) * scale;
+        const vy = offsetY + (verts[i][1] ?? verts[i].y ?? 0) * scale;
+        if (i === 0) ctx.moveTo(vx, vy);
+        else ctx.lineTo(vx, vy);
+      }
+    } else {
+      const halfBack = width / 2;
+      const halfFront = frontWidth / 2;
+      ctx.moveTo(bx, offsetY - halfBack);
+      ctx.lineTo(bx + length, offsetY - halfFront);
+      ctx.lineTo(bx + length, offsetY + halfFront);
+      ctx.lineTo(bx, offsetY + halfBack);
+    }
     ctx.closePath();
 
     ctx.fill();
-    ctx.lineJoin = 'miter';
+    ctx.lineJoin = (options && options.lineJoin) ? options.lineJoin : 'miter';
     ctx.stroke();
 
     ctx.restore();
@@ -201,6 +274,30 @@ export class CanvasManager {
     ctx.save();
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  drawDebugPolygon(x, y, radius, sides, angle = 0, color = '#ff0055') {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.beginPath();
+    if (sides === 0) {
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    } else {
+      for (let i = 0; i < sides; i++) {
+        const a = (i * 2 * Math.PI) / sides;
+        const px = radius * Math.cos(a);
+        const py = radius * Math.sin(a);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    }
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.stroke();

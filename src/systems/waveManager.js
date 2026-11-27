@@ -52,13 +52,14 @@ export class WaveManager {
     this.score = 0;
   }
 
-  spawnAlliesForRun(player, storageData, initialLevel = 1, playerChassis = 'basic') {
+  spawnAlliesForRun(player, storageData, initialLevel = 1, playerChassis = 'basic', allyGodMode = false) {
     this._lastPlayer = player || this._lastPlayer;
     this._lastChassisKey = playerChassis || 'basic';
     this._lastExtraCtx = {
       ...(this._lastExtraCtx || {}),
       playerLevel: initialLevel,
-      crewLevels: storageData?.crewLevels || {}
+      crewLevels: storageData?.crewLevels || {},
+      allyGodMode: Boolean(allyGodMode)
     };
     this.allies = [];
     const hired = Array.isArray(storageData?.hiredAllies) ? storageData.hiredAllies.slice(0, CONFIG.ALLIES?.maxAllies || 3) : [];
@@ -79,7 +80,8 @@ export class WaveManager {
       const ay = (player?.y || 0) + Math.sin(angle) * dist;
 
       const ally = new AllyTank(slotCfg, i, ax, ay, unlockedChassis, playerColor, playerChassis);
-      ally.syncLevelAndProgression(initialLevel, unlockedChassis, crewLevels, false, playerChassis, this.allies, this.waveNumber);
+      ally.godMode = Boolean(allyGodMode);
+      ally.syncLevelAndProgression(initialLevel, unlockedChassis, crewLevels, Boolean(allyGodMode), playerChassis, this.allies, this.waveNumber);
       this.allies.push(ally);
     }
 
@@ -123,6 +125,7 @@ export class WaveManager {
       const dist = 125;
       const ax = (player.x || 0) + Math.cos(angle) * dist;
       const ay = (player.y || 0) + Math.sin(angle) * dist;
+      ally.godMode = Boolean(this._lastExtraCtx?.allyGodMode || ally.godMode);
       ally.respawn(ax, ay, this, unlockedChassis, crewLevels, playerLevel, playerChassis, this.allies);
       respawned.push(ally);
     }
@@ -293,7 +296,8 @@ export class WaveManager {
       enemyBullets: this.enemyBullets,
       waveMgr: this,
       squadStance: extraCtx.squadStance || 'AUTO',
-      crewLevels: extraCtx.crewLevels || {}
+      crewLevels: extraCtx.crewLevels || {},
+      allyGodMode: Boolean(extraCtx.allyGodMode)
     };
     for (let i = 0; i < this.allies.length; i++) {
       this.allies[i].update(dt, allyCtx);
@@ -541,6 +545,17 @@ export class WaveManager {
     return this.enemyQueue.length + this.pendingBossQueue.length + activeEnemies;
   }
 
+  getActiveBosses() {
+    const bosses = [];
+    for (let i = 0; i < this.enemies.length; i++) {
+      const e = this.enemies[i];
+      if (e && e.isBoss && !e.dead && !e.destroyed) {
+        bosses.push(e);
+      }
+    }
+    return bosses;
+  }
+
   getActiveBoss() {
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i];
@@ -555,11 +570,21 @@ export class WaveManager {
     }
   }
 
-  draw(canvasMgr) {
-    for (const s of this.shapes) s.draw(canvasMgr);
-    for (const a of this.allies) a.draw(canvasMgr);
-    for (const e of this.enemies) e.draw(canvasMgr);
+  draw(canvasMgr, opts = {}) {
+    const showOverlays = !opts.skipOverlays;
+    for (const s of this.shapes) s.draw(canvasMgr, showOverlays);
+    for (const a of this.allies) a.draw(canvasMgr, showOverlays);
+    for (const e of this.enemies) e.draw(canvasMgr, showOverlays);
     for (const b of this.enemyBullets) b.draw(canvasMgr.ctx);
+    if (!opts.skipParticles) {
+      for (const p of this.particles) p.draw(canvasMgr.ctx);
+    }
+  }
+
+  drawOverlays(canvasMgr) {
     for (const p of this.particles) p.draw(canvasMgr.ctx);
+    for (const s of this.shapes) s.drawOverlays(canvasMgr.ctx);
+    for (const a of this.allies) a.drawOverlays(canvasMgr);
+    for (const e of this.enemies) e.drawOverlays(canvasMgr.ctx);
   }
 }
